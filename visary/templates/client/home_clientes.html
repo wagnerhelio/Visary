@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Clientes{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .actions-grid {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        margin-top: 32px;
+    }
+
+    .action-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .action-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 32px 64px rgba(5, 8, 17, 0.6);
+    }
+
+    .action-card__icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: #081423;
+    }
+
+    .action-card h3 {
+        margin: 0;
+        font-size: 1.3rem;
+        color: var(--text-primary);
+    }
+
+    .action-card p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .action-card .btn {
+        margin-top: auto;
+    }
+
+    .stats-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 32px;
+        text-align: center;
+    }
+
+    .stats-card span {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .stats-card strong {
+        display: block;
+        font-size: 2.5rem;
+        color: var(--accent);
+        font-weight: 700;
+    }
+
+    .clientes-list {
+        margin-top: 32px;
+    }
+
+    .clientes-list-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+    }
+
+    .clientes-list-card header {
+        margin-bottom: 20px;
+    }
+
+    .clientes-list-card h2 {
+        margin: 0;
+        font-size: 1.4rem;
+        color: var(--text-primary);
+    }
+
+    .clientes-list-card p {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .clientes-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .clientes-table th {
+        text-align: left;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .clientes-table td {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .clientes-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .clientes-table .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .clientes-table .empty-state {
+        padding: 24px;
+        text-align: center;
+        color: var(--text-secondary);
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        border-radius: 12px;
+    }
+
+    .clientes-table .empty-state a {
+        color: var(--accent);
+        text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+        .actions-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .action-card {
+            padding: 24px;
+        }
+
+        .stats-card {
+            padding: 24px;
+        }
+    }
+{% endblock %}
+
+{% comment %}Menu lateral definido no base.html{% endcomment %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Clientes</h1>
+        <p>Gerencie o cadastro e acompanhe os clientes ativos da consultoria.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="stats-card">
+    <span>Total de clientes cadastrados</span>
+    <strong>{{ total_clientes }}</strong>
+</section>
+
+{% if clientes %}
+<section class="clientes-list">
+    <article class="clientes-list-card">
+        <header>
+            <h2>Meus Clientes</h2>
+            <p>Clientes vinculados ao seu usuário</p>
+        </header>
+        <table class="clientes-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th style="width: 120px; text-align: center;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cliente in clientes %}
+                <tr>
+                    <td>{{ cliente.nome }}</td>
+                    <td>{{ cliente.telefone }}</td>
+                    <td style="text-align: center;">
+                        <a href="{% url 'system:editar_cliente' cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if total_clientes > 10 %}
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline">Ver todos os clientes</a>
+        </div>
+        {% endif %}
+    </article>
+</section>
+{% else %}
+<section class="clientes-list">
+    <article class="clientes-list-card">
+        <header>
+            <h2>Meus Clientes</h2>
+            <p>Clientes vinculados ao seu usuário</p>
+        </header>
+        <div class="empty-state">
+            Nenhum cliente cadastrado até o momento. <a href="{% url 'system:cadastrar_cliente' %}">Cadastre o primeiro cliente</a>.
+        </div>
+    </article>
+</section>
+{% endif %}
+
+<section class="actions-grid">
+    <article class="action-card">
+        <div class="action-card__icon">➕</div>
+        <h3>Cadastrar Cliente</h3>
+        <p>Adicione um novo cliente ao sistema</p>
+        <a href="{% url 'system:cadastrar_cliente' %}" class="btn btn-primary">Cadastrar</a>
+    </article>
+
+    <article class="action-card">
+        <div class="action-card__icon">📋</div>
+        <h3>Listar Clientes</h3>
+        <p>Visualize e gerencie todos os clientes cadastrados</p>
+        <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline">Listar</a>
+    </article>
+</section>
+{% endblock %}
+

@@ -1,0 +1,116 @@
+{% load static %}
+<aside id="app-sidebar" class="app-sidebar" data-app-sidebar>
+    <header class="sidebar-header">
+        {% block sidebar_brand %}
+            <img src="{% static 'icons/logo_menu.png' %}" alt="Logotipo Visary Assessoria Consular" class="sidebar-logo">
+            <div class="sidebar-user">
+                {% if request.session.cliente_id %}
+                    <strong class="sidebar-user-name">Olá, {{ request.session.cliente_nome|default:"Cliente" }}</strong>
+                    <p class="sidebar-user-greeting">Bem-vindo(a) à área do cliente.</p>
+                    <span class="sidebar-user-role">Cliente</span>
+                {% else %}
+                    <strong class="sidebar-user-name">Olá, {{ request.user.get_full_name|default:request.user.username }}</strong>
+                    <p class="sidebar-user-greeting">Bem-vindo(a) ao painel Visary.</p>
+                    <span class="sidebar-user-role">
+                        {% if perfil_usuario %}
+                            {{ perfil_usuario }}
+                        {% elif request.user.is_superuser %}
+                            Administrador
+                        {% elif request.user.is_staff %}
+                            Equipe interna
+                        {% else %}
+                            Usuário local
+                        {% endif %}
+                    </span>
+                {% endif %}
+            </div>
+        {% endblock %}
+    </header>
+    
+    <nav class="sidebar-nav">
+        {% block sidebar_nav %}
+            {% if request.session.cliente_id %}
+                <a class="nav-item {% if request.resolver_match.url_name == 'cliente_dashboard' %}is-active{% endif %}" 
+                   href="{% url 'system:cliente_dashboard' %}" 
+                   data-close-sidebar>
+                    Meu Dashboard
+                </a>
+            {% else %}
+                <a class="nav-item {% if request.resolver_match.url_name == 'home' %}is-active{% endif %}" 
+                   href="{% url 'home' %}" 
+                   data-close-sidebar>
+                    Painel principal
+                </a>
+                <a class="nav-item {% if 'clientes' in request.resolver_match.url_name or 'cadastrar_cliente' in request.resolver_match.url_name or 'listar_clientes' in request.resolver_match.url_name or 'editar_cliente' in request.resolver_match.url_name %}is-active{% endif %}" 
+                   href="{% url 'system:home_clientes' %}" 
+                   data-close-sidebar>
+                    Clientes
+                </a>
+                <a class="nav-item {% if 'viagens' in request.resolver_match.url_name or 'criar_viagem' in request.resolver_match.url_name %}is-active{% endif %}" 
+                   href="{% url 'system:home_viagens' %}" 
+                   data-close-sidebar>
+                    Viagens
+                </a>
+                <a class="nav-item {% if 'processos' in request.resolver_match.url_name or 'processo' in request.resolver_match.url_name %}is-active{% endif %}" 
+                   href="{% url 'system:home_processos' %}" 
+                   data-close-sidebar>
+                    Processos
+                </a>
+                <a class="nav-item {% if 'partners' in request.resolver_match.url_name or 'partner' in request.resolver_match.url_name %}is-active{% endif %}" 
+                   href="{% url 'system:home_partners' %}" 
+                   data-close-sidebar>
+                    Parceiros
+                </a>
+                <a class="nav-item {% if 'paises_destino' in request.resolver_match.url_name or 'pais_destino' in request.resolver_match.url_name %}is-active{% endif %}" 
+                   href="{% url 'system:home_paises_destino' %}" 
+                   data-close-sidebar>
+                    Países de Destino
+                </a>
+                <a class="nav-item {% if 'tipos_visto' in request.resolver_match.url_name or 'tipo_visto' in request.resolver_match.url_name %}is-active{% endif %}" 
+                   href="{% url 'system:home_tipos_visto' %}" 
+                   data-close-sidebar>
+                    Tipos de Visto
+                </a>
+                <a class="nav-item {% if 'formularios' in request.resolver_match.url_name or 'formulario' in request.resolver_match.url_name or 'pergunta' in request.resolver_match.url_name %}is-active{% endif %}"
+                   href="{% url 'system:home_formularios' %}"
+                   data-close-sidebar>
+                    Formulários de Visto
+                </a>
+                {% if perfil_usuario == 'Administrador' or request.user.is_superuser %}
+                <a class="nav-item {% if 'financeiro' in request.resolver_match.url_name %}is-active{% endif %}"
+                   href="{% url 'system:home_financeiro' %}"
+                   data-close-sidebar>
+                    Financeiro
+                </a>
+                <a class="nav-item {% if 'administracao' in request.resolver_match.url_name or 'usuario' in request.resolver_match.url_name or 'perfil' in request.resolver_match.url_name or 'modulo' in request.resolver_match.url_name %}is-active{% endif %}"
+                   href="{% url 'system:home_administracao' %}"
+                   data-close-sidebar>
+                    Administração
+                </a>
+                {% endif %}
+            {% endif %}
+        {% endblock %}
+    </nav>
+    
+    <footer class="sidebar-footer">
+        {% block sidebar_footer %}
+            {% if request.session.cliente_id %}
+                <a href="{% url 'system:cliente_logout' %}" class="btn btn-outline btn-logout">
+                    <img src="{% static 'icons/logout.png' %}" alt="Sair">
+                    <span>Sair</span>
+                </a>
+            {% else %}
+                <form method="post" action="{% url 'logout' %}" class="logout-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline btn-logout">
+                        <img src="{% static 'icons/logout.png' %}" alt="Sair">
+                        <span>Sair</span>
+                    </button>
+                </form>
+            {% endif %}
+        {% endblock %}
+    </footer>
+</aside>
+
+<div class="sidebar-backdrop" data-sidebar-backdrop></div>
+

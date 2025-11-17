@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Criar Usuário{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .grid-inline {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: 1fr;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .form-card form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .form-card label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .form-card input,
+    .form-card select {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.95rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-card select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding-right: 42px;
+        background-image: linear-gradient(45deg, transparent 50%, rgba(245, 245, 245, 0.75) 50%),
+                          linear-gradient(135deg, rgba(245, 245, 245, 0.75) 50%, transparent 50%);
+        background-position: calc(100% - 24px) center, calc(100% - 16px) center;
+        background-size: 8px 8px;
+        background-repeat: no-repeat;
+    }
+
+    .form-card input:focus,
+    .form-card select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+    }
+
+    @media (min-width: 1120px) {
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .layout-grid {
+            width: 100%;
+            max-width: 480px;
+            margin-inline: auto;
+            gap: 16px;
+        }
+
+        .card.form-card,
+        .layout-grid > .card {
+            width: 100%;
+            margin-inline: 0;
+            padding: 16px 12px;
+            border-radius: 18px;
+            box-shadow: 0 16px 32px rgba(5, 8, 17, 0.45);
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Criar Usuário</h1>
+        <p>Cadastre um novo usuário no sistema.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:listar_usuarios' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<div class="layout-grid">
+    <section class="card form-card">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div>
+                <label for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                {{ form.nome }}
+                {% if form.nome.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.nome.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.email.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.senha.id_for_label }}">{{ form.senha.label }}</label>
+                {{ form.senha }}
+                {% if form.senha.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.senha.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.perfil.id_for_label }}">{{ form.perfil.label }}</label>
+                {{ form.perfil }}
+                {% if form.perfil.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.perfil.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div class="checkbox-group">
+                {{ form.ativo }}
+                <label for="{{ form.ativo.id_for_label }}" style="text-transform: none; letter-spacing: normal; margin: 0;">
+                    {{ form.ativo.label }}
+                </label>
+                {% if form.ativo.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.ativo.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 8px;">
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                <a href="{% url 'system:listar_usuarios' %}" class="btn btn-outline">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}
+

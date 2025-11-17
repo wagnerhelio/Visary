@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Formulário - {{ viagem.tipo_visto.nome }}{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+    <style>
+        .form-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .form-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 8px 0;
+        }
+
+        .form-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .formulario-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+            padding: clamp(24px, 4vw, 40px);
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .form-group label .obrigatorio {
+            color: rgba(255, 81, 81, 0.9);
+            margin-left: 4px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="date"],
+        .form-group input[type="number"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(12, 19, 35, 0.72);
+            color: #f5f5f5;
+            font-size: 0.95rem;
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: rgba(86, 244, 156, 0.65);
+            box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+            background: rgba(12, 19, 35, 0.85);
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-group-radio {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .form-group-radio label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .form-group-radio input[type="radio"] {
+            width: auto;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, rgba(86, 244, 156, 0.9), rgba(86, 244, 156, 0.7));
+            color: #0c1323;
+            border: none;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 8px;
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(135deg, rgba(86, 244, 156, 1), rgba(86, 244, 156, 0.9));
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(86, 244, 156, 0.3);
+        }
+
+        .messages {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 24px 0;
+        }
+
+        .messages li {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .messages .success {
+            background: rgba(86, 244, 156, 0.2);
+            border: 1px solid rgba(86, 244, 156, 0.55);
+            color: rgba(86, 244, 156, 0.95);
+        }
+
+        .messages .error {
+            background: rgba(255, 81, 81, 0.15);
+            border: 1px solid rgba(255, 104, 104, 0.55);
+            color: rgba(255, 104, 104, 0.95);
+        }
+
+        .resposta-existente {
+            background: rgba(86, 244, 156, 0.1);
+            border: 1px solid rgba(86, 244, 156, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin-top: 8px;
+            font-size: 0.9rem;
+            color: rgba(86, 244, 156, 0.9);
+        }
+    </style>
+{% endblock %}
+
+{% block app_content %}
+<div class="form-header">
+    <h1>Formulário: {{ viagem.tipo_visto.nome }}</h1>
+    <p>Viagem para {{ viagem.pais_destino.nome }} - {{ viagem.data_prevista_viagem|date:"d/m/Y" }}</p>
+    <div style="margin-top: 16px;">
+        <a href="{% url 'system:cliente_dashboard' %}" class="btn btn-outline">← Voltar</a>
+    </div>
+</div>
+
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<div class="formulario-card">
+    <form method="post" action="{% url 'system:cliente_salvar_resposta' viagem.pk %}" novalidate>
+        {% csrf_token %}
+
+        {% for pergunta in perguntas %}
+            <div class="form-group">
+                <label for="pergunta_{{ pergunta.pk }}">
+                    {{ pergunta.pergunta }}
+                    {% if pergunta.obrigatorio %}
+                        <span class="obrigatorio">*</span>
+                    {% endif %}
+                </label>
+
+                {% if pergunta.pk in respostas_ids %}
+                    {% for pergunta_id, resposta in respostas_existentes.items %}
+                        {% if pergunta_id == pergunta.pk %}
+                        {% if pergunta.tipo_campo == "texto" %}
+                            <textarea
+                                id="pergunta_{{ pergunta.pk }}"
+                                name="pergunta_{{ pergunta.pk }}"
+                                {% if pergunta.obrigatorio %}required{% endif %}
+                            >{{ resposta.resposta_texto }}</textarea>
+                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
+                        {% elif pergunta.tipo_campo == "data" %}
+                            <input
+                                type="date"
+                                id="pergunta_{{ pergunta.pk }}"
+                                name="pergunta_{{ pergunta.pk }}"
+                                {% if pergunta.obrigatorio %}required{% endif %}
+                                {% if resposta.resposta_data %}value="{{ resposta.resposta_data|date:'Y-m-d' }}"{% endif %}
+                            >
+                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
+                        {% elif pergunta.tipo_campo == "numero" %}
+                            <input
+                                type="number"
+                                id="pergunta_{{ pergunta.pk }}"
+                                name="pergunta_{{ pergunta.pk }}"
+                                step="0.01"
+                                {% if pergunta.obrigatorio %}required{% endif %}
+                                {% if resposta.resposta_numero %}value="{{ resposta.resposta_numero }}"{% endif %}
+                            >
+                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
+                        {% elif pergunta.tipo_campo == "booleano" %}
+                            <div class="form-group-radio">
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="pergunta_{{ pergunta.pk }}"
+                                        value="sim"
+                                        {% if resposta.resposta_booleano %}checked{% endif %}
+                                        {% if pergunta.obrigatorio %}required{% endif %}
+                                    >
+                                    Sim
+                                </label>
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="pergunta_{{ pergunta.pk }}"
+                                        value="nao"
+                                        {% if resposta.resposta_booleano == False %}checked{% endif %}
+                                        {% if pergunta.obrigatorio %}required{% endif %}
+                                    >
+                                    Não
+                                </label>
+                            </div>
+                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
+                        {% elif pergunta.tipo_campo == "selecao" %}
+                            <select
+                                id="pergunta_{{ pergunta.pk }}"
+                                name="pergunta_{{ pergunta.pk }}"
+                                {% if pergunta.obrigatorio %}required{% endif %}
+                            >
+                                <option value="">Selecione uma opção</option>
+                                {% for opcao in pergunta.opcoes.all %}
+                                    {% if opcao.ativo %}
+                                        <option value="{{ opcao.pk }}" {% if resposta.resposta_selecao and resposta.resposta_selecao.pk == opcao.pk %}selected{% endif %}>
+                                            {{ opcao.texto }}
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
+                        {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    {% if pergunta.tipo_campo == "texto" %}
+                        <textarea
+                            id="pergunta_{{ pergunta.pk }}"
+                            name="pergunta_{{ pergunta.pk }}"
+                            {% if pergunta.obrigatorio %}required{% endif %}
+                        ></textarea>
+                    {% elif pergunta.tipo_campo == "data" %}
+                        <input
+                            type="date"
+                            id="pergunta_{{ pergunta.pk }}"
+                            name="pergunta_{{ pergunta.pk }}"
+                            {% if pergunta.obrigatorio %}required{% endif %}
+                        >
+                    {% elif pergunta.tipo_campo == "numero" %}
+                        <input
+                            type="number"
+                            id="pergunta_{{ pergunta.pk }}"
+                            name="pergunta_{{ pergunta.pk }}"
+                            step="0.01"
+                            {% if pergunta.obrigatorio %}required{% endif %}
+                        >
+                    {% elif pergunta.tipo_campo == "booleano" %}
+                        <div class="form-group-radio">
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="pergunta_{{ pergunta.pk }}"
+                                    value="sim"
+                                    {% if pergunta.obrigatorio %}required{% endif %}
+                                >
+                                Sim
+                            </label>
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="pergunta_{{ pergunta.pk }}"
+                                    value="nao"
+                                    {% if pergunta.obrigatorio %}required{% endif %}
+                                >
+                                Não
+                            </label>
+                        </div>
+                    {% elif pergunta.tipo_campo == "selecao" %}
+                        <select
+                            id="pergunta_{{ pergunta.pk }}"
+                            name="pergunta_{{ pergunta.pk }}"
+                            {% if pergunta.obrigatorio %}required{% endif %}
+                        >
+                            <option value="">Selecione uma opção</option>
+                            {% for opcao in pergunta.opcoes.all %}
+                                {% if opcao.ativo %}
+                                    <option value="{{ opcao.pk }}">{{ opcao.texto }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <button type="submit" class="btn-submit">💾 Salvar Formulário</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Listar Clientes{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .filtros-card header {
+        margin-bottom: 20px;
+    }
+
+    .filtros-card h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: var(--text-primary);
+    }
+
+    .filtros-form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .filtros-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .filtros-form label {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 6px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .filtros-form input,
+    .filtros-form select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .filtros-form input:focus,
+    .filtros-form select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .filtros-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    .table-wrapper {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 100%;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .table-wrapper::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(86, 244, 156, 0.4);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: rgba(86, 244, 156, 0.6);
+    }
+
+    th,
+    td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .empty-state {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        color: rgba(245, 245, 245, 0.72);
+        text-align: center;
+    }
+
+    .card {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 280px);
+        max-height: calc(100vh - 280px);
+        min-height: 400px;
+        overflow: hidden;
+    }
+
+    .card .table-wrapper {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: auto;
+        max-height: 100%;
+    }
+
+    @media (max-width: 768px) {
+        .filtros-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filtros-actions {
+            flex-direction: column;
+        }
+
+        .card {
+            height: calc(100vh - 250px);
+            max-height: calc(100vh - 250px);
+            min-height: 300px;
+        }
+
+        table {
+            font-size: 0.85rem;
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+        }
+    }
+{% endblock %}
+
+{% comment %}Menu lateral definido no base.html{% endcomment %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Listar Clientes</h1>
+        <p>Visualize e gerencie todos os clientes cadastrados.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_clientes' %}" class="btn btn-outline">Voltar</a>
+        <a href="{% url 'system:cadastrar_cliente' %}" class="btn btn-primary">Novo Cliente</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="filtros-card">
+    <header>
+        <h2>Filtros</h2>
+    </header>
+    <form method="get" class="filtros-form">
+        <div class="filtros-grid">
+            <div>
+                <label for="nome">Nome</label>
+                <input type="text" id="nome" name="nome" value="{{ filtros.nome }}" placeholder="Nome do cliente">
+            </div>
+            <div>
+                <label for="assessor">Assessor</label>
+                <select id="assessor" name="assessor">
+                    <option value="">Todos os assessores</option>
+                    {% for assessor in assessores %}
+                        <option value="{{ assessor.pk }}" {% if filtros.assessor == assessor.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ assessor.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="telefone">Telefone</label>
+                <input type="text" id="telefone" name="telefone" value="{{ filtros.telefone }}" placeholder="Telefone principal">
+            </div>
+            <div>
+                <label for="telefone_secundario">Telefone Secundário</label>
+                <input type="text" id="telefone_secundario" name="telefone_secundario" value="{{ filtros.telefone_secundario }}" placeholder="Telefone secundário">
+            </div>
+            <div>
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email" value="{{ filtros.email }}" placeholder="E-mail do cliente">
+            </div>
+            <div>
+                <label for="nacionalidade">Nacionalidade</label>
+                <input type="text" id="nacionalidade" name="nacionalidade" value="{{ filtros.nacionalidade }}" placeholder="Nacionalidade">
+            </div>
+            <div>
+                <label for="data_nascimento">Data de Nascimento</label>
+                <input type="date" id="data_nascimento" name="data_nascimento" value="{{ filtros.data_nascimento }}">
+            </div>
+            <div>
+                <label for="data_cadastro_inicio">Cadastro (Início)</label>
+                <input type="date" id="data_cadastro_inicio" name="data_cadastro_inicio" value="{{ filtros.data_cadastro_inicio }}">
+            </div>
+            <div>
+                <label for="data_cadastro_fim">Cadastro (Fim)</label>
+                <input type="date" id="data_cadastro_fim" name="data_cadastro_fim" value="{{ filtros.data_cadastro_fim }}">
+            </div>
+        </div>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline">Limpar Filtros</a>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Assessor</th>
+                <th>Telefone</th>
+                <th>E-mail</th>
+                <th>Cadastro</th>
+                {% if pode_excluir_clientes %}
+                    <th style="width:120px;">Ações</th>
+                {% endif %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for cliente in clientes %}
+                <tr>
+                    <td>{{ cliente.nome }}</td>
+                    <td>{{ cliente.assessor_responsavel.nome }}</td>
+                    <td>{{ cliente.telefone }}</td>
+                    <td>{{ cliente.email }}</td>
+                    <td>{{ cliente.criado_em|localtime|date:"d/m/Y" }}</td>
+                    {% if pode_excluir_clientes %}
+                        <td>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <a href="{% url 'system:editar_cliente' cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                <form method="post" action="{% url 'system:excluir_cliente' cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ cliente.nome }}?');" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                </form>
+                            </div>
+                        </td>
+                    {% endif %}
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="{% if pode_excluir_clientes %}6{% else %}5{% endif %}" class="empty-state">
+                        {% if filtros.nome or filtros.assessor or filtros.telefone or filtros.email or filtros.nacionalidade or filtros.data_nascimento or filtros.data_cadastro_inicio or filtros.data_cadastro_fim %}
+                            Nenhum cliente encontrado com os filtros aplicados. <a href="{% url 'system:listar_clientes_view' %}">Limpar filtros</a>.
+                        {% else %}
+                            Nenhum cliente cadastrado até o momento. <a href="{% url 'system:cadastrar_cliente' %}">Cadastre o primeiro cliente</a>.
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+

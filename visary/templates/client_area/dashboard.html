@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Área do Cliente{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+    <style>
+        .client-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+            padding: 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .client-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .client-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin: 4px 0 0 0;
+        }
+
+        .viagens-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .viagem-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+            padding: 24px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .viagem-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 32px 64px rgba(5, 8, 17, 0.6);
+        }
+
+        .viagem-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .viagem-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .viagem-badge {
+            background: rgba(86, 244, 156, 0.15);
+            color: rgba(86, 244, 156, 0.95);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .viagem-info {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .viagem-info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .viagem-info-item strong {
+            color: var(--text-primary);
+            min-width: 120px;
+        }
+
+        .viagem-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .empty-state {
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            padding: 48px 24px;
+            text-align: center;
+        }
+
+        .empty-state h3 {
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 768px) {
+            .client-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .viagem-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .viagem-actions {
+                flex-direction: column;
+            }
+
+            .viagem-actions .btn {
+                width: 100%;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block app_content %}
+<div class="client-header">
+    <div>
+        <h1>Bem-vindo, {{ cliente.nome }}!</h1>
+        <p>Gerencie suas viagens e formulários</p>
+    </div>
+    <a href="{% url 'system:cliente_logout' %}" class="btn btn-outline">Sair</a>
+</div>
+
+{% if viagens %}
+    <div class="viagens-grid">
+        {% for viagem in viagens %}
+            <div class="viagem-card">
+                <div class="viagem-header">
+                    <h3>{{ viagem.pais_destino.nome }}</h3>
+                    <span class="viagem-badge">{{ viagem.tipo_visto.nome }}</span>
+                </div>
+
+                <div class="viagem-info">
+                    <div class="viagem-info-item">
+                        <strong>Data da Viagem:</strong>
+                        <span>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="viagem-info-item">
+                        <strong>Data de Retorno:</strong>
+                        <span>{{ viagem.data_prevista_retorno|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="viagem-info-item">
+                        <strong>Assessor:</strong>
+                        <span>{{ viagem.assessor_responsavel.nome }}</span>
+                    </div>
+                </div>
+
+                <div class="viagem-actions">
+                    {% if viagem.tipo_visto.formulario %}
+                        <a href="{% url 'system:cliente_visualizar_formulario' viagem.pk %}" class="btn btn-primary">
+                            📝 Preencher Formulário
+                        </a>
+                    {% else %}
+                        <span class="btn btn-outline" style="opacity: 0.5; cursor: not-allowed;">
+                            Formulário não disponível
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <h3>Nenhuma viagem encontrada</h3>
+        <p>Você ainda não está vinculado a nenhuma viagem.</p>
+    </div>
+{% endif %}
+{% endblock %}
+

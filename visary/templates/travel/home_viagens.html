@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Viagens{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .actions-grid {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        margin-top: 32px;
+    }
+
+    .action-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .action-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 32px 64px rgba(5, 8, 17, 0.6);
+    }
+
+    .action-card__icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: #081423;
+    }
+
+    .action-card h3 {
+        margin: 0;
+        font-size: 1.3rem;
+        color: var(--text-primary);
+    }
+
+    .action-card p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .action-card .btn {
+        margin-top: auto;
+    }
+
+    .stats-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 32px;
+        text-align: center;
+    }
+
+    .stats-card span {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .stats-card strong {
+        display: block;
+        font-size: 2.5rem;
+        color: var(--accent);
+        font-weight: 700;
+    }
+
+    .viagens-list {
+        margin-top: 32px;
+    }
+
+    .viagens-list-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+    }
+
+    .viagens-list-card header {
+        margin-bottom: 20px;
+    }
+
+    .viagens-list-card h2 {
+        margin: 0;
+        font-size: 1.4rem;
+        color: var(--text-primary);
+    }
+
+    .viagens-list-card p {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .viagens-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .viagens-table th {
+        text-align: left;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .viagens-table td {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .viagens-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .viagens-table .empty-state {
+        padding: 24px;
+        text-align: center;
+        color: var(--text-secondary);
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        border-radius: 12px;
+    }
+
+    .viagens-table .empty-state a {
+        color: var(--accent);
+        text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+        .actions-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .action-card {
+            padding: 24px;
+        }
+
+        .stats-card {
+            padding: 24px;
+        }
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .btn-primary.btn-small {
+        background: linear-gradient(135deg, rgba(86, 244, 156, 0.9), rgba(86, 244, 156, 0.7));
+        color: #0c1323;
+        border: none;
+    }
+
+    .btn-primary.btn-small:hover {
+        background: linear-gradient(135deg, rgba(86, 244, 156, 1), rgba(86, 244, 156, 0.9));
+    }
+{% endblock %}
+
+{% comment %}Menu lateral definido no base.html{% endcomment %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Viagens</h1>
+        <p>Gerencie viagens, países de destino e tipos de visto.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="stats-card">
+    <span>Total de viagens cadastradas</span>
+    <strong>{{ total_viagens }}</strong>
+</section>
+
+{% if viagens %}
+<section class="viagens-list">
+    <article class="viagens-list-card">
+        <header>
+            <h2>Últimas Viagens</h2>
+            <p>Viagens mais recentes</p>
+        </header>
+        <table class="viagens-table">
+            <thead>
+                <tr>
+                    <th>País</th>
+                    <th>Tipo de Visto</th>
+                    <th>Data Viagem</th>
+                    <th>Data Retorno</th>
+                    <th>Valor</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for viagem in viagens %}
+                <tr>
+                    <td>{{ viagem.pais_destino.nome }}</td>
+                    <td>{{ viagem.tipo_visto.nome }}</td>
+                    <td>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
+                    <td>{{ viagem.data_prevista_retorno|date:"d/m/Y" }}</td>
+                    <td>R$ {{ viagem.valor_assessoria|floatformat:2 }}</td>
+                    <td>
+                        <a href="{% url 'system:listar_formularios_viagem' viagem.pk %}" class="btn btn-primary btn-small">Formulários</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </article>
+</section>
+{% else %}
+<section class="viagens-list">
+    <article class="viagens-list-card">
+        <header>
+            <h2>Últimas Viagens</h2>
+            <p>Viagens mais recentes</p>
+        </header>
+        <div class="empty-state">
+            Nenhuma viagem cadastrada até o momento. <a href="{% url 'system:criar_viagem' %}">Cadastre a primeira viagem</a>.
+        </div>
+    </article>
+</section>
+{% endif %}
+
+{% if viagens_formularios_nao_preenchidos %}
+<section class="viagens-list" style="margin-top: 32px;">
+    <article class="viagens-list-card">
+        <header>
+            <h2>Formulários não preenchidos</h2>
+            <p>Viagens com formulários pendentes de preenchimento</p>
+        </header>
+        <table class="viagens-table">
+            <thead>
+                <tr>
+                    <th>País</th>
+                    <th>Tipo de Visto</th>
+                    <th>Data Viagem</th>
+                    <th>Clientes sem resposta</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in viagens_formularios_nao_preenchidos %}
+                <tr>
+                    <td>{{ item.viagem.pais_destino.nome }}</td>
+                    <td>{{ item.viagem.tipo_visto.nome }}</td>
+                    <td>{{ item.viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
+                    <td>
+                        <span style="color: rgba(255, 104, 104, 0.9); font-weight: 600;">
+                            {{ item.clientes_sem_resposta }} de {{ item.total_clientes }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'system:listar_formularios_viagem' item.viagem.pk %}" class="btn btn-primary btn-small">Ver Formulários</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </article>
+</section>
+{% endif %}
+
+<section class="actions-grid">
+    <article class="action-card">
+        <div class="action-card__icon">✈️</div>
+        <h3>Criar Viagem</h3>
+        <p>Cadastre uma nova viagem</p>
+        <a href="{% url 'system:criar_viagem' %}" class="btn btn-primary">Criar</a>
+    </article>
+
+    <article class="action-card">
+        <div class="action-card__icon">📋</div>
+        <h3>Listar Viagens</h3>
+        <p>Visualize e gerencie todas as viagens cadastradas.</p>
+        <a href="{% url 'system:listar_viagens' %}" class="btn btn-outline">Ver Todas</a>
+    </article>
+</section>
+{% endblock %}
+

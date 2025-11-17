@@ -1,0 +1,35 @@
+{
+    "version": "0.2",
+    "language": "en,pt,pt_BR",
+    "allowCompoundWords": true,
+    "caseSensitive": false,
+    "useGitignore": true,
+    "ignorePaths": [
+        "node_modules/**",
+        ".git/**",
+        "venv/**"
+    ],
+    "dictionaryDefinitions": [
+        {
+            "name": "custom-words",
+            "path": "./.cspell/custom-words.txt",
+            "addWords": true
+        }
+    ],
+    "dictionaries": [
+        "en-US", "pt-BR",
+        "softwareTerms", "misc",
+        "html", "css", "python", "typescript", "node", "npm",
+        "custom-words"
+    ],
+    "ignoreRegExpList": [
+        "SECRET_KEY\\s*=\\s*['\\\"][^'\\\"]+['\\\"]"  // exemplo: ignora tokens/secrets aleatórios
+    ],
+    "languageSettings": [
+        {
+            "locale": "pt,pt-BR",
+            "languageId": "*",
+            "caseSensitive": false
+        }
+    ]
+}

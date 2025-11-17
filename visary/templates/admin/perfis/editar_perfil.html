@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Editar Perfil{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .form-card form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .form-card label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .form-card input,
+    .form-card select,
+    .form-card textarea {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.95rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-card textarea {
+        resize: vertical;
+    }
+
+    .form-card select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding-right: 42px;
+        background-image: linear-gradient(45deg, transparent 50%, rgba(245, 245, 245, 0.75) 50%),
+                          linear-gradient(135deg, rgba(245, 245, 245, 0.75) 50%, transparent 50%);
+        background-position: calc(100% - 24px) center, calc(100% - 16px) center;
+        background-size: 8px 8px;
+        background-repeat: no-repeat;
+    }
+
+    .form-card input:focus,
+    .form-card select:focus,
+    .form-card textarea:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+    }
+
+    .modules-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+        padding: 16px;
+        background: rgba(12, 19, 35, 0.4);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .module-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .module-item input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+    }
+
+    .module-item label {
+        text-transform: none;
+        letter-spacing: normal;
+        font-size: 0.9rem;
+        margin: 0;
+        font-weight: 400;
+    }
+
+    @media (min-width: 1120px) {
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .layout-grid {
+            width: 100%;
+            max-width: 480px;
+            margin-inline: auto;
+            gap: 16px;
+        }
+
+        .card.form-card,
+        .layout-grid > .card {
+            width: 100%;
+            margin-inline: 0;
+            padding: 16px 12px;
+            border-radius: 18px;
+            box-shadow: 0 16px 32px rgba(5, 8, 17, 0.45);
+        }
+
+        .modules-list {
+            grid-template-columns: 1fr;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Editar Perfil</h1>
+        <p>Atualize as informações do perfil de permissão.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:listar_perfis' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<div class="layout-grid">
+    <section class="card form-card">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div>
+                <label for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                {{ form.nome }}
+                {% if form.nome.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.nome.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
+                {{ form.descricao }}
+                {% if form.descricao.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.descricao.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div>
+                <label>Módulos</label>
+                <div class="modules-list">
+                    {% for modulo in form.modulos %}
+                        <div class="module-item">
+                            {{ modulo.tag }}
+                            <label for="{{ modulo.id_for_label }}">{{ modulo.choice_label }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% if form.modulos.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.modulos.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div>
+                <label>Permissões</label>
+                <div style="display: grid; gap: 12px; padding: 16px; background: rgba(12, 19, 35, 0.4); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <div class="checkbox-group">
+                        {{ form.pode_criar }}
+                        <label for="{{ form.pode_criar.id_for_label }}" style="text-transform: none; letter-spacing: normal; margin: 0;">
+                            {{ form.pode_criar.label }}
+                        </label>
+                    </div>
+                    <div class="checkbox-group">
+                        {{ form.pode_visualizar }}
+                        <label for="{{ form.pode_visualizar.id_for_label }}" style="text-transform: none; letter-spacing: normal; margin: 0;">
+                            {{ form.pode_visualizar.label }}
+                        </label>
+                    </div>
+                    <div class="checkbox-group">
+                        {{ form.pode_atualizar }}
+                        <label for="{{ form.pode_atualizar.id_for_label }}" style="text-transform: none; letter-spacing: normal; margin: 0;">
+                            {{ form.pode_atualizar.label }}
+                        </label>
+                    </div>
+                    <div class="checkbox-group">
+                        {{ form.pode_excluir }}
+                        <label for="{{ form.pode_excluir.id_for_label }}" style="text-transform: none; letter-spacing: normal; margin: 0;">
+                            {{ form.pode_excluir.label }}
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="checkbox-group">
+                {{ form.ativo }}
+                <label for="{{ form.ativo.id_for_label }}" style="text-transform: none; letter-spacing: normal; margin: 0;">
+                    {{ form.ativo.label }}
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 8px;">
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                <a href="{% url 'system:listar_perfis' %}" class="btn btn-outline">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}
+

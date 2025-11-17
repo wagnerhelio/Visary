@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Painel{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: var(--card-bg);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-soft);
+        box-shadow: var(--shadow-lg);
+        padding: 24px;
+        text-align: center;
+    }
+
+    .stat-card span {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .stat-card strong {
+        display: block;
+        font-size: clamp(2rem, 5vw, 3rem);
+        color: var(--accent);
+        font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .stat-card {
+            padding: 20px;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div>
+        <h1>Painel de Atendimento</h1>
+        <p>Acompanhe os principais indicadores e últimos cadastros da consultoria.</p>
+    </div>
+    <div class="actions-inline">
+        <a class="btn btn-outline" href="{% url 'system:home_clientes' %}">Clientes</a>
+        <a class="btn btn-primary" href="{% url 'system:home_viagens' %}">Viagens</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="stats-grid">
+    <article class="stat-card">
+        <span>Total de clientes cadastrados</span>
+        <strong>{{ total_clientes }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Data do último cadastro</span>
+        <strong>{% if clientes %}{{ clientes.0.criado_em|localtime|date:"d/m/Y" }}{% else %}--{% endif %}</strong>
+    </article>
+</section>
+
+<section class="card">
+    <header>
+        <h2>Últimos cadastros</h2>
+    </header>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Assessor</th>
+                    <th>Telefone</th>
+                    <th>Cadastro</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cliente in clientes %}
+                    <tr>
+                        <td>{{ cliente.nome }}</td>
+                        <td>{{ cliente.assessor_responsavel.nome }}</td>
+                        <td>{{ cliente.telefone }}</td>
+                        <td>{{ cliente.criado_em|localtime|date:"d/m/Y" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4" class="empty-state">
+                            Nenhum cliente cadastrado até o momento. Utilize o botão acima para registrar o primeiro cliente.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

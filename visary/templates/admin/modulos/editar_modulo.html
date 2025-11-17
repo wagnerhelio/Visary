@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Editar Módulo{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .form-card form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .form-card label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .form-card input,
+    .form-card textarea {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.95rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-card textarea {
+        resize: vertical;
+    }
+
+    .form-card input:focus,
+    .form-card textarea:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+    }
+
+    @media (min-width: 1120px) {
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .layout-grid {
+            width: 100%;
+            max-width: 480px;
+            margin-inline: auto;
+            gap: 16px;
+        }
+
+        .card.form-card,
+        .layout-grid > .card {
+            width: 100%;
+            margin-inline: 0;
+            padding: 16px 12px;
+            border-radius: 18px;
+            box-shadow: 0 16px 32px rgba(5, 8, 17, 0.45);
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Editar Módulo</h1>
+        <p>Atualize as informações do módulo.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:listar_modulos' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<div class="layout-grid">
+    <section class="card form-card">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div>
+                <label for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                {{ form.nome }}
+                {% if form.nome.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.nome.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
+                {{ form.descricao }}
+                {% if form.descricao.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.descricao.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.ordem.id_for_label }}">{{ form.ordem.label }}</label>
+                {{ form.ordem }}
+                {% if form.ordem.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.ordem.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+
+            <div class="checkbox-group">
+                {{ form.ativo }}
+                <label for="{{ form.ativo.id_for_label }}" style="text-transform: none; letter-spacing: normal; margin: 0;">
+                    {{ form.ativo.label }}
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 8px;">
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                <a href="{% url 'system:listar_modulos' %}" class="btn btn-outline">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}
+

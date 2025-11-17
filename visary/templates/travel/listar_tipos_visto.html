@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Listar Tipos de Visto{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .table-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .card {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 280px);
+        max-height: calc(100vh - 280px);
+        min-height: 400px;
+        overflow: hidden;
+    }
+
+    .card .table-wrapper {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: auto;
+        max-height: 100%;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 100%;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    th,
+    td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .empty-state {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        color: rgba(245, 245, 245, 0.72);
+        text-align: center;
+    }
+
+    .table-wrapper::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(86, 244, 156, 0.4);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: rgba(86, 244, 156, 0.6);
+    }
+
+    @media (max-width: 768px) {
+        .card {
+            height: calc(100vh - 250px);
+            max-height: calc(100vh - 250px);
+            min-height: 300px;
+        }
+
+        table {
+            font-size: 0.85rem;
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+        }
+    }
+{% endblock %}
+
+{% comment %}Menu lateral definido no base.html{% endcomment %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Listar Tipos de Visto</h1>
+        <p>Visualize e gerencie todos os tipos de visto cadastrados.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_tipos_visto' %}" class="btn btn-outline">Voltar</a>
+        <a href="{% url 'system:criar_tipo_visto' %}" class="btn btn-primary">Novo Tipo de Visto</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+            <tr>
+                <th>País</th>
+                <th>Nome do Visto</th>
+                <th>Descrição</th>
+                <th>Status</th>
+                <th>Cadastro</th>
+                {% if pode_gerenciar_todos %}
+                    <th style="width:120px;">Ações</th>
+                {% endif %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for tipo in tipos_visto %}
+                <tr>
+                    <td>{{ tipo.pais_destino.nome }}</td>
+                    <td>{{ tipo.nome }}</td>
+                    <td>{{ tipo.descricao|truncatewords:10|default:"--" }}</td>
+                    <td>
+                        {% if tipo.ativo %}
+                            <span style="color: var(--accent);">Ativo</span>
+                        {% else %}
+                            <span style="color: var(--text-secondary);">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td>--</td>
+                    {% if pode_gerenciar_todos %}
+                        <td>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <a href="{% url 'system:editar_tipo_visto' tipo.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                <form method="post" action="{% url 'system:excluir_tipo_visto' tipo.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ tipo.nome }}?');" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                </form>
+                            </div>
+                        </td>
+                    {% endif %}
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="{% if pode_gerenciar_todos %}6{% else %}5{% endif %}" class="empty-state">
+                        Nenhum tipo de visto cadastrado até o momento. <a href="{% url 'system:criar_tipo_visto' %}">Cadastre o primeiro tipo de visto</a>.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+

@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Listar Parceiros{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .table-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .card {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 280px);
+        max-height: calc(100vh - 280px);
+        min-height: 400px;
+        overflow: hidden;
+    }
+
+    .card .table-wrapper {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: auto;
+        max-height: 100%;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 100%;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    th,
+    td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .empty-state {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        color: rgba(245, 245, 245, 0.72);
+        text-align: center;
+    }
+
+    .table-wrapper::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(86, 244, 156, 0.4);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: rgba(86, 244, 156, 0.6);
+    }
+
+    @media (max-width: 768px) {
+        .card {
+            height: calc(100vh - 250px);
+            max-height: calc(100vh - 250px);
+            min-height: 300px;
+        }
+
+        table {
+            font-size: 0.85rem;
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+        }
+    }
+{% endblock %}
+
+{% comment %}Menu lateral definido no base.html{% endcomment %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Listar Parceiros</h1>
+        <p>Visualize e gerencie todos os parceiros cadastrados.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_partners' %}" class="btn btn-outline">Voltar</a>
+        <a href="{% url 'system:criar_partner' %}" class="btn btn-primary">Novo Parceiro</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+            <tr>
+                <th>Responsável</th>
+                <th>Empresa</th>
+                <th>E-mail</th>
+                <th>Telefone</th>
+                <th>Segmento</th>
+                <th>Cidade/UF</th>
+                <th>Status</th>
+                {% if pode_gerenciar_todos %}
+                    <th style="width:120px;">Ações</th>
+                {% endif %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for partner in partners %}
+                <tr>
+                    <td>{{ partner.nome_responsavel }}</td>
+                    <td>{{ partner.nome_empresa|default:"--" }}</td>
+                    <td>{{ partner.email }}</td>
+                    <td>{{ partner.telefone }}</td>
+                    <td>{{ partner.get_segmento_display }}</td>
+                    <td>{{ partner.cidade }}/{{ partner.estado }}</td>
+                    <td>
+                        {% if partner.ativo %}
+                            <span style="color: var(--accent);">Ativo</span>
+                        {% else %}
+                            <span style="color: var(--text-secondary);">Inativo</span>
+                        {% endif %}
+                    </td>
+                    {% if pode_gerenciar_todos %}
+                        <td>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <a href="{% url 'system:editar_partner' partner.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                <form method="post" action="{% url 'system:excluir_partner' partner.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ partner.nome_empresa|default:partner.nome_responsavel }}?');" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                </form>
+                            </div>
+                        </td>
+                    {% endif %}
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="{% if pode_gerenciar_todos %}8{% else %}7{% endif %}" class="empty-state">
+                        Nenhum parceiro cadastrado até o momento. <a href="{% url 'system:criar_partner' %}">Cadastre o primeiro parceiro</a>.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+

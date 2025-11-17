@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Editar Cliente{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .grid-inline {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: 1fr;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .messages {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+    }
+
+    .messages li {
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    .messages .success {
+        background: rgba(86, 244, 156, 0.2);
+        border: 1px solid rgba(86, 244, 156, 0.55);
+    }
+
+    .messages .error {
+        background: rgba(255, 81, 81, 0.15);
+        border: 1px solid rgba(255, 104, 104, 0.55);
+    }
+
+    .form-card form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .form-card label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .form-card input,
+    .form-card select,
+    .form-card textarea {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.95rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-card input::placeholder,
+    .form-card textarea::placeholder {
+        color: rgba(245, 245, 245, 0.55);
+    }
+
+    .form-card select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding-right: 42px;
+        background-image: linear-gradient(45deg, transparent 50%, rgba(245, 245, 245, 0.75) 50%),
+                          linear-gradient(135deg, rgba(245, 245, 245, 0.75) 50%, transparent 50%);
+        background-position: calc(100% - 24px) center, calc(100% - 16px) center;
+        background-size: 8px 8px;
+        background-repeat: no-repeat;
+    }
+
+    .form-card input:focus,
+    .form-card select:focus,
+    .form-card textarea:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    @media (min-width: 1120px) {
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            max-width: 600px;
+        }
+
+        .grid-inline {
+            grid-template-columns: repeat(2, minmax(240px, 1fr));
+        }
+    }
+
+    @media (max-width: 768px) {
+        .layout-grid {
+            width: 100%;
+            max-width: 480px;
+            margin-inline: auto;
+            gap: 16px;
+        }
+
+        .card.form-card,
+        .layout-grid > .card {
+            width: 100%;
+            margin-inline: 0;
+            padding: 16px 12px;
+            border-radius: 18px;
+            box-shadow: 0 16px 32px rgba(5, 8, 17, 0.45);
+        }
+
+        .form-card label {
+            font-size: 0.78rem;
+            margin-bottom: 6px;
+        }
+
+        .form-card input,
+        .form-card select,
+        .form-card textarea {
+            padding: 10px 12px;
+            font-size: 0.9rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .page-header__titles h1 {
+            font-size: 1.3rem;
+        }
+
+        .page-header__titles p {
+            font-size: 0.9rem;
+        }
+    }
+{% endblock %}
+
+{% comment %}Menu lateral definido no base.html{% endcomment %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Editar Cliente</h1>
+        <p>Atualize os dados do cliente {{ cliente.nome }}.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="layout-grid">
+    <article class="card form-card">
+        <header>
+            <h2>Editar cliente</h2>
+        </header>
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <ul class="messages">
+                    {% for error in form.non_field_errors %}
+                        <li class="error">{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <div>
+                <label for="{{ form.assessor_responsavel.id_for_label }}">Assessor responsável</label>
+                {{ form.assessor_responsavel }}
+                {{ form.assessor_responsavel.errors }}
+            </div>
+            <div>
+                <label for="{{ form.nome.id_for_label }}">Nome completo *</label>
+                {{ form.nome }}
+                {{ form.nome.errors }}
+            </div>
+            <div class="grid-inline">
+                <div>
+                    <label for="{{ form.data_nascimento.id_for_label }}">Data de nascimento *</label>
+                    {{ form.data_nascimento }}
+                    {{ form.data_nascimento.errors }}
+                </div>
+                <div>
+                    <label for="{{ form.nacionalidade.id_for_label }}">Nacionalidade *</label>
+                    {{ form.nacionalidade }}
+                    {{ form.nacionalidade.errors }}
+                </div>
+            </div>
+            <div class="grid-inline">
+                <div>
+                    <label for="{{ form.telefone.id_for_label }}">Telefone *</label>
+                    {{ form.telefone }}
+                    {{ form.telefone.errors }}
+                </div>
+                <div>
+                    <label for="{{ form.telefone_secundario.id_for_label }}">Telefone secundário</label>
+                    {{ form.telefone_secundario }}
+                    {{ form.telefone_secundario.errors }}
+                </div>
+            </div>
+            <div>
+                <label for="{{ form.email.id_for_label }}">E-mail *</label>
+                {{ form.email }}
+                {{ form.email.errors }}
+            </div>
+            <div>
+                <h3 style="margin: 24px 0 16px 0; font-size: 1.1rem; color: var(--text-primary);">Parceiro Indicador</h3>
+                <p style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 0.85rem;">
+                    Viagem foi indicada por alguém? O parceiro só irá acompanhar o processo caso seja indicado aqui.
+                </p>
+                <label for="{{ form.parceiro_indicador.id_for_label }}">Parceiro que indicou o cliente</label>
+                {{ form.parceiro_indicador }}
+                {{ form.parceiro_indicador.errors }}
+            </div>
+            <div>
+                <h3 style="margin: 24px 0 16px 0; font-size: 1.1rem; color: var(--text-primary);">Endereço</h3>
+            </div>
+            <div class="grid-inline">
+                <div>
+                    <label for="{{ form.cep.id_for_label }}">CEP</label>
+                    <div style="display: flex; gap: 8px; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            {{ form.cep }}
+                        </div>
+                        <button type="button" id="btn-buscar-cep" class="btn btn-outline" style="white-space: nowrap; padding: 14px 18px;">
+                            Buscar
+                        </button>
+                    </div>
+                    {{ form.cep.errors }}
+                </div>
+                <div>
+                    <label for="{{ form.uf.id_for_label }}">UF</label>
+                    {{ form.uf }}
+                    {{ form.uf.errors }}
+                </div>
+            </div>
+            <div>
+                <label for="{{ form.logradouro.id_for_label }}">Logradouro</label>
+                {{ form.logradouro }}
+                {{ form.logradouro.errors }}
+            </div>
+            <div class="grid-inline">
+                <div>
+                    <label for="{{ form.numero.id_for_label }}">Número</label>
+                    {{ form.numero }}
+                    {{ form.numero.errors }}
+                </div>
+                <div>
+                    <label for="{{ form.complemento.id_for_label }}">Complemento</label>
+                    {{ form.complemento }}
+                    {{ form.complemento.errors }}
+                </div>
+            </div>
+            <div class="grid-inline">
+                <div>
+                    <label for="{{ form.bairro.id_for_label }}">Bairro</label>
+                    {{ form.bairro }}
+                    {{ form.bairro.errors }}
+                </div>
+                <div>
+                    <label for="{{ form.cidade.id_for_label }}">Cidade</label>
+                    {{ form.cidade }}
+                    {{ form.cidade.errors }}
+                </div>
+            </div>
+            <div>
+                <label for="{{ form.observacoes.id_for_label }}">Observações</label>
+                {{ form.observacoes }}
+                {{ form.observacoes.errors }}
+            </div>
+            <div class="grid-inline">
+                <div>
+                    <label for="{{ form.senha.id_for_label }}">Senha</label>
+                    {{ form.senha }}
+                    {{ form.senha.errors }}
+                    <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 4px; display: block;">
+                        Deixe em branco para manter a senha atual
+                    </small>
+                </div>
+                <div>
+                    <label for="{{ form.confirmar_senha.id_for_label }}">Confirme a senha</label>
+                    {{ form.confirmar_senha }}
+                    {{ form.confirmar_senha.errors }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Atualizar cliente</button>
+        </form>
+    </article>
+</section>
+
+<script>
+(function() {
+    const cepInput = document.getElementById('{{ form.cep.id_for_label }}');
+    const btnBuscarCep = document.getElementById('btn-buscar-cep');
+    if (!cepInput || !btnBuscarCep) return;
+
+    const logradouroField = document.getElementById('{{ form.logradouro.id_for_label }}');
+    const bairroField = document.getElementById('{{ form.bairro.id_for_label }}');
+    const cidadeField = document.getElementById('{{ form.cidade.id_for_label }}');
+    const ufField = document.getElementById('{{ form.uf.id_for_label }}');
+    const numeroField = document.getElementById('{{ form.numero.id_for_label }}');
+    const complementoField = document.getElementById('{{ form.complemento.id_for_label }}');
+
+    // Máscara de CEP
+    cepInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length > 5) {
+            value = value.substring(0, 5) + '-' + value.substring(5, 8);
+        }
+        e.target.value = value;
+    });
+
+    // Função para buscar CEP
+    async function buscarCep() {
+        const cep = cepInput.value.replace(/\D/g, '');
+        if (cep.length !== 8) {
+            alert('CEP deve conter 8 dígitos.');
+            return;
+        }
+
+        // Desabilitar botão durante a busca
+        btnBuscarCep.disabled = true;
+        btnBuscarCep.textContent = 'Buscando...';
+
+        try {
+            const resp = await fetch('{% url "system:api_buscar_cep" %}?cep=' + cep);
+            const data = await resp.json();
+
+            if (!resp.ok) {
+                if (data.error) {
+                    alert(data.error);
+                }
+                // Campos já estão habilitados para preenchimento manual
+                return;
+            }
+
+            // Preencher campos automaticamente (campos sempre habilitados)
+            if (logradouroField) {
+                logradouroField.value = data.street || '';
+            }
+            if (bairroField) {
+                bairroField.value = data.district || '';
+            }
+            if (cidadeField) {
+                cidadeField.value = data.city || '';
+            }
+            if (ufField) {
+                ufField.value = data.uf || '';
+            }
+
+        } catch (e) {
+            console.error('Erro ao buscar CEP:', e);
+            alert('Erro ao buscar CEP. Tente novamente.');
+            // Campos já estão habilitados para preenchimento manual
+        } finally {
+            btnBuscarCep.disabled = false;
+            btnBuscarCep.textContent = 'Buscar';
+        }
+    }
+
+    // Buscar CEP ao clicar no botão
+    btnBuscarCep.addEventListener('click', buscarCep);
+
+    // Buscar CEP ao pressionar Enter no campo CEP
+    cepInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            buscarCep();
+        }
+    });
+})();
+</script>
+{% endblock %}
+

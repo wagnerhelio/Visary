@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Gerenciar Status de Processos{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .table-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .card {
+        display: flex;
+        flex-direction: column;
+        min-height: 400px;
+    }
+
+    .card .table-wrapper {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: auto;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 100%;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    th,
+    td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .empty-state {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        color: rgba(245, 245, 245, 0.72);
+        text-align: center;
+    }
+
+    .table-wrapper::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(86, 244, 156, 0.4);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: rgba(86, 244, 156, 0.6);
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .status-ativo {
+        color: var(--accent);
+        font-weight: 600;
+    }
+
+    .status-inativo {
+        color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+        table {
+            font-size: 0.85rem;
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Gerenciar Status de Processos</h1>
+        <p>Crie e edite os status disponíveis para os processos.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_processos' %}" class="btn btn-outline">Voltar</a>
+        <a href="{% url 'system:criar_status_processo' %}" class="btn btn-primary">Novo Status</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+            <tr>
+                <th>Tipo de Visto</th>
+                <th>Ordem</th>
+                <th>Nome</th>
+                <th>Prazo Padrão (dias)</th>
+                <th>Status</th>
+                <th style="width:120px;">Ações</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for status in status_list %}
+                <tr>
+                    <td>
+                        {% if status.tipo_visto %}
+                            {{ status.tipo_visto.pais_destino.nome }} - {{ status.tipo_visto.nome }}
+                        {% else %}
+                            <span style="color: rgba(245, 245, 245, 0.6); font-style: italic;">Todos os tipos (geral)</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ status.ordem }}</td>
+                    <td>{{ status.nome }}</td>
+                    <td>
+                        {% if status.prazo_padrao_dias > 0 %}
+                            {{ status.prazo_padrao_dias }} dia{{ status.prazo_padrao_dias|pluralize }}
+                        {% else %}
+                            <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if status.ativo %}
+                            <span class="status-ativo">Ativo</span>
+                        {% else %}
+                            <span class="status-inativo">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:editar_status_processo' status.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            <form method="post" action="{% url 'system:excluir_status_processo' status.pk %}" onsubmit="return confirm('Deseja realmente excluir o status \'{{ status.nome }}\'?');" style="margin: 0;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        Nenhum status cadastrado até o momento. <a href="{% url 'system:criar_status_processo' %}">Cadastre o primeiro status</a>.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+

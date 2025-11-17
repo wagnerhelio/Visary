@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Administração{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    .stats-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+        text-align: center;
+    }
+
+    .stats-card span {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .stats-card strong {
+        display: block;
+        font-size: 2rem;
+        color: var(--accent);
+        font-weight: 700;
+    }
+
+    .actions-grid {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        margin-top: 32px;
+    }
+
+    .action-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .action-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 32px 64px rgba(5, 8, 17, 0.6);
+    }
+
+    .action-card__icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: #081423;
+    }
+
+    .action-card h3 {
+        margin: 0;
+        font-size: 1.3rem;
+        color: var(--text-primary);
+    }
+
+    .action-card p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .action-card .btn {
+        margin-top: auto;
+    }
+
+    @media (max-width: 768px) {
+        .actions-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .action-card {
+            padding: 24px;
+        }
+
+        .stats-card {
+            padding: 20px;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Administração</h1>
+        <p>Gerencie usuários, permissões e módulos do sistema.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="stats-grid">
+    <div class="stats-card">
+        <span>Total de Usuários</span>
+        <strong>{{ total_usuarios }}</strong>
+    </div>
+    <div class="stats-card">
+        <span>Usuários Ativos</span>
+        <strong>{{ usuarios_ativos }}</strong>
+    </div>
+    <div class="stats-card">
+        <span>Total de Perfis</span>
+        <strong>{{ total_perfis }}</strong>
+    </div>
+    <div class="stats-card">
+        <span>Total de Módulos</span>
+        <strong>{{ total_modulos }}</strong>
+    </div>
+</section>
+
+<section class="actions-grid">
+    <article class="action-card">
+        <div class="action-card__icon">👥</div>
+        <h3>Gerenciar Usuários</h3>
+        <p>Crie, edite e gerencie os usuários do sistema</p>
+        <a href="{% url 'system:listar_usuarios' %}" class="btn btn-primary">Gerenciar</a>
+    </article>
+
+    <article class="action-card">
+        <div class="action-card__icon">🔐</div>
+        <h3>Gerenciar Perfis</h3>
+        <p>Crie e configure perfis de permissão</p>
+        <a href="{% url 'system:listar_perfis' %}" class="btn btn-primary">Gerenciar</a>
+    </article>
+
+    <article class="action-card">
+        <div class="action-card__icon">📦</div>
+        <h3>Gerenciar Módulos</h3>
+        <p>Configure os módulos do sistema</p>
+        <a href="{% url 'system:listar_modulos' %}" class="btn btn-primary">Gerenciar</a>
+    </article>
+</section>
+{% endblock %}
+

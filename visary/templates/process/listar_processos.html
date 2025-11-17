@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Listar Processos{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .table-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .card {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 280px);
+        max-height: calc(100vh - 280px);
+        min-height: 400px;
+        overflow: hidden;
+    }
+
+    .card .table-wrapper {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: auto;
+        max-height: 100%;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 100%;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    th,
+    td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-badge {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .empty-state {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        color: rgba(245, 245, 245, 0.72);
+        text-align: center;
+    }
+
+    .table-wrapper::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(86, 244, 156, 0.4);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: rgba(86, 244, 156, 0.6);
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+        .card {
+            height: calc(100vh - 250px);
+            max-height: calc(100vh - 250px);
+            min-height: 300px;
+        }
+
+        table {
+            font-size: 0.85rem;
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Listar Processos</h1>
+        <p>Visualize e gerencie todos os processos cadastrados.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_processos' %}" class="btn btn-outline">Voltar</a>
+        <a href="{% url 'system:criar_processo' %}" class="btn btn-primary">Novo Processo</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Viagem</th>
+                <th>País</th>
+                <th>Status</th>
+                <th>Prazo (dias)</th>
+                <th>Assessor</th>
+                <th>Criado em</th>
+                {% if pode_gerenciar_todos %}
+                    <th style="width:120px;">Ações</th>
+                {% else %}
+                    <th style="width:80px;">Ações</th>
+                {% endif %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for processo in processos %}
+                <tr>
+                    <td>{{ processo.cliente.nome }}</td>
+                    <td>{{ processo.viagem.tipo_visto.nome }}</td>
+                    <td>{{ processo.viagem.pais_destino.nome }}</td>
+                    <td>
+                        <span class="status-badge status-{{ processo.status.pk }}">
+                            {{ processo.status.nome }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if processo.prazo_dias > 0 %}
+                            {{ processo.prazo_dias }} dia{{ processo.prazo_dias|pluralize }}
+                        {% else %}
+                            <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ processo.assessor_responsavel.nome }}</td>
+                    <td>{{ processo.criado_em|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            {% if pode_gerenciar_todos or processo.assessor_responsavel == consultor %}
+                                <a href="{% url 'system:editar_processo' processo.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                {% if pode_gerenciar_todos %}
+                                    <form method="post" action="{% url 'system:excluir_processo' processo.pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="margin: 0;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="{% if pode_gerenciar_todos %}8{% else %}7{% endif %}" class="empty-state">
+                        Nenhum processo cadastrado até o momento. <a href="{% url 'system:criar_processo' %}">Cadastre o primeiro processo</a>.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+

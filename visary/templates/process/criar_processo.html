@@ -1,0 +1,554 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Criar Processo{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .grid-inline {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: 1fr;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .messages {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+    }
+
+    .messages li {
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    .messages .success {
+        background: rgba(86, 244, 156, 0.2);
+        border: 1px solid rgba(86, 244, 156, 0.55);
+    }
+
+    .messages .error {
+        background: rgba(255, 81, 81, 0.15);
+        border: 1px solid rgba(255, 104, 104, 0.55);
+    }
+
+    .form-card form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .form-card label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .form-card input,
+    .form-card select,
+    .form-card textarea {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.95rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-card input::placeholder,
+    .form-card textarea::placeholder {
+        color: rgba(245, 245, 245, 0.55);
+    }
+
+    .form-card select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding-right: 42px;
+        background-image: linear-gradient(45deg, transparent 50%, rgba(245, 245, 245, 0.75) 50%),
+                          linear-gradient(135deg, rgba(245, 245, 245, 0.75) 50%, transparent 50%);
+        background-position: calc(100% - 24px) center, calc(100% - 16px) center;
+        background-size: 8px 8px;
+        background-repeat: no-repeat;
+    }
+
+    .form-card input:focus,
+    .form-card select:focus,
+    .form-card textarea:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .form-card textarea {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    .form-card .btn-submit {
+        width: 100%;
+        padding: 16px 24px;
+        background: linear-gradient(135deg, rgba(86, 244, 156, 0.9), rgba(86, 244, 156, 0.7));
+        color: #0c1323;
+        border: none;
+        border-radius: 14px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-top: 8px;
+    }
+
+    .form-card .btn-submit:hover {
+        background: linear-gradient(135deg, rgba(86, 244, 156, 1), rgba(86, 244, 156, 0.9));
+        transform: translateY(-1px);
+        box-shadow: 0 8px 16px rgba(86, 244, 156, 0.3);
+    }
+
+    .status-option {
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 2px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .status-option:hover {
+        border-color: rgba(86, 244, 156, 0.4);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .status-option.selected {
+        border-color: rgba(86, 244, 156, 0.8);
+        background: rgba(86, 244, 156, 0.15);
+    }
+
+    .status-option input[type="radio"] {
+        margin-right: 12px;
+        cursor: pointer;
+    }
+
+    .status-option label {
+        flex: 1;
+        cursor: pointer;
+        margin: 0;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .status-option .prazo-info {
+        font-size: 0.85rem;
+        color: rgba(245, 245, 245, 0.6);
+        margin-left: 12px;
+    }
+
+    @media (min-width: 1120px) {
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            max-width: 600px;
+        }
+
+        .grid-inline {
+            grid-template-columns: repeat(2, minmax(240px, 1fr));
+        }
+    }
+
+    @media (max-width: 768px) {
+        .layout-grid {
+            width: 100%;
+            max-width: 480px;
+            margin-inline: auto;
+            gap: 16px;
+        }
+
+        .card.form-card,
+        .layout-grid > .card {
+            width: 100%;
+            margin-inline: 0;
+            padding: 16px 12px;
+            border-radius: 18px;
+            box-shadow: 0 16px 32px rgba(5, 8, 17, 0.45);
+        }
+
+        .form-card label {
+            font-size: 0.78rem;
+            margin-bottom: 6px;
+        }
+
+        .form-card input,
+        .form-card select,
+        .form-card textarea {
+            padding: 10px 12px;
+            font-size: 0.9rem;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Criar Processo</h1>
+        <p>Cadastre um novo processo de visto para um cliente.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_processos' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<div class="layout-grid">
+    <section class="card form-card">
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="grid-inline">
+                <div>
+                    <label for="{{ form.viagem.id_for_label }}">{{ form.viagem.label }}</label>
+                    {{ form.viagem }}
+                    {% if form.viagem.errors %}
+                        <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
+                            {{ form.viagem.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label for="{{ form.cliente.id_for_label }}">{{ form.cliente.label }}</label>
+                    {{ form.cliente }}
+                    {% if form.cliente.errors %}
+                        <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
+                            {{ form.cliente.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div>
+                <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                <div id="status-container" style="display: grid; gap: 12px; margin-top: 8px;">
+                    <select id="{{ form.status.id_for_label }}" name="{{ form.status.name }}" class="input" required style="display: none;">
+                        <option value="">Selecione um status</option>
+                        {% for choice in form.status.field.queryset %}
+                            <option value="{{ choice.pk }}" {% if form.status.value == choice.pk %}selected{% endif %}>{{ choice.nome }}</option>
+                        {% endfor %}
+                    </select>
+                    <div id="status-options" style="display: grid; gap: 8px;">
+                        <p style="color: rgba(245, 245, 245, 0.6); font-size: 0.9rem; margin: 0;">
+                            Carregando status...
+                        </p>
+                    </div>
+                </div>
+                {% if form.status.errors %}
+                    <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
+                        {{ form.status.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.prazo_dias.id_for_label }}">{{ form.prazo_dias.label }}</label>
+                {{ form.prazo_dias }}
+                {% if form.prazo_dias.errors %}
+                    <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
+                        {{ form.prazo_dias.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.assessor_responsavel.id_for_label }}">{{ form.assessor_responsavel.label }}</label>
+                {{ form.assessor_responsavel }}
+                {% if form.assessor_responsavel.errors %}
+                    <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
+                        {{ form.assessor_responsavel.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div>
+                <label for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
+                {{ form.observacoes }}
+                {% if form.observacoes.errors %}
+                    <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
+                        {{ form.observacoes.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            {% if form.non_field_errors %}
+                <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; padding: 12px; background: rgba(255, 104, 104, 0.1); border-radius: 8px; border: 1px solid rgba(255, 104, 104, 0.3);">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <button type="submit" class="btn-submit">💾 Salvar Processo</button>
+        </form>
+    </section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const viagemSelect = document.getElementById('{{ form.viagem.id_for_label }}');
+    const statusSelect = document.getElementById('{{ form.status.id_for_label }}');
+    const statusContainer = document.getElementById('status-container');
+    const statusOptions = document.getElementById('status-options');
+    const prazoDiasInput = document.getElementById('{{ form.prazo_dias.id_for_label }}');
+    
+    // Validação antes de enviar o formulário
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // Garantir que o status está selecionado
+            if (!statusSelect.value || statusSelect.value === '') {
+                e.preventDefault();
+                alert('Por favor, selecione um status para o processo.');
+                return false;
+            }
+            
+            // Garantir que a viagem está selecionada
+            if (!viagemSelect.value || viagemSelect.value === '') {
+                e.preventDefault();
+                alert('Por favor, selecione uma viagem.');
+                return false;
+            }
+            
+            // Garantir que o cliente está selecionado
+            const clienteSelect = document.getElementById('{{ form.cliente.id_for_label }}');
+            if (!clienteSelect.value || clienteSelect.value === '') {
+                e.preventDefault();
+                alert('Por favor, selecione um cliente.');
+                return false;
+            }
+        });
+    }
+    
+    function carregarStatus(viagemId) {
+        if (!viagemId) {
+            statusOptions.innerHTML = '<p style="color: rgba(245, 245, 245, 0.6); font-size: 0.9rem; margin: 0;">Selecione uma viagem para ver os status disponíveis</p>';
+            // Manter o select com todas as opções disponíveis
+            return;
+        }
+        
+        statusOptions.innerHTML = '<p style="color: rgba(245, 245, 245, 0.6); font-size: 0.9rem; margin: 0;">Carregando status...</p>';
+        
+        fetch(`{% url 'system:api_status_processo' %}?viagem_id=${viagemId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    statusOptions.innerHTML = `<p style="color: rgba(255, 104, 104, 0.9); font-size: 0.9rem; margin: 0;">${data.error}</p>`;
+                    return;
+                }
+                
+                if (data.length === 0) {
+                    statusOptions.innerHTML = '<p style="color: rgba(245, 245, 245, 0.6); font-size: 0.9rem; margin: 0;">Nenhum status disponível</p>';
+                    return;
+                }
+                
+                // Atualizar o select com todas as opções
+                statusSelect.innerHTML = '<option value="">Selecione um status</option>';
+                data.forEach(status => {
+                    const option = document.createElement('option');
+                    option.value = status.id;
+                    option.textContent = status.nome;
+                    statusSelect.appendChild(option);
+                });
+                
+                // Criar opções visuais
+                statusOptions.innerHTML = '';
+                data.forEach(status => {
+                    // Criar opção visual
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = 'status-option';
+                    statusDiv.innerHTML = `
+                        <input type="radio" name="status_radio" id="status_${status.id}" value="${status.id}">
+                        <label for="status_${status.id}">
+                            ${status.nome}
+                            ${status.prazo_padrao_dias > 0 ? `<span class="prazo-info">(${status.prazo_padrao_dias} dia${status.prazo_padrao_dias > 1 ? 's' : ''})</span>` : ''}
+                        </label>
+                    `;
+                    
+                    // Adicionar evento de clique
+                    statusDiv.addEventListener('click', function() {
+                        // Marcar radio
+                        const radio = document.getElementById(`status_${status.id}`);
+                        if (radio) {
+                            radio.checked = true;
+                        }
+                        // Atualizar select (garantir que está visível para o Django)
+                        statusSelect.value = status.id;
+                        // Disparar evento change para garantir que o valor foi atualizado
+                        statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        // Atualizar prazo
+                        if (status.prazo_padrao_dias > 0) {
+                            prazoDiasInput.value = status.prazo_padrao_dias;
+                        } else {
+                            prazoDiasInput.value = '';
+                        }
+                        // Atualizar visual
+                        document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
+                        statusDiv.classList.add('selected');
+                    });
+                    
+                    statusOptions.appendChild(statusDiv);
+                });
+            })
+            .catch(error => {
+                console.error('Erro ao carregar status:', error);
+                statusOptions.innerHTML = '<p style="color: rgba(255, 104, 104, 0.9); font-size: 0.9rem; margin: 0;">Erro ao carregar status</p>';
+            });
+    }
+    
+    // Função para criar opções visuais a partir do select
+    function criarOpcoesVisuais() {
+        if (!statusSelect || statusSelect.options.length === 0) {
+            return;
+        }
+        
+        statusOptions.innerHTML = '';
+        const statuses = Array.from(statusSelect.options);
+        
+        if (statuses.length === 0 || (statuses.length === 1 && statuses[0].value === '')) {
+            statusOptions.innerHTML = '<p style="color: rgba(245, 245, 245, 0.6); font-size: 0.9rem; margin: 0;">Nenhum status disponível</p>';
+            return;
+        }
+        
+        statuses.forEach(option => {
+            if (option.value === '') return; // Pular opção vazia
+            
+            // Buscar prazo padrão para este status
+            fetch(`{% url 'system:api_prazo_status_processo' %}?status_id=${option.value}`)
+                .then(response => response.json())
+                .then(data => {
+                    const prazo = data.prazo_padrao_dias || 0;
+                    
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = 'status-option';
+                    statusDiv.innerHTML = `
+                        <input type="radio" name="status_radio" id="status_${option.value}" value="${option.value}">
+                        <label for="status_${option.value}">
+                            ${option.textContent}
+                            ${prazo > 0 ? `<span class="prazo-info">(${prazo} dia${prazo > 1 ? 's' : ''})</span>` : ''}
+                        </label>
+                    `;
+                    
+                    statusDiv.addEventListener('click', function() {
+                        const radio = document.getElementById(`status_${option.value}`);
+                        if (radio) {
+                            radio.checked = true;
+                        }
+                        statusSelect.value = option.value;
+                        statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
+                        statusDiv.classList.add('selected');
+                        
+                        // Atualizar prazo
+                        if (prazo > 0) {
+                            prazoDiasInput.value = prazo;
+                        }
+                    });
+                    
+                    statusOptions.appendChild(statusDiv);
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar prazo padrão:', error);
+                    // Criar opção sem prazo em caso de erro
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = 'status-option';
+                    statusDiv.innerHTML = `
+                        <input type="radio" name="status_radio" id="status_${option.value}" value="${option.value}">
+                        <label for="status_${option.value}">${option.textContent}</label>
+                    `;
+                    
+                    statusDiv.addEventListener('click', function() {
+                        const radio = document.getElementById(`status_${option.value}`);
+                        if (radio) {
+                            radio.checked = true;
+                        }
+                        statusSelect.value = option.value;
+                        statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
+                        statusDiv.classList.add('selected');
+                    });
+                    
+                    statusOptions.appendChild(statusDiv);
+                });
+        });
+    }
+    
+    // Carregar todos os status disponíveis ao carregar a página
+    criarOpcoesVisuais();
+    
+    // Carregar status quando a viagem mudar (opcional - apenas para atualizar visualmente)
+    if (viagemSelect) {
+        viagemSelect.addEventListener('change', function() {
+            // Recriar opções visuais (os status já estão no select do Django)
+            criarOpcoesVisuais();
+        });
+    }
+    
+    // Atualizar prazo quando status mudar (via select oculto)
+    if (statusSelect && prazoDiasInput) {
+        statusSelect.addEventListener('change', function() {
+            const statusId = this.value;
+            
+            if (!statusId) {
+                prazoDiasInput.value = '';
+                return;
+            }
+            
+            // Buscar o prazo padrão do status via AJAX
+            fetch(`{% url 'system:api_prazo_status_processo' %}?status_id=${statusId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.prazo_padrao_dias && data.prazo_padrao_dias > 0) {
+                        prazoDiasInput.value = data.prazo_padrao_dias;
+                    } else {
+                        prazoDiasInput.value = '';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar prazo padrão:', error);
+                });
+        });
+    }
+});
+</script>
+{% endblock %}
+

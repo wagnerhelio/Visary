@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Editar Tipo de Visto{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .messages {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+    }
+
+    .messages li {
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    .messages .success {
+        background: rgba(86, 244, 156, 0.2);
+        border: 1px solid rgba(86, 244, 156, 0.55);
+    }
+
+    .messages .error {
+        background: rgba(255, 81, 81, 0.15);
+        border: 1px solid rgba(255, 104, 104, 0.55);
+    }
+
+    .form-card form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .form-card label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .form-card input,
+    .form-card select,
+    .form-card textarea {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.95rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-card select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding-right: 42px;
+        background-image: linear-gradient(45deg, transparent 50%, rgba(245, 245, 245, 0.75) 50%),
+                          linear-gradient(135deg, rgba(245, 245, 245, 0.75) 50%, transparent 50%);
+        background-position: calc(100% - 24px) center, calc(100% - 16px) center;
+        background-size: 8px 8px;
+        background-repeat: no-repeat;
+    }
+
+    .form-card input:focus,
+    .form-card select:focus,
+    .form-card textarea:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    @media (min-width: 1120px) {
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            max-width: 600px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .layout-grid {
+            width: 100%;
+            max-width: 480px;
+            margin-inline: auto;
+            gap: 16px;
+        }
+
+        .card.form-card,
+        .layout-grid > .card {
+            width: 100%;
+            margin-inline: 0;
+            padding: 16px 12px;
+            border-radius: 18px;
+            box-shadow: 0 16px 32px rgba(5, 8, 17, 0.45);
+        }
+
+        .form-card label {
+            font-size: 0.78rem;
+            margin-bottom: 6px;
+        }
+
+        .form-card input,
+        .form-card select,
+        .form-card textarea {
+            padding: 10px 12px;
+            font-size: 0.9rem;
+        }
+    }
+{% endblock %}
+
+{% comment %}Menu lateral definido no base.html{% endcomment %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Editar Tipo de Visto</h1>
+        <p>Atualize os dados do tipo de visto {{ tipo_visto.nome }}.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:listar_tipos_visto' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="layout-grid">
+    <article class="card form-card">
+        <header>
+            <h2>Editar tipo de visto</h2>
+        </header>
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <ul class="messages">
+                    {% for error in form.non_field_errors %}
+                        <li class="error">{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <div>
+                <label for="{{ form.pais_destino.id_for_label }}">País de destino *</label>
+                {{ form.pais_destino }}
+                {{ form.pais_destino.errors }}
+            </div>
+            <div>
+                <label for="{{ form.nome.id_for_label }}">Nome do visto *</label>
+                {{ form.nome }}
+                {{ form.nome.errors }}
+            </div>
+            <div>
+                <label for="{{ form.descricao.id_for_label }}">Descrição</label>
+                {{ form.descricao }}
+                {{ form.descricao.errors }}
+            </div>
+            <div>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    {{ form.ativo }}
+                    <span>Ativo</span>
+                </label>
+                {{ form.ativo.errors }}
+            </div>
+            <button type="submit" class="btn btn-primary">Atualizar tipo de visto</button>
+        </form>
+    </article>
+</section>
+{% endblock %}
+

@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Editar Formulário de Visto{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .messages {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+    }
+
+    .messages li {
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    .messages .success {
+        background: rgba(86, 244, 156, 0.2);
+        border: 1px solid rgba(86, 244, 156, 0.55);
+    }
+
+    .messages .error {
+        background: rgba(255, 81, 81, 0.15);
+        border: 1px solid rgba(255, 104, 104, 0.55);
+    }
+
+    .form-card form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .form-card label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .form-card input,
+    .form-card select {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.95rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-card select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding-right: 42px;
+        background-image: linear-gradient(45deg, transparent 50%, rgba(245, 245, 245, 0.75) 50%),
+                          linear-gradient(135deg, rgba(245, 245, 245, 0.75) 50%, transparent 50%);
+        background-position: calc(100% - 24px) center, calc(100% - 16px) center;
+        background-size: 8px 8px;
+        background-repeat: no-repeat;
+    }
+
+    .form-card input:focus,
+    .form-card select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .perguntas-section {
+        margin-top: 32px;
+    }
+
+    .perguntas-list {
+        display: grid;
+        gap: 16px;
+        margin-top: 20px;
+    }
+
+    .pergunta-item {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.2);
+        border-radius: 16px;
+        padding: 20px;
+        display: grid;
+        gap: 12px;
+    }
+
+    .pergunta-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .pergunta-info {
+        flex: 1;
+    }
+
+    .pergunta-info h4 {
+        margin: 0 0 8px 0;
+        color: var(--text-primary);
+        font-size: 1rem;
+    }
+
+    .pergunta-meta {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .pergunta-meta span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .pergunta-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-tipo {
+        background: rgba(86, 244, 156, 0.2);
+        color: var(--accent);
+    }
+
+    .badge-obrigatorio {
+        background: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+    }
+
+    .badge-opcional {
+        background: rgba(108, 117, 125, 0.2);
+        color: #6c757d;
+    }
+
+    .empty-state {
+        padding: 24px;
+        border-radius: 16px;
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        color: rgba(245, 245, 245, 0.72);
+        text-align: center;
+    }
+
+    @media (max-width: 768px) {
+        .layout-grid {
+            width: 100%;
+            max-width: 480px;
+            margin-inline: auto;
+            gap: 16px;
+        }
+
+        .card {
+            padding: 16px 12px;
+        }
+
+        .pergunta-header {
+            flex-direction: column;
+        }
+
+        .pergunta-actions {
+            width: 100%;
+        }
+
+        .pergunta-actions .btn {
+            flex: 1;
+        }
+    }
+{% endblock %}
+
+{% comment %}Menu lateral definido no base.html{% endcomment %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Editar Formulário</h1>
+        <p>Gerencie o formulário de {{ formulario.tipo_visto.nome }} e suas perguntas.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:listar_formularios' %}" class="btn btn-outline">Voltar</a>
+        <a href="{% url 'system:criar_pergunta' formulario.pk %}" class="btn btn-primary">➕ Adicionar Pergunta</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="layout-grid">
+    <article class="card form-card">
+        <header>
+            <h2>Configurações do Formulário</h2>
+        </header>
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <ul class="messages">
+                    {% for error in form.non_field_errors %}
+                        <li class="error">{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            <div>
+                <label for="{{ form.tipo_visto.id_for_label }}">Tipo de Visto *</label>
+                {{ form.tipo_visto }}
+                {{ form.tipo_visto.errors }}
+            </div>
+
+            <div>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    {{ form.ativo }}
+                    <span>Ativo</span>
+                </label>
+                {{ form.ativo.errors }}
+            </div>
+
+            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </form>
+    </article>
+
+    <article class="card perguntas-section">
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <h2>Perguntas do Formulário</h2>
+                <p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    Gerencie as perguntas que compõem este formulário.
+                </p>
+            </div>
+        </header>
+
+        {% if perguntas %}
+            <div class="perguntas-list">
+                {% for pergunta in perguntas %}
+                    <div class="pergunta-item">
+                        <div class="pergunta-header">
+                            <div class="pergunta-info">
+                                <h4>{{ pergunta.pergunta }}</h4>
+                                <div class="pergunta-meta">
+                                    <span class="badge badge-tipo">{{ pergunta.get_tipo_campo_display }}</span>
+                                    {% if pergunta.obrigatorio %}
+                                        <span class="badge badge-obrigatorio">Obrigatório</span>
+                                    {% else %}
+                                        <span class="badge badge-opcional">Opcional</span>
+                                    {% endif %}
+                                    <span>Ordem: {{ pergunta.ordem }}</span>
+                                    {% if not pergunta.ativo %}
+                                        <span style="color: var(--text-secondary);">(Inativa)</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="pergunta-actions">
+                                <a href="{% url 'system:editar_pergunta' pergunta.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                <form method="post" action="{% url 'system:excluir_pergunta' pergunta.pk %}" onsubmit="return confirm('Deseja realmente excluir a pergunta: {{ pergunta.pergunta }}?');" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>Nenhuma pergunta cadastrada ainda.</p>
+                <a href="{% url 'system:criar_pergunta' formulario.pk %}" class="btn btn-primary" style="margin-top: 16px;">Adicionar Primeira Pergunta</a>
+            </div>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}
+
