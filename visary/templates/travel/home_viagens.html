@@ -193,13 +193,7 @@
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
+{# Mensagens são exibidas no template base, não precisamos exibir aqui #}
 
 <section class="stats-card">
     <span>Total de viagens cadastradas</span>

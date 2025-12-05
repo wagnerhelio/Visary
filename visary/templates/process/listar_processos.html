@@ -42,6 +42,15 @@
         text-align: left;
         border-bottom: 1px solid var(--border-soft);
         font-size: 0.9rem;
+        vertical-align: top;
+    }
+    
+    td {
+        white-space: nowrap;
+    }
+    
+    .etapas-cell {
+        white-space: normal;
     }
 
     th {
@@ -51,18 +60,36 @@
         color: rgba(245, 245, 245, 0.6);
     }
 
-    .status-badge {
+    .progress-badge {
         display: inline-block;
         padding: 4px 12px;
         border-radius: 12px;
         font-size: 0.85rem;
         font-weight: 600;
-    }
-
-    .status-badge {
         background: rgba(86, 244, 156, 0.2);
         color: rgba(86, 244, 156, 0.95);
         border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .etapa-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+    }
+
+    .etapa-item.concluida {
+        opacity: 0.7;
+    }
+
+    .etapa-check {
+        color: rgba(86, 244, 156, 0.9);
+        font-weight: bold;
+    }
+
+    .etapa-pending {
+        color: rgba(245, 245, 245, 0.5);
     }
 
     .empty-state {
@@ -129,14 +156,6 @@
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <section class="card">
     <div class="table-wrapper">
         <table>
@@ -145,8 +164,8 @@
                 <th>Cliente</th>
                 <th>Viagem</th>
                 <th>País</th>
-                <th>Status</th>
-                <th>Prazo (dias)</th>
+                <th>Progresso</th>
+                <th>Etapas</th>
                 <th>Assessor</th>
                 <th>Criado em</th>
                 {% if pode_gerenciar_todos %}
@@ -163,16 +182,26 @@
                     <td>{{ processo.viagem.tipo_visto.nome }}</td>
                     <td>{{ processo.viagem.pais_destino.nome }}</td>
                     <td>
-                        <span class="status-badge status-{{ processo.status.pk }}">
-                            {{ processo.status.nome }}
+                        <span class="progress-badge">
+                            {{ processo.etapas_concluidas }}/{{ processo.total_etapas }} ({{ processo.progresso_percentual }}%)
                         </span>
                     </td>
-                    <td>
-                        {% if processo.prazo_dias > 0 %}
-                            {{ processo.prazo_dias }} dia{{ processo.prazo_dias|pluralize }}
-                        {% else %}
-                            <span style="color: rgba(245, 245, 245, 0.5);">-</span>
-                        {% endif %}
+                    <td class="etapas-cell">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            {% for etapa in processo.etapas.all|slice:":5" %}
+                                <div class="etapa-item {% if etapa.concluida %}concluida{% endif %}">
+                                    <span class="{% if etapa.concluida %}etapa-check{% else %}etapa-pending{% endif %}">
+                                        {% if etapa.concluida %}✓{% else %}○{% endif %}
+                                    </span>
+                                    <span>{{ etapa.status.nome }}</span>
+                                </div>
+                            {% endfor %}
+                            {% if processo.total_etapas > 5 %}
+                                <div style="font-size: 0.8rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                    +{{ processo.total_etapas|add:"-5" }} mais
+                                </div>
+                            {% endif %}
+                        </div>
                     </td>
                     <td>{{ processo.assessor_responsavel.nome }}</td>
                     <td>{{ processo.criado_em|date:"d/m/Y H:i" }}</td>
@@ -202,4 +231,3 @@
     </div>
 </section>
 {% endblock %}
-

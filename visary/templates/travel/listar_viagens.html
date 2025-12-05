@@ -363,6 +363,9 @@
                     </td>
                     <td>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            {% if item.total_clientes > 0 %}
+                                <a href="{% url 'system:criar_processo' %}?viagem_id={{ item.viagem.pk }}" class="btn btn-outline btn-small" style="background: linear-gradient(135deg, #4dd0e1 0%, #56f49c 100%);">Criar Processo</a>
+                            {% endif %}
                             {% if item.tem_formulario and item.total_clientes > 0 %}
                                 <a href="{% url 'system:listar_formularios_viagem' item.viagem.pk %}" class="btn btn-primary btn-small">Formulários</a>
                             {% endif %}

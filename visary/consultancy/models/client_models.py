@@ -60,6 +60,89 @@ class ClienteConsultoria(models.Model):
         verbose_name="Parceiro Indicador",
         help_text="Parceiro que indicou este cliente. O parceiro só acompanhará o processo se indicado aqui.",
     )
+    cliente_principal = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="dependentes",
+        verbose_name="Cliente Principal",
+        help_text="Se este cliente é dependente, vincule ao cliente principal.",
+    )
+    etapa_dados_pessoais = models.BooleanField(
+        "Etapa: Dados Pessoais",
+        default=False,
+        help_text="Dados pessoais preenchidos",
+    )
+    etapa_endereco = models.BooleanField(
+        "Etapa: Endereço",
+        default=False,
+        help_text="Endereço preenchido",
+    )
+    etapa_membros = models.BooleanField(
+        "Etapa: Membros",
+        default=False,
+        help_text="Membros/dependentes adicionados",
+    )
+    etapa_passaporte = models.BooleanField(
+        "Etapa: Passaporte",
+        default=False,
+        help_text="Dados do passaporte preenchidos",
+    )
+    # Campos de Passaporte
+    TIPO_PASSAPORTE_CHOICES = [
+        ("comum", "Passaporte Comum/Regular"),
+        ("diplomatico", "Passaporte Diplomático"),
+        ("servico", "Passaporte de Serviço"),
+        ("outro", "Outro"),
+    ]
+    tipo_passaporte = models.CharField(
+        "Tipo de Passaporte",
+        max_length=20,
+        choices=TIPO_PASSAPORTE_CHOICES,
+        blank=True,
+        null=True,
+    )
+    tipo_passaporte_outro = models.CharField(
+        "Outro tipo de passaporte",
+        max_length=100,
+        blank=True,
+        help_text="Especifique o tipo de passaporte se selecionou 'Outro'",
+    )
+    numero_passaporte = models.CharField(
+        "Número do passaporte válido",
+        max_length=50,
+        blank=True,
+    )
+    pais_emissor_passaporte = models.CharField(
+        "País que emitiu o passaporte",
+        max_length=100,
+        blank=True,
+    )
+    data_emissao_passaporte = models.DateField(
+        "Data de emissão",
+        null=True,
+        blank=True,
+    )
+    valido_ate_passaporte = models.DateField(
+        "Válido até",
+        null=True,
+        blank=True,
+    )
+    autoridade_passaporte = models.CharField(
+        "Autoridade",
+        max_length=100,
+        blank=True,
+    )
+    cidade_emissao_passaporte = models.CharField(
+        "Cidade onde foi emitido",
+        max_length=100,
+        blank=True,
+    )
+    passaporte_roubado = models.BooleanField(
+        "Já teve algum passaporte roubado?",
+        default=False,
+    )
 
     class Meta:
         ordering = ("-criado_em", "nome")
@@ -76,4 +159,31 @@ class ClienteConsultoria(models.Model):
         """Verifica se a senha fornecida corresponde à senha do cliente."""
         from django.contrib.auth.hashers import check_password
         return check_password(raw_password, self.senha)
+
+    @property
+    def is_principal(self) -> bool:
+        """Retorna True se este cliente é principal (não tem cliente_principal)."""
+        return self.cliente_principal is None
+
+    @property
+    def is_dependente(self) -> bool:
+        """Retorna True se este cliente é dependente."""
+        return self.cliente_principal is not None
+
+    @property
+    def total_dependentes(self) -> int:
+        """Retorna o número de dependentes vinculados."""
+        return self.dependentes.count()
+
+    @property
+    def progresso_etapas(self) -> int:
+        """Retorna o percentual de conclusão das etapas."""
+        etapas = [
+            self.etapa_dados_pessoais,
+            self.etapa_endereco,
+            self.etapa_passaporte,
+            self.etapa_membros,
+        ]
+        concluidas = sum(etapas)
+        return int((concluidas / len(etapas)) * 100) if etapas else 0
 

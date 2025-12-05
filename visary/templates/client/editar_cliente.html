@@ -168,13 +168,6 @@
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
 
 <section class="layout-grid">
     <article class="card form-card">
@@ -290,6 +283,58 @@
                 </div>
             </div>
             <div>
+                <h3 style="margin: 24px 0 16px 0; font-size: 1.1rem; color: var(--text-primary);">Dados do Passaporte</h3>
+            </div>
+            <div>
+                <label for="{{ form.tipo_passaporte.id_for_label }}">Tipo de Passaporte</label>
+                {{ form.tipo_passaporte }}
+                {{ form.tipo_passaporte.errors }}
+            </div>
+            <div id="tipo-passaporte-outro-container" style="display: {% if form.tipo_passaporte.value == 'outro' %}block{% else %}none{% endif %};">
+                <label for="{{ form.tipo_passaporte_outro.id_for_label }}">Outro tipo de passaporte</label>
+                {{ form.tipo_passaporte_outro }}
+                {{ form.tipo_passaporte_outro.errors }}
+            </div>
+            <div>
+                <label for="{{ form.numero_passaporte.id_for_label }}">Número do passaporte válido</label>
+                {{ form.numero_passaporte }}
+                {{ form.numero_passaporte.errors }}
+            </div>
+            <div>
+                <label for="{{ form.pais_emissor_passaporte.id_for_label }}">País que emitiu o passaporte</label>
+                {{ form.pais_emissor_passaporte }}
+                {{ form.pais_emissor_passaporte.errors }}
+            </div>
+            <div class="grid-inline">
+                <div>
+                    <label for="{{ form.data_emissao_passaporte.id_for_label }}">Data de emissão</label>
+                    {{ form.data_emissao_passaporte }}
+                    {{ form.data_emissao_passaporte.errors }}
+                </div>
+                <div>
+                    <label for="{{ form.valido_ate_passaporte.id_for_label }}">Válido até</label>
+                    {{ form.valido_ate_passaporte }}
+                    {{ form.valido_ate_passaporte.errors }}
+                </div>
+            </div>
+            <div>
+                <label for="{{ form.autoridade_passaporte.id_for_label }}">Autoridade</label>
+                {{ form.autoridade_passaporte }}
+                {{ form.autoridade_passaporte.errors }}
+            </div>
+            <div>
+                <label for="{{ form.cidade_emissao_passaporte.id_for_label }}">Cidade onde foi emitido</label>
+                {{ form.cidade_emissao_passaporte }}
+                {{ form.cidade_emissao_passaporte.errors }}
+            </div>
+            <div style="margin-top: 12px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    {{ form.passaporte_roubado }}
+                    <span>Já teve algum passaporte roubado?</span>
+                </label>
+                {{ form.passaporte_roubado.errors }}
+            </div>
+            <div>
                 <label for="{{ form.observacoes.id_for_label }}">Observações</label>
                 {{ form.observacoes }}
                 {{ form.observacoes.errors }}
@@ -309,6 +354,49 @@
                     {{ form.confirmar_senha.errors }}
                 </div>
             </div>
+
+            {% if cliente.is_dependente %}
+                <div style="margin-top: 24px; padding: 16px; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: rgba(255, 193, 7, 0.95);">Cliente Dependente</h3>
+                    <p style="margin: 0; color: rgba(245, 245, 245, 0.9); font-size: 0.9rem;">
+                        <strong>Cliente Principal:</strong> 
+                        <a href="{% url 'system:editar_cliente' cliente.cliente_principal.pk %}" style="color: rgba(255, 193, 7, 0.95); text-decoration: underline;">
+                            {{ cliente.cliente_principal.nome }}
+                        </a>
+                    </p>
+                </div>
+            {% elif cliente.is_principal %}
+                <div style="margin-top: 24px; padding: 16px; background: rgba(86, 244, 156, 0.1); border: 1px solid rgba(86, 244, 156, 0.3); border-radius: 12px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: rgba(86, 244, 156, 0.95);">Clientes Dependentes</h3>
+                    {% if cliente.total_dependentes > 0 %}
+                        <p style="margin: 0 0 8px 0; color: rgba(245, 245, 245, 0.9); font-size: 0.9rem;">
+                            Este cliente possui <strong>{{ cliente.total_dependentes }}</strong> dependente{{ cliente.total_dependentes|pluralize }} vinculado{{ cliente.total_dependentes|pluralize }}.
+                        </p>
+                        <ul style="margin: 8px 0 0 0; padding-left: 20px; color: rgba(245, 245, 245, 0.8); font-size: 0.9rem;">
+                            {% for dependente in cliente.dependentes.all %}
+                                <li>
+                                    <a href="{% url 'system:editar_cliente' dependente.pk %}" style="color: rgba(86, 244, 156, 0.95); text-decoration: underline;">
+                                        {{ dependente.nome }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p style="margin: 0 0 12px 0; color: rgba(245, 245, 245, 0.9); font-size: 0.9rem;">
+                            Este cliente ainda não possui dependentes vinculados.
+                        </p>
+                    {% endif %}
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+                        <a href="{% url 'system:adicionar_dependente' cliente.pk %}" class="btn btn-primary btn-small">
+                            Vincular Cliente Existente
+                        </a>
+                        <a href="{% url 'system:cadastrar_dependente' cliente.pk %}" class="btn btn-outline btn-small">
+                            Cadastrar Novo Dependente
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+
             <button type="submit" class="btn btn-primary">Atualizar cliente</button>
         </form>
     </article>
@@ -320,10 +408,38 @@
     const btnBuscarCep = document.getElementById('btn-buscar-cep');
     if (!cepInput || !btnBuscarCep) return;
 
-    const logradouroField = document.getElementById('{{ form.logradouro.id_for_label }}');
-    const bairroField = document.getElementById('{{ form.bairro.id_for_label }}');
-    const cidadeField = document.getElementById('{{ form.cidade.id_for_label }}');
-    const ufField = document.getElementById('{{ form.uf.id_for_label }}');
+    // Função auxiliar para buscar campos de forma mais robusta
+    function getFieldById(id) {
+        if (!id) return null;
+        // Tentar por ID primeiro
+        let field = document.getElementById(id);
+        if (field) return field;
+        // Tentar sem o prefixo 'id_'
+        const name = id.replace(/^id_/, '');
+        field = document.querySelector(`[name="${name}"]`);
+        if (field) return field;
+        // Tentar buscar por qualquer atributo que contenha o nome
+        field = document.querySelector(`[id*="${name}"], [name*="${name}"]`);
+        return field;
+    }
+
+    // Buscar campos de forma dinâmica
+    const logradouroField = getFieldById('{{ form.logradouro.id_for_label }}') || 
+                            document.querySelector('[name="logradouro"]');
+    const bairroField = getFieldById('{{ form.bairro.id_for_label }}') || 
+                        document.querySelector('[name="bairro"]');
+    const cidadeField = getFieldById('{{ form.cidade.id_for_label }}') || 
+                        document.querySelector('[name="cidade"]');
+    
+    // Buscar UF de forma mais robusta - pode estar renderizado com ID diferente
+    let ufField = getFieldById('{{ form.uf.id_for_label }}');
+    if (!ufField) {
+        ufField = document.querySelector('[name="uf"]');
+    }
+    if (!ufField) {
+        // Tentar buscar por qualquer campo que contenha 'uf' no ID ou name
+        ufField = document.querySelector('[id*="uf"], [name*="uf"]');
+    }
     const numeroField = document.getElementById('{{ form.numero.id_for_label }}');
     const complementoField = document.getElementById('{{ form.complemento.id_for_label }}');
 
@@ -336,6 +452,73 @@
         e.target.value = value;
     });
 
+    // Função para buscar e preencher campos de endereço
+    function preencherCamposEndereco(data) {
+        // Buscar campos novamente para garantir que estamos pegando os corretos
+        const campos = {
+            logradouro: getFieldById('{{ form.logradouro.id_for_label }}') || document.querySelector('[name="logradouro"]'),
+            bairro: getFieldById('{{ form.bairro.id_for_label }}') || document.querySelector('[name="bairro"]'),
+            cidade: getFieldById('{{ form.cidade.id_for_label }}') || document.querySelector('[name="cidade"]'),
+            uf: getFieldById('{{ form.uf.id_for_label }}') || document.querySelector('[name="uf"]') || document.querySelector('[id*="uf"], [name*="uf"]')
+        };
+
+        // Função auxiliar para preencher campo e disparar eventos
+        function preencherCampo(field, value) {
+            if (field && value) {
+                field.value = value;
+                // Disparar eventos para garantir que o valor seja reconhecido
+                field.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+                field.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+                field.dispatchEvent(new Event('blur', { bubbles: true, cancelable: true }));
+                return true;
+            }
+            return false;
+        }
+
+        // Preencher todos os campos
+        const resultados = {
+            logradouro: preencherCampo(campos.logradouro, data.street),
+            bairro: preencherCampo(campos.bairro, data.district),
+            cidade: preencherCampo(campos.cidade, data.city),
+            uf: preencherCampo(campos.uf, (data.uf || '').toUpperCase())
+        };
+
+        // Log dos resultados
+        console.log('Preenchimento de campos:', resultados);
+        console.log('Dados recebidos:', data);
+
+        // Se algum campo não foi preenchido, tentar novamente após um delay
+        const camposNaoPreenchidos = Object.entries(resultados).filter(([_, preenchido]) => !preenchido);
+        if (camposNaoPreenchidos.length > 0) {
+            console.warn('Alguns campos não foram preenchidos:', camposNaoPreenchidos.map(([nome]) => nome));
+            setTimeout(() => {
+                camposNaoPreenchidos.forEach(([nome]) => {
+                    let campo = null;
+                    switch(nome) {
+                        case 'logradouro':
+                            campo = getFieldById('{{ form.logradouro.id_for_label }}') || document.querySelector('[name="logradouro"]');
+                            if (campo && data.street) preencherCampo(campo, data.street);
+                            break;
+                        case 'bairro':
+                            campo = getFieldById('{{ form.bairro.id_for_label }}') || document.querySelector('[name="bairro"]');
+                            if (campo && data.district) preencherCampo(campo, data.district);
+                            break;
+                        case 'cidade':
+                            campo = getFieldById('{{ form.cidade.id_for_label }}') || document.querySelector('[name="cidade"]');
+                            if (campo && data.city) preencherCampo(campo, data.city);
+                            break;
+                        case 'uf':
+                            campo = getFieldById('{{ form.uf.id_for_label }}') || document.querySelector('[name="uf"]') || document.querySelector('[id*="uf"], [name*="uf"]');
+                            if (campo && data.uf) preencherCampo(campo, data.uf.toUpperCase());
+                            break;
+                    }
+                });
+            }, 300);
+        }
+
+        return resultados;
+    }
+
     // Função para buscar CEP
     async function buscarCep() {
         const cep = cepInput.value.replace(/\D/g, '');
@@ -344,7 +527,6 @@
             return;
         }
 
-        // Desabilitar botão durante a busca
         btnBuscarCep.disabled = true;
         btnBuscarCep.textContent = 'Buscando...';
 
@@ -356,28 +538,15 @@
                 if (data.error) {
                     alert(data.error);
                 }
-                // Campos já estão habilitados para preenchimento manual
                 return;
             }
 
-            // Preencher campos automaticamente (campos sempre habilitados)
-            if (logradouroField) {
-                logradouroField.value = data.street || '';
-            }
-            if (bairroField) {
-                bairroField.value = data.district || '';
-            }
-            if (cidadeField) {
-                cidadeField.value = data.city || '';
-            }
-            if (ufField) {
-                ufField.value = data.uf || '';
-            }
+            // Preencher todos os campos de endereço
+            preencherCamposEndereco(data);
 
         } catch (e) {
             console.error('Erro ao buscar CEP:', e);
             alert('Erro ao buscar CEP. Tente novamente.');
-            // Campos já estão habilitados para preenchimento manual
         } finally {
             btnBuscarCep.disabled = false;
             btnBuscarCep.textContent = 'Buscar';
@@ -394,6 +563,36 @@
             buscarCep();
         }
     });
+    
+    // Mostrar/esconder campo tipo_passaporte_outro baseado na seleção de tipo_passaporte
+    (function() {
+        const tipoPassaporteSelect = document.getElementById('{{ form.tipo_passaporte.id_for_label }}');
+        const tipoPassaporteOutroField = document.getElementById('{{ form.tipo_passaporte_outro.id_for_label }}');
+        const tipoPassaporteOutroDiv = document.getElementById('tipo-passaporte-outro-container');
+        
+        if (!tipoPassaporteSelect || !tipoPassaporteOutroDiv) return;
+        
+        function toggleTipoPassaporteOutro() {
+            if (tipoPassaporteSelect.value === 'outro') {
+                tipoPassaporteOutroDiv.style.display = 'block';
+                if (tipoPassaporteOutroField) {
+                    tipoPassaporteOutroField.required = true;
+                }
+            } else {
+                tipoPassaporteOutroDiv.style.display = 'none';
+                if (tipoPassaporteOutroField) {
+                    tipoPassaporteOutroField.required = false;
+                    tipoPassaporteOutroField.value = '';
+                }
+            }
+        }
+        
+        // Verificar estado inicial
+        toggleTipoPassaporteOutro();
+        
+        // Adicionar listener
+        tipoPassaporteSelect.addEventListener('change', toggleTipoPassaporteOutro);
+    })();
 })();
 </script>
 {% endblock %}

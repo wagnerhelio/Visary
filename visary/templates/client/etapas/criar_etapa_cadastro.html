@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Criar Etapa de Cadastro{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+        width: 100%;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .form-card form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .form-card label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .form-card input,
+    .form-card select,
+    .form-card textarea {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.95rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-card textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    .form-card input:focus,
+    .form-card select:focus,
+    .form-card textarea:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Criar Etapa de Cadastro</h1>
+        <p>Configure uma nova etapa para o cadastro de clientes.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:listar_etapas_cadastro' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="layout-grid">
+    <article class="card form-card">
+        <header>
+            <h2>Nova Etapa</h2>
+        </header>
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <ul class="messages">
+                    {% for error in form.non_field_errors %}
+                        <li class="error">{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+
+            <div>
+                <label for="{{ form.nome.id_for_label }}">Nome da Etapa *</label>
+                {{ form.nome }}
+                {{ form.nome.errors }}
+            </div>
+
+            <div>
+                <label for="{{ form.descricao.id_for_label }}">Descrição</label>
+                {{ form.descricao }}
+                {{ form.descricao.errors }}
+            </div>
+
+            <div class="grid-inline" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <label for="{{ form.ordem.id_for_label }}">Ordem *</label>
+                    {{ form.ordem }}
+                    {{ form.ordem.errors }}
+                </div>
+                <div>
+                    <label for="{{ form.campo_booleano.id_for_label }}">Campo Booleano</label>
+                    {{ form.campo_booleano }}
+                    <small style="display: block; margin-top: 4px; color: var(--text-secondary); font-size: 0.8rem;">
+                        Nome do campo do ClienteConsultoria que será marcado quando esta etapa for concluída (ex: etapa_dados_pessoais)
+                    </small>
+                    {{ form.campo_booleano.errors }}
+                </div>
+            </div>
+
+            <div>
+                <label style="display: flex; align-items: center; gap: 8px;">
+                    {{ form.ativo }}
+                    <span>Ativo</span>
+                </label>
+                {{ form.ativo.errors }}
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 8px;">
+                <a href="{% url 'system:listar_etapas_cadastro' %}" class="btn btn-outline">Cancelar</a>
+                <button type="submit" class="btn btn-primary">Criar Etapa</button>
+            </div>
+        </form>
+    </article>
+</section>
+{% endblock %}
+

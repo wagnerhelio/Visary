@@ -2,17 +2,24 @@
 Views da área do cliente (dashboard e formulários).
 """
 
+from contextlib import suppress
+from decimal import Decimal, InvalidOperation
+
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.dateparse import parse_date
 
 from consultancy.models import (
     ClienteConsultoria,
+    ClienteViagem,
     FormularioVisto,
+    OpcaoSelecao,
     PerguntaFormulario,
     RespostaFormulario,
     Viagem,
 )
+from system.views.travel_views import _obter_formulario_por_tipo_visto, _obter_tipo_visto_cliente
 
 
 def _get_cliente_from_session(request):
@@ -24,6 +31,15 @@ def _get_cliente_from_session(request):
         return ClienteConsultoria.objects.get(pk=cliente_id)
     except ClienteConsultoria.DoesNotExist:
         return None
+
+
+def _obter_formulario_cliente(viagem, cliente):
+    """Obtém o formulário do cliente baseado no tipo_visto individual."""
+    # Obter o tipo_visto individual do cliente
+    tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
+    
+    # Buscar formulário diretamente do banco de dados
+    return _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=False)
 
 
 def cliente_dashboard(request):
@@ -64,11 +80,7 @@ def cliente_visualizar_formulario(request, viagem_id: int):
     if cliente not in viagem.clientes.all():
         raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
 
-    formulario = None
-    try:
-        formulario = viagem.tipo_visto.formulario
-    except FormularioVisto.DoesNotExist:
-        formulario = None
+    formulario = _obter_formulario_cliente(viagem, cliente)
 
     if not formulario or not formulario.ativo:
         messages.warning(
@@ -107,6 +119,40 @@ def cliente_visualizar_formulario(request, viagem_id: int):
     return render(request, "client_area/visualizar_formulario.html", contexto)
 
 
+def _limpar_campos_resposta(resposta):
+    """Limpa todos os campos de resposta."""
+    resposta.resposta_texto = ""
+    resposta.resposta_data = None
+    resposta.resposta_numero = None
+    resposta.resposta_booleano = None
+    resposta.resposta_selecao = None
+
+
+def _atualizar_resposta_por_tipo(resposta, pergunta, valor):
+    """Atualiza a resposta de acordo com o tipo de campo da pergunta."""
+    _limpar_campos_resposta(resposta)
+    
+    if pergunta.tipo_campo == "texto":
+        resposta.resposta_texto = valor or ""
+    elif pergunta.tipo_campo == "data":
+        resposta.resposta_data = parse_date(valor) if valor else None
+    elif pergunta.tipo_campo == "numero":
+        if valor:
+            try:
+                resposta.resposta_numero = Decimal(valor)
+            except (InvalidOperation, ValueError) as e:
+                raise ValueError(f"Valor inválido para a pergunta '{pergunta.pergunta}'.") from e
+    elif pergunta.tipo_campo == "booleano":
+        resposta.resposta_booleano = valor == "sim" if valor else None
+    elif pergunta.tipo_campo == "selecao":
+        if valor:
+            try:
+                opcao_id = int(valor)
+                resposta.resposta_selecao = OpcaoSelecao.objects.get(pk=opcao_id, pergunta=pergunta)
+            except (ValueError, OpcaoSelecao.DoesNotExist) as e:
+                raise ValueError(f"Opção inválida para a pergunta '{pergunta.pergunta}'.") from e
+
+
 def cliente_salvar_resposta(request, viagem_id: int):
     """Salva ou atualiza uma resposta do formulário."""
     cliente = _get_cliente_from_session(request)
@@ -125,9 +171,8 @@ def cliente_salvar_resposta(request, viagem_id: int):
     if request.method != "POST":
         return redirect("system:cliente_visualizar_formulario", viagem_id=viagem_id)
 
-    try:
-        formulario = viagem.tipo_visto.formulario
-    except FormularioVisto.DoesNotExist:
+    formulario = _obter_formulario_cliente(viagem, cliente)
+    if not formulario:
         messages.error(request, "Formulário não encontrado.")
         return redirect("system:cliente_dashboard")
 
@@ -146,7 +191,7 @@ def cliente_salvar_resposta(request, viagem_id: int):
             continue
 
         # Buscar ou criar resposta
-        resposta, created = RespostaFormulario.objects.get_or_create(
+        resposta, _ = RespostaFormulario.objects.get_or_create(
             viagem=viagem,
             cliente=cliente,
             pergunta=pergunta,
@@ -154,55 +199,12 @@ def cliente_salvar_resposta(request, viagem_id: int):
         )
 
         # Atualizar resposta de acordo com o tipo
-        if pergunta.tipo_campo == "texto":
-            resposta.resposta_texto = valor or ""
-            resposta.resposta_data = None
-            resposta.resposta_numero = None
-            resposta.resposta_booleano = None
-            resposta.resposta_selecao = None
-        elif pergunta.tipo_campo == "data":
-            from django.utils.dateparse import parse_date
-            resposta.resposta_data = parse_date(valor) if valor else None
-            resposta.resposta_texto = ""
-            resposta.resposta_numero = None
-            resposta.resposta_booleano = None
-            resposta.resposta_selecao = None
-        elif pergunta.tipo_campo == "numero":
-            from decimal import Decimal, InvalidOperation
-            try:
-                resposta.resposta_numero = Decimal(valor) if valor else None
-            except (InvalidOperation, ValueError):
-                erros.append(f"Valor inválido para a pergunta '{pergunta.pergunta}'.")
-                continue
-            resposta.resposta_texto = ""
-            resposta.resposta_data = None
-            resposta.resposta_booleano = None
-            resposta.resposta_selecao = None
-        elif pergunta.tipo_campo == "booleano":
-            resposta.resposta_booleano = valor == "sim" if valor else None
-            resposta.resposta_texto = ""
-            resposta.resposta_data = None
-            resposta.resposta_numero = None
-            resposta.resposta_selecao = None
-        elif pergunta.tipo_campo == "selecao":
-            from consultancy.models import OpcaoSelecao
-            try:
-                opcao_id = int(valor) if valor else None
-                resposta.resposta_selecao = (
-                    OpcaoSelecao.objects.get(pk=opcao_id, pergunta=pergunta)
-                    if opcao_id
-                    else None
-                )
-            except (ValueError, OpcaoSelecao.DoesNotExist):
-                erros.append(f"Opção inválida para a pergunta '{pergunta.pergunta}'.")
-                continue
-            resposta.resposta_texto = ""
-            resposta.resposta_data = None
-            resposta.resposta_numero = None
-            resposta.resposta_booleano = None
-
-        resposta.save()
-        respostas_salvas += 1
+        try:
+            _atualizar_resposta_por_tipo(resposta, pergunta, valor)
+            resposta.save()
+            respostas_salvas += 1
+        except ValueError as e:
+            erros.append(str(e))
 
     if erros:
         for erro in erros:

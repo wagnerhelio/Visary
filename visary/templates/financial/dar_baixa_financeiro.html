@@ -132,7 +132,27 @@
 <div class="layout-grid">
     <section class="card info-card">
         <h3>Informações do Registro</h3>
-        <p><strong>Cliente:</strong> {{ registro.cliente.nome_usuario|default:"N/A" }}</p>
+        <p><strong>Cliente:</strong> 
+            {% if registro.cliente %}
+                {{ registro.cliente.nome }}
+                {% if registro.cliente.is_dependente %}
+                    <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4); margin-left: 8px;">
+                        Dependente
+                    </span>
+                    {% if registro.cliente.cliente_principal %}
+                        <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.6); margin-left: 8px;">
+                            de {{ registro.cliente.cliente_principal.nome }}
+                        </span>
+                    {% endif %}
+                {% else %}
+                    <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4); margin-left: 8px;">
+                        Principal
+                    </span>
+                {% endif %}
+            {% else %}
+                N/A
+            {% endif %}
+        </p>
         <p><strong>Assessor Responsável:</strong> {{ registro.assessor_responsavel.nome }}</p>
         <p><strong>Valor:</strong> R$ {{ registro.valor|floatformat:2 }}</p>
         <p><strong>Status Atual:</strong> {{ registro.get_status_display }}</p>

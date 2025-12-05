@@ -74,6 +74,6 @@ class Financeiro(models.Model):
         verbose_name_plural = "Registros Financeiros"
 
     def __str__(self) -> str:
-        cliente_nome = self.cliente.nome_usuario if self.cliente else "N/A"
+        cliente_nome = self.cliente.nome if self.cliente else "N/A"
         return f"{cliente_nome} - {self.valor} - {self.get_status_display()}"
 

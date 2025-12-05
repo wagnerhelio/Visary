@@ -11,41 +11,12 @@
         gap: 24px;
     }
 
-    .grid-inline {
-        display: grid;
-        gap: 18px;
-        grid-template-columns: 1fr;
-    }
-
     .card {
         background: var(--card-bg);
         border-radius: 24px;
         border: 1px solid var(--border-soft);
         box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
         padding: clamp(18px, 3.5vw, 28px);
-    }
-
-    .messages {
-        display: grid;
-        gap: 12px;
-        margin: 0;
-        padding: 0;
-    }
-
-    .messages li {
-        padding: 12px 16px;
-        border-radius: 12px;
-        font-weight: 600;
-    }
-
-    .messages .success {
-        background: rgba(86, 244, 156, 0.2);
-        border: 1px solid rgba(86, 244, 156, 0.55);
-    }
-
-    .messages .error {
-        background: rgba(255, 81, 81, 0.15);
-        border: 1px solid rgba(255, 104, 104, 0.55);
     }
 
     .form-card form {
@@ -77,135 +48,162 @@
         transition: border 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .form-card input::placeholder,
-    .form-card textarea::placeholder {
-        color: rgba(245, 245, 245, 0.55);
-    }
-
     .form-card select {
         appearance: none;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        padding-right: 42px;
-        background-image: linear-gradient(45deg, transparent 50%, rgba(245, 245, 245, 0.75) 50%),
-                          linear-gradient(135deg, rgba(245, 245, 245, 0.75) 50%, transparent 50%);
-        background-position: calc(100% - 24px) center, calc(100% - 16px) center;
-        background-size: 8px 8px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f5f5f5' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
+        background-position: right 16px center;
+        background-size: 12px;
+        padding-right: 40px;
     }
 
     .form-card input:focus,
     .form-card select:focus,
     .form-card textarea:focus {
         outline: none;
-        border-color: rgba(86, 244, 156, 0.65);
-        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
-        background: rgba(12, 19, 35, 0.85);
+        border-color: rgba(86, 244, 156, 0.6);
+        box-shadow: 0 0 0 3px rgba(86, 244, 156, 0.1);
     }
 
     .form-card textarea {
         resize: vertical;
-        min-height: 100px;
+        min-height: 80px;
     }
 
-    .form-card .btn-submit {
-        width: 100%;
-        padding: 16px 24px;
-        background: linear-gradient(135deg, rgba(86, 244, 156, 0.9), rgba(86, 244, 156, 0.7));
-        color: #0c1323;
-        border: none;
-        border-radius: 14px;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
+    /* Checklist de Etapas */
+    .checklist-etapas {
+        display: grid;
+        gap: 16px;
+        margin-top: 24px;
+    }
+
+    .etapa-item {
+        background: rgba(12, 19, 35, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 20px;
         transition: all 0.2s ease;
+    }
+
+    .etapa-item:hover {
+        border-color: rgba(86, 244, 156, 0.3);
+        background: rgba(12, 19, 35, 0.6);
+    }
+
+    .etapa-item.concluida {
+        border-color: rgba(86, 244, 156, 0.5);
+        background: rgba(86, 244, 156, 0.1);
+    }
+
+    .etapa-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .etapa-checkbox {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        accent-color: rgba(86, 244, 156, 0.8);
+    }
+
+    .etapa-nome {
+        flex: 1;
+        font-size: 1rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.95);
+    }
+
+    .etapa-item.concluida .etapa-nome {
+        text-decoration: line-through;
+        opacity: 0.7;
+    }
+
+    .etapa-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .etapa-info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .etapa-info-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .etapa-info-value {
+        font-size: 0.9rem;
+        color: rgba(245, 245, 245, 0.9);
+    }
+
+    .etapa-prazo-input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+    }
+
+    .etapa-observacoes {
+        margin-top: 12px;
+    }
+
+    .etapa-observacoes textarea {
+        width: 100%;
+        min-height: 60px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        resize: vertical;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
         margin-top: 8px;
     }
 
-    .form-card .btn-submit:hover {
-        background: linear-gradient(135deg, rgba(86, 244, 156, 1), rgba(86, 244, 156, 0.9));
-        transform: translateY(-1px);
-        box-shadow: 0 8px 16px rgba(86, 244, 156, 0.3);
-    }
-
-    .status-option {
-        padding: 12px 16px;
-        border-radius: 12px;
-        border: 2px solid rgba(255, 255, 255, 0.12);
-        background: rgba(12, 19, 35, 0.72);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .status-option:hover {
-        border-color: rgba(86, 244, 156, 0.4);
-        background: rgba(12, 19, 35, 0.85);
-    }
-
-    .status-option.selected {
-        border-color: rgba(86, 244, 156, 0.8);
-        background: rgba(86, 244, 156, 0.15);
-    }
-
-    .status-option input[type="radio"] {
-        margin-right: 12px;
-        cursor: pointer;
-    }
-
-    .status-option label {
-        flex: 1;
-        cursor: pointer;
-        margin: 0;
-        font-weight: 500;
-        color: var(--text-primary);
-    }
-
-    .status-option .prazo-info {
-        font-size: 0.85rem;
-        color: rgba(245, 245, 245, 0.6);
-        margin-left: 12px;
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, rgba(86, 244, 156, 0.8), rgba(86, 244, 156, 1));
+        transition: width 0.3s ease;
     }
 
     @media (min-width: 1120px) {
         .layout-grid {
-            grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-        }
-
-        .grid-inline {
-            grid-template-columns: repeat(2, minmax(240px, 1fr));
+            max-width: 900px;
+            margin: 0 auto;
+            grid-template-columns: 1fr;
         }
     }
 
     @media (max-width: 768px) {
         .layout-grid {
-            width: 100%;
-            max-width: 480px;
+            max-width: 100%;
             margin-inline: auto;
-            gap: 16px;
         }
 
-        .card.form-card,
-        .layout-grid > .card {
-            width: 100%;
-            margin-inline: 0;
-            padding: 16px 12px;
-            border-radius: 18px;
-            box-shadow: 0 16px 32px rgba(5, 8, 17, 0.45);
-        }
-
-        .form-card label {
-            font-size: 0.78rem;
-            margin-bottom: 6px;
-        }
-
-        .form-card input,
-        .form-card select,
-        .form-card textarea {
-            padding: 10px 12px;
-            font-size: 0.9rem;
+        .etapa-info {
+            grid-template-columns: 1fr;
         }
     }
 {% endblock %}
@@ -214,236 +212,138 @@
 <section class="page-header">
     <div class="page-header__titles">
         <h1>Editar Processo</h1>
-        <p>Atualize as informações do processo.</p>
+        <p>Gerencie o processo e suas etapas (checklist).</p>
     </div>
     <div class="actions-inline">
         <a href="{% url 'system:listar_processos' %}" class="btn btn-outline">Voltar</a>
+        {% if pode_gerenciar_todos %}
+            <form method="post" action="{% url 'system:excluir_processo' processo.pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Excluir</button>
+            </form>
+        {% endif %}
     </div>
 </section>
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
+<section class="layout-grid">
+    <article class="card">
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <h2>Etapas do Processo (Checklist)</h2>
+                <p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    Progresso: {{ processo.etapas_concluidas }}/{{ processo.total_etapas }} etapas concluídas ({{ processo.progresso_percentual }}%)
+                </p>
+            </div>
+        </header>
 
-<div class="layout-grid">
-    <section class="card form-card">
-        <form method="post" novalidate>
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ processo.progresso_percentual }}%;"></div>
+        </div>
+
+        <form method="post">
             {% csrf_token %}
+            <div class="checklist-etapas">
+                {% for item in etapas_com_datas %}
+                    {% with etapa=item.etapa data_finalizacao=item.data_finalizacao %}
+                        <div class="etapa-item {% if etapa.concluida %}concluida{% endif %}" data-etapa-id="{{ etapa.pk }}">
+                            <div class="etapa-header">
+                                <input 
+                                    type="checkbox" 
+                                    name="etapa_{{ etapa.pk }}_concluida" 
+                                    id="etapa_{{ etapa.pk }}_concluida"
+                                    class="etapa-checkbox"
+                                    {% if etapa.concluida %}checked{% endif %}
+                                    onchange="this.closest('.etapa-item').classList.toggle('concluida', this.checked);">
+                                <label for="etapa_{{ etapa.pk }}_concluida" class="etapa-nome">
+                                    {{ etapa.status.nome }}
+                                </label>
+                            </div>
 
-            <div class="grid-inline">
-                <div>
-                    <label for="{{ form.viagem.id_for_label }}">{{ form.viagem.label }}</label>
-                    {{ form.viagem }}
-                    {% if form.viagem.errors %}
-                        <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
-                            {{ form.viagem.errors }}
+                            <div class="etapa-info">
+                                <div class="etapa-info-item">
+                                    <span class="etapa-info-label">Prazo (dias)</span>
+                                    <input 
+                                        type="number" 
+                                        name="etapa_{{ etapa.pk }}_prazo" 
+                                        value="{% if etapa.prazo_dias %}{{ etapa.prazo_dias }}{% else %}{{ etapa.status.prazo_padrao_dias|default:0 }}{% endif %}"
+                                        class="etapa-prazo-input"
+                                        min="0"
+                                        step="1"
+                                        data-etapa-id="{{ etapa.pk }}"
+                                        onchange="atualizarDataFinalizacao({{ etapa.pk }}, this.value)">
+                                </div>
+
+                                <div class="etapa-info-item">
+                                    <span class="etapa-info-label">Data Finalização</span>
+                                    <span class="etapa-info-value" id="data_final_{{ etapa.pk }}">
+                                        {% if data_finalizacao %}
+                                            {{ data_finalizacao|date:"d/m/Y" }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </span>
+                                </div>
+
+                                <div class="etapa-info-item">
+                                    <span class="etapa-info-label">Data de Conclusão</span>
+                                    <input 
+                                        type="date" 
+                                        name="etapa_{{ etapa.pk }}_data" 
+                                        value="{% if etapa.data_conclusao %}{{ etapa.data_conclusao|date:'Y-m-d' }}{% endif %}"
+                                        class="etapa-prazo-input"
+                                        style="font-size: 0.85rem;">
+                                </div>
+                            </div>
+
+                            <div class="etapa-observacoes">
+                                <label for="etapa_{{ etapa.pk }}_obs" style="font-size: 0.75rem; margin-bottom: 6px; display: block;">
+                                    Observações
+                                </label>
+                                <textarea 
+                                    name="etapa_{{ etapa.pk }}_obs" 
+                                    id="etapa_{{ etapa.pk }}_obs"
+                                    placeholder="Adicione observações sobre esta etapa...">{{ etapa.observacoes }}</textarea>
+                            </div>
                         </div>
-                    {% endif %}
-                </div>
-
-                <div>
-                    <label for="{{ form.cliente.id_for_label }}">{{ form.cliente.label }}</label>
-                    {{ form.cliente }}
-                    {% if form.cliente.errors %}
-                        <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
-                            {{ form.cliente.errors }}
-                        </div>
-                    {% endif %}
-                </div>
+                    {% endwith %}
+                {% empty %}
+                    <p style="color: rgba(245, 245, 245, 0.6); text-align: center; padding: 40px 20px;">
+                        Nenhuma etapa configurada para esta viagem. Configure as etapas na seção de Status de Processo.
+                    </p>
+                {% endfor %}
             </div>
 
-            <div>
-                <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
-                <div id="status-container" style="display: grid; gap: 12px; margin-top: 8px;">
-                    <select id="{{ form.status.id_for_label }}" name="{{ form.status.name }}" class="input" style="display: none;">
-                        <option value="">Selecione uma viagem primeiro</option>
-                    </select>
-                    <div id="status-options" style="display: grid; gap: 8px;">
-                        <p style="color: rgba(245, 245, 245, 0.6); font-size: 0.9rem; margin: 0;">
-                            Selecione uma viagem para ver os status disponíveis
-                        </p>
-                    </div>
-                </div>
-                {% if form.status.errors %}
-                    <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
-                        {{ form.status.errors }}
-                    </div>
-                {% endif %}
-            </div>
-
-            <div>
-                <label for="{{ form.prazo_dias.id_for_label }}">{{ form.prazo_dias.label }}</label>
-                {{ form.prazo_dias }}
-                {% if form.prazo_dias.errors %}
-                    <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
-                        {{ form.prazo_dias.errors }}
-                    </div>
-                {% endif %}
-            </div>
-
-            <div>
-                <label for="{{ form.assessor_responsavel.id_for_label }}">{{ form.assessor_responsavel.label }}</label>
-                {{ form.assessor_responsavel }}
-                {% if form.assessor_responsavel.errors %}
-                    <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
-                        {{ form.assessor_responsavel.errors }}
-                    </div>
-                {% endif %}
-            </div>
-
-            <div>
-                <label for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
-                {{ form.observacoes }}
-                {% if form.observacoes.errors %}
-                    <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
-                        {{ form.observacoes.errors }}
-                    </div>
-                {% endif %}
-            </div>
-
-            {% if form.non_field_errors %}
-                <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; padding: 12px; background: rgba(255, 104, 104, 0.1); border-radius: 8px; border: 1px solid rgba(255, 104, 104, 0.3);">
-                    {{ form.non_field_errors }}
-                </div>
+            {% if etapas_com_datas %}
+                <button type="submit" class="btn btn-primary" style="margin-top: 24px;">Salvar Alterações das Etapas</button>
             {% endif %}
-
-            <button type="submit" class="btn-submit">💾 Atualizar Processo</button>
         </form>
-    </section>
-</div>
+    </article>
+</section>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const viagemSelect = document.getElementById('{{ form.viagem.id_for_label }}');
-    const statusSelect = document.getElementById('{{ form.status.id_for_label }}');
-    const statusContainer = document.getElementById('status-container');
-    const statusOptions = document.getElementById('status-options');
-    const prazoDiasInput = document.getElementById('{{ form.prazo_dias.id_for_label }}');
-    const statusAtualId = {{ processo.status.pk|default:"null" }};
+    const dataBase = new Date('{{ data_base|date:"Y-m-d" }}');
     
-    function carregarStatus(viagemId) {
-        if (!viagemId) {
-            statusOptions.innerHTML = '<p style="color: rgba(245, 245, 245, 0.6); font-size: 0.9rem; margin: 0;">Selecione uma viagem para ver os status disponíveis</p>';
-            statusSelect.innerHTML = '<option value="">Selecione uma viagem primeiro</option>';
-            prazoDiasInput.value = '';
-            return;
-        }
+    function atualizarDataFinalizacao(etapaId, prazoDias) {
+        const prazo = parseInt(prazoDias) || 0;
+        const dataSpan = document.getElementById('data_final_' + etapaId);
         
-        statusOptions.innerHTML = '<p style="color: rgba(245, 245, 245, 0.6); font-size: 0.9rem; margin: 0;">Carregando status...</p>';
-        
-        fetch(`{% url 'system:api_status_processo' %}?viagem_id=${viagemId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    statusOptions.innerHTML = `<p style="color: rgba(255, 104, 104, 0.9); font-size: 0.9rem; margin: 0;">${data.error}</p>`;
-                    return;
-                }
-                
-                if (data.length === 0) {
-                    statusOptions.innerHTML = '<p style="color: rgba(245, 245, 245, 0.6); font-size: 0.9rem; margin: 0;">Nenhum status disponível para este tipo de visto</p>';
-                    statusSelect.innerHTML = '<option value="">Nenhum status disponível</option>';
-                    return;
-                }
-                
-                // Limpar selects
-                statusSelect.innerHTML = '<option value="">Selecione um status</option>';
-                
-                // Criar opções visuais
-                statusOptions.innerHTML = '';
-                data.forEach(status => {
-                    // Adicionar ao select oculto
-                    const option = document.createElement('option');
-                    option.value = status.id;
-                    option.textContent = status.nome;
-                    if (statusAtualId && status.id === statusAtualId) {
-                        option.selected = true;
-                    }
-                    statusSelect.appendChild(option);
-                    
-                    // Criar opção visual
-                    const statusDiv = document.createElement('div');
-                    statusDiv.className = 'status-option';
-                    if (statusAtualId && status.id === statusAtualId) {
-                        statusDiv.classList.add('selected');
-                    }
-                    statusDiv.innerHTML = `
-                        <input type="radio" name="status_radio" id="status_${status.id}" value="${status.id}" ${statusAtualId && status.id === statusAtualId ? 'checked' : ''}>
-                        <label for="status_${status.id}">
-                            ${status.nome}
-                            ${status.prazo_padrao_dias > 0 ? `<span class="prazo-info">(${status.prazo_padrao_dias} dia${status.prazo_padrao_dias > 1 ? 's' : ''})</span>` : ''}
-                        </label>
-                    `;
-                    
-                    // Adicionar evento de clique
-                    statusDiv.addEventListener('click', function() {
-                        // Marcar radio
-                        document.getElementById(`status_${status.id}`).checked = true;
-                        // Atualizar select oculto
-                        statusSelect.value = status.id;
-                        // Atualizar prazo
-                        if (status.prazo_padrao_dias > 0) {
-                            prazoDiasInput.value = status.prazo_padrao_dias;
-                        } else {
-                            prazoDiasInput.value = '';
-                        }
-                        // Atualizar visual
-                        document.querySelectorAll('.status-option').forEach(opt => opt.classList.remove('selected'));
-                        statusDiv.classList.add('selected');
-                    });
-                    
-                    statusOptions.appendChild(statusDiv);
-                });
-            })
-            .catch(error => {
-                console.error('Erro ao carregar status:', error);
-                statusOptions.innerHTML = '<p style="color: rgba(255, 104, 104, 0.9); font-size: 0.9rem; margin: 0;">Erro ao carregar status</p>';
-            });
-    }
-    
-    // Carregar status quando a viagem mudar
-    if (viagemSelect) {
-        viagemSelect.addEventListener('change', function() {
-            carregarStatus(this.value);
-        });
-        
-        // Carregar status inicial se já houver viagem selecionada
-        if (viagemSelect.value) {
-            carregarStatus(viagemSelect.value);
+        if (prazo > 0 && dataBase) {
+            const dataFinal = new Date(dataBase);
+            dataFinal.setDate(dataFinal.getDate() + prazo);
+            dataSpan.textContent = dataFinal.toLocaleDateString('pt-BR');
+        } else {
+            dataSpan.textContent = '—';
         }
     }
-    
-    // Atualizar prazo quando status mudar (via select oculto)
-    if (statusSelect && prazoDiasInput) {
-        statusSelect.addEventListener('change', function() {
-            const statusId = this.value;
-            
-            if (!statusId) {
-                prazoDiasInput.value = '';
-                return;
-            }
-            
-            // Buscar o prazo padrão do status via AJAX
-            fetch(`{% url 'system:api_prazo_status_processo' %}?status_id=${statusId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.prazo_padrao_dias && data.prazo_padrao_dias > 0) {
-                        prazoDiasInput.value = data.prazo_padrao_dias;
-                    } else {
-                        prazoDiasInput.value = '';
-                    }
-                })
-                .catch(error => {
-                    console.error('Erro ao buscar prazo padrão:', error);
-                });
-        });
-    }
+
+    // Inicializar todas as datas de finalização
+    document.querySelectorAll('.etapa-prazo-input[data-etapa-id]').forEach(function(input) {
+        const etapaId = input.dataset.etapaId;
+        atualizarDataFinalizacao(etapaId, input.value);
+    });
 });
 </script>
 {% endblock %}
-

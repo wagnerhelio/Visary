@@ -454,7 +454,13 @@
 
                 {% block app_header %}{% endblock %}
 
-                {% if messages %}
+                {% if mensagens_filtradas %}
+                    <ul class="messages">
+                        {% for message in mensagens_filtradas %}
+                            <li class="{{ message.tags }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% elif messages %}
                     <ul class="messages">
                         {% for message in messages %}
                             <li class="{{ message.tags }}">{{ message }}</li>
@@ -511,5 +517,49 @@
             </script>
         {% endif %}
     {% endblock %}
+    
+    {# Script para prevenir erros de extensões do navegador (gerenciadores de senhas) #}
+    <script>
+        // Captura erros silenciosamente de extensões do navegador que tentam acessar propriedades undefined
+        window.addEventListener('error', function(e) {
+            // Ignora erros relacionados a content_script.js (extensões do navegador)
+            const filename = e.filename || e.source || '';
+            const message = e.message || '';
+            if (filename.includes('content_script.js') || 
+                filename.includes('extension://') ||
+                message.includes('Cannot read properties of undefined') ||
+                message.includes("reading 'control'")) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }, true);
+        
+        // Previne erros de Promise rejeitadas por extensões
+        window.addEventListener('unhandledrejection', function(e) {
+            const errorMessage = e.reason?.message || e.reason?.stack || e.reason?.toString() || '';
+            if (errorMessage.includes('content_script.js') || 
+                errorMessage.includes('extension://') || 
+                errorMessage.includes('Cannot read properties of undefined') ||
+                errorMessage.includes("reading 'control'")) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }, true);
+
+        // Previne erros de TypeError relacionados a extensões
+        const originalConsoleError = console.error;
+        console.error = function(...args) {
+            const message = args.join(' ');
+            if (message.includes('content_script.js') || 
+                message.includes('extension://') || 
+                message.includes('Cannot read properties of undefined') ||
+                message.includes("reading 'control'")) {
+                return; // Ignora erros de extensões
+            }
+            originalConsoleError.apply(console, args);
+        };
+    </script>
 </body>
 </html>

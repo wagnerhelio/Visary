@@ -255,6 +255,7 @@
             <thead>
             <tr>
                 <th>Nome</th>
+                <th>Status</th>
                 <th>Assessor</th>
                 <th>Telefone</th>
                 <th>E-mail</th>
@@ -268,6 +269,22 @@
             {% for cliente in clientes %}
                 <tr>
                     <td>{{ cliente.nome }}</td>
+                    <td>
+                        {% if cliente.is_principal %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
+                                Principal
+                            </span>
+                        {% else %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
+                                Dependente
+                            </span>
+                            {% if cliente.cliente_principal %}
+                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                    de {{ cliente.cliente_principal.nome }}
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </td>
                     <td>{{ cliente.assessor_responsavel.nome }}</td>
                     <td>{{ cliente.telefone }}</td>
                     <td>{{ cliente.email }}</td>
@@ -286,7 +303,7 @@
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="{% if pode_excluir_clientes %}6{% else %}5{% endif %}" class="empty-state">
+                    <td colspan="{% if pode_excluir_clientes %}7{% else %}6{% endif %}" class="empty-state">
                         {% if filtros.nome or filtros.assessor or filtros.telefone or filtros.email or filtros.nacionalidade or filtros.data_nascimento or filtros.data_cadastro_inicio or filtros.data_cadastro_fim %}
                             Nenhum cliente encontrado com os filtros aplicados. <a href="{% url 'system:listar_clientes_view' %}">Limpar filtros</a>.
                         {% else %}

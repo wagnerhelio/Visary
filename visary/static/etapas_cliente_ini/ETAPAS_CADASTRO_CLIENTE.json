@@ -1,0 +1,66 @@
+[
+  {
+    "nome": "Dados Pessoais",
+    "descricao": "Informações pessoais básicas do cliente",
+    "ordem": 1,
+    "ativo": true,
+    "campo_booleano": "etapa_dados_pessoais",
+    "campos": [
+      {"nome_campo": "assessor_responsavel", "tipo_campo": "selecao", "ordem": 1, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "nome", "tipo_campo": "texto", "ordem": 2, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "data_nascimento", "tipo_campo": "data", "ordem": 3, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "nacionalidade", "tipo_campo": "texto", "ordem": 4, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "telefone", "tipo_campo": "texto", "ordem": 5, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "telefone_secundario", "tipo_campo": "texto", "ordem": 6, "obrigatorio": false, "ativo": true},
+      {"nome_campo": "email", "tipo_campo": "texto", "ordem": 7, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "senha", "tipo_campo": "texto", "ordem": 8, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "confirmar_senha", "tipo_campo": "texto", "ordem": 9, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "parceiro_indicador", "tipo_campo": "selecao", "ordem": 10, "obrigatorio": false, "ativo": true}
+    ]
+  },
+  {
+    "nome": "Endereço",
+    "descricao": "Informações de endereço do cliente",
+    "ordem": 2,
+    "ativo": true,
+    "campo_booleano": "etapa_endereco",
+    "campos": [
+      {"nome_campo": "cep", "tipo_campo": "texto", "ordem": 1, "obrigatorio": false, "ativo": true},
+      {"nome_campo": "logradouro", "tipo_campo": "texto", "ordem": 2, "obrigatorio": false, "ativo": true},
+      {"nome_campo": "numero", "tipo_campo": "texto", "ordem": 3, "obrigatorio": false, "ativo": true},
+      {"nome_campo": "complemento", "tipo_campo": "texto", "ordem": 4, "obrigatorio": false, "ativo": true},
+      {"nome_campo": "bairro", "tipo_campo": "texto", "ordem": 5, "obrigatorio": false, "ativo": true},
+      {"nome_campo": "cidade", "tipo_campo": "texto", "ordem": 6, "obrigatorio": false, "ativo": true},
+      {"nome_campo": "uf", "tipo_campo": "texto", "ordem": 7, "obrigatorio": false, "ativo": true}
+    ]
+  },
+  {
+    "nome": "Dados do Passaporte",
+    "descricao": "Informações do passaporte do cliente",
+    "ordem": 3,
+    "ativo": true,
+    "campo_booleano": "etapa_passaporte",
+    "campos": [
+      {"nome_campo": "tipo_passaporte", "tipo_campo": "selecao", "ordem": 1, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "tipo_passaporte_outro", "tipo_campo": "texto", "ordem": 2, "obrigatorio": false, "ativo": true},
+      {"nome_campo": "numero_passaporte", "tipo_campo": "texto", "ordem": 3, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "pais_emissor_passaporte", "tipo_campo": "texto", "ordem": 4, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "data_emissao_passaporte", "tipo_campo": "data", "ordem": 5, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "valido_ate_passaporte", "tipo_campo": "data", "ordem": 6, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "autoridade_passaporte", "tipo_campo": "texto", "ordem": 7, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "cidade_emissao_passaporte", "tipo_campo": "texto", "ordem": 8, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "passaporte_roubado", "tipo_campo": "booleano", "ordem": 9, "obrigatorio": false, "ativo": true}
+    ]
+  },
+  {
+    "nome": "Adicionar Membros",
+    "descricao": "Adicionar membros dependentes ao cliente principal",
+    "ordem": 4,
+    "ativo": true,
+    "campo_booleano": "etapa_membros",
+    "campos": [
+      {"nome_campo": "observacoes", "tipo_campo": "texto", "ordem": 1, "obrigatorio": false, "ativo": true}
+    ]
+  }
+]
+
