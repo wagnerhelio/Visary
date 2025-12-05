@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% load static dict_filters %}
+
+{% block title %}Visary | Cadastrar Dependente{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+    <style>
+        .layout-grid {
+            display: grid;
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+            padding: clamp(18px, 3.5vw, 28px);
+        }
+
+        .info-box {
+            background: rgba(86, 244, 156, 0.1);
+            border: 1px solid rgba(86, 244, 156, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: rgba(245, 245, 245, 0.9);
+            font-size: 0.9rem;
+        }
+
+        .dependentes-list {
+            margin-top: 24px;
+        }
+
+        .dependente-item {
+            padding: 12px;
+            background: rgba(86, 244, 156, 0.05);
+            border: 1px solid rgba(86, 244, 156, 0.2);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .grid-inline {
+            display: grid;
+            gap: 18px;
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 1120px) {
+            .grid-inline {
+                grid-template-columns: repeat(2, minmax(240px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Cadastrar Dependente</h1>
+        <p>Adicione um novo dependente para {{ cliente_principal.nome }}</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_clientes' %}" class="btn btn-outline">Finalizar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="layout-grid">
+    <article class="card">
+        <div class="info-box">
+            <p>
+                <strong>Cliente Principal:</strong> {{ cliente_principal.nome }}<br>
+                Preencha os dados pessoais do dependente. Os demais campos serão preenchidos posteriormente.
+            </p>
+        </div>
+
+        {% if dependentes %}
+        <div class="dependentes-list">
+            <h3 style="margin: 0 0 12px 0; font-size: 1.1rem; color: var(--text-primary);">
+                Dependentes Cadastrados ({{ dependentes.count }})
+            </h3>
+            {% for dependente in dependentes %}
+                <div class="dependente-item">
+                    <div>
+                        <strong>{{ dependente.nome }}</strong>
+                        {% if dependente.email %}
+                            <br><span style="font-size: 0.85rem; color: var(--text-secondary);">{{ dependente.email }}</span>
+                        {% endif %}
+                    </div>
+                    <a href="{% url 'system:editar_cliente' dependente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="assessor_responsavel" value="{{ cliente_principal.assessor_responsavel.pk }}">
+
+            {# Renderizar apenas os campos da primeira etapa #}
+            {% for campo_etapa in campos_etapa %}
+                {% if campo_etapa.nome_campo in form.fields %}
+                    {% with field=form|get_form_field:campo_etapa.nome_campo %}
+                        {% if field %}
+                            {# Pular assessor_responsavel pois já está como hidden #}
+                            {% if campo_etapa.nome_campo == 'assessor_responsavel' %}
+                                {# Já está como hidden #}
+                            {# Pular parceiro_indicador - dependentes não devem ter parceiro #}
+                            {% elif campo_etapa.nome_campo == 'parceiro_indicador' %}
+                                {# Dependentes não devem ter parceiro indicador #}
+                            {# Campo Senha com Confirmar Senha #}
+                            {% elif campo_etapa.nome_campo == 'senha' %}
+                                <div class="grid-inline">
+                                    <div>
+                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                        {{ field }}
+                                        {{ field.errors }}
+                                    </div>
+                                    {% with confirmar_senha_field=form|get_form_field:'confirmar_senha' %}
+                                        {% if confirmar_senha_field %}
+                                            <div>
+                                                <label for="{{ confirmar_senha_field.id_for_label }}">{{ confirmar_senha_field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                                {{ confirmar_senha_field }}
+                                                {{ confirmar_senha_field.errors }}
+                                            </div>
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
+                            {# Pular confirmar_senha se já foi renderizado com senha #}
+                            {% elif campo_etapa.nome_campo == 'confirmar_senha' %}
+                                {# Já foi renderizado com senha acima #}
+                            {# Campos que devem aparecer em grid de 2 colunas (telefone, data_nascimento, nacionalidade) #}
+                            {% elif campo_etapa.nome_campo == 'telefone' or campo_etapa.nome_campo == 'telefone_secundario' or campo_etapa.nome_campo == 'data_nascimento' or campo_etapa.nome_campo == 'nacionalidade' %}
+                                {% if forloop.counter0|divisibleby:2 or forloop.first %}
+                                    <div class="grid-inline">
+                                {% endif %}
+                                    <div>
+                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                        {{ field }}
+                                        {{ field.errors }}
+                                    </div>
+                                {% if forloop.counter|divisibleby:2 or forloop.last %}
+                                    </div>
+                                {% endif %}
+                            {# Campos padrão #}
+                            {% else %}
+                                <div>
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                    {{ field }}
+                                    {{ field.errors }}
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    {% endwith %}
+                {% endif %}
+            {% endfor %}
+
+            <div class="form-actions">
+                <button type="submit" name="acao" value="salvar" class="btn btn-primary">
+                    Cadastrar Dependente
+                </button>
+                <button type="submit" name="acao" value="finalizar" class="btn btn-outline">
+                    Finalizar Cadastro
+                </button>
+            </div>
+        </form>
+    </article>
+</section>
+{% endblock %}
+

@@ -30,6 +30,13 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+# CSRF Trusted Origins - necessário para ngrok e outros proxies reversos
+CSRF_TRUSTED_ORIGINS = [
+    'https://statistically-flocky-torie.ngrok-free.dev',
+    # Adicione outros domínios ngrok aqui quando necessário
+    # O domínio do ngrok muda a cada reinicialização no plano free
+]
+
 
 # Application definition
 
@@ -107,13 +114,24 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'pt-br'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Sao_Paulo'
 
 USE_I18N = True
 
 USE_TZ = True
+
+# Formatos de data
+DATE_INPUT_FORMATS = [
+    '%Y-%m-%d',  # Formato do input HTML5 type="date"
+    '%d/%m/%Y',  # Formato brasileiro
+    '%d-%m-%Y',  # Formato alternativo
+    '%Y-%m-%d',  # ISO format
+]
+
+DATE_FORMAT = 'd/m/Y'
+DATETIME_FORMAT = 'd/m/Y H:i'
 
 
 # Static files (CSS, JavaScript, Images)

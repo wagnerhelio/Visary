@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static tz %}
+{% load static tz dict_filters %}
 
 {% block title %}Visary | Cadastrar Cliente{% endblock %}
 
@@ -31,27 +31,94 @@
         box-sizing: border-box;
     }
 
-    .messages {
-        display: grid;
-        gap: 12px;
-        margin: 0;
-        padding: 0;
+    .etapas-navegacao {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        padding: 20px;
+        background: rgba(12, 19, 35, 0.4);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
-    .messages li {
-        padding: 12px 16px;
-        border-radius: 12px;
+    .etapa-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        position: relative;
+    }
+
+    .etapa-item::after {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.1);
+        z-index: 0;
+    }
+
+    .etapa-item:last-child::after {
+        display: none;
+    }
+
+    .etapa-numero {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        color: rgba(245, 245, 245, 0.6);
+        position: relative;
+        z-index: 1;
+    }
+
+    .etapa-item.ativa .etapa-numero {
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        border-color: var(--accent);
+        color: #081423;
+    }
+
+    .etapa-item.concluida .etapa-numero {
+        background: rgba(86, 244, 156, 0.3);
+        border-color: rgba(86, 244, 156, 0.6);
+        color: rgba(86, 244, 156, 0.95);
+    }
+
+    .etapa-item.concluida .etapa-numero::after {
+        content: "✓";
+    }
+
+    .etapa-nome {
+        font-size: 0.85rem;
+        color: rgba(245, 245, 245, 0.6);
+        text-align: center;
+    }
+
+    .etapa-item.ativa .etapa-nome {
+        color: rgba(245, 245, 245, 0.95);
         font-weight: 600;
     }
 
-    .messages .success {
-        background: rgba(86, 244, 156, 0.2);
-        border: 1px solid rgba(86, 244, 156, 0.55);
+    .etapa-item.concluida .etapa-nome {
+        color: rgba(86, 244, 156, 0.9);
     }
 
-    .messages .error {
-        background: rgba(255, 81, 81, 0.15);
-        border: 1px solid rgba(255, 104, 104, 0.55);
+    .etapa-conteudo {
+        display: none;
+    }
+
+    .etapa-conteudo.ativa {
+        display: block;
     }
 
     .form-card form {
@@ -109,11 +176,25 @@
         background: rgba(12, 19, 35, 0.85);
     }
 
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .form-actions .btn-group {
+        display: flex;
+        gap: 12px;
+    }
+
     @media (min-width: 1120px) {
         .layout-grid {
             display: grid;
             grid-template-columns: 1fr;
-            max-width: 600px;
+            max-width: 700px;
         }
 
         .grid-inline {
@@ -128,6 +209,21 @@
             margin: 0;
             gap: 16px;
             padding: 0;
+        }
+
+        .etapas-navegacao {
+            padding: 16px 12px;
+            margin-bottom: 20px;
+        }
+
+        .etapa-nome {
+            font-size: 0.75rem;
+        }
+
+        .etapa-numero {
+            width: 32px;
+            height: 32px;
+            font-size: 0.8rem;
         }
 
         .card.form-card,
@@ -152,43 +248,81 @@
             padding: 10px 12px;
             font-size: 0.9rem;
         }
-    }
 
-    @media (max-width: 480px) {
-        .page-header__titles h1 {
-            font-size: 1.3rem;
+        .form-actions {
+            flex-direction: column;
         }
 
-        .page-header__titles p {
-            font-size: 0.9rem;
+        .form-actions .btn-group {
+            width: 100%;
+            flex-direction: column;
         }
     }
 {% endblock %}
-
-{% comment %}Menu lateral definido no base.html{% endcomment %}
 
 {% block app_header %}
 <section class="page-header">
     <div class="page-header__titles">
         <h1>Cadastrar Cliente</h1>
-        <p>Preencha os dados para cadastrar um novo cliente.</p>
+        <p>Preencha os dados em etapas para cadastrar um novo cliente.</p>
     </div>
 </section>
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
+
+{# Logs no console do navegador (não exibidos na tela) #}
+{% if debug_logs_json %}
+<script>
+    (function() {
+        const logs = {{ debug_logs_json|safe }};
+        if (logs && logs.length > 0) {
+            console.group('%c🔍 Debug - Cadastro de Cliente', 'color: #56f49c; font-weight: bold; font-size: 14px;');
+            logs.forEach(function(log) {
+                const timestamp = log.timestamp || '';
+                const message = log.message || '';
+                const level = log.level || 'info';
+                const prefix = timestamp ? `[${timestamp}] ` : '';
+                
+                const style = {
+                    'info': 'color: #56f49c;',
+                    'warning': 'color: #ffd700;',
+                    'error': 'color: #ff6868;',
+                    'debug': 'color: #9ca3af;'
+                }[level] || 'color: #56f49c;';
+                
+                const consoleMethod = {
+                    'error': console.error,
+                    'warning': console.warn,
+                    'debug': console.debug
+                }[level] || console.log;
+                
+                consoleMethod('%c' + prefix + message, style);
+            });
+            console.groupEnd();
+        }
+    })();
+</script>
 {% endif %}
 
 <section class="layout-grid">
+    <article class="card">
+        <div class="etapas-navegacao">
+            {% for etapa in etapas %}
+                <div class="etapa-item {% if etapa.pk == etapa_atual.pk %}ativa{% elif dados_temporarios and etapa.campo_booleano and etapa.campo_booleano in dados_temporarios %}concluida{% endif %}">
+                    <div class="etapa-numero">{{ etapa.ordem }}</div>
+                    <div class="etapa-nome">{{ etapa.nome }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    </article>
+
     <article class="card form-card">
         <header>
-            <h2>Novo cliente</h2>
+            <h2>Etapa {{ etapa_atual.ordem }}: {{ etapa_atual.nome }}</h2>
+            {% if etapa_atual.descricao %}
+                <p style="margin-top: 8px; color: rgba(245, 245, 245, 0.7); font-size: 0.9rem;">{{ etapa_atual.descricao }}</p>
+            {% endif %}
         </header>
         <form method="post" novalidate>
             {% csrf_token %}
@@ -199,139 +333,567 @@
                     {% endfor %}
                 </ul>
             {% endif %}
-            <div>
-                <label for="{{ form.assessor_responsavel.id_for_label }}">Assessor responsável</label>
-                {{ form.assessor_responsavel }}
-                {{ form.assessor_responsavel.errors }}
-            </div>
-            <div>
-                <label for="{{ form.nome.id_for_label }}">Nome completo *</label>
-                {{ form.nome }}
-                {{ form.nome.errors }}
-            </div>
-            <div class="grid-inline">
-                <div>
-                    <label for="{{ form.data_nascimento.id_for_label }}">Data de nascimento *</label>
-                    {{ form.data_nascimento }}
-                    {{ form.data_nascimento.errors }}
-                </div>
-                <div>
-                    <label for="{{ form.nacionalidade.id_for_label }}">Nacionalidade *</label>
-                    {{ form.nacionalidade }}
-                    {{ form.nacionalidade.errors }}
-                </div>
-            </div>
-            <div class="grid-inline">
-                <div>
-                    <label for="{{ form.telefone.id_for_label }}">Telefone *</label>
-                    {{ form.telefone }}
-                    {{ form.telefone.errors }}
-                </div>
-                <div>
-                    <label for="{{ form.telefone_secundario.id_for_label }}">Telefone secundário</label>
-                    {{ form.telefone_secundario }}
-                    {{ form.telefone_secundario.errors }}
-                </div>
-            </div>
-            <div>
-                <label for="{{ form.email.id_for_label }}">E-mail *</label>
-                {{ form.email }}
-                {{ form.email.errors }}
-            </div>
-            <div>
-                <h3 style="margin: 24px 0 16px 0; font-size: 1.1rem; color: var(--text-primary);">Parceiro Indicador</h3>
-                <p style="margin: 0 0 12px 0; color: var(--text-secondary); font-size: 0.85rem;">
-                    Viagem foi indicada por alguém? O parceiro só irá acompanhar o processo caso seja indicado aqui.
-                </p>
-                <label for="{{ form.parceiro_indicador.id_for_label }}">Parceiro que indicou o cliente</label>
-                {{ form.parceiro_indicador }}
-                {{ form.parceiro_indicador.errors }}
-            </div>
-            <div>
-                <h3 style="margin: 24px 0 16px 0; font-size: 1.1rem; color: var(--text-primary);">Endereço</h3>
-            </div>
-            <div class="grid-inline">
-                <div>
-                    <label for="{{ form.cep.id_for_label }}">CEP</label>
-                    <div style="display: flex; gap: 8px; align-items: flex-start;">
-                        <div style="flex: 1;">
-                            {{ form.cep }}
-                        </div>
-                        <button type="button" id="btn-buscar-cep" class="btn btn-outline" style="white-space: nowrap; padding: 14px 18px;">
-                            Buscar
+
+            {# Campos ocultos das outras etapas #}
+            {% for etapa in etapas %}
+                {% if etapa.pk != etapa_atual.pk %}
+                    {% for campo_etapa in etapa.campos.all %}
+                        {% if campo_etapa.nome_campo != 'confirmar_senha' %}
+                            {% if cliente %}
+                                {% with valor_campo=cliente|getattr_filter:campo_etapa.nome_campo %}
+                                    {% if campo_etapa.nome_campo == 'assessor_responsavel' %}
+                                        <input type="hidden" name="{{ campo_etapa.nome_campo }}" value="{{ cliente.assessor_responsavel.pk|default:'' }}">
+                                    {% elif campo_etapa.nome_campo == 'parceiro_indicador' %}
+                                        <input type="hidden" name="{{ campo_etapa.nome_campo }}" value="{{ cliente.parceiro_indicador.pk|default:'' }}">
+                                    {% elif campo_etapa.tipo_campo == 'data' and valor_campo %}
+                                        <input type="hidden" name="{{ campo_etapa.nome_campo }}" value="{{ valor_campo|date:'Y-m-d' }}">
+                                    {% elif valor_campo %}
+                                        <input type="hidden" name="{{ campo_etapa.nome_campo }}" value="{{ valor_campo }}">
+                                    {% endif %}
+                                {% endwith %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+
+            {# Renderizar campos da etapa atual #}
+            {% for campo_etapa in campos_etapa %}
+                {% if campo_etapa.nome_campo in form.fields %}
+                    {% with field=form|get_form_field:campo_etapa.nome_campo %}
+                        {% if field %}
+                            {# Campo CEP com botão de busca e UF #}
+                            {% if campo_etapa.nome_campo == 'cep' %}
+                                <div class="grid-inline">
+                                    <div>
+                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                        <div style="display: flex; gap: 8px; align-items: flex-start;">
+                                            <div style="flex: 1;">
+                                                {{ field }}
+                                            </div>
+                                            <button type="button" id="btn-buscar-cep" class="btn btn-outline" style="white-space: nowrap; padding: 14px 18px;">
+                                                Buscar
+                                            </button>
+                                        </div>
+                                        {{ field.errors }}
+                                    </div>
+                                    {# Renderizar UF junto com CEP se estiver na mesma etapa #}
+                                    {% for c in campos_etapa %}
+                                        {% if c.nome_campo == 'uf' %}
+                                            {% with uf_field=form|get_form_field:'uf' %}
+                                                {% if uf_field %}
+                                                    <div>
+                                                        <label for="{{ uf_field.id_for_label }}">{{ uf_field.label }}{% if c.obrigatorio %} *{% endif %}</label>
+                                                        {{ uf_field }}
+                                                        {{ uf_field.errors }}
+                                                    </div>
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            {# Pular campo UF se já foi renderizado com CEP #}
+                            {% elif campo_etapa.nome_campo == 'uf' %}
+                                {# Só renderizar UF se CEP não estiver na mesma etapa (já foi renderizado com CEP) #}
+                                {% if not tem_cep_na_etapa %}
+                                    <div>
+                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                        {{ field }}
+                                        {{ field.errors }}
+                                    </div>
+                                {% endif %}
+                            {# Campo Senha com Confirmar Senha #}
+                            {% elif campo_etapa.nome_campo == 'senha' %}
+                                <div class="grid-inline">
+                                    <div>
+                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                        {{ field }}
+                                        {{ field.errors }}
+                                    </div>
+                                    {% with confirmar_senha_field=form|get_form_field:'confirmar_senha' %}
+                                        {% if confirmar_senha_field %}
+                                            <div>
+                                                <label for="{{ confirmar_senha_field.id_for_label }}">{{ confirmar_senha_field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                                {{ confirmar_senha_field }}
+                                                {{ confirmar_senha_field.errors }}
+                                            </div>
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
+                            {# Campos que devem aparecer em grid de 2 colunas (telefone, data_nascimento, nacionalidade) #}
+                            {% elif campo_etapa.nome_campo == 'telefone' or campo_etapa.nome_campo == 'telefone_secundario' or campo_etapa.nome_campo == 'data_nascimento' or campo_etapa.nome_campo == 'nacionalidade' %}
+                                {% if forloop.counter0|divisibleby:2 or forloop.first %}
+                                    <div class="grid-inline">
+                                {% endif %}
+                                    <div>
+                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                        {{ field }}
+                                        {{ field.errors }}
+                                    </div>
+                                {% if forloop.counter|divisibleby:2 or forloop.last %}
+                                    </div>
+                                {% endif %}
+                            {# Campos de endereço que devem aparecer em grid (numero, complemento, bairro, cidade) #}
+                            {% elif campo_etapa.nome_campo == 'numero' or campo_etapa.nome_campo == 'complemento' or campo_etapa.nome_campo == 'bairro' or campo_etapa.nome_campo == 'cidade' %}
+                                {% if campo_etapa.nome_campo == 'numero' %}
+                                    <div class="grid-inline">
+                                {% endif %}
+                                    <div>
+                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                        {{ field }}
+                                        {{ field.errors }}
+                                    </div>
+                                {% if campo_etapa.nome_campo == 'complemento' or campo_etapa.nome_campo == 'cidade' %}
+                                    </div>
+                                {% endif %}
+                            {# Pular campo confirmar_senha se já foi renderizado com senha #}
+                            {% elif campo_etapa.nome_campo == 'confirmar_senha' %}
+                                {# Só renderizar confirmar_senha se senha não estiver na mesma etapa (já foi renderizado com senha) #}
+                                {% if not tem_senha_na_etapa %}
+                                    <div>
+                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                        {{ field }}
+                                        {{ field.errors }}
+                                    </div>
+                                {% endif %}
+                            {# Campo tipo_passaporte_outro - escondido inicialmente, mostrado quando tipo_passaporte = "outro" #}
+                            {% elif campo_etapa.nome_campo == 'tipo_passaporte_outro' %}
+                                <div id="div_tipo_passaporte_outro" style="display: none;">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                    {{ field }}
+                                    {{ field.errors }}
+                                </div>
+                            {# Campos de passaporte que devem aparecer em grid (data_emissao_passaporte, valido_ate_passaporte) #}
+                            {% elif campo_etapa.nome_campo == 'data_emissao_passaporte' or campo_etapa.nome_campo == 'valido_ate_passaporte' %}
+                                {% if campo_etapa.nome_campo == 'data_emissao_passaporte' %}
+                                    <div class="grid-inline">
+                                {% endif %}
+                                    <div>
+                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                        {{ field }}
+                                        {{ field.errors }}
+                                    </div>
+                                {% if campo_etapa.nome_campo == 'valido_ate_passaporte' %}
+                                    </div>
+                                {% endif %}
+                            {# Campos padrão (um por linha) #}
+                            {% else %}
+                                <div>
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                    {{ field }}
+                                    {{ field.errors }}
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    {% endwith %}
+                {% endif %}
+            {% endfor %}
+
+            <div class="form-actions">
+                <button type="submit" name="acao" value="cancelar" class="btn btn-outline">
+                    Cancelar
+                </button>
+                <div class="btn-group">
+                    {% if etapa_anterior %}
+                        <a href="?etapa_id={{ etapa_anterior.pk }}" class="btn btn-outline">
+                            Voltar
+                        </a>
+                    {% endif %}
+                    {% if proxima_etapa %}
+                        <button type="submit" class="btn btn-primary">
+                            Próxima Etapa
                         </button>
-                    </div>
-                    {{ form.cep.errors }}
-                </div>
-                <div>
-                    <label for="{{ form.uf.id_for_label }}">UF</label>
-                    {{ form.uf }}
-                    {{ form.uf.errors }}
-                </div>
-            </div>
-            <div>
-                <label for="{{ form.logradouro.id_for_label }}">Logradouro</label>
-                {{ form.logradouro }}
-                {{ form.logradouro.errors }}
-            </div>
-            <div class="grid-inline">
-                <div>
-                    <label for="{{ form.numero.id_for_label }}">Número</label>
-                    {{ form.numero }}
-                    {{ form.numero.errors }}
-                </div>
-                <div>
-                    <label for="{{ form.complemento.id_for_label }}">Complemento</label>
-                    {{ form.complemento }}
-                    {{ form.complemento.errors }}
+                    {% else %}
+                        <button type="submit" name="acao" value="finalizar" class="btn btn-primary">
+                            Finalizar Cadastro
+                        </button>
+                        <button type="submit" name="acao" value="finalizar_e_criar_viagem" class="btn btn-primary" style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%);">
+                            Finalizar e Criar Viagem
+                        </button>
+                    {% endif %}
                 </div>
             </div>
-            <div class="grid-inline">
-                <div>
-                    <label for="{{ form.bairro.id_for_label }}">Bairro</label>
-                    {{ form.bairro }}
-                    {{ form.bairro.errors }}
-                </div>
-                <div>
-                    <label for="{{ form.cidade.id_for_label }}">Cidade</label>
-                    {{ form.cidade }}
-                    {{ form.cidade.errors }}
-                </div>
-            </div>
-            <div>
-                <label for="{{ form.observacoes.id_for_label }}">Observações</label>
-                {{ form.observacoes }}
-                {{ form.observacoes.errors }}
-            </div>
-            <div class="grid-inline">
-                <div>
-                    <label for="{{ form.senha.id_for_label }}">Senha *</label>
-                    {{ form.senha }}
-                    {{ form.senha.errors }}
-                </div>
-                <div>
-                    <label for="{{ form.confirmar_senha.id_for_label }}">Confirme a senha *</label>
-                    {{ form.confirmar_senha }}
-                    {{ form.confirmar_senha.errors }}
-                </div>
-            </div>
-            <button type="submit" class="btn btn-primary">Salvar cliente</button>
         </form>
+        
+        {# Seção especial para etapa de membros - Formulário de cadastro de dependente (FORA do formulário principal) #}
+        {% if etapa_atual.campo_booleano == 'etapa_membros' and cliente and form_dependente %}
+            <div style="margin-top: 32px; padding: 24px; background: rgba(86, 244, 156, 0.1); border: 1px solid rgba(86, 244, 156, 0.3); border-radius: 12px;">
+                <h3 style="margin: 0 0 16px 0; font-size: 1.2rem; color: rgba(86, 244, 156, 0.95);">Adicionar Membros (Dependentes)</h3>
+                
+                {% if dependentes_temporarios %}
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 12px 0; font-size: 1rem; color: var(--text-primary);">
+                        Dependentes Adicionados ({{ dependentes_temporarios|length }})
+                        <span style="font-size: 0.85rem; color: rgba(86, 244, 156, 0.8); font-weight: normal;">(serão salvos ao finalizar)</span>
+                    </h4>
+                    {% for dependente in dependentes_temporarios %}
+                        <div style="padding: 12px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px; margin-bottom: 8px;">
+                            <div>
+                                <strong>{{ dependente.nome|default:"Sem nome" }}</strong>
+                                {% if dependente.email %}
+                                    <br><span style="font-size: 0.85rem; color: var(--text-secondary);">{{ dependente.email }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {# Botão para mostrar formulário (oculto se houver erros no formulário) #}
+                <div id="btn-adicionar-membro-container" style="margin-bottom: 20px; display: {% if form_dependente.errors %}none{% else %}block{% endif %};">
+                    <button type="button" id="btn-adicionar-membro" class="btn btn-primary" style="display: flex; align-items: center; gap: 8px;">
+                        <span>+</span>
+                        <span>Adicionar Membro</span>
+                    </button>
+                </div>
+                
+                {# Formulário de cadastro de dependente (inicialmente oculto, mas visível se houver erros) #}
+                <div id="formulario-dependente-container" style="display: {% if form_dependente.errors %}block{% else %}none{% endif %};">
+                    <form method="post" novalidate id="form-dependente">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="dependente">
+                        <input type="hidden" name="assessor_responsavel" value="{{ cliente.assessor_responsavel.pk }}">
+                        
+                        <h4 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-primary);">Novo Dependente</h4>
+                        
+                        {# Renderizar campos organizados por etapa: Dados Pessoais, Endereço, Passaporte #}
+                        {% for etapa_dep in etapas_dependente %}
+                            <div style="margin-top: {% if not forloop.first %}24px{% endif %}; padding-top: {% if not forloop.first %}24px{% endif %}; border-top: {% if not forloop.first %}1px solid rgba(86, 244, 156, 0.2){% endif %};">
+                                <h5 style="margin: 0 0 16px 0; font-size: 0.95rem; color: rgba(86, 244, 156, 0.9); font-weight: 600;">
+                                    {{ etapa_dep.nome }}
+                                </h5>
+                                
+                                {% for campo_etapa in campos_dependente %}
+                                    {% if campo_etapa.etapa.pk == etapa_dep.pk and campo_etapa.nome_campo in form_dependente.fields %}
+                                        {% with field=form_dependente|get_form_field:campo_etapa.nome_campo %}
+                                            {% if field %}
+                                                {# Pular assessor_responsavel pois já está como hidden #}
+                                                {% if campo_etapa.nome_campo == 'assessor_responsavel' %}
+                                                    {# Já está como hidden #}
+                                                {# Pular parceiro_indicador - dependentes não devem ter parceiro #}
+                                                {% elif campo_etapa.nome_campo == 'parceiro_indicador' %}
+                                                    {# Dependentes não devem ter parceiro indicador #}
+                                                {# Campo CEP com botão de busca e UF #}
+                                                {% elif campo_etapa.nome_campo == 'cep' %}
+                                                    <div class="grid-inline">
+                                                        <div>
+                                                            <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                                            <div style="display: flex; gap: 8px; align-items: flex-start;">
+                                                                <div style="flex: 1;">
+                                                                    {{ field }}
+                                                                </div>
+                                                                <button type="button" class="btn-buscar-cep-dependente btn btn-outline" style="white-space: nowrap; padding: 14px 18px;">
+                                                                    Buscar
+                                                                </button>
+                                                            </div>
+                                                            {{ field.errors }}
+                                                        </div>
+                                                        {# Renderizar UF junto com CEP se estiver na mesma etapa #}
+                                                        {% for c in campos_dependente %}
+                                                            {% if c.etapa.pk == etapa_dep.pk and c.nome_campo == 'uf' %}
+                                                                {% with uf_field=form_dependente|get_form_field:'uf' %}
+                                                                    {% if uf_field %}
+                                                                        <div>
+                                                                            <label for="{{ uf_field.id_for_label }}">{{ uf_field.label }}{% if c.obrigatorio %} *{% endif %}</label>
+                                                                            {{ uf_field }}
+                                                                            {{ uf_field.errors }}
+                                                                        </div>
+                                                                    {% endif %}
+                                                                {% endwith %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </div>
+                                                {# Pular campo UF se já foi renderizado com CEP #}
+                                                {% elif campo_etapa.nome_campo == 'uf' %}
+                                                    {# Só renderizar UF se CEP não estiver na mesma etapa #}
+                                                    {% with cep_na_etapa=False %}
+                                                        {% for c in campos_dependente %}
+                                                            {% if c.etapa.pk == etapa_dep.pk and c.nome_campo == 'cep' %}
+                                                                {% with cep_na_etapa=True %}{% endwith %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        {% if not cep_na_etapa %}
+                                                            <div>
+                                                                <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                                                {{ field }}
+                                                                {{ field.errors }}
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endwith %}
+                                                {# Campo Senha com Confirmar Senha #}
+                                                {% elif campo_etapa.nome_campo == 'senha' %}
+                                                    <div class="grid-inline">
+                                                        <div>
+                                                            <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                                            {{ field }}
+                                                            {{ field.errors }}
+                                                        </div>
+                                                        {% with confirmar_senha_field=form_dependente|get_form_field:'confirmar_senha' %}
+                                                            {% if confirmar_senha_field %}
+                                                                <div>
+                                                                    <label for="{{ confirmar_senha_field.id_for_label }}">{{ confirmar_senha_field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                                                    {{ confirmar_senha_field }}
+                                                                    {{ confirmar_senha_field.errors }}
+                                                                </div>
+                                                            {% endif %}
+                                                        {% endwith %}
+                                                    </div>
+                                                {# Pular confirmar_senha se já foi renderizado com senha #}
+                                                {% elif campo_etapa.nome_campo == 'confirmar_senha' %}
+                                                    {# Já foi renderizado com senha acima #}
+                                                {# Campo tipo_passaporte_outro (aparece condicionalmente) #}
+                                                {% elif campo_etapa.nome_campo == 'tipo_passaporte_outro' %}
+                                                    <div id="div-tipo-passaporte-outro-dependente" style="display: none;">
+                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                                        {{ field }}
+                                                        {{ field.errors }}
+                                                    </div>
+                                                {# Campos que devem aparecer em grid de 2 colunas #}
+                                                {% elif campo_etapa.nome_campo == 'telefone' or campo_etapa.nome_campo == 'telefone_secundario' or campo_etapa.nome_campo == 'data_nascimento' or campo_etapa.nome_campo == 'nacionalidade' or campo_etapa.nome_campo == 'data_emissao_passaporte' or campo_etapa.nome_campo == 'valido_ate_passaporte' %}
+                                                    {% if forloop.counter0|divisibleby:2 or forloop.first %}
+                                                        <div class="grid-inline">
+                                                    {% endif %}
+                                                        <div>
+                                                            <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                                            {{ field }}
+                                                            {{ field.errors }}
+                                                        </div>
+                                                    {% if forloop.counter|divisibleby:2 or forloop.last %}
+                                                        </div>
+                                                    {% endif %}
+                                                {# Campos padrão #}
+                                                {% else %}
+                                                    <div>
+                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                                        {{ field }}
+                                                        {{ field.errors }}
+                                                    </div>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                        
+                        <div style="margin-top: 20px; display: flex; gap: 12px;">
+                            <button type="submit" class="btn btn-primary">
+                                Adicionar Dependente
+                            </button>
+                            <button type="button" id="btn-cancelar-dependente" class="btn btn-outline">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            {# JavaScript para controlar visibilidade do formulário #}
+            <script>
+            (function() {
+                const btnAdicionar = document.getElementById('btn-adicionar-membro');
+                const btnCancelar = document.getElementById('btn-cancelar-dependente');
+                const containerForm = document.getElementById('formulario-dependente-container');
+                const containerBtn = document.getElementById('btn-adicionar-membro-container');
+                
+                if (!btnAdicionar || !containerForm) return;
+                
+                // Verificar se há erros no formulário - se houver, manter visível
+                const formHasErrors = containerForm.style.display === 'block';
+                
+                // Mostrar formulário ao clicar em "Adicionar Membro"
+                btnAdicionar.addEventListener('click', function() {
+                    containerForm.style.display = 'block';
+                    if (containerBtn) {
+                        containerBtn.style.display = 'none';
+                    }
+                    // Scroll suave até o formulário
+                    containerForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                });
+                
+                // Esconder formulário ao clicar em "Cancelar"
+                if (btnCancelar) {
+                    btnCancelar.addEventListener('click', function() {
+                        containerForm.style.display = 'none';
+                        if (containerBtn) {
+                            containerBtn.style.display = 'block';
+                        }
+                        // Limpar formulário
+                        const form = document.getElementById('form-dependente');
+                        if (form) {
+                            form.reset();
+                            // Limpar mensagens de erro
+                            const errorElements = form.querySelectorAll('.errorlist, .error');
+                            errorElements.forEach(function(el) {
+                                el.remove();
+                            });
+                        }
+                    });
+                }
+            })();
+            </script>
+            
+            {# JavaScript para buscar CEP e controlar tipo_passaporte_outro no formulário de dependente #}
+            <script>
+            (function() {
+                // Buscar CEP no formulário de dependente
+                const btnBuscarCepDependente = document.querySelector('.btn-buscar-cep-dependente');
+                if (btnBuscarCepDependente) {
+                    const formDependente = document.getElementById('form-dependente');
+                    if (formDependente) {
+                        const cepInputDependente = formDependente.querySelector('[name="cep"]');
+                        
+                        if (cepInputDependente) {
+                            // Máscara de CEP
+                            cepInputDependente.addEventListener('input', function(e) {
+                                let value = e.target.value.replace(/\D/g, '');
+                                if (value.length > 5) {
+                                    value = value.substring(0, 5) + '-' + value.substring(5, 8);
+                                }
+                                e.target.value = value;
+                            });
+                            
+                            // Função para buscar e preencher campos de endereço
+                            async function buscarCepDependente() {
+                                const cep = cepInputDependente.value.replace(/\D/g, '');
+                                if (cep.length !== 8) {
+                                    alert('CEP deve conter 8 dígitos.');
+                                    return;
+                                }
+                                
+                                btnBuscarCepDependente.disabled = true;
+                                btnBuscarCepDependente.textContent = 'Buscando...';
+                                
+                                try {
+                                    const resp = await fetch('{% url "system:api_buscar_cep" %}?cep=' + cep);
+                                    const data = await resp.json();
+                                    
+                                    if (!resp.ok) {
+                                        if (data.error) {
+                                            alert(data.error);
+                                        }
+                                        return;
+                                    }
+                                    
+                                    // Preencher campos de endereço
+                                    const campos = {
+                                        logradouro: formDependente.querySelector('[name="logradouro"]'),
+                                        bairro: formDependente.querySelector('[name="bairro"]'),
+                                        cidade: formDependente.querySelector('[name="cidade"]'),
+                                        uf: formDependente.querySelector('[name="uf"]')
+                                    };
+                                    
+                                    function preencherCampo(field, value) {
+                                        if (field && value) {
+                                            field.value = value;
+                                            field.dispatchEvent(new Event('input', { bubbles: true }));
+                                            field.dispatchEvent(new Event('change', { bubbles: true }));
+                                        }
+                                    }
+                                    
+                                    preencherCampo(campos.logradouro, data.street);
+                                    preencherCampo(campos.bairro, data.district);
+                                    preencherCampo(campos.cidade, data.city);
+                                    preencherCampo(campos.uf, (data.uf || '').toUpperCase());
+                                    
+                                } catch (e) {
+                                    console.error('Erro ao buscar CEP:', e);
+                                    alert('Erro ao buscar CEP. Tente novamente.');
+                                } finally {
+                                    btnBuscarCepDependente.disabled = false;
+                                    btnBuscarCepDependente.textContent = 'Buscar';
+                                }
+                            }
+                            
+                            btnBuscarCepDependente.addEventListener('click', buscarCepDependente);
+                            cepInputDependente.addEventListener('keypress', function(e) {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    buscarCepDependente();
+                                }
+                            });
+                        }
+                    }
+                }
+                
+                // Controlar visibilidade de tipo_passaporte_outro no formulário de dependente
+                function initTipoPassaporteDependente() {
+                    const formDependente = document.getElementById('form-dependente');
+                    if (!formDependente) return;
+                    
+                    const tipoPassaporteSelect = formDependente.querySelector('[name="tipo_passaporte"]');
+                    const tipoPassaporteOutroDiv = document.getElementById('div-tipo-passaporte-outro-dependente');
+                    const tipoPassaporteOutroField = formDependente.querySelector('[name="tipo_passaporte_outro"]');
+                    
+                    if (!tipoPassaporteSelect || !tipoPassaporteOutroDiv) {
+                        setTimeout(initTipoPassaporteDependente, 100);
+                        return;
+                    }
+                    
+                    function toggleTipoPassaporteOutro() {
+                        if (tipoPassaporteSelect.value === 'outro') {
+                            tipoPassaporteOutroDiv.style.display = 'block';
+                            if (tipoPassaporteOutroField) {
+                                tipoPassaporteOutroField.required = true;
+                            }
+                        } else {
+                            tipoPassaporteOutroDiv.style.display = 'none';
+                            if (tipoPassaporteOutroField) {
+                                tipoPassaporteOutroField.required = false;
+                                tipoPassaporteOutroField.value = '';
+                            }
+                        }
+                    }
+                    
+                    toggleTipoPassaporteOutro();
+                    tipoPassaporteSelect.addEventListener('change', toggleTipoPassaporteOutro);
+                }
+                
+                // Inicializar quando o formulário de dependente for exibido
+                const containerForm = document.getElementById('formulario-dependente-container');
+                if (containerForm) {
+                    const observer = new MutationObserver(function(mutations) {
+                        if (containerForm.style.display === 'block') {
+                            setTimeout(initTipoPassaporteDependente, 100);
+                        }
+                    });
+                    observer.observe(containerForm, { attributes: true, attributeFilter: ['style'] });
+                    
+                    // Inicializar imediatamente se já estiver visível
+                    if (containerForm.style.display === 'block') {
+                        setTimeout(initTipoPassaporteDependente, 100);
+                    }
+                }
+            })();
+            </script>
+        {% endif %}
     </article>
 </section>
 
+{% for campo_etapa in campos_etapa %}
+    {% if campo_etapa.nome_campo == 'cep' %}
 <script>
 (function() {
     const cepInput = document.getElementById('{{ form.cep.id_for_label }}');
     const btnBuscarCep = document.getElementById('btn-buscar-cep');
     if (!cepInput || !btnBuscarCep) return;
 
-    const logradouroField = document.getElementById('{{ form.logradouro.id_for_label }}');
-    const bairroField = document.getElementById('{{ form.bairro.id_for_label }}');
-    const cidadeField = document.getElementById('{{ form.cidade.id_for_label }}');
-    const ufField = document.getElementById('{{ form.uf.id_for_label }}');
-    const numeroField = document.getElementById('{{ form.numero.id_for_label }}');
-    const complementoField = document.getElementById('{{ form.complemento.id_for_label }}');
+    // Função auxiliar para buscar campos de forma mais robusta
+    function getFieldById(id) {
+        if (!id) return null;
+        // Tentar por ID primeiro
+        let field = document.getElementById(id);
+        if (field) return field;
+        // Tentar sem o prefixo 'id_'
+        const name = id.replace(/^id_/, '');
+        field = document.querySelector(`[name="${name}"]`);
+        if (field) return field;
+        // Tentar buscar por qualquer atributo que contenha o nome
+        field = document.querySelector(`[id*="${name}"], [name*="${name}"]`);
+        return field;
+    }
+
+    // Campos serão buscados dinamicamente dentro da função preencherCamposEndereco
 
     // Máscara de CEP
     cepInput.addEventListener('input', function(e) {
@@ -342,6 +904,73 @@
         e.target.value = value;
     });
 
+    // Função para buscar e preencher campos de endereço
+    function preencherCamposEndereco(data) {
+        // Buscar campos novamente para garantir que estamos pegando os corretos
+        const campos = {
+            logradouro: getFieldById('{{ form.logradouro.id_for_label }}') || document.querySelector('[name="logradouro"]'),
+            bairro: getFieldById('{{ form.bairro.id_for_label }}') || document.querySelector('[name="bairro"]'),
+            cidade: getFieldById('{{ form.cidade.id_for_label }}') || document.querySelector('[name="cidade"]'),
+            uf: getFieldById('{{ form.uf.id_for_label }}') || document.querySelector('[name="uf"]') || document.querySelector('[id*="uf"], [name*="uf"]')
+        };
+
+        // Função auxiliar para preencher campo e disparar eventos
+        function preencherCampo(field, value) {
+            if (field && value) {
+                field.value = value;
+                // Disparar eventos para garantir que o valor seja reconhecido
+                field.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+                field.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+                field.dispatchEvent(new Event('blur', { bubbles: true, cancelable: true }));
+                return true;
+            }
+            return false;
+        }
+
+        // Preencher todos os campos
+        const resultados = {
+            logradouro: preencherCampo(campos.logradouro, data.street),
+            bairro: preencherCampo(campos.bairro, data.district),
+            cidade: preencherCampo(campos.cidade, data.city),
+            uf: preencherCampo(campos.uf, (data.uf || '').toUpperCase())
+        };
+
+        // Log dos resultados
+        console.log('Preenchimento de campos:', resultados);
+        console.log('Dados recebidos:', data);
+
+        // Se algum campo não foi preenchido, tentar novamente após um delay
+        const camposNaoPreenchidos = Object.entries(resultados).filter(([_, preenchido]) => !preenchido);
+        if (camposNaoPreenchidos.length > 0) {
+            console.warn('Alguns campos não foram preenchidos:', camposNaoPreenchidos.map(([nome]) => nome));
+            setTimeout(() => {
+                camposNaoPreenchidos.forEach(([nome]) => {
+                    let campo = null;
+                    switch(nome) {
+                        case 'logradouro':
+                            campo = getFieldById('{{ form.logradouro.id_for_label }}') || document.querySelector('[name="logradouro"]');
+                            if (campo && data.street) preencherCampo(campo, data.street);
+                            break;
+                        case 'bairro':
+                            campo = getFieldById('{{ form.bairro.id_for_label }}') || document.querySelector('[name="bairro"]');
+                            if (campo && data.district) preencherCampo(campo, data.district);
+                            break;
+                        case 'cidade':
+                            campo = getFieldById('{{ form.cidade.id_for_label }}') || document.querySelector('[name="cidade"]');
+                            if (campo && data.city) preencherCampo(campo, data.city);
+                            break;
+                        case 'uf':
+                            campo = getFieldById('{{ form.uf.id_for_label }}') || document.querySelector('[name="uf"]') || document.querySelector('[id*="uf"], [name*="uf"]');
+                            if (campo && data.uf) preencherCampo(campo, data.uf.toUpperCase());
+                            break;
+                    }
+                });
+            }, 300);
+        }
+
+        return resultados;
+    }
+
     // Função para buscar CEP
     async function buscarCep() {
         const cep = cepInput.value.replace(/\D/g, '');
@@ -350,7 +979,6 @@
             return;
         }
 
-        // Desabilitar botão durante a busca
         btnBuscarCep.disabled = true;
         btnBuscarCep.textContent = 'Buscando...';
 
@@ -362,45 +990,76 @@
                 if (data.error) {
                     alert(data.error);
                 }
-                // Campos já estão habilitados para preenchimento manual
                 return;
             }
 
-            // Preencher campos automaticamente (campos sempre habilitados)
-            if (logradouroField) {
-                logradouroField.value = data.street || '';
-            }
-            if (bairroField) {
-                bairroField.value = data.district || '';
-            }
-            if (cidadeField) {
-                cidadeField.value = data.city || '';
-            }
-            if (ufField) {
-                ufField.value = data.uf || '';
-            }
+            // Preencher todos os campos de endereço
+            preencherCamposEndereco(data);
 
         } catch (e) {
             console.error('Erro ao buscar CEP:', e);
             alert('Erro ao buscar CEP. Tente novamente.');
-            // Campos já estão habilitados para preenchimento manual
         } finally {
             btnBuscarCep.disabled = false;
             btnBuscarCep.textContent = 'Buscar';
         }
     }
 
-    // Buscar CEP ao clicar no botão
     btnBuscarCep.addEventListener('click', buscarCep);
-
-    // Buscar CEP ao pressionar Enter no campo CEP
     cepInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             buscarCep();
         }
     });
+    
+    // Mostrar/esconder campo tipo_passaporte_outro baseado na seleção de tipo_passaporte
+    (function() {
+        function initTipoPassaporteToggle() {
+            // Tentar encontrar o campo tipo_passaporte por ID ou name
+            const tipoPassaporteSelect = document.getElementById('id_tipo_passaporte') || 
+                                         document.querySelector('select[name="tipo_passaporte"]');
+            const tipoPassaporteOutroDiv = document.getElementById('div_tipo_passaporte_outro');
+            const tipoPassaporteOutroField = document.getElementById('id_tipo_passaporte_outro') || 
+                                             document.querySelector('input[name="tipo_passaporte_outro"]');
+            
+            if (!tipoPassaporteSelect || !tipoPassaporteOutroDiv) {
+                // Se não encontrou, tentar novamente após um pequeno delay
+                setTimeout(initTipoPassaporteToggle, 100);
+                return;
+            }
+            
+            function toggleTipoPassaporteOutro() {
+                if (tipoPassaporteSelect.value === 'outro') {
+                    tipoPassaporteOutroDiv.style.display = 'block';
+                    if (tipoPassaporteOutroField) {
+                        tipoPassaporteOutroField.required = true;
+                    }
+                } else {
+                    tipoPassaporteOutroDiv.style.display = 'none';
+                    if (tipoPassaporteOutroField) {
+                        tipoPassaporteOutroField.required = false;
+                        tipoPassaporteOutroField.value = '';
+                    }
+                }
+            }
+            
+            // Verificar estado inicial
+            toggleTipoPassaporteOutro();
+            
+            // Adicionar listener
+            tipoPassaporteSelect.addEventListener('change', toggleTipoPassaporteOutro);
+        }
+        
+        // Inicializar quando o DOM estiver pronto
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTipoPassaporteToggle);
+        } else {
+            initTipoPassaporteToggle();
+        }
+    })();
 })();
 </script>
+    {% endif %}
+{% endfor %}
 {% endblock %}
-

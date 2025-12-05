@@ -171,7 +171,10 @@
 {% if messages %}
     <ul class="messages">
         {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
+            {% comment %}Não exibir mensagens de cadastro finalizado nesta tela{% endcomment %}
+            {% if "Cadastro finalizado com sucesso" not in message|stringformat:"s" %}
+                <li class="{{ message.tags }}">{{ message }}</li>
+            {% endif %}
         {% endfor %}
     </ul>
 {% endif %}
@@ -190,40 +193,50 @@
                     {% endfor %}
                 </ul>
             {% endif %}
+            
+            {# Campos gerais #}
             <div>
                 <label for="{{ form.assessor_responsavel.id_for_label }}">Assessor responsável *</label>
                 {{ form.assessor_responsavel }}
                 {{ form.assessor_responsavel.errors }}
-            </div>
-            <div class="grid-inline">
-                <div>
-                    <label for="{{ form.pais_destino.id_for_label }}">País de destino *</label>
-                    {{ form.pais_destino }}
-                    {{ form.pais_destino.errors }}
-                </div>
-                <div>
-                    <label for="{{ form.tipo_visto.id_for_label }}">Tipo de visto *</label>
-                    {{ form.tipo_visto }}
-                    {{ form.tipo_visto.errors }}
-                </div>
-            </div>
-            <div class="grid-inline">
-                <div>
-                    <label for="{{ form.data_prevista_viagem.id_for_label }}">Data prevista da viagem *</label>
-                    {{ form.data_prevista_viagem }}
-                    {{ form.data_prevista_viagem.errors }}
-                </div>
-                <div>
-                    <label for="{{ form.data_prevista_retorno.id_for_label }}">Data prevista de retorno *</label>
-                    {{ form.data_prevista_retorno }}
-                    {{ form.data_prevista_retorno.errors }}
-                </div>
             </div>
             <div>
                 <label for="{{ form.valor_assessoria.id_for_label }}">Valor assessoria Visary *</label>
                 {{ form.valor_assessoria }}
                 {{ form.valor_assessoria.errors }}
             </div>
+            
+            {# Seção de Membros da Viagem (quando vem de clientes) #}
+            {% if membros_viagem %}
+            <div style="margin-top: 32px; padding: 24px; background: rgba(86, 244, 156, 0.1); border: 1px solid rgba(86, 244, 156, 0.3); border-radius: 12px;">
+                <h3 style="margin: 0 0 16px 0; font-size: 1.2rem; color: rgba(86, 244, 156, 0.95);">
+                    Membros da Viagem ({{ membros_viagem|length }})
+                </h3>
+                
+                {% for membro in membros_viagem %}
+                    <div style="padding: 12px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <strong style="font-size: 0.95rem; color: var(--text-primary);">{{ membro.cliente.nome }}</strong>
+                            {% if membro.tipo == 'principal' %}
+                                <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
+                                    Principal
+                                </span>
+                            {% else %}
+                                <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
+                                    Dependente
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+                
+                {# Campos ocultos para manter os clientes selecionados #}
+                {% for cliente_id in clientes_pre_selecionados %}
+                    <input type="hidden" name="clientes" value="{{ cliente_id }}">
+                {% endfor %}
+            </div>
+            {% else %}
+            {# Se não houver membros pré-selecionados, mostrar campo de seleção #}
             <div>
                 <label for="{{ form.clientes.id_for_label }}">Clientes vinculados</label>
                 {{ form.clientes }}
@@ -232,12 +245,134 @@
                     Segure Ctrl (ou Cmd no Mac) para selecionar múltiplos clientes
                 </small>
             </div>
+            {% endif %}
+            
+            {# Campos da Viagem Principal #}
+            <div style="margin-top: 32px; padding: 24px; background: rgba(12, 19, 35, 0.4); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;">
+                <h3 style="margin: 0 0 20px 0; font-size: 1.1rem; color: var(--text-primary);">
+                    Dados da Viagem Principal
+                </h3>
+                <div class="grid-inline">
+                    <div>
+                        <label for="{{ form.pais_destino.id_for_label }}">País de destino *</label>
+                        {{ form.pais_destino }}
+                        {{ form.pais_destino.errors }}
+                    </div>
+                    <div>
+                        <label for="{{ form.tipo_visto.id_for_label }}">Tipo de visto *</label>
+                        {{ form.tipo_visto }}
+                        {{ form.tipo_visto.errors }}
+                    </div>
+                </div>
+                <div class="grid-inline">
+                    <div>
+                        <label for="{{ form.data_prevista_viagem.id_for_label }}">Data prevista da viagem *</label>
+                        {{ form.data_prevista_viagem }}
+                        {{ form.data_prevista_viagem.errors }}
+                    </div>
+                    <div>
+                        <label for="{{ form.data_prevista_retorno.id_for_label }}">Data prevista de retorno *</label>
+                        {{ form.data_prevista_retorno }}
+                        {{ form.data_prevista_retorno.errors }}
+                    </div>
+                </div>
+            </div>
+            
+            {# Campos individuais para cada dependente #}
+            {% if membros_viagem %}
+                {% for membro in membros_viagem %}
+                    {% if membro.tipo == 'dependente' %}
+                    <div style="margin-top: 32px; padding: 24px; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">
+                                Dependente: {{ membro.cliente.nome }}
+                            </h3>
+                            <button 
+                                type="button" 
+                                class="btn-replicar-dados"
+                                data-dependente-id="{{ membro.cliente.pk }}"
+                                style="padding: 8px 16px; background: rgba(86, 244, 156, 0.2); border: 1px solid rgba(86, 244, 156, 0.4); border-radius: 8px; color: rgba(86, 244, 156, 0.95); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;"
+                                onmouseover="this.style.background='rgba(86, 244, 156, 0.3)'; this.style.borderColor='rgba(86, 244, 156, 0.6)';"
+                                onmouseout="this.style.background='rgba(86, 244, 156, 0.2)'; this.style.borderColor='rgba(86, 244, 156, 0.4)';">
+                                📋 Replicar dados da viagem principal
+                            </button>
+                        </div>
+                        
+                        <div class="grid-inline">
+                            <div>
+                                <label for="pais_destino_dependente_{{ membro.cliente.pk }}">País de destino *</label>
+                                <select 
+                                    name="pais_destino_dependente_{{ membro.cliente.pk }}" 
+                                    id="pais_destino_dependente_{{ membro.cliente.pk }}"
+                                    class="pais-destino-dependente"
+                                    data-tipo-visto-select="tipo_visto_dependente_{{ membro.cliente.pk }}"
+                                    required
+                                    style="width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(12, 19, 35, 0.72); color: #f5f5f5; font-size: 0.95rem;">
+                                    <option value="">Selecione o país de destino</option>
+                                    {% for pais in form.pais_destino.field.queryset %}
+                                        <option value="{{ pais.pk }}">{{ pais.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label for="tipo_visto_dependente_{{ membro.cliente.pk }}">Tipo de visto *</label>
+                                <select 
+                                    name="tipo_visto_dependente_{{ membro.cliente.pk }}" 
+                                    id="tipo_visto_dependente_{{ membro.cliente.pk }}"
+                                    class="tipo-visto-dependente"
+                                    data-pais-select="pais_destino_dependente_{{ membro.cliente.pk }}"
+                                    required
+                                    style="width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(12, 19, 35, 0.72); color: #f5f5f5; font-size: 0.95rem;">
+                                    <option value="">Selecione o tipo de visto</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="grid-inline">
+                            <div>
+                                <label for="data_viagem_dependente_{{ membro.cliente.pk }}">Data prevista da viagem *</label>
+                                <input 
+                                    type="date" 
+                                    name="data_viagem_dependente_{{ membro.cliente.pk }}" 
+                                    id="data_viagem_dependente_{{ membro.cliente.pk }}"
+                                    required
+                                    style="width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(12, 19, 35, 0.72); color: #f5f5f5; font-size: 0.95rem;">
+                            </div>
+                            <div>
+                                <label for="data_retorno_dependente_{{ membro.cliente.pk }}">Data prevista de retorno *</label>
+                                <input 
+                                    type="date" 
+                                    name="data_retorno_dependente_{{ membro.cliente.pk }}" 
+                                    id="data_retorno_dependente_{{ membro.cliente.pk }}"
+                                    required
+                                    style="width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(12, 19, 35, 0.72); color: #f5f5f5; font-size: 0.95rem;">
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 16px; padding: 12px; background: rgba(86, 244, 156, 0.15); border: 1px solid rgba(86, 244, 156, 0.4); border-radius: 8px;">
+                            <p style="margin: 0; font-size: 0.9rem; color: rgba(86, 244, 156, 0.95);">
+                                <strong>ℹ️ Informação:</strong> Se o tipo de visto deste membro for diferente do tipo de visto da viagem principal, uma viagem separada será criada automaticamente.
+                            </p>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
             <div>
                 <label for="{{ form.observacoes.id_for_label }}">Observações</label>
                 {{ form.observacoes }}
                 {{ form.observacoes.errors }}
             </div>
-            <button type="submit" class="btn btn-primary">Salvar viagem</button>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;">
+                {% if clientes_pre_selecionados %}
+                    <button type="submit" name="acao" value="salvar" class="btn btn-primary">Salvar Viagem</button>
+                    <button type="submit" name="acao" value="salvar_e_criar_processo" class="btn btn-primary" style="background: linear-gradient(135deg, #4dd0e1 0%, #56f49c 100%);">
+                        Salvar e Criar Processo
+                    </button>
+                {% else %}
+                    <button type="submit" name="acao" value="salvar" class="btn btn-primary">Salvar Viagem</button>
+                {% endif %}
+            </div>
         </form>
     </article>
 </section>
@@ -246,37 +381,129 @@
 (function() {
     const paisSelect = document.getElementById('{{ form.pais_destino.id_for_label }}');
     const tipoVistoSelect = document.getElementById('{{ form.tipo_visto.id_for_label }}');
+    const clientesSelect = document.getElementById('{{ form.clientes.id_for_label }}');
     
     if (!paisSelect || !tipoVistoSelect) return;
 
-    // Carregar tipos de visto quando o país mudar
-    paisSelect.addEventListener('change', function() {
-        const paisId = this.value;
-        tipoVistoSelect.innerHTML = '<option value="">Carregando...</option>';
-        tipoVistoSelect.disabled = true;
+    // Pré-selecionar clientes se houver valores iniciais
+    {% if clientes_pre_selecionados %}
+    if (clientesSelect) {
+        const clientesIds = {{ clientes_pre_selecionados|safe }};
+        if (Array.isArray(clientesIds) && clientesIds.length > 0) {
+            clientesIds.forEach(id => {
+                const option = clientesSelect.querySelector(`option[value="${id}"]`);
+                if (option) {
+                    option.selected = true;
+                }
+            });
+        }
+    }
+    {% endif %}
+
+    // Função para carregar tipos de visto em um select
+    function carregarTiposVisto(selectElement, paisId) {
+        if (!selectElement) return;
+        
+        selectElement.innerHTML = '<option value="">Carregando...</option>';
+        selectElement.disabled = true;
 
         if (!paisId) {
-            tipoVistoSelect.innerHTML = '<option value="">Selecione um país primeiro</option>';
+            selectElement.innerHTML = '<option value="">Selecione um país primeiro</option>';
             return;
         }
 
-        // Buscar tipos de visto via AJAX
         fetch(`{% url 'system:api_tipos_visto' %}?pais=${paisId}`)
             .then(resp => resp.json())
             .then(data => {
-                tipoVistoSelect.innerHTML = '<option value="">Selecione o tipo de visto</option>';
+                selectElement.innerHTML = '<option value="">Selecione o tipo de visto</option>';
                 data.forEach(tipo => {
                     const option = document.createElement('option');
                     option.value = tipo.id;
                     option.textContent = tipo.nome;
-                    tipoVistoSelect.appendChild(option);
+                    selectElement.appendChild(option);
                 });
-                tipoVistoSelect.disabled = false;
+                selectElement.disabled = false;
             })
             .catch(err => {
                 console.error('Erro ao carregar tipos de visto:', err);
-                tipoVistoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                selectElement.innerHTML = '<option value="">Erro ao carregar</option>';
             });
+    }
+
+    // Carregar tipos de visto quando o país mudar (para o select principal)
+    paisSelect.addEventListener('change', function() {
+        const paisId = this.value;
+        carregarTiposVisto(tipoVistoSelect, paisId);
+    });
+
+    // Carregar tipos de visto inicialmente se já houver país selecionado
+    if (paisSelect.value) {
+        carregarTiposVisto(tipoVistoSelect, paisSelect.value);
+    }
+
+    // Carregar tipos de visto para campos de dependentes quando o país mudar
+    document.querySelectorAll('.pais-destino-dependente').forEach(paisSelectDependente => {
+        paisSelectDependente.addEventListener('change', function() {
+            const paisId = this.value;
+            const tipoVistoSelectId = this.dataset.tipoVistoSelect;
+            const tipoVistoSelectDependente = document.getElementById(tipoVistoSelectId);
+            if (tipoVistoSelectDependente) {
+                carregarTiposVisto(tipoVistoSelectDependente, paisId);
+            }
+        });
+    });
+
+    // Função para replicar dados da viagem principal para dependente
+    function replicarDadosPrincipal(dependenteId) {
+        // Obter valores da viagem principal
+        const paisPrincipal = document.getElementById('{{ form.pais_destino.id_for_label }}').value;
+        const tipoVistoPrincipal = document.getElementById('{{ form.tipo_visto.id_for_label }}').value;
+        const dataViagemPrincipal = document.getElementById('{{ form.data_prevista_viagem.id_for_label }}').value;
+        const dataRetornoPrincipal = document.getElementById('{{ form.data_prevista_retorno.id_for_label }}').value;
+
+        // Aplicar aos campos do dependente
+        const paisDependente = document.getElementById(`pais_destino_dependente_${dependenteId}`);
+        const tipoVistoDependente = document.getElementById(`tipo_visto_dependente_${dependenteId}`);
+        const dataViagemDependente = document.getElementById(`data_viagem_dependente_${dependenteId}`);
+        const dataRetornoDependente = document.getElementById(`data_retorno_dependente_${dependenteId}`);
+
+        if (paisDependente && paisPrincipal) {
+            paisDependente.value = paisPrincipal;
+            // Disparar evento change para carregar tipos de visto
+            paisDependente.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            // Aguardar um pouco para os tipos de visto carregarem antes de selecionar
+            setTimeout(() => {
+                if (tipoVistoDependente && tipoVistoPrincipal) {
+                    tipoVistoDependente.value = tipoVistoPrincipal;
+                }
+            }, 500);
+        }
+
+        if (dataViagemDependente && dataViagemPrincipal) {
+            dataViagemDependente.value = dataViagemPrincipal;
+        }
+
+        if (dataRetornoDependente && dataRetornoPrincipal) {
+            dataRetornoDependente.value = dataRetornoPrincipal;
+        }
+    }
+
+    // Adicionar event listeners aos botões de replicar
+    document.querySelectorAll('.btn-replicar-dados').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const dependenteId = this.dataset.dependenteId;
+            replicarDadosPrincipal(dependenteId);
+            
+            // Feedback visual
+            const originalText = this.textContent;
+            this.textContent = '✅ Dados replicados!';
+            this.style.background = 'rgba(86, 244, 156, 0.4)';
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.style.background = 'rgba(86, 244, 156, 0.2)';
+            }, 2000);
+        });
     });
 })();
 </script>

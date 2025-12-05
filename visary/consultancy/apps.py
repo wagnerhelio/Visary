@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from contextlib import suppress
 from pathlib import Path
@@ -7,9 +8,11 @@ from django.apps import AppConfig, apps as django_apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
-from django.db import transaction
+from django.db import models, transaction
 from django.db.models.signals import m2m_changed, post_migrate, post_save
 from django.dispatch import receiver
+
+logger = logging.getLogger(__name__)
 
 
 def _get_models():
@@ -20,8 +23,10 @@ def _get_models():
     FormularioVisto = django_apps.get_model("consultancy", "FormularioVisto")
     PerguntaFormulario = django_apps.get_model("consultancy", "PerguntaFormulario")
     OpcaoSelecao = django_apps.get_model("consultancy", "OpcaoSelecao")
+    EtapaCadastroCliente = django_apps.get_model("consultancy", "EtapaCadastroCliente")
+    CampoEtapaCliente = django_apps.get_model("consultancy", "CampoEtapaCliente")
     User = get_user_model()
-    return PaisDestino, TipoVisto, Partner, StatusProcesso, FormularioVisto, PerguntaFormulario, OpcaoSelecao, User
+    return PaisDestino, TipoVisto, Partner, StatusProcesso, FormularioVisto, PerguntaFormulario, OpcaoSelecao, EtapaCadastroCliente, CampoEtapaCliente, User
 
 
 def _atualizar_campos(instancia, valores):
@@ -404,6 +409,154 @@ def _load_formularios_definitions():
     return formularios
 
 
+def _carregar_etapas_do_env() -> list:
+    """Carrega etapas de cadastro de cliente da variável de ambiente."""
+    etapas = []
+    if raw := os.environ.get("CONSULTANCY_SEED_ETAPAS_CLIENTE"):
+        with suppress(json.JSONDecodeError):
+            if etapas_env := json.loads(raw):
+                if isinstance(etapas_env, list):
+                    etapas.extend(etapas_env)
+    return etapas
+
+
+def _carregar_etapas_de_arquivos() -> list:
+    """Carrega etapas de cadastro de cliente de arquivos JSON."""
+    etapas = []
+    base_dir = Path(settings.BASE_DIR)
+    etapas_ini_dir = base_dir / "static" / "etapas_cliente_ini"
+    
+    if not etapas_ini_dir.is_dir():
+        return etapas
+    
+    for arquivo_json in etapas_ini_dir.glob("*.json"):
+        try:
+            with open(arquivo_json, "r", encoding="utf-8") as f:
+                dados = json.load(f)
+                if isinstance(dados, list):
+                    etapas.extend(dados)
+                elif isinstance(dados, dict) and "nome" in dados:
+                    etapas.append(dados)
+        except (json.JSONDecodeError, IOError) as e:
+            logger.warning(f"Erro ao carregar arquivo {arquivo_json}: {e}")
+    
+    return etapas
+
+
+def _validar_campo_etapa(campo: dict, posicao_etapa: int, idx_campo: int):
+    """Valida um campo individual de uma etapa."""
+    if not isinstance(campo, dict):
+        raise ImproperlyConfigured(
+            f"Etapa posição {posicao_etapa}, campo {idx_campo} deve ser um objeto JSON."
+        )
+    campos_obrigatorios = {"nome_campo", "ordem"}
+    if campos_ausentes := campos_obrigatorios - campo.keys():
+        raise ImproperlyConfigured(
+            f"Etapa posição {posicao_etapa}, campo {idx_campo} sem campos: {', '.join(sorted(campos_ausentes))}."
+        )
+
+
+def _validar_etapas(etapas: list):
+    """Valida todas as etapas e seus campos."""
+    campos_obrigatorios = {"nome", "ordem"}
+    for posicao, definicao in enumerate(etapas, start=1):
+        if not isinstance(definicao, dict):
+            raise ImproperlyConfigured(
+                f"Etapa posição {posicao} deve ser um objeto JSON."
+            )
+        if campos_ausentes := campos_obrigatorios - definicao.keys():
+            raise ImproperlyConfigured(
+                f"Etapa posição {posicao} sem campos: {', '.join(sorted(campos_ausentes))}."
+            )
+        if "campos" in definicao:
+            if not isinstance(definicao["campos"], list):
+                raise ImproperlyConfigured(
+                    f"Etapa posição {posicao}: 'campos' deve ser uma lista."
+                )
+            for idx, campo in enumerate(definicao["campos"], start=1):
+                _validar_campo_etapa(campo, posicao, idx)
+
+
+def _load_etapas_cliente_definitions():
+    """Carrega etapas de cadastro de cliente a partir de variável de ambiente ou arquivos JSON em etapas_cliente_ini."""
+    etapas = []
+    etapas.extend(_carregar_etapas_do_env())
+    
+    try:
+        etapas.extend(_carregar_etapas_de_arquivos())
+    except Exception as e:
+        logger.warning(f"Erro ao acessar diretório etapas_cliente_ini: {e}")
+    
+    _validar_etapas(etapas)
+    return etapas
+
+
+def _ensure_etapas_cliente(EtapaCadastroCliente, CampoEtapaCliente, User, etapas_definitions):
+    """Garante que as etapas de cadastro de cliente e seus campos estejam cadastrados."""
+    # Buscar ou criar um usuário admin para ser o criador
+    admin_user, _ = User.objects.get_or_create(
+        username="admin",
+        defaults={
+            "email": "admin@visary.com",
+            "is_staff": True,
+            "is_superuser": True,
+        },
+    )
+    if not admin_user.is_superuser:
+        admin_user.is_staff = True
+        admin_user.is_superuser = True
+        admin_user.save()
+    
+    for definicao in etapas_definitions:
+        defaults = {
+            "nome": definicao["nome"],
+            "descricao": definicao.get("descricao", ""),
+            "ordem": definicao["ordem"],
+            "ativo": definicao.get("ativo", True),
+            "campo_booleano": definicao.get("campo_booleano", ""),
+        }
+        etapa, created = EtapaCadastroCliente.objects.get_or_create(
+            nome=definicao["nome"],
+            defaults=defaults
+        )
+        if not created:
+            _atualizar_campos(
+                etapa,
+                {
+                    "descricao": definicao.get("descricao", ""),
+                    "ordem": definicao["ordem"],
+                    "ativo": definicao.get("ativo", True),
+                    "campo_booleano": definicao.get("campo_booleano", ""),
+                },
+            )
+        
+        # Criar ou atualizar campos da etapa
+        for campo_def in definicao.get("campos", []):
+            defaults_campo = {
+                "etapa": etapa,
+                "nome_campo": campo_def["nome_campo"],
+                "tipo_campo": campo_def.get("tipo_campo", "texto"),
+                "ordem": campo_def["ordem"],
+                "obrigatorio": campo_def.get("obrigatorio", False),
+                "ativo": campo_def.get("ativo", True),
+            }
+            campo, created_campo = CampoEtapaCliente.objects.get_or_create(
+                etapa=etapa,
+                nome_campo=campo_def["nome_campo"],
+                defaults=defaults_campo
+            )
+            if not created_campo:
+                _atualizar_campos(
+                    campo,
+                    {
+                        "tipo_campo": campo_def.get("tipo_campo", "texto"),
+                        "ordem": campo_def["ordem"],
+                        "obrigatorio": campo_def.get("obrigatorio", False),
+                        "ativo": campo_def.get("ativo", True),
+                    },
+                )
+
+
 def _ensure_formularios(FormularioVisto, PerguntaFormulario, OpcaoSelecao, TipoVisto, tipos_visto_por_nome, formularios_definitions):
     """Garante que os formulários e perguntas estejam cadastrados."""
     for definicao in formularios_definitions:
@@ -479,7 +632,7 @@ def ensure_initial_consultancy_data(sender, **kwargs):
         return
 
     try:
-        PaisDestino, TipoVisto, Partner, StatusProcesso, FormularioVisto, PerguntaFormulario, OpcaoSelecao, User = _get_models()
+        PaisDestino, TipoVisto, Partner, StatusProcesso, FormularioVisto, PerguntaFormulario, OpcaoSelecao, EtapaCadastroCliente, CampoEtapaCliente, User = _get_models()
     except LookupError:
         # Modelos ainda não foram criados
         return
@@ -489,8 +642,9 @@ def ensure_initial_consultancy_data(sender, **kwargs):
     partners_definitions = _load_partners_definitions()
     status_processo_definitions = _load_status_processo_definitions()
     formularios_definitions = _load_formularios_definitions()
+    etapas_cliente_definitions = _load_etapas_cliente_definitions()
 
-    if not paises_definitions and not status_processo_definitions and not formularios_definitions:
+    if not paises_definitions and not status_processo_definitions and not formularios_definitions and not etapas_cliente_definitions and not partners_definitions:
         return
 
     with transaction.atomic():
@@ -514,6 +668,8 @@ def ensure_initial_consultancy_data(sender, **kwargs):
             _ensure_status_processo(StatusProcesso, TipoVisto, tipos_visto_por_nome, status_processo_definitions)
         if formularios_definitions:
             _ensure_formularios(FormularioVisto, PerguntaFormulario, OpcaoSelecao, TipoVisto, tipos_visto_por_nome, formularios_definitions)
+        if etapas_cliente_definitions:
+            _ensure_etapas_cliente(EtapaCadastroCliente, CampoEtapaCliente, User, etapas_cliente_definitions)
 
 
 def _criar_registros_financeiros_para_viagem(viagem):
@@ -531,7 +687,10 @@ def _criar_registros_financeiros_para_viagem(viagem):
     clientes = viagem.clientes.all()
     
     if clientes.exists():
-        # Se houver clientes, criar um registro para cada um que ainda não tem
+        # Se houver clientes, REMOVER qualquer registro sem cliente que possa ter sido criado anteriormente
+        registros_existentes.filter(cliente=None).delete()
+        
+        # Criar um registro para cada cliente que ainda não tem
         for cliente in clientes:
             if cliente.pk not in clientes_com_registro:
                 Financeiro.objects.create(
@@ -562,13 +721,69 @@ def _registrar_signals_financeiro():
     def criar_registro_financeiro(sender, instance, created, **kwargs):
         """Cria automaticamente um registro financeiro quando uma viagem é criada."""
         if created:
-            _criar_registros_financeiros_para_viagem(instance)
+            # Só criar registros se já houver clientes vinculados
+            # Caso contrário, o signal m2m_changed cuidará disso quando os clientes forem adicionados
+            if instance.clientes.exists():
+                _criar_registros_financeiros_para_viagem(instance)
     
     @receiver(m2m_changed, sender=Viagem.clientes.through)
     def criar_registro_financeiro_ao_adicionar_cliente(sender, instance, action, pk_set, **kwargs):
         """Cria registros financeiros quando clientes são adicionados à viagem."""
         if action == "post_add" and instance.pk:
             _criar_registros_financeiros_para_viagem(instance)
+
+
+def _sincronizar_status_viagem(viagem):
+    """Garante que a viagem possua os status compatíveis com o tipo de visto."""
+    if not viagem:
+        return
+
+    ViagemStatusProcesso = django_apps.get_model(
+        "consultancy", "ViagemStatusProcesso"
+    )
+    StatusProcesso = django_apps.get_model("consultancy", "StatusProcesso")
+
+    filtro = models.Q(tipo_visto__isnull=True)
+    if viagem.tipo_visto_id:
+        filtro |= models.Q(tipo_visto=viagem.tipo_visto)
+
+    status_ids = set(
+        StatusProcesso.objects.filter(filtro, ativo=True).values_list("id", flat=True)
+    )
+    existentes = set(
+        ViagemStatusProcesso.objects.filter(viagem=viagem).values_list(
+            "status_id", flat=True
+        )
+    )
+
+    novos = status_ids - existentes
+    remover = existentes - status_ids
+
+    for status_id in novos:
+        ViagemStatusProcesso.objects.create(viagem=viagem, status_id=status_id)
+
+    if remover:
+        ViagemStatusProcesso.objects.filter(
+            viagem=viagem, status_id__in=remover
+        ).delete()
+
+
+def _registrar_signals_status_viagem():
+    """Registra os signals responsáveis por manter os status vinculados às viagens."""
+    Viagem = django_apps.get_model("consultancy", "Viagem")
+    StatusProcesso = django_apps.get_model("consultancy", "StatusProcesso")
+
+    @receiver(post_save, sender=Viagem)
+    def sincronizar_status_viagem_post_save(sender, instance, **kwargs):
+        _sincronizar_status_viagem(instance)
+
+    @receiver(post_save, sender=StatusProcesso)
+    def sincronizar_status_viagem_status(sender, instance, **kwargs):
+        viagens = Viagem.objects.all()
+        if instance.tipo_visto_id:
+            viagens = viagens.filter(tipo_visto=instance.tipo_visto)
+        for viagem in viagens:
+            _sincronizar_status_viagem(viagem)
 
 
 class ConsultancyConfig(AppConfig):
@@ -582,4 +797,5 @@ class ConsultancyConfig(AppConfig):
         post_migrate.connect(ensure_initial_consultancy_data, sender=self)
         # Registrar signals para criação automática de registros financeiros
         _registrar_signals_financeiro()
+        _registrar_signals_status_viagem()
         self._preload_registered = True

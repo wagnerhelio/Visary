@@ -182,14 +182,6 @@
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <section class="stats-grid">
     <div class="stats-card">
         <span>Total de Registros</span>
@@ -230,7 +222,25 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                         <div>
                             <strong style="color: var(--text-primary);">
-                                {{ registro.cliente.nome_usuario|default:"N/A" }}
+                                {% if registro.cliente %}
+                                    {{ registro.cliente.nome }}
+                                    {% if registro.cliente.is_dependente %}
+                                        <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4); margin-left: 8px;">
+                                            Dependente
+                                        </span>
+                                        {% if registro.cliente.cliente_principal %}
+                                            <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                                de {{ registro.cliente.cliente_principal.nome }}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4); margin-left: 8px;">
+                                            Principal
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
                             </strong>
                             <span style="color: var(--text-secondary); font-size: 0.85rem; margin-left: 8px;">
                                 - {{ registro.assessor_responsavel.nome }}

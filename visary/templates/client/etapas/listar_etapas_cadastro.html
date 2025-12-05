@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Gerenciar Etapas de Cadastro{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .etapas-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .etapas-table th {
+        text-align: left;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .etapas-table td {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .etapas-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-ativo {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-inativo {
+        background: rgba(255, 81, 81, 0.15);
+        color: rgba(255, 104, 104, 0.95);
+        border: 1px solid rgba(255, 104, 104, 0.4);
+    }
+
+    .campos-count {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+
+    .campos-section {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border-soft);
+    }
+
+    .campos-list {
+        display: grid;
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .campo-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: rgba(12, 19, 35, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        transition: all 0.2s ease;
+    }
+
+    .campo-item:hover {
+        background: rgba(12, 19, 35, 0.6);
+        border-color: rgba(86, 244, 156, 0.3);
+    }
+
+    .campo-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex: 1;
+    }
+
+    .campo-ordem {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: rgba(86, 244, 156, 0.15);
+        color: rgba(86, 244, 156, 0.95);
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .campo-details {
+        flex: 1;
+    }
+
+    .campo-nome {
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.95);
+        margin-bottom: 4px;
+    }
+
+    .campo-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    .campo-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .toggle-campos {
+        background: none;
+        border: none;
+        color: var(--accent);
+        cursor: pointer;
+        font-size: 0.9rem;
+        padding: 4px 8px;
+        margin-top: 8px;
+        transition: opacity 0.2s ease;
+    }
+
+    .toggle-campos:hover {
+        opacity: 0.8;
+    }
+
+    .campos-container {
+        display: none;
+    }
+
+    .campos-container.expanded {
+        display: block;
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Gerenciar Etapas de Cadastro</h1>
+        <p>Configure as etapas e campos do cadastro de clientes.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="layout-grid">
+    <article class="card">
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <div>
+                <h2 style="margin: 0; font-size: 1.4rem; color: var(--text-primary);">Etapas Configuradas</h2>
+                <p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    Configure as etapas do cadastro de clientes. As etapas são gerais e aplicam-se a todos os clientes.
+                </p>
+            </div>
+            <a href="{% url 'system:criar_etapa_cadastro' %}" class="btn btn-primary">Criar Etapa</a>
+        </header>
+
+        {% if etapas %}
+        <table class="etapas-table">
+            <thead>
+                <tr>
+                    <th>Ordem</th>
+                    <th>Nome</th>
+                    <th>Descrição</th>
+                    <th>Campos</th>
+                    <th>Status</th>
+                    <th style="width: 200px; text-align: center;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for etapa in etapas %}
+                <tr>
+                    <td>{{ etapa.ordem }}</td>
+                    <td><strong>{{ etapa.nome }}</strong></td>
+                    <td>{{ etapa.descricao|truncatewords:10|default:"—" }}</td>
+                    <td>
+                        <span class="campos-count">{{ etapa.campos.count }} campo{{ etapa.campos.count|pluralize }}</span>
+                    </td>
+                    <td>
+                        <span class="badge {% if etapa.ativo %}badge-ativo{% else %}badge-inativo{% endif %}">
+                            {% if etapa.ativo %}Ativo{% else %}Inativo{% endif %}
+                        </span>
+                    </td>
+                    <td style="text-align: center;">
+                        <div style="display: flex; gap: 8px; justify-content: center;">
+                            <a href="{% url 'system:editar_etapa_cadastro' etapa.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            <form method="post" action="{% url 'system:excluir_etapa_cadastro' etapa.pk %}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta etapa?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline btn-small" style="color: rgba(255, 104, 104, 0.95); border-color: rgba(255, 104, 104, 0.4);">Excluir</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="6" style="padding: 0;">
+                        <div class="campos-section">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <button type="button" class="toggle-campos" onclick="toggleCampos({{ etapa.pk }})">
+                                    <span id="toggle-text-{{ etapa.pk }}">▼ Ver campos</span>
+                                </button>
+                                <a href="{% url 'system:criar_campo_etapa' etapa.pk %}" class="btn btn-outline btn-small">+ Adicionar Campo</a>
+                            </div>
+                            <div id="campos-{{ etapa.pk }}" class="campos-container">
+                                <div class="campos-list">
+                                    {% for campo in etapa.campos.all %}
+                                    <div class="campo-item">
+                                        <div class="campo-info">
+                                            <span class="campo-ordem">{{ campo.ordem }}</span>
+                                            <div class="campo-details">
+                                                <div class="campo-nome">{{ campo.nome_campo }}</div>
+                                                <div class="campo-meta">
+                                                    <span><strong>Tipo:</strong> {{ campo.get_tipo_campo_display }}</span>
+                                                    <span>•</span>
+                                                    <span>{% if campo.obrigatorio %}Obrigatório{% else %}Opcional{% endif %}</span>
+                                                    <span>•</span>
+                                                    <span>{% if campo.ativo %}Ativo{% else %}Inativo{% endif %}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="campo-actions">
+                                            <a href="{% url 'system:editar_campo_etapa' campo.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                            <form method="post" action="{% url 'system:excluir_campo_etapa' campo.pk %}" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir este campo?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline btn-small" style="color: rgba(255, 104, 104, 0.95); border-color: rgba(255, 104, 104, 0.4);">Excluir</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+                                        <p style="margin: 0;">Nenhum campo configurado nesta etapa.</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="padding: 40px; text-align: center; color: var(--text-secondary);">
+            <p style="margin: 0 0 16px 0;">Nenhuma etapa configurada.</p>
+            <a href="{% url 'system:criar_etapa_cadastro' %}" class="btn btn-primary">Criar Primeira Etapa</a>
+        </div>
+        {% endif %}
+    </article>
+</section>
+
+<script>
+function toggleCampos(etapaId) {
+    const container = document.getElementById('campos-' + etapaId);
+    const toggleText = document.getElementById('toggle-text-' + etapaId);
+    
+    if (container.classList.contains('expanded')) {
+        container.classList.remove('expanded');
+        toggleText.textContent = '▼ Ver campos';
+    } else {
+        container.classList.add('expanded');
+        toggleText.textContent = '▲ Ocultar campos';
+    }
+}
+</script>
+{% endblock %}
+

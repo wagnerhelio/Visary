@@ -37,6 +37,7 @@ def home_financeiro(request):
     ultimos_registros = Financeiro.objects.select_related(
         "viagem",
         "cliente",
+        "cliente__cliente_principal",
         "assessor_responsavel",
     ).order_by("-criado_em")[:10]
 
@@ -66,6 +67,7 @@ def listar_financeiro(request):
     registros = Financeiro.objects.select_related(
         "viagem",
         "cliente",
+        "cliente__cliente_principal",
         "assessor_responsavel",
     ).order_by("-criado_em")
 
@@ -78,7 +80,7 @@ def listar_financeiro(request):
 
     if cliente_filter:
         registros = registros.filter(
-            Q(cliente__nome_usuario__icontains=cliente_filter) |
+            Q(cliente__nome__icontains=cliente_filter) |
             Q(cliente__email__icontains=cliente_filter)
         )
 
@@ -123,7 +125,7 @@ def dar_baixa_financeiro(request, pk: int):
         raise PermissionDenied
 
     registro = get_object_or_404(
-        Financeiro.objects.select_related("viagem", "cliente", "assessor_responsavel"),
+        Financeiro.objects.select_related("viagem", "cliente", "cliente__cliente_principal", "assessor_responsavel"),
         pk=pk
     )
 

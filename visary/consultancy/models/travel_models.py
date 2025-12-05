@@ -97,6 +97,7 @@ class Viagem(models.Model):
         related_name="viagens",
         verbose_name="Clientes vinculados",
         blank=True,
+        through="ClienteViagem",
     )
     observacoes = models.TextField("Observações", blank=True)
     criado_por = models.ForeignKey(
@@ -116,3 +117,39 @@ class Viagem(models.Model):
     def __str__(self) -> str:
         return f"{self.pais_destino.nome} - {self.data_prevista_viagem.strftime('%d/%m/%Y')}"
 
+
+class ClienteViagem(models.Model):
+    """Modelo intermediário para relacionar cliente, viagem e tipo de visto individual."""
+    
+    viagem = models.ForeignKey(
+        Viagem,
+        on_delete=models.CASCADE,
+        related_name="clientes_viagem",
+        verbose_name="Viagem",
+    )
+    cliente = models.ForeignKey(
+        "consultancy.ClienteConsultoria",
+        on_delete=models.CASCADE,
+        related_name="viagens_cliente",
+        verbose_name="Cliente",
+    )
+    tipo_visto = models.ForeignKey(
+        TipoVisto,
+        on_delete=models.PROTECT,
+        related_name="clientes_viagem_tipo_visto",
+        verbose_name="Tipo de visto",
+        null=True,
+        blank=True,
+        help_text="Tipo de visto específico para este cliente. Se não informado, usa o tipo de visto da viagem.",
+    )
+    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
+    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    
+    class Meta:
+        verbose_name = "Cliente na Viagem"
+        verbose_name_plural = "Clientes na Viagem"
+        unique_together = [("viagem", "cliente")]
+    
+    def __str__(self) -> str:
+        tipo_visto_str = f" - {self.tipo_visto}" if self.tipo_visto else ""
+        return f"{self.cliente.nome} em {self.viagem}{tipo_visto_str}"

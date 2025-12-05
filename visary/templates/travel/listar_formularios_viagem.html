@@ -133,13 +133,7 @@
     </ul>
 {% endif %}
 
-{% if not formulario %}
-    <section class="card">
-        <div class="empty-state">
-            <p>Este tipo de visto não possui um formulário cadastrado ou o formulário está inativo.</p>
-        </div>
-    </section>
-{% elif not clientes_com_info %}
+{% if not clientes_com_info %}
     <section class="card">
         <div class="empty-state">
             <p>Nenhum cliente vinculado a esta viagem.</p>

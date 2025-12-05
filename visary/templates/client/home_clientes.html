@@ -183,14 +183,6 @@
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <section class="stats-card">
     <span>Total de clientes cadastrados</span>
     <strong>{{ total_clientes }}</strong>
@@ -214,7 +206,23 @@
             <tbody>
                 {% for cliente in clientes %}
                 <tr>
-                    <td>{{ cliente.nome }}</td>
+                    <td>
+                        {{ cliente.nome }}
+                        {% if cliente.is_dependente %}
+                            <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4); margin-left: 8px;">
+                                Dependente
+                            </span>
+                            {% if cliente.cliente_principal %}
+                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                    de {{ cliente.cliente_principal.nome }}
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4); margin-left: 8px;">
+                                Principal
+                            </span>
+                        {% endif %}
+                    </td>
                     <td>{{ cliente.telefone }}</td>
                     <td style="text-align: center;">
                         <a href="{% url 'system:editar_cliente' cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
@@ -258,6 +266,15 @@
         <p>Visualize e gerencie todos os clientes cadastrados</p>
         <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline">Listar</a>
     </article>
+
+    {% if perfil_usuario == 'Administrador' %}
+    <article class="action-card">
+        <div class="action-card__icon">⚙️</div>
+        <h3>Configurar Etapas</h3>
+        <p>Configure as etapas e campos do cadastro de clientes</p>
+        <a href="{% url 'system:listar_etapas_cadastro' %}" class="btn btn-outline">Gerenciar Etapas</a>
+    </article>
+    {% endif %}
 </section>
 {% endblock %}
 

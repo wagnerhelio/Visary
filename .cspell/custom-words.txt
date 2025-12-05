@@ -47,3 +47,9 @@ booleano
 Visary
 AIUSA
 ZANETTE
+sourcery
+divisibleby
+bwignore
+lpignore
+serialização
+Nasc

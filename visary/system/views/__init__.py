@@ -27,14 +27,27 @@ from .client_area_views import (
 from .consultancy_views import gerenciar_colaboradores
 from .home_views import home
 from .client_views import (
+    adicionar_dependente,
     api_buscar_cep,
+    api_dados_cliente,
     cadastrar_cliente_view,
+    cadastrar_dependente,
     editar_cliente_view,
     excluir_cliente,
     home_clientes,
     listar_clientes,
     listar_clientes_view,
+    remover_dependente,
     usuario_pode_gerenciar_todos,
+)
+from .etapa_views import (
+    criar_campo_etapa,
+    criar_etapa_cadastro,
+    editar_campo_etapa,
+    editar_etapa_cadastro,
+    excluir_campo_etapa,
+    excluir_etapa_cadastro,
+    listar_etapas_cadastro,
 )
 from .financial_views import (
     dar_baixa_financeiro,
@@ -62,7 +75,9 @@ from .partners_views import (
     listar_partners,
 )
 from .process_views import (
+    api_cliente_info,
     api_prazo_status_processo,
+    api_clientes_viagem,
     api_status_processo,
     criar_processo,
     editar_processo,
@@ -100,10 +115,13 @@ from .travel_views import (
 
 __all__ = (
     "api_buscar_cep",
+    "api_dados_cliente",
+    "api_cliente_info",
     "api_prazo_status_processo",
     "api_status_processo",
     "api_tipos_visto",
     "cadastrar_cliente_view",
+    "cadastrar_dependente",
     "criar_modulo",
     "criar_perfil",
     "criar_usuario",
@@ -132,6 +150,12 @@ __all__ = (
     "excluir_pais_destino",
     "excluir_perfil",
     "excluir_respostas_formulario",
+    "criar_campo_etapa",
+    "criar_etapa_cadastro",
+    "editar_campo_etapa",
+    "editar_etapa_cadastro",
+    "excluir_campo_etapa",
+    "excluir_etapa_cadastro",
     "excluir_tipo_visto",
     "excluir_usuario",
     "excluir_viagem",
@@ -143,8 +167,11 @@ __all__ = (
     "home_paises_destino",
     "home_tipos_visto",
     "home_viagens",
+    "adicionar_dependente",
     "listar_clientes",
     "listar_clientes_view",
+    "listar_etapas_cadastro",
+    "remover_dependente",
     "criar_formulario",
     "criar_opcao_selecao",
     "criar_pergunta",
