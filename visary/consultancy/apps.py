@@ -720,11 +720,10 @@ def _registrar_signals_financeiro():
     @receiver(post_save, sender=Viagem)
     def criar_registro_financeiro(sender, instance, created, **kwargs):
         """Cria automaticamente um registro financeiro quando uma viagem é criada."""
-        if created:
-            # Só criar registros se já houver clientes vinculados
-            # Caso contrário, o signal m2m_changed cuidará disso quando os clientes forem adicionados
-            if instance.clientes.exists():
-                _criar_registros_financeiros_para_viagem(instance)
+        # Só criar registros se já houver clientes vinculados
+        # Caso contrário, o signal m2m_changed cuidará disso quando os clientes forem adicionados
+        if created and instance.clientes.exists():
+            _criar_registros_financeiros_para_viagem(instance)
     
     @receiver(m2m_changed, sender=Viagem.clientes.through)
     def criar_registro_financeiro_ao_adicionar_cliente(sender, instance, action, pk_set, **kwargs):
