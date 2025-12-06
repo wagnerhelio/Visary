@@ -537,12 +537,45 @@ def _processar_post_criar_viagem(request, form):
     # e redirecionar para criar processo com viagem pré-selecionada
     if acao == "salvar_e_criar_processo":
         # Não adicionar mensagem de sucesso, apenas redirecionar
-        # Verificar se há apenas um cliente na viagem
-        clientes_viagem = viagem.clientes.all()
-        if clientes_viagem.count() == 1:
-            cliente = clientes_viagem.first()
-            return redirect(f"{reverse('system:criar_processo')}?cliente_id={cliente.pk}&viagem_id={viagem.pk}")
-        # Se houver múltiplos clientes, redirecionar apenas com viagem
+        # Coletar todas as viagens relacionadas (principal + separadas)
+        todas_viagens_ids = [viagem.pk]
+        if viagens_separadas:
+            todas_viagens_ids.extend([v.pk for v in viagens_separadas])
+        
+        # Buscar todos os clientes em todas as viagens (principal + separadas)
+        todos_clientes_ids = set(viagem.clientes.all().values_list('pk', flat=True))
+        for viagem_sep in viagens_separadas:
+            todos_clientes_ids.update(viagem_sep.clientes.all().values_list('pk', flat=True))
+        
+        # Buscar emails dos clientes para incluir clientes com mesmo email
+        if todos_clientes_ids:
+            clientes_principais = ClienteConsultoria.objects.filter(pk__in=todos_clientes_ids)
+            emails_clientes = set(clientes_principais.values_list('email', flat=True))
+            emails_clientes = {email for email in emails_clientes if email}
+            
+            if emails_clientes:
+                clientes_mesmo_email = ClienteConsultoria.objects.filter(email__in=emails_clientes)
+                todos_clientes_ids.update(clientes_mesmo_email.values_list('pk', flat=True))
+        
+        # Se há apenas um cliente em todas as viagens, pré-selecionar
+        if len(todos_clientes_ids) == 1:
+            cliente_id = list(todos_clientes_ids)[0]
+            # Encontrar qual viagem este cliente está
+            cliente_obj = ClienteConsultoria.objects.get(pk=cliente_id)
+            viagem_cliente = None
+            if cliente_obj in viagem.clientes.all():
+                viagem_cliente = viagem
+            else:
+                for viagem_sep in viagens_separadas:
+                    if cliente_obj in viagem_sep.clientes.all():
+                        viagem_cliente = viagem_sep
+                        break
+            
+            if viagem_cliente:
+                return redirect(f"{reverse('system:criar_processo')}?cliente_id={cliente_id}&viagem_id={viagem_cliente.pk}")
+        
+        # Se houver múltiplos clientes, redirecionar apenas com viagem principal
+        # O sistema criará processos para todos automaticamente
         return redirect(f"{reverse('system:criar_processo')}?viagem_id={viagem.pk}")
     
     # Adicionar APENAS UMA mensagem (apenas se não for criar processo)
@@ -1262,6 +1295,52 @@ def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
     }
     
     return render(request, "travel/editar_formulario_cliente.html", contexto)
+
+
+@login_required
+def visualizar_formulario_cliente(request, viagem_id: int, cliente_id: int):
+    """Visualiza o formulário de um cliente específico de uma viagem (somente leitura)."""
+    consultor = obter_consultor_usuario(request.user)
+    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+    
+    viagem = get_object_or_404(
+        Viagem.objects.select_related("tipo_visto__formulario", "pais_destino", "assessor_responsavel"),
+        pk=viagem_id
+    )
+    
+    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel != consultor):
+        raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
+    
+    cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)
+    
+    if cliente not in viagem.clientes.all():
+        raise PermissionDenied("Este cliente não está vinculado a esta viagem.")
+    
+    formulario, perguntas, respostas_existentes = _obter_dados_formulario(viagem, cliente)
+    
+    if not formulario:
+        messages.warning(
+            request,
+            "Este tipo de visto não possui um formulário cadastrado ou o formulário está inativo.",
+        )
+        return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
+    
+    # Obter o tipo_visto individual do cliente para exibir no contexto
+    tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
+    
+    contexto = {
+        "viagem": viagem,
+        "cliente": cliente,
+        "tipo_visto_cliente": tipo_visto_cliente,
+        "formulario": formulario,
+        "perguntas": perguntas,
+        "respostas_existentes": respostas_existentes,
+        "respostas_ids": list(respostas_existentes.keys()),
+        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "pode_gerenciar_todos": pode_gerenciar_todos,
+    }
+    
+    return render(request, "travel/visualizar_formulario_cliente.html", contexto)
 
 
 @login_required

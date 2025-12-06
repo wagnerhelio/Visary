@@ -169,9 +169,64 @@ def _calcular_datas_finalizacao_etapas(processo: Processo, etapas):
     return etapas_com_datas
 
 
-def _obter_proximo_membro_sem_processo(cliente: ClienteConsultoria, viagem_atual: Viagem) -> dict | None:
+def _obter_proximo_cliente_mesma_viagem(viagem: Viagem, cliente_atual: ClienteConsultoria) -> dict | None:
     """
-    Verifica se há membros (dependentes) com viagens separadas que ainda precisam de processo.
+    Verifica se há outros clientes na mesma viagem que ainda precisam de processo.
+    
+    Considera clientes diretamente vinculados à viagem e clientes que compartilham
+    o mesmo email dos clientes na viagem.
+    
+    Args:
+        viagem: Viagem atual
+        cliente_atual: ClienteConsultoria que acabou de ter processo criado
+    
+    Returns:
+        dict com 'cliente_id' do próximo cliente que precisa de processo na mesma viagem, ou None
+    """
+    # Buscar todos os clientes diretamente na viagem
+    clientes_na_viagem = viagem.clientes.all()
+    
+    # Buscar emails dos clientes que estão na viagem
+    emails_na_viagem = set(clientes_na_viagem.values_list('email', flat=True))
+    emails_na_viagem = {email for email in emails_na_viagem if email}
+    
+    # Incluir clientes que compartilham o mesmo email
+    clientes_relacionados_ids = set(clientes_na_viagem.values_list('pk', flat=True))
+    if emails_na_viagem:
+        clientes_mesmo_email = ClienteConsultoria.objects.filter(email__in=emails_na_viagem)
+        clientes_relacionados_ids.update(clientes_mesmo_email.values_list('pk', flat=True))
+    
+    # Remover o cliente atual
+    clientes_relacionados_ids.discard(cliente_atual.pk)
+    
+    if not clientes_relacionados_ids:
+        return None
+    
+    # Verificar quais clientes relacionados ainda não têm processo nesta viagem
+    for cliente_id in clientes_relacionados_ids:
+        cliente_relacionado = ClienteConsultoria.objects.get(pk=cliente_id)
+        processo_existente = Processo.objects.filter(
+            viagem=viagem,
+            cliente=cliente_relacionado
+        ).exists()
+        
+        if not processo_existente:
+            # Encontrou um cliente relacionado que precisa de processo na mesma viagem
+            return {
+                'cliente_id': cliente_relacionado.pk,
+                'viagem_id': viagem.pk,
+            }
+    
+    return None
+
+
+def _obter_proximo_cliente_viagem_separada(cliente: ClienteConsultoria, viagem_atual: Viagem) -> dict | None:
+    """
+    Verifica se há membros (dependentes ou clientes com mesmo email) com viagens separadas que ainda precisam de processo.
+    
+    Busca TODAS as viagens separadas relacionadas ao grupo de clientes, incluindo:
+    - Viagens separadas criadas automaticamente para membros com visto diferente
+    - Viagens onde o cliente relacionado está sozinho
     
     Args:
         cliente: ClienteConsultoria que acabou de ter processo criado
@@ -180,34 +235,55 @@ def _obter_proximo_membro_sem_processo(cliente: ClienteConsultoria, viagem_atual
     Returns:
         dict com 'cliente_id' e 'viagem_id' do próximo membro que precisa de processo, ou None
     """
-    # Se o cliente não é principal, não há dependentes para verificar
-    if not cliente.is_principal:
+    # Buscar clientes que compartilham o mesmo email (incluindo o próprio cliente para buscar grupo completo)
+    clientes_mesmo_email = ClienteConsultoria.objects.filter(email=cliente.email)
+    
+    # Buscar dependentes do cliente (se for principal)
+    dependentes_ids = set()
+    if cliente.is_principal:
+        dependentes_ids = set(ClienteConsultoria.objects.filter(cliente_principal=cliente).values_list('pk', flat=True))
+    
+    # Se cliente é dependente, buscar o principal e seus outros dependentes
+    if not cliente.is_principal and cliente.cliente_principal:
+        principal = cliente.cliente_principal
+        dependentes_ids = set(ClienteConsultoria.objects.filter(cliente_principal=principal).values_list('pk', flat=True))
+        dependentes_ids.add(principal.pk)
+    
+    # Combinar todos os clientes relacionados (mesmo email + dependentes/principal)
+    clientes_relacionados_ids = set(clientes_mesmo_email.values_list('pk', flat=True))
+    clientes_relacionados_ids.update(dependentes_ids)
+    
+    # Remover o cliente atual
+    clientes_relacionados_ids.discard(cliente.pk)
+    
+    if not clientes_relacionados_ids:
         return None
     
-    # Buscar dependentes do cliente principal
-    dependentes = ClienteConsultoria.objects.filter(cliente_principal=cliente)
+    # Buscar TODAS as viagens onde qualquer cliente relacionado está vinculado
+    # Isso inclui viagens separadas criadas automaticamente para membros com visto diferente
+    viagens_relacionadas = Viagem.objects.filter(
+        clientes__pk__in=clientes_relacionados_ids
+    ).distinct().exclude(pk=viagem_atual.pk)
     
-    # Para cada dependente, verificar se há viagem separada sem processo
-    for dependente in dependentes:
-        # Buscar viagens onde o dependente está sozinho (viagem separada)
-        viagens_dependente = Viagem.objects.filter(
-            clientes=dependente
-        ).annotate(
-            total_clientes=Count('clientes')
-        ).filter(total_clientes=1)
+    # Para cada viagem relacionada, verificar se há clientes que precisam de processo
+    for viagem_relacionada in viagens_relacionadas:
+        # Buscar todos os clientes relacionados que estão nesta viagem
+        clientes_na_viagem_relacionada = viagem_relacionada.clientes.filter(
+            pk__in=clientes_relacionados_ids
+        )
         
-        # Verificar se alguma dessas viagens não tem processo ainda
-        for viagem_separada in viagens_dependente:
+        # Verificar se algum cliente relacionado nesta viagem não tem processo ainda
+        for cliente_relacionado in clientes_na_viagem_relacionada:
             processo_existente = Processo.objects.filter(
-                viagem=viagem_separada,
-                cliente=dependente
+                viagem=viagem_relacionada,
+                cliente=cliente_relacionado
             ).exists()
             
             if not processo_existente:
-                # Encontrou um membro que precisa de processo
+                # Encontrou um membro em viagem separada que precisa de processo
                 return {
-                    'cliente_id': dependente.pk,
-                    'viagem_id': viagem_separada.pk,
+                    'cliente_id': cliente_relacionado.pk,
+                    'viagem_id': viagem_relacionada.pk,
                 }
     
     return None
@@ -236,16 +312,35 @@ def criar_processo(request):
         if form.is_valid():
             processo = form.save()
             
-            # Verificar se há membros com viagens separadas que ainda precisam de processo
-            if proximo_membro_processo := _obter_proximo_membro_sem_processo(processo.cliente, processo.viagem):
-                # Não adicionar mensagem aqui, será adicionada quando o último processo for criado
-                # Redirecionar para criar processo do próximo membro
+            # PRIMEIRO: Verificar se há outros clientes na MESMA viagem que precisam de processo
+            proximo_cliente_processo = _obter_proximo_cliente_mesma_viagem(processo.viagem, processo.cliente)
+            
+            if proximo_cliente_processo:
+                # Encontrou cliente na mesma viagem que precisa de processo
+                try:
+                    proximo_cliente = ClienteConsultoria.objects.get(pk=proximo_cliente_processo['cliente_id'])
+                    messages.info(request, f"Processo criado para {processo.cliente.nome}. Criando processo para {proximo_cliente.nome}...")
+                except ClienteConsultoria.DoesNotExist:
+                    messages.info(request, f"Processo criado para {processo.cliente.nome}. Criando próximo processo...")
                 return redirect(
-                    f"{reverse('system:criar_processo')}?cliente_id={proximo_membro_processo['cliente_id']}&viagem_id={proximo_membro_processo['viagem_id']}"
+                    f"{reverse('system:criar_processo')}?cliente_id={proximo_cliente_processo['cliente_id']}&viagem_id={proximo_cliente_processo['viagem_id']}"
+                )
+            
+            # DEPOIS: Se não há mais clientes na mesma viagem, verificar viagens separadas
+            proximo_cliente_viagem_separada = _obter_proximo_cliente_viagem_separada(processo.cliente, processo.viagem)
+            if proximo_cliente_viagem_separada:
+                # Encontrou cliente em viagem separada que precisa de processo
+                try:
+                    proximo_cliente_sep = ClienteConsultoria.objects.get(pk=proximo_cliente_viagem_separada['cliente_id'])
+                    messages.info(request, f"Processo criado para {processo.cliente.nome}. Criando processo para {proximo_cliente_sep.nome} em viagem separada...")
+                except ClienteConsultoria.DoesNotExist:
+                    messages.info(request, f"Processo criado para {processo.cliente.nome}. Criando processo em viagem separada...")
+                return redirect(
+                    f"{reverse('system:criar_processo')}?cliente_id={proximo_cliente_viagem_separada['cliente_id']}&viagem_id={proximo_cliente_viagem_separada['viagem_id']}"
                 )
             
             # Adicionar mensagem apenas quando não há mais processos para criar
-            messages.success(request, f"Processo criado com sucesso para {processo.cliente.nome}.")
+            messages.success(request, f"Todos os processos foram criados com sucesso! Processo criado para {processo.cliente.nome}.")
             return redirect("system:listar_processos")
         else:
             messages.error(request, "Não foi possível cadastrar o processo. Verifique os campos.")
@@ -472,14 +567,45 @@ def api_clientes_viagem(request):
 
     try:
         viagem = Viagem.objects.get(pk=viagem_id)
-        clientes = viagem.clientes.all().order_by("nome")
+        # Clientes diretamente na viagem
+        clientes_diretos = viagem.clientes.all()
+        
+        # Buscar emails dos clientes que estão na viagem
+        emails_na_viagem = set(clientes_diretos.values_list('email', flat=True))
+        
+        # Remover emails vazios/None
+        emails_na_viagem = {email for email in emails_na_viagem if email}
+        
+        # Incluir clientes que compartilham o mesmo email
+        clientes_ids = set(clientes_diretos.values_list('pk', flat=True))
+        if emails_na_viagem:
+            clientes_com_mesmo_email = ClienteConsultoria.objects.filter(
+                email__in=emails_na_viagem
+            )
+            clientes_ids.update(clientes_com_mesmo_email.values_list('pk', flat=True))
+        
+        # Obter todos os clientes (diretos + mesmo email) ordenados
+        # Ordenar: principais primeiro, depois dependentes
+        clientes = ClienteConsultoria.objects.filter(pk__in=clientes_ids).select_related('cliente_principal')
+        
+        # Separar principais e dependentes
+        principais = [c for c in clientes if c.is_principal]
+        dependentes = [c for c in clientes if not c.is_principal]
+        
+        # Ordenar cada grupo por nome
+        principais.sort(key=lambda x: x.nome)
+        dependentes.sort(key=lambda x: x.nome)
+        
+        # Combinar: principais primeiro, depois dependentes
+        clientes_ordenados = principais + dependentes
         
         clientes_list = [
             {
                 "id": cliente.pk,
                 "nome": cliente.nome,
+                "is_principal": cliente.is_principal,
             }
-            for cliente in clientes
+            for cliente in clientes_ordenados
         ]
 
         return JsonResponse(clientes_list, safe=False)

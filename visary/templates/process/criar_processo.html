@@ -215,12 +215,31 @@
             return;
         }
         
+        // Mostrar indicador de carregamento
+        clienteSelect.innerHTML = '<option value="">Carregando clientes...</option>';
+        clienteSelect.disabled = true;
+        
         // Buscar clientes da viagem via API
         fetch(`{% url 'system:api_clientes_viagem' %}?viagem_id=${viagemId}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar clientes');
+                }
+                return response.json();
+            })
             .then(clientes => {
                 // Limpar select de clientes
                 clienteSelect.innerHTML = '';
+                clienteSelect.disabled = false;
+                
+                // Verificar se há clientes
+                if (!clientes || clientes.length === 0) {
+                    const emptyOption = document.createElement('option');
+                    emptyOption.value = '';
+                    emptyOption.textContent = 'Nenhum cliente encontrado';
+                    clienteSelect.appendChild(emptyOption);
+                    return;
+                }
                 
                 // Adicionar opção vazia
                 const emptyOption = document.createElement('option');
@@ -228,11 +247,25 @@
                 emptyOption.textContent = 'Selecione o cliente';
                 clienteSelect.appendChild(emptyOption);
                 
-                // Adicionar clientes da viagem
-                clientes.forEach(cliente => {
+                // Separar principais e dependentes
+                const principais = clientes.filter(c => c.is_principal !== false);
+                const dependentes = clientes.filter(c => c.is_principal === false);
+                
+                // Adicionar clientes principais primeiro (em negrito visual)
+                principais.forEach(cliente => {
                     const option = document.createElement('option');
                     option.value = cliente.id;
                     option.textContent = cliente.nome;
+                    option.style.fontWeight = 'bold';
+                    clienteSelect.appendChild(option);
+                });
+                
+                // Adicionar dependentes depois
+                dependentes.forEach(cliente => {
+                    const option = document.createElement('option');
+                    option.value = cliente.id;
+                    option.textContent = cliente.nome;
+                    option.style.color = 'rgba(245, 245, 245, 0.8)';
                     clienteSelect.appendChild(option);
                 });
                 
@@ -243,10 +276,18 @@
                     if (option) {
                         clienteSelect.value = clientePreSelecionado;
                     }
+                } else if (principais.length === 1 && dependentes.length === 0) {
+                    // Se há apenas um cliente principal e nenhum dependente, pré-selecionar automaticamente
+                    clienteSelect.value = principais[0].id;
+                } else if (principais.length > 0) {
+                    // Se há pelo menos um principal, pré-selecionar o primeiro principal
+                    clienteSelect.value = principais[0].id;
                 }
             })
             .catch(error => {
                 console.error('Erro ao buscar clientes da viagem:', error);
+                clienteSelect.innerHTML = '<option value="">Erro ao carregar clientes</option>';
+                clienteSelect.disabled = false;
             });
     }
     
@@ -255,15 +296,37 @@
         filtrarClientesPorViagem(this.value);
     });
     
-    // Se viagem já está pré-selecionada, filtrar clientes imediatamente
-    if (viagemSelect.value) {
-        filtrarClientesPorViagem(viagemSelect.value);
-    }
-    
     // Armazenar cliente pré-selecionado se houver
     {% if cliente_pre_selecionado %}
     clienteSelect.dataset.clientePreSelecionado = '{{ form.cliente.initial|default:"" }}';
     {% endif %}
+    
+    // Função para obter ID da viagem (mesmo se campo estiver disabled)
+    function obterViagemId() {
+        // Se campo está disabled, tentar obter do campo hidden
+        {% if viagem_pre_selecionada %}
+        const viagemHidden = document.querySelector('input[name="viagem_hidden"]');
+        if (viagemHidden && viagemHidden.value) {
+            return viagemHidden.value;
+        }
+        {% endif %}
+        // Tentar obter da opção selecionada no select (mesmo que disabled)
+        const selectedOption = viagemSelect.querySelector('option:checked');
+        if (selectedOption) {
+            return selectedOption.value;
+        }
+        // Fallback para value do select
+        return viagemSelect.value;
+    }
+    
+    // Se viagem já está pré-selecionada, filtrar clientes após DOM estar pronto
+    const viagemId = obterViagemId();
+    if (viagemId) {
+        // Aguardar um pouco para garantir que o DOM está completamente carregado
+        setTimeout(() => {
+            filtrarClientesPorViagem(viagemId);
+        }, 100);
+    }
 })();
 </script>
 {% endblock %}

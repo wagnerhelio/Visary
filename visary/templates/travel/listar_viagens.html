@@ -311,6 +311,8 @@
         <table>
             <thead>
             <tr>
+                <th>Cliente</th>
+                <th>Membros</th>
                 <th>País</th>
                 <th>Tipo de Visto</th>
                 <th>Assessor</th>
@@ -318,7 +320,6 @@
                 <th>Data Viagem</th>
                 <th>Data Retorno</th>
                 <th>Valor</th>
-                <th>Clientes</th>
                 <th>Formulário</th>
                 <th style="width:180px;">Ações</th>
             </tr>
@@ -326,6 +327,36 @@
             <tbody>
             {% for item in viagens_com_info %}
                 <tr>
+                    <td>
+                        {% with clientes=item.viagem.clientes.all %}
+                            {% if clientes %}
+                                {% for cliente in clientes %}
+                                    {% if cliente.is_principal %}
+                                        <strong>{{ cliente.nome }}</strong>{% if not forloop.last %}, {% endif %}
+                                    {% endif %}
+                                {% empty %}
+                                    <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                                {% endfor %}
+                            {% else %}
+                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>
+                        {% with clientes=item.viagem.clientes.all %}
+                            {% if clientes %}
+                                {% for cliente in clientes %}
+                                    {% if not cliente.is_principal %}
+                                        <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7);">{{ cliente.nome }}</span>{% if not forloop.last %}, {% endif %}
+                                    {% endif %}
+                                {% empty %}
+                                    <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                                {% endfor %}
+                            {% else %}
+                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
                     <td>{{ item.viagem.pais_destino.nome }}</td>
                     <td>{{ item.viagem.tipo_visto.nome }}</td>
                     <td>{{ item.viagem.assessor_responsavel.nome }}</td>
@@ -341,7 +372,6 @@
                     <td>{{ item.viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
                     <td>{{ item.viagem.data_prevista_retorno|date:"d/m/Y" }}</td>
                     <td>R$ {{ item.viagem.valor_assessoria|floatformat:2 }}</td>
-                    <td>{{ item.total_clientes }} cliente{{ item.total_clientes|pluralize }}</td>
                     <td>
                         {% if item.tem_formulario %}
                             {% if item.total_clientes > 0 %}
@@ -383,7 +413,7 @@
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="10" class="empty-state">
+                    <td colspan="11" class="empty-state">
                         {% if filtros_aplicados %}
                             Nenhuma viagem encontrada com os filtros aplicados. <a href="{% url 'system:listar_viagens' %}">Limpar filtros</a>.
                         {% else %}

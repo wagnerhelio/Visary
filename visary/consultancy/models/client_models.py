@@ -29,7 +29,7 @@ class ClienteConsultoria(models.Model):
         max_length=20,
         blank=True,
     )
-    email = models.EmailField("E-mail", unique=True)
+    email = models.EmailField("E-mail")
     senha = models.CharField(
         "Senha de acesso",
         max_length=128,

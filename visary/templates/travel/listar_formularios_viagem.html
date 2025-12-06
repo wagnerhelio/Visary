@@ -177,7 +177,7 @@
                         </td>
                         <td>
                             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                <a href="{% url 'system:editar_formulario_cliente' viagem.pk item.cliente.pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                                <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" class="btn btn-outline btn-small">Visualizar</a>
                                 <a href="{% url 'system:editar_formulario_cliente' viagem.pk item.cliente.pk %}" class="btn btn-primary btn-small">Editar</a>
                                 {% if pode_gerenciar_todos %}
                                     <form method="post" action="{% url 'system:excluir_respostas_formulario' viagem.pk item.cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir todas as respostas deste formulário?');" style="margin: 0;">

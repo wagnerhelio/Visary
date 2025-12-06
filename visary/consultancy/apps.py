@@ -683,19 +683,69 @@ def _criar_registros_financeiros_para_viagem(viagem):
     registros_existentes = Financeiro.objects.filter(viagem=viagem)
     clientes_com_registro = set(registros_existentes.exclude(cliente=None).values_list("cliente_id", flat=True))
     
-    # Criar um registro para cada cliente vinculado à viagem que ainda não tem registro
-    clientes = viagem.clientes.all()
+    # IMPORTANTE: Usar select_related para garantir que cliente_principal está carregado
+    # Isso permite que is_principal funcione corretamente
+    clientes = viagem.clientes.select_related('cliente_principal').all()
     
     if clientes.exists():
         # Se houver clientes, REMOVER qualquer registro sem cliente que possa ter sido criado anteriormente
         registros_existentes.filter(cliente=None).delete()
         
-        # Criar um registro para cada cliente que ainda não tem
+        # Separar clientes principais e dependentes
+        cliente_principal = None
+        dependentes = []
+        
         for cliente in clientes:
-            if cliente.pk not in clientes_com_registro:
+            if cliente.is_principal:
+                cliente_principal = cliente
+            else:
+                dependentes.append(cliente)
+        
+        # Se houver cliente principal na viagem, criar registro apenas para ele
+        # (dependentes não devem ter registro financeiro separado)
+        if cliente_principal:
+            if cliente_principal.pk not in clientes_com_registro:
                 Financeiro.objects.create(
                     viagem=viagem,
-                    cliente=cliente,
+                    cliente=cliente_principal,
+                    assessor_responsavel=viagem.assessor_responsavel,
+                    valor=viagem.valor_assessoria,
+                    status="pendente",
+                    criado_por=viagem.criado_por,
+                )
+        elif dependentes:
+            # Se não houver cliente principal mas houver dependentes, 
+            # criar registro para o cliente principal do primeiro dependente
+            primeiro_dependente = dependentes[0]
+            if primeiro_dependente.cliente_principal:
+                cliente_principal_do_grupo = primeiro_dependente.cliente_principal
+                if cliente_principal_do_grupo.pk not in clientes_com_registro:
+                    Financeiro.objects.create(
+                        viagem=viagem,
+                        cliente=cliente_principal_do_grupo,
+                        assessor_responsavel=viagem.assessor_responsavel,
+                        valor=viagem.valor_assessoria,
+                        status="pendente",
+                        criado_por=viagem.criado_por,
+                    )
+            elif primeiro_dependente.pk not in clientes_com_registro:
+                # Se o dependente não tem cliente_principal, criar registro para o primeiro dependente
+                # (caso onde dependentes estão órfãos ou mal configurados)
+                Financeiro.objects.create(
+                    viagem=viagem,
+                    cliente=primeiro_dependente,
+                    assessor_responsavel=viagem.assessor_responsavel,
+                    valor=viagem.valor_assessoria,
+                    status="pendente",
+                    criado_por=viagem.criado_por,
+                )
+        else:
+            # Se não houver cliente principal nem dependentes (caso raro), criar para o primeiro cliente
+            primeiro_cliente = clientes.first()
+            if primeiro_cliente and primeiro_cliente.pk not in clientes_com_registro:
+                Financeiro.objects.create(
+                    viagem=viagem,
+                    cliente=primeiro_cliente,
                     assessor_responsavel=viagem.assessor_responsavel,
                     valor=viagem.valor_assessoria,
                     status="pendente",

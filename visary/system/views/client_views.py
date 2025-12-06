@@ -149,10 +149,10 @@ def listar_clientes_view(request):
             "assessor_responsavel__perfil",
             "cliente_principal",
             "cliente_principal__assessor_responsavel",
-        ).order_by("-criado_em")
+        ).prefetch_related("dependentes", "viagens").order_by("-criado_em")
     else:
         # Usuários normais veem apenas clientes acessíveis (incluindo dependentes)
-        clientes = listar_clientes(request.user)
+        clientes = listar_clientes(request.user).prefetch_related("dependentes", "viagens")
     
     # Aplicar filtros
     nome = request.GET.get("nome", "").strip()
@@ -535,18 +535,31 @@ def _criar_dependente_do_banco(dados_dependente: dict, cliente_principal: Client
     try:
         logger.info(f"📝 Criando dependente: {nome_dependente} (email: {email_dependente}) para cliente principal: {cliente_principal.nome}")
         
-        # Verificar se já existe cliente com este email (emails devem ser únicos)
-        if email_dependente and ClienteConsultoria.objects.filter(email=email_dependente).exists():
+        # Verificar se email já existe e permitir apenas se for do cliente principal ou outro dependente do mesmo grupo
+        if email_dependente:
             cliente_existente = ClienteConsultoria.objects.filter(email=email_dependente).first()
-            logger.error(f"❌ Email {email_dependente} já está em uso por outro cliente: {cliente_existente.nome if cliente_existente else 'Desconhecido'}")
-            return None
+            if cliente_existente:
+                # Permitir apenas se o email pertence ao cliente principal ou outro dependente do mesmo grupo
+                if cliente_existente.pk != cliente_principal.pk and cliente_existente.cliente_principal_id != cliente_principal.pk:
+                    logger.error(f"❌ Email {email_dependente} já está em uso por outro cliente: {cliente_existente.nome}")
+                    return None
+                # Se o email pertence ao cliente principal, usar o mesmo email (permitido)
+                if cliente_existente.pk == cliente_principal.pk:
+                    logger.info(f"ℹ️ Dependente {nome_dependente} compartilhará email com cliente principal")
+        
+        # Verificar se deve usar dados do cliente principal
+        usar_dados_principal = dados_dependente.get('usar_dados_cliente_principal', False)
+        if usar_dados_principal:
+            # Usar email do cliente principal
+            dados_dependente['email'] = cliente_principal.email
+            logger.info(f"ℹ️ Dependente usará email do cliente principal: {cliente_principal.email}")
         
         # Garantir que confirmar_senha está presente se senha estiver presente
         if 'senha' in dados_dependente and dados_dependente.get('senha') and 'confirmar_senha' not in dados_dependente:
             dados_dependente['confirmar_senha'] = dados_dependente['senha']
             logger.info("🔧 Adicionando confirmar_senha aos dados do dependente (usando valor da senha)")
         
-        form_dependente = ClienteConsultoriaForm(data=dados_dependente, instance=None, user=user)
+        form_dependente = ClienteConsultoriaForm(data=dados_dependente, instance=None, user=user, cliente_principal=cliente_principal, usar_dados_principal=usar_dados_principal)
         if not form_dependente.is_valid():
             logger.error(f"❌ Formulário de dependente inválido para {nome_dependente}: {form_dependente.errors}")
             return None
@@ -571,8 +584,13 @@ def _criar_dependente_do_banco(dados_dependente: dict, cliente_principal: Client
             logger.error("❌ ERRO CRÍTICO: cliente_principal foi sobrescrito! Corrigindo...")
             dependente.cliente_principal_id = cliente_principal.pk
         
-        # Salvar senha se houver
-        if senha := dados_dependente.get('senha'):
+        # Salvar senha: usar do cliente principal se solicitado, senão usar a senha fornecida
+        usar_dados_principal = dados_dependente.get('usar_dados_cliente_principal', False)
+        if usar_dados_principal:
+            # Copiar o hash da senha do cliente principal
+            dependente.senha = cliente_principal.senha
+            logger.info("ℹ️ Copiando hash da senha do cliente principal para o dependente")
+        elif senha := dados_dependente.get('senha'):
             dependente.set_password(senha)
         
         # Marcar etapa de dados pessoais como concluída
@@ -888,7 +906,26 @@ def _criar_formulario_dependente(request, cliente, primeira_etapa, etapas=None):
     - Endereço (preenchido automaticamente do cliente principal)
     - Passaporte (para cadastro completo)
     """
-    form_dependente = ClienteConsultoriaForm(user=request.user)
+    # cliente aqui é o cliente_principal quando usado para criar dependente
+    cliente_principal = cliente if isinstance(cliente, ClienteConsultoria) and cliente.is_principal else None
+    
+    # Verificar se está editando um dependente
+    dependente_editando_dados = request.session.get('dependente_editando_dados')
+    dados_iniciais = None
+    usar_dados_principal_edit = False
+    if dependente_editando_dados:
+        # Carregar dados do dependente sendo editado
+        dados_iniciais = dependente_editando_dados.copy()
+        usar_dados_principal_edit = dependente_editando_dados.get('usar_dados_cliente_principal', False)
+        logger.info(f"📝 Carregando dados do dependente para edição: {dados_iniciais.get('nome', 'Desconhecido')}")
+    
+    form_dependente = ClienteConsultoriaForm(
+        data=None,
+        initial=dados_iniciais,
+        user=request.user,
+        cliente_principal=cliente_principal,
+        usar_dados_principal=usar_dados_principal_edit
+    )
     
     # Obter assessor_responsavel dos dados temporários do cliente principal
     dados_temporarios = _obter_dados_temporarios_sessao(request)
@@ -965,12 +1002,33 @@ def _criar_formulario_dependente(request, cliente, primeira_etapa, etapas=None):
     return form_dependente
 
 
-def _preparar_formulario_dependente_post(request, primeira_etapa, etapas=None):
+def _preparar_formulario_dependente_post(request, primeira_etapa, etapas=None, cliente_principal=None):
     """Prepara formulário de dependente a partir de dados POST."""
-    form = ClienteConsultoriaForm(data=request.POST, user=request.user)
+    # Verificar se deve usar dados do cliente principal
+    usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
+    
+    # Criar formulário com a flag usar_dados_principal desde o início
+    form = ClienteConsultoriaForm(data=request.POST, user=request.user, cliente_principal=cliente_principal, usar_dados_principal=usar_dados_principal)
     # Remover parceiro_indicador do formulário de dependente
     if "parceiro_indicador" in form.fields:
         del form.fields["parceiro_indicador"]
+    
+    # Se estiver usando dados do cliente principal, tornar senha opcional e preencher email
+    if usar_dados_principal and cliente_principal:
+        # Preencher email do cliente principal
+        if 'email' in form.data:
+            from django.http import QueryDict
+            if isinstance(form.data, QueryDict):
+                form_data = form.data.copy()
+                form_data['email'] = cliente_principal.email
+                form = ClienteConsultoriaForm(data=form_data, user=request.user, cliente_principal=cliente_principal, usar_dados_principal=usar_dados_principal)
+                if "parceiro_indicador" in form.fields:
+                    del form.fields["parceiro_indicador"]
+        # Tornar senha opcional
+        if 'senha' in form.fields:
+            form.fields['senha'].required = False
+        if 'confirmar_senha' in form.fields:
+            form.fields['confirmar_senha'].required = False
     
     # Configurar campos: incluir primeira etapa, endereço e passaporte
     if etapas:
@@ -988,6 +1046,10 @@ def _preparar_formulario_dependente_post(request, primeira_etapa, etapas=None):
         for field_name, field in form.fields.items():
             if field_name == 'confirmar_senha':
                 continue
+            # Se estiver usando dados do cliente principal, senha não é obrigatória
+            if usar_dados_principal and field_name in ('senha', 'confirmar_senha'):
+                field.required = False
+                continue
             campo_config = campos_primeira_etapa_dict.get(field_name)
             if campo_config:
                 field.required = campo_config.obrigatorio
@@ -996,10 +1058,18 @@ def _preparar_formulario_dependente_post(request, primeira_etapa, etapas=None):
     else:
         _configurar_campos_formulario(form, primeira_etapa)
     
+    # IMPORTANTE: Garantir que senha não é obrigatória se usar_dados_principal
+    # Isso deve ser feito DEPOIS de todas as outras configurações
+    if usar_dados_principal:
+        if 'senha' in form.fields:
+            form.fields['senha'].required = False
+        if 'confirmar_senha' in form.fields:
+            form.fields['confirmar_senha'].required = False
+    
     return form
 
 
-def _salvar_dependente(form, cliente_principal, primeira_etapa, user):
+def _salvar_dependente(form, cliente_principal, primeira_etapa, user, usar_dados_principal=False):
     """Salva um dependente vinculado ao cliente principal."""
     dependente = form.save(commit=False)
     dependente.cliente_principal = cliente_principal
@@ -1008,6 +1078,13 @@ def _salvar_dependente(form, cliente_principal, primeira_etapa, user):
     dependente.parceiro_indicador = cliente_principal.parceiro_indicador
     if not dependente.criado_por_id:
         dependente.criado_por = user
+    
+    # Se deve usar dados do cliente principal, copiar hash da senha
+    if usar_dados_principal:
+        dependente.email = cliente_principal.email
+        dependente.senha = cliente_principal.senha
+        logger.info(f"ℹ️ Dependente {dependente.nome} usando email e senha do cliente principal")
+    
     dependente.save()
     
     # Marcar etapa de dados pessoais como concluída
@@ -1058,8 +1135,36 @@ def _armazenar_dependente_temporario_na_sessao(request, dados_dependente: dict):
 def _processar_dependente_valido(request, form_dependente_post, etapa_atual):
     """Processa um dependente válido e armazena na sessão."""
     logger.info("✅ Formulário de dependente válido. Armazenando na sessão...")
-    _armazenar_dependente_temporario_na_sessao(request, form_dependente_post.cleaned_data)
-    nome_dependente = form_dependente_post.cleaned_data.get('nome', 'Desconhecido')
+    
+    dados_dependente = form_dependente_post.cleaned_data.copy()
+    
+    # Verificar se deve usar dados do cliente principal
+    usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
+    if usar_dados_principal:
+        dados_dependente['usar_dados_cliente_principal'] = True
+        logger.info("ℹ️ Dependente configurado para usar email e senha do cliente principal")
+    
+    # Verificar se está editando um dependente existente
+    dependente_editando_index = request.session.get('dependente_editando_index')
+    if dependente_editando_index is not None:
+        # Atualizar dependente existente
+        dependentes_temporarios = request.session.get("dependentes_temporarios", [])
+        if 0 <= dependente_editando_index < len(dependentes_temporarios):
+            dados_serializados = _serializar_dados_para_sessao(dados_dependente, preservar_confirmar_senha=True)
+            dependentes_temporarios[dependente_editando_index] = dados_serializados
+            request.session["dependentes_temporarios"] = dependentes_temporarios
+            # Limpar dados de edição
+            request.session.pop('dependente_editando_index', None)
+            request.session.pop('dependente_editando_dados', None)
+            request.session.modified = True
+            nome_dependente = dados_dependente.get('nome', 'Desconhecido')
+            messages.success(request, f"{nome_dependente} atualizado. Será salvo ao finalizar o cadastro.")
+            logger.info(f"✅ Dependente {nome_dependente} atualizado com sucesso. Redirecionando...")
+            return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
+    
+    # Adicionar novo dependente
+    _armazenar_dependente_temporario_na_sessao(request, dados_dependente)
+    nome_dependente = dados_dependente.get('nome', 'Desconhecido')
     messages.success(request, f"{nome_dependente} adicionado. Será salvo ao finalizar o cadastro.")
     logger.info(f"✅ Dependente {nome_dependente} adicionado com sucesso. Redirecionando...")
     return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
@@ -1090,10 +1195,27 @@ def _processar_cadastro_dependente(request, etapa_atual, cliente_temporario, eta
     if not (primeira_etapa := etapas.filter(ativo=True).order_by("ordem").first()):
         return None, None
     
-    form_dependente_post = _preparar_formulario_dependente_post(request, primeira_etapa, etapas)
+    # Obter cliente_principal dos dados temporários se disponível
+    dados_temporarios = _obter_dados_temporarios_sessao(request)
+    cliente_principal = None
+    if dados_temporarios and 'cliente_principal_id' in dados_temporarios:
+        cliente_principal_id = dados_temporarios['cliente_principal_id']
+        try:
+            cliente_principal = ClienteConsultoria.objects.get(pk=cliente_principal_id)
+        except ClienteConsultoria.DoesNotExist:
+            pass
+    elif cliente_temporario and isinstance(cliente_temporario, ClienteConsultoria) and cliente_temporario.is_principal:
+        cliente_principal = cliente_temporario
+    
+    # Verificar se deve usar dados do cliente principal (precisar ter cliente_principal ou cliente_temporario com email)
+    usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
+    # Se não tem cliente_principal salvo, usar cliente_temporario se tiver email
+    if usar_dados_principal and not cliente_principal and cliente_temporario:
+        cliente_principal = cliente_temporario
+    
+    form_dependente_post = _preparar_formulario_dependente_post(request, primeira_etapa, etapas, cliente_principal=cliente_principal)
     
     # Garantir que assessor_responsavel seja definido se não veio no POST
-    dados_temporarios = _obter_dados_temporarios_sessao(request)
     if not form_dependente_post.data.get('assessor_responsavel'):
         assessor_id = None
         # Tentar obter do cliente temporário
@@ -1114,7 +1236,8 @@ def _processar_cadastro_dependente(request, etapa_atual, cliente_temporario, eta
             if isinstance(form_dependente_post.data, QueryDict):
                 form_data = form_dependente_post.data.copy()
                 form_data['assessor_responsavel'] = str(assessor_id)
-                form_dependente_post = ClienteConsultoriaForm(data=form_data, user=request.user)
+                usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
+                form_dependente_post = ClienteConsultoriaForm(data=form_data, user=request.user, cliente_principal=cliente_principal, usar_dados_principal=usar_dados_principal)
                 if "parceiro_indicador" in form_dependente_post.fields:
                     del form_dependente_post.fields["parceiro_indicador"]
                 _configurar_campos_formulario(form_dependente_post, primeira_etapa)
@@ -1170,6 +1293,9 @@ def _preparar_contexto_dependentes(request, etapa_atual, cliente_temporario, eta
         ).exclude(nome_campo="parceiro_indicador").order_by("ordem", "nome_campo")
         campos_dependente.extend(campos_etapa)
     
+    # Verificar se está editando um dependente para passar dados ao contexto
+    dependente_editando_dados = request.session.get('dependente_editando_dados')
+    
     contexto['primeira_etapa'] = primeira_etapa
     contexto['campos_primeira_etapa'] = campos_primeira_etapa
     contexto['campos_dependente'] = campos_dependente  # Todos os campos (dados pessoais, endereço, passaporte)
@@ -1177,6 +1303,7 @@ def _preparar_contexto_dependentes(request, etapa_atual, cliente_temporario, eta
     contexto['form_dependente'] = form_dependente
     contexto['dependentes_temporarios'] = dependentes_temporarios  # Lista de dicionários
     contexto['dependentes'] = []  # Lista vazia pois cliente ainda não está salvo
+    contexto['dependente_editando_dados'] = dependente_editando_dados  # Dados do dependente sendo editado (se houver)
 
 
 def _processar_cancelamento_cadastro(request):
@@ -1212,6 +1339,91 @@ def _processar_cancelamento_cadastro(request):
     request.session.modified = True
     messages.info(request, "Cadastro cancelado.")
     return redirect("system:home_clientes")
+
+
+def _processar_remover_dependente(request, etapa_atual):
+    """
+    Processa a remoção de um dependente temporário da sessão.
+    
+    Remove um dependente específico da lista de dependentes temporários
+    sem afetar o cadastro principal.
+    
+    Args:
+        request: HttpRequest com a sessão
+        etapa_atual: EtapaCadastroCliente atual (deve ser etapa_membros)
+    
+    Returns:
+        HttpResponseRedirect: Redirecionamento para a mesma etapa
+    """
+    try:
+        dependente_index = int(request.POST.get("dependente_index", -1))
+    except (ValueError, TypeError):
+        dependente_index = -1
+    
+    if dependente_index < 0:
+        messages.error(request, "Índice de dependente inválido.")
+        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
+    
+    dependentes_temporarios = request.session.get("dependentes_temporarios", [])
+    
+    if dependente_index >= len(dependentes_temporarios):
+        messages.error(request, "Dependente não encontrado.")
+        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
+    
+    dependente_removido = dependentes_temporarios[dependente_index]
+    nome_dependente = dependente_removido.get('nome', 'Desconhecido')
+    
+    # Remover o dependente da lista
+    dependentes_temporarios.pop(dependente_index)
+    request.session["dependentes_temporarios"] = dependentes_temporarios
+    request.session.modified = True
+    
+    logger.info(f"🗑️ Dependente temporário removido: {nome_dependente} (índice {dependente_index})")
+    _adicionar_log_debug(request, f"Dependente '{nome_dependente}' removido temporariamente")
+    messages.success(request, f"{nome_dependente} removido da lista de membros.")
+    
+    return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
+
+
+def _processar_editar_dependente(request, etapa_atual):
+    """
+    Processa a edição de um dependente temporário da sessão.
+    
+    Carrega os dados do dependente no formulário para edição.
+    
+    Args:
+        request: HttpRequest com a sessão
+        etapa_atual: EtapaCadastroCliente atual (deve ser etapa_membros)
+    
+    Returns:
+        HttpResponseRedirect: Redirecionamento para a mesma etapa com dados do dependente carregados
+    """
+    try:
+        dependente_index = int(request.POST.get("dependente_index", -1))
+    except (ValueError, TypeError):
+        dependente_index = -1
+    
+    if dependente_index < 0:
+        messages.error(request, "Índice de dependente inválido.")
+        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
+    
+    dependentes_temporarios = request.session.get("dependentes_temporarios", [])
+    
+    if dependente_index >= len(dependentes_temporarios):
+        messages.error(request, "Dependente não encontrado.")
+        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
+    
+    dependente_para_editar = dependentes_temporarios[dependente_index]
+    nome_dependente = dependente_para_editar.get('nome', 'Desconhecido')
+    
+    # Armazenar o índice do dependente sendo editado e os dados na sessão
+    request.session['dependente_editando_index'] = dependente_index
+    request.session['dependente_editando_dados'] = dependente_para_editar
+    request.session.modified = True
+    
+    logger.info(f"✏️ Editando dependente {nome_dependente} (índice {dependente_index})")
+    messages.info(request, f"Editando {nome_dependente}. Modifique os dados e clique em 'Salvar Alterações' para atualizar.")
+    return redirect(f"{request.path}?etapa_id={etapa_atual.pk}&editando_dependente=true")
 
 
 def _preparar_dados_iniciais_formulario(request, cliente_temporario):
@@ -1470,6 +1682,18 @@ def _processar_post_cadastro_cliente(request, etapa_atual, etapas, campos_etapa_
     if acao == "cancelar":
         return _processar_cancelamento_cadastro(request), None, None
     
+    # Processar remoção de dependente
+    if acao == "remover_dependente":
+        if etapa_atual.campo_booleano == 'etapa_membros':
+            return _processar_remover_dependente(request, etapa_atual), None, None
+    
+    if acao == "editar_dependente":
+        if etapa_atual.campo_booleano == 'etapa_membros':
+            return _processar_editar_dependente(request, etapa_atual), None, None
+        else:
+            messages.error(request, "Ação inválida para esta etapa.")
+            return redirect(f"{request.path}?etapa_id={etapa_atual.pk}"), None, None
+    
     # Processar cadastro de dependente se necessário
     form_dependente = None
     cliente_temporario = _criar_cliente_da_sessao(request)
@@ -1724,10 +1948,11 @@ def cadastrar_dependente(request, pk: int):
         # Obter todas as etapas para o formulário de dependente
         etapas = EtapaCadastroCliente.objects.filter(ativo=True).order_by("ordem")
         # Criar formulário com campos de dados pessoais, endereço e passaporte
-        form = _preparar_formulario_dependente_post(request, primeira_etapa, etapas)
+        form = _preparar_formulario_dependente_post(request, primeira_etapa, etapas, cliente_principal=cliente_principal)
         
         if form.is_valid():
-            _salvar_dependente(form, cliente_principal, primeira_etapa, request.user)
+            usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
+            _salvar_dependente(form, cliente_principal, primeira_etapa, request.user, usar_dados_principal=usar_dados_principal)
             messages.success(request, f"{form.cleaned_data['nome']} cadastrado como dependente com sucesso.")
             return redirect("system:cadastrar_dependente", pk=cliente_principal.pk)
         

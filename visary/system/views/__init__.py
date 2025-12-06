@@ -111,6 +111,7 @@ from .travel_views import (
     listar_paises_destino,
     listar_tipos_visto,
     listar_viagens,
+    visualizar_formulario_cliente,
 )
 
 __all__ = (
@@ -137,6 +138,7 @@ __all__ = (
     "criar_viagem",
     "editar_cliente_view",
     "editar_formulario_cliente",
+    "visualizar_formulario_cliente",
     "editar_modulo",
     "editar_pais_destino",
     "editar_perfil",
@@ -203,4 +205,5 @@ __all__ = (
     "listar_viagens",
     "login_view",
     "usuario_pode_gerenciar_todos",
+    "visualizar_formulario_cliente",
 )

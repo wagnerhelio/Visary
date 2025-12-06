@@ -491,7 +491,7 @@
 
             <div class="form-actions">
                 <button type="submit" name="acao" value="cancelar" class="btn btn-outline">
-                    Cancelar
+                    Cancelar Cadastro
                 </button>
                 <div class="btn-group">
                     {% if etapa_anterior %}
@@ -527,34 +527,74 @@
                         <span style="font-size: 0.85rem; color: rgba(86, 244, 156, 0.8); font-weight: normal;">(serão salvos ao finalizar)</span>
                     </h4>
                     {% for dependente in dependentes_temporarios %}
-                        <div style="padding: 12px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px; margin-bottom: 8px;">
+                        <div style="padding: 12px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <strong>{{ dependente.nome|default:"Sem nome" }}</strong>
                                 {% if dependente.email %}
                                     <br><span style="font-size: 0.85rem; color: var(--text-secondary);">{{ dependente.email }}</span>
                                 {% endif %}
                             </div>
+                            <div style="display: flex; gap: 8px;">
+                                <form method="post" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="acao" value="editar_dependente">
+                                    <input type="hidden" name="dependente_index" value="{{ forloop.counter0 }}">
+                                    <button type="submit" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem; background: rgba(86, 244, 156, 0.1); border-color: rgba(86, 244, 156, 0.3); color: rgba(86, 244, 156, 0.9);">
+                                        Editar
+                                    </button>
+                                </form>
+                                <form method="post" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="acao" value="remover_dependente">
+                                    <input type="hidden" name="dependente_index" value="{{ forloop.counter0 }}">
+                                    <button type="submit" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem; background: rgba(255, 82, 82, 0.1); border-color: rgba(255, 82, 82, 0.3); color: rgba(255, 82, 82, 0.9);" onclick="return confirm('Deseja remover este membro?');">
+                                        Remover
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     {% endfor %}
                 </div>
                 {% endif %}
                 
-                {# Botão para mostrar formulário (oculto se houver erros no formulário) #}
-                <div id="btn-adicionar-membro-container" style="margin-bottom: 20px; display: {% if form_dependente.errors %}none{% else %}block{% endif %};">
+                {# Botão para mostrar formulário (oculto se houver erros no formulário ou se estiver editando) #}
+                {% with editando_dependente=request.GET.editando_dependente|default:"" %}
+                <div id="btn-adicionar-membro-container" style="margin-bottom: 20px; display: {% if form_dependente.errors or editando_dependente %}none{% else %}block{% endif %};">
                     <button type="button" id="btn-adicionar-membro" class="btn btn-primary" style="display: flex; align-items: center; gap: 8px;">
                         <span>+</span>
                         <span>Adicionar Membro</span>
                     </button>
                 </div>
                 
-                {# Formulário de cadastro de dependente (inicialmente oculto, mas visível se houver erros) #}
-                <div id="formulario-dependente-container" style="display: {% if form_dependente.errors %}block{% else %}none{% endif %};">
+                {# Formulário de cadastro de dependente (inicialmente oculto, mas visível se houver erros ou se estiver editando) #}
+                <div id="formulario-dependente-container" style="display: {% if form_dependente.errors or editando_dependente %}block{% else %}none{% endif %};">
                     <form method="post" novalidate id="form-dependente">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="dependente">
                         <input type="hidden" name="assessor_responsavel" value="{{ cliente.assessor_responsavel.pk }}">
                         
-                        <h4 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-primary);">Novo Dependente</h4>
+                        <h4 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-primary);">
+                            {% if editando_dependente %}Editar Dependente{% else %}Novo Dependente{% endif %}
+                        </h4>
+                        
+                        {# Opção para usar email e senha do cliente principal #}
+                        {% with email_field=form_dependente|get_form_field:'email' %}
+                            {% if email_field and cliente.email %}
+                            {% with usar_dados_post=request.POST.usar_dados_cliente_principal|default:"" %}
+                            {% with usar_dados_editando=dependente_editando_dados.usar_dados_cliente_principal|default:False %}
+                            <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                    <input type="checkbox" id="usar-dados-cliente-principal" name="usar_dados_cliente_principal" {% if usar_dados_post == 'on' or usar_dados_editando %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                    <span style="color: var(--text-primary); font-weight: 500;">Usar email e senha do cliente principal</span>
+                                </label>
+                                <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
+                                    O dependente usará o mesmo email ({{ cliente.email }}) e senha do cliente principal para login.
+                                </p>
+                            </div>
+                            {% endwith %}
+                            {% endwith %}
+                            {% endif %}
+                        {% endwith %}
                         
                         {# Renderizar campos organizados por etapa: Dados Pessoais, Endereço, Passaporte #}
                         {% for etapa_dep in etapas_dependente %}
@@ -620,9 +660,16 @@
                                                             </div>
                                                         {% endif %}
                                                     {% endwith %}
+                                                {# Campo Email com opção de usar do cliente principal #}
+                                                {% elif campo_etapa.nome_campo == 'email' %}
+                                                    <div id="email-dependente-container">
+                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
+                                                        {{ field }}
+                                                        {{ field.errors }}
+                                                    </div>
                                                 {# Campo Senha com Confirmar Senha #}
                                                 {% elif campo_etapa.nome_campo == 'senha' %}
-                                                    <div class="grid-inline">
+                                                    <div class="grid-inline" id="senha-dependente-container">
                                                         <div>
                                                             <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
                                                             {{ field }}
@@ -678,14 +725,15 @@
                         
                         <div style="margin-top: 20px; display: flex; gap: 12px;">
                             <button type="submit" class="btn btn-primary">
-                                Adicionar Dependente
+                                {% if editando_dependente %}Salvar Alterações{% else %}Adicionar Dependente{% endif %}
                             </button>
                             <button type="button" id="btn-cancelar-dependente" class="btn btn-outline">
-                                Cancelar
+                                Cancelar Membro
                             </button>
                         </div>
                     </form>
                 </div>
+                {% endwith %}
             </div>
             
             {# JavaScript para controlar visibilidade do formulário #}
@@ -728,7 +776,81 @@
                                 el.remove();
                             });
                         }
+                        // Resetar checkbox
+                        const checkbox = document.getElementById('usar-dados-cliente-principal');
+                        if (checkbox) checkbox.checked = false;
                     });
+                }
+                
+                // Controlar checkbox "Usar dados do cliente principal"
+                const checkboxUsarDados = document.getElementById('usar-dados-cliente-principal');
+                if (checkboxUsarDados) {
+                    const emailField = document.querySelector('#email-dependente-container input[name="email"]');
+                    const senhaField = document.querySelector('#senha-dependente-container input[name="senha"]');
+                    const confirmarSenhaField = document.querySelector('#senha-dependente-container input[name="confirmar_senha"]');
+                    const emailContainer = document.getElementById('email-dependente-container');
+                    const senhaContainer = document.getElementById('senha-dependente-container');
+                    
+                    {% if cliente.email %}
+                    const emailClientePrincipal = '{{ cliente.email|escapejs }}';
+                    {% else %}
+                    const emailClientePrincipal = '';
+                    {% endif %}
+                    
+                    function toggleUsarDadosCliente() {
+                        const usarDados = checkboxUsarDados.checked;
+                        
+                        if (usarDados && emailClientePrincipal) {
+                            // Preencher email
+                            if (emailField) {
+                                emailField.value = emailClientePrincipal;
+                                emailField.readOnly = true;
+                                emailField.style.backgroundColor = 'rgba(86, 244, 156, 0.1)';
+                                emailField.style.cursor = 'not-allowed';
+                            }
+                            
+                            // Ocultar e tornar opcionais os campos de senha
+                            if (senhaContainer) {
+                                senhaContainer.style.display = 'none';
+                            }
+                            if (senhaField) {
+                                senhaField.required = false;
+                                senhaField.value = '';
+                            }
+                            if (confirmarSenhaField) {
+                                confirmarSenhaField.required = false;
+                                confirmarSenhaField.value = '';
+                            }
+                        } else {
+                            // Restaurar campos
+                            if (emailField) {
+                                emailField.value = '';
+                                emailField.readOnly = false;
+                                emailField.style.backgroundColor = '';
+                                emailField.style.cursor = '';
+                                emailField.required = true;
+                            }
+                            
+                            // Mostrar campos de senha
+                            if (senhaContainer) {
+                                senhaContainer.style.display = '';
+                            }
+                            if (senhaField) {
+                                senhaField.required = true;
+                            }
+                            if (confirmarSenhaField) {
+                                confirmarSenhaField.required = true;
+                            }
+                        }
+                    }
+                    
+                    checkboxUsarDados.addEventListener('change', toggleUsarDadosCliente);
+                    
+                    // Executar uma vez ao carregar para aplicar estado inicial se checkbox já estiver marcado
+                    // Isso garante que o estado seja aplicado mesmo após recarregamento com erros
+                    if (checkboxUsarDados.checked) {
+                        toggleUsarDadosCliente();
+                    }
                 }
             })();
             </script>

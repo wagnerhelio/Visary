@@ -74,10 +74,29 @@ class ProcessoForm(forms.ModelForm):
         if viagem_id:
             try:
                 viagem_obj = Viagem.objects.get(pk=viagem_id)
-                # Clientes diretamente na viagem OU dependentes de clientes na viagem
+                # Clientes diretamente na viagem
                 clientes_na_viagem = viagem_obj.clientes.all()
+                
+                # Buscar emails dos clientes que estão na viagem
+                emails_na_viagem = set(clientes_na_viagem.values_list('email', flat=True))
+                
+                # Remover emails vazios/None
+                emails_na_viagem = {email for email in emails_na_viagem if email}
+                
+                # Incluir clientes que compartilham o mesmo email dos clientes na viagem
+                clientes_com_mesmo_email = ClienteConsultoria.objects.none()
+                if emails_na_viagem:
+                    clientes_com_mesmo_email = ClienteConsultoria.objects.filter(
+                        email__in=emails_na_viagem
+                    )
+                
+                # Combinar: clientes diretamente na viagem + clientes com mesmo email
+                clientes_ids = set(clientes_na_viagem.values_list('pk', flat=True))
+                if clientes_com_mesmo_email.exists():
+                    clientes_ids.update(clientes_com_mesmo_email.values_list('pk', flat=True))
+                
                 clientes_queryset = clientes_queryset.filter(
-                    pk__in=clientes_na_viagem.values_list('pk', flat=True)
+                    pk__in=clientes_ids
                 ).distinct()
             except Viagem.DoesNotExist:
                 pass
@@ -220,8 +239,20 @@ class ProcessoForm(forms.ModelForm):
         cliente = cleaned_data.get("cliente")
 
         if viagem and cliente:
-            # Verificar se o cliente está diretamente vinculado à viagem
-            cliente_na_viagem = cliente in viagem.clientes.all()
+            # Buscar todos os clientes diretamente na viagem
+            clientes_na_viagem = viagem.clientes.all()
+            cliente_na_viagem = cliente in clientes_na_viagem
+            
+            # Verificar se o cliente compartilha email com algum cliente na viagem
+            cliente_com_mesmo_email_na_viagem = False
+            if not cliente_na_viagem and cliente.email:
+                # Buscar emails dos clientes que estão na viagem
+                emails_na_viagem = set(clientes_na_viagem.values_list('email', flat=True))
+                emails_na_viagem = {email for email in emails_na_viagem if email}
+                
+                # Verificar se o cliente compartilha email com algum cliente na viagem
+                if cliente.email in emails_na_viagem:
+                    cliente_com_mesmo_email_na_viagem = True
             
             # Verificar se o cliente é dependente de outro cliente que está na viagem
             cliente_principal_na_viagem = False
@@ -234,8 +265,10 @@ class ProcessoForm(forms.ModelForm):
                 dependentes_na_viagem = viagem.clientes.filter(cliente_principal=cliente).exists()
                 dependente_na_viagem = dependentes_na_viagem
             
-            # Cliente deve estar na viagem OU ser membro de um grupo familiar vinculado
-            if not (cliente_na_viagem or cliente_principal_na_viagem or dependente_na_viagem):
+            # Cliente deve estar na viagem OU compartilhar email com cliente na viagem OU ser membro de um grupo familiar vinculado
+            cliente_valido = cliente_na_viagem or cliente_com_mesmo_email_na_viagem or cliente_principal_na_viagem or dependente_na_viagem
+            
+            if not cliente_valido:
                 self.add_error(
                     "cliente",
                     "O cliente selecionado não está vinculado à viagem escolhida. "

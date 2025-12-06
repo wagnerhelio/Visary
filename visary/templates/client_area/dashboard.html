@@ -157,6 +157,20 @@
 
                 <div class="viagem-info">
                     <div class="viagem-info-item">
+                        <strong>Viajantes:</strong>
+                        <span>
+                            {% with clientes_viagem=viagem.clientes.all %}
+                                {% for c in clientes_viagem %}
+                                    {% if c.pk == cliente.pk %}
+                                        <strong>{{ c.nome }}</strong>{% if not forloop.last %}, {% endif %}
+                                    {% else %}
+                                        {{ c.nome }}{% if not forloop.last %}, {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endwith %}
+                        </span>
+                    </div>
+                    <div class="viagem-info-item">
                         <strong>Data da Viagem:</strong>
                         <span>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</span>
                     </div>

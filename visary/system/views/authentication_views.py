@@ -68,15 +68,28 @@ def _processar_login_consultor(request, user, remember: bool):
 
 def _autenticar_cliente(identifier: str, password: str, request, remember: bool):
     """Tenta autenticar como cliente."""
-    if cliente := ClienteConsultoria.objects.filter(email__iexact=identifier).first():
-        if not is_password_usable(cliente.senha):
-            messages.error(
-                request,
-                "Sua senha precisa ser redefinida. Entre em contato com o administrador."
-            )
-            return None
-        if cliente.check_password(password):
-            return _processar_login_cliente(request, cliente, remember)
+    # Buscar todos os clientes com este email
+    clientes = ClienteConsultoria.objects.filter(email__iexact=identifier)
+    
+    if not clientes.exists():
+        return None
+    
+    # Priorizar cliente principal se houver múltiplos
+    cliente = clientes.filter(cliente_principal__isnull=True).first()
+    if not cliente:
+        # Se não encontrou principal, pegar o primeiro
+        cliente = clientes.first()
+    
+    if not is_password_usable(cliente.senha):
+        messages.error(
+            request,
+            "Sua senha precisa ser redefinida. Entre em contato com o administrador."
+        )
+        return None
+    
+    if cliente.check_password(password):
+        return _processar_login_cliente(request, cliente, remember)
+    
     return None
 
 

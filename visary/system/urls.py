@@ -33,6 +33,7 @@ urlpatterns = [
     path("viagens/<int:pk>/editar/",views.editar_viagem,name="editar_viagem",),
     path("viagens/<int:pk>/excluir/",views.excluir_viagem,name="excluir_viagem",),
     path("viagens/<int:viagem_id>/formularios/",views.listar_formularios_viagem,name="listar_formularios_viagem",),
+    path("viagens/<int:viagem_id>/formularios/<int:cliente_id>/visualizar/",views.visualizar_formulario_cliente,name="visualizar_formulario_cliente",),
     path("viagens/<int:viagem_id>/formularios/<int:cliente_id>/editar/",views.editar_formulario_cliente,name="editar_formulario_cliente",),
     path("viagens/<int:viagem_id>/formularios/<int:cliente_id>/excluir/",views.excluir_respostas_formulario,name="excluir_respostas_formulario",),
     path("paises-destino/",views.home_paises_destino,name="home_paises_destino",),

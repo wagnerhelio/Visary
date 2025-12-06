@@ -177,9 +177,21 @@ class ClienteConsultoriaForm(forms.ModelForm):
             ),
         }
 
-    def __init__(self, *args, user: Optional[User] = None, **kwargs) -> None:
+    def __init__(self, *args, user: Optional[User] = None, cliente_principal=None, usar_dados_principal: bool = False, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._user = user
+        self.cliente_principal = cliente_principal
+        self.usar_dados_principal = usar_dados_principal  # Flag para usar dados do cliente principal
+        
+        # Se estiver usando dados do cliente principal, tornar senha opcional ANTES de qualquer outra configuração
+        if usar_dados_principal:
+            if 'senha' in self.fields:
+                self.fields['senha'].required = False
+                self.fields['senha'].widget.attrs['data-usar-dados-principal'] = 'true'
+            if 'confirmar_senha' in self.fields:
+                self.fields['confirmar_senha'].required = False
+                self.fields['confirmar_senha'].widget.attrs['data-usar-dados-principal'] = 'true'
+        
         self.fields["assessor_responsavel"].queryset = (
             UsuarioConsultoria.objects.filter(ativo=True)
             .order_by("nome")
@@ -212,10 +224,24 @@ class ClienteConsultoriaForm(forms.ModelForm):
             )
             if consultor and not self.instance.pk:  # Só pré-preenche em criação, não em edição
                 self.fields["assessor_responsavel"].initial = consultor.pk
+    
+    def full_clean(self):
+        """Sobrescreve full_clean para garantir que senha seja opcional quando usar_dados_principal."""
+        # Se estiver usando dados do cliente principal, garantir que campos de senha são opcionais
+        if self.usar_dados_principal:
+            if 'senha' in self.fields:
+                self.fields['senha'].required = False
+            if 'confirmar_senha' in self.fields:
+                self.fields['confirmar_senha'].required = False
+        super().full_clean()
 
     def clean_confirmar_senha(self):
-        senha = self.cleaned_data.get("senha")
-        confirmar = self.cleaned_data.get("confirmar_senha")
+        # Se estiver usando dados do cliente principal, não validar - retornar vazio
+        if self.usar_dados_principal:
+            return ""
+        
+        senha = self.cleaned_data.get("senha", "")
+        confirmar = self.cleaned_data.get("confirmar_senha", "")
 
         # Se ambos estão vazios e é edição, não validar
         if not senha and not confirmar and self.instance.pk:
@@ -227,18 +253,22 @@ class ClienteConsultoriaForm(forms.ModelForm):
         return confirmar
 
     def clean_senha(self):
-        senha = self.cleaned_data.get("senha")
+        # Se estiver usando dados do cliente principal, não validar - retornar vazio
+        if self.usar_dados_principal:
+            return ""
+        
+        senha = self.cleaned_data.get("senha", "")
         # Se for um novo cliente (sem pk), a senha é obrigatória
-        if self.instance.pk or senha:
-            return senha
-        raise forms.ValidationError("A senha é obrigatória para novos clientes.")
+        if not senha and not self.instance.pk:
+            raise forms.ValidationError("A senha é obrigatória para novos clientes.")
+        return senha
     
     def clean_email(self):
         email = self.cleaned_data.get("email")
         if not email:
             return email
         
-        # Verificar se email já existe (emails devem ser únicos)
+        # Verificar se email já existe
         queryset = ClienteConsultoria.objects.filter(email=email)
         if self.instance.pk:
             # Se estiver editando, excluir a própria instância da verificação
@@ -246,10 +276,36 @@ class ClienteConsultoriaForm(forms.ModelForm):
         
         if queryset.exists():
             cliente_existente = queryset.first()
-            raise forms.ValidationError(
-                f"Este email já está em uso por outro cliente: {cliente_existente.nome}. "
-                "Emails devem ser únicos no sistema."
-            )
+            
+            # Se estamos criando/editando um dependente
+            if self.cliente_principal:
+                # Permitir se o email pertence ao cliente principal
+                if cliente_existente.pk == self.cliente_principal.pk:
+                    return email
+                # Permitir se o email pertence a outro dependente do mesmo cliente principal
+                if cliente_existente.cliente_principal_id == self.cliente_principal.pk:
+                    return email
+                # Caso contrário, erro
+                raise forms.ValidationError(
+                    f"Este email já está em uso por outro cliente: {cliente_existente.nome}. "
+                    "Apenas o cliente principal e seus membros podem compartilhar o mesmo email."
+                )
+            
+            # Se estamos criando/editando um cliente principal
+            # Verificar se é dependente que pode compartilhar email
+            if not self.instance.pk or not self.instance.cliente_principal:
+                # Se o email pertence a algum dependente deste cliente (em edição)
+                if self.instance.pk:
+                    dependentes_ids = list(ClienteConsultoria.objects.filter(
+                        cliente_principal_id=self.instance.pk
+                    ).values_list('pk', flat=True))
+                    if cliente_existente.pk in dependentes_ids:
+                        return email
+                # Se o email pertence a outro cliente principal ou dependente de outro grupo, erro
+                raise forms.ValidationError(
+                    f"Este email já está em uso por outro cliente: {cliente_existente.nome}. "
+                    "Emails podem ser compartilhados apenas entre cliente principal e seus membros."
+                )
         
         return email
     

@@ -210,6 +210,8 @@
         <table class="viagens-table">
             <thead>
                 <tr>
+                    <th>Cliente</th>
+                    <th>Membros</th>
                     <th>País</th>
                     <th>Tipo de Visto</th>
                     <th>Data Viagem</th>
@@ -221,6 +223,36 @@
             <tbody>
                 {% for viagem in viagens %}
                 <tr>
+                    <td>
+                        {% with clientes=viagem.clientes.all %}
+                            {% if clientes %}
+                                {% for cliente in clientes %}
+                                    {% if cliente.is_principal %}
+                                        <strong>{{ cliente.nome }}</strong>
+                                    {% endif %}
+                                {% empty %}
+                                    <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                                {% endfor %}
+                            {% else %}
+                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>
+                        {% with clientes=viagem.clientes.all %}
+                            {% if clientes %}
+                                {% for cliente in clientes %}
+                                    {% if not cliente.is_principal %}
+                                        <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7);">{{ cliente.nome }}</span>
+                                    {% endif %}
+                                {% empty %}
+                                    <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                                {% endfor %}
+                            {% else %}
+                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
                     <td>{{ viagem.pais_destino.nome }}</td>
                     <td>{{ viagem.tipo_visto.nome }}</td>
                     <td>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
@@ -259,6 +291,8 @@
         <table class="viagens-table">
             <thead>
                 <tr>
+                    <th>Cliente</th>
+                    <th>Membros</th>
                     <th>País</th>
                     <th>Tipo de Visto</th>
                     <th>Data Viagem</th>
@@ -269,6 +303,36 @@
             <tbody>
                 {% for item in viagens_formularios_nao_preenchidos %}
                 <tr>
+                    <td>
+                        {% with clientes=item.viagem.clientes.all %}
+                            {% if clientes %}
+                                {% for cliente in clientes %}
+                                    {% if cliente.is_principal %}
+                                        <strong>{{ cliente.nome }}</strong>
+                                    {% endif %}
+                                {% empty %}
+                                    <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                                {% endfor %}
+                            {% else %}
+                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>
+                        {% with clientes=item.viagem.clientes.all %}
+                            {% if clientes %}
+                                {% for cliente in clientes %}
+                                    {% if not cliente.is_principal %}
+                                        <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7);">{{ cliente.nome }}</span>
+                                    {% endif %}
+                                {% empty %}
+                                    <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                                {% endfor %}
+                            {% else %}
+                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
                     <td>{{ item.viagem.pais_destino.nome }}</td>
                     <td>{{ item.viagem.tipo_visto.nome }}</td>
                     <td>{{ item.viagem.data_prevista_viagem|date:"d/m/Y" }}</td>

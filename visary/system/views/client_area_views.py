@@ -49,13 +49,27 @@ def cliente_dashboard(request):
         messages.error(request, "Você precisa fazer login para acessar esta página.")
         return redirect("login")
 
-    # Buscar viagens vinculadas ao cliente
-    viagens = (
-        Viagem.objects.filter(clientes=cliente)
-        .select_related("pais_destino", "tipo_visto", "assessor_responsavel")
-        .prefetch_related("tipo_visto__formulario__perguntas")
-        .order_by("-data_prevista_viagem")
-    )
+    # Buscar viagens do cliente principal + viagens dos membros
+    if cliente.is_principal:
+        # Se é cliente principal, buscar suas viagens + viagens dos dependentes
+        dependentes = cliente.dependentes.all()
+        clientes_ids = [cliente.pk] + list(dependentes.values_list('pk', flat=True))
+        
+        viagens = (
+            Viagem.objects.filter(clientes__pk__in=clientes_ids)
+            .select_related("pais_destino", "tipo_visto", "assessor_responsavel")
+            .prefetch_related("tipo_visto__formulario__perguntas", "clientes")
+            .distinct()
+            .order_by("-data_prevista_viagem")
+        )
+    else:
+        # Se é dependente, mostrar apenas suas viagens
+        viagens = (
+            Viagem.objects.filter(clientes=cliente)
+            .select_related("pais_destino", "tipo_visto", "assessor_responsavel")
+            .prefetch_related("tipo_visto__formulario__perguntas", "clientes")
+            .order_by("-data_prevista_viagem")
+        )
 
     contexto = {
         "cliente": cliente,
@@ -76,8 +90,16 @@ def cliente_visualizar_formulario(request, viagem_id: int):
         Viagem.objects.select_related("tipo_visto__formulario"), pk=viagem_id
     )
 
-    # Verificar se o cliente está vinculado à viagem
-    if cliente not in viagem.clientes.all():
+    # Verificar se o cliente está vinculado à viagem OU se é cliente principal e algum dependente está na viagem
+    cliente_na_viagem = cliente in viagem.clientes.all()
+    dependente_na_viagem = False
+    
+    if not cliente_na_viagem and cliente.is_principal:
+        # Verificar se algum dependente está na viagem
+        dependentes_ids = list(cliente.dependentes.values_list('pk', flat=True))
+        dependente_na_viagem = viagem.clientes.filter(pk__in=dependentes_ids).exists()
+    
+    if not (cliente_na_viagem or dependente_na_viagem):
         raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
 
     formulario = _obter_formulario_cliente(viagem, cliente)
