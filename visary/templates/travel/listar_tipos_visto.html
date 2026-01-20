@@ -130,9 +130,7 @@
                 <th>Descrição</th>
                 <th>Status</th>
                 <th>Cadastro</th>
-                {% if pode_gerenciar_todos %}
-                    <th style="width:120px;">Ações</th>
-                {% endif %}
+                <th style="width:{% if pode_gerenciar_todos %}220px{% else %}100px{% endif %};">Ações</th>
             </tr>
             </thead>
             <tbody>
@@ -149,21 +147,22 @@
                         {% endif %}
                     </td>
                     <td>--</td>
-                    {% if pode_gerenciar_todos %}
-                        <td>
-                            <div style="display: flex; gap: 8px; align-items: center;">
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:visualizar_tipo_visto' tipo.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                            {% if pode_gerenciar_todos %}
                                 <a href="{% url 'system:editar_tipo_visto' tipo.pk %}" class="btn btn-outline btn-small">Editar</a>
-                                <form method="post" action="{% url 'system:excluir_tipo_visto' tipo.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ tipo.nome }}?');" style="margin: 0;">
+                                <form method="post" action="{% url 'system:excluir_tipo_visto' tipo.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ tipo.nome }}?');" style="margin: 0; display: inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-danger btn-small">Excluir</button>
                                 </form>
-                            </div>
-                        </td>
-                    {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="{% if pode_gerenciar_todos %}6{% else %}5{% endif %}" class="empty-state">
+                    <td colspan="7" class="empty-state">
                         Nenhum tipo de visto cadastrado até o momento. <a href="{% url 'system:criar_tipo_visto' %}">Cadastre o primeiro tipo de visto</a>.
                     </td>
                 </tr>

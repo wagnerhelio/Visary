@@ -83,6 +83,16 @@ class PartnerForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+        
+        # Apenas nome_responsavel, email e senha são obrigatórios
+        # Tornar todos os outros campos opcionais
+        self.fields["nome_empresa"].required = False
+        self.fields["cpf"].required = False
+        self.fields["cnpj"].required = False
+        self.fields["telefone"].required = False
+        self.fields["segmento"].required = False
+        self.fields["cidade"].required = False
+        self.fields["estado"].required = False
         self.fields["senha"].required = False
         self.fields["confirmar_senha"].required = False
 
@@ -115,14 +125,7 @@ class PartnerForm(forms.ModelForm):
             if senha != confirmar_senha:
                 raise ValidationError({"confirmar_senha": "As senhas não coincidem."})
 
-        # Validar CPF ou CNPJ (pelo menos um deve ser preenchido)
-        if not cpf and not cnpj:
-            raise ValidationError(
-                {
-                    "cpf": "Informe o CPF ou CNPJ.",
-                    "cnpj": "Informe o CPF ou CNPJ.",
-                }
-            )
+        # CPF e CNPJ são opcionais, não há necessidade de validação
 
         return cleaned_data
 

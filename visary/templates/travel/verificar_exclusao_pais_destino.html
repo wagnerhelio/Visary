@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Verificar Exclusão de País{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .card header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .card h2 {
+        margin: 0;
+        font-size: 1.4rem;
+        color: var(--text-primary);
+    }
+
+    .card p {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .alert {
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        font-weight: 500;
+    }
+
+    .alert-danger {
+        background: rgba(244, 67, 54, 0.15);
+        border: 1px solid rgba(244, 67, 54, 0.4);
+        color: rgba(244, 67, 54, 0.95);
+    }
+
+    .alert-warning {
+        background: rgba(255, 193, 7, 0.15);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+        color: rgba(255, 193, 7, 0.95);
+    }
+
+    .alert-success {
+        background: rgba(86, 244, 156, 0.15);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+        color: rgba(86, 244, 156, 0.95);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    td {
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .empty-state {
+        padding: 24px;
+        text-align: center;
+        color: var(--text-secondary);
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        border-radius: 12px;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.2);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: center;
+    }
+
+    .stat-card strong {
+        display: block;
+        font-size: 2rem;
+        color: var(--accent);
+        margin-bottom: 4px;
+    }
+
+    .stat-card span {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+        table {
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            padding: 10px 8px;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Verificar Exclusão de País</h1>
+        <p>{{ pais.nome }}</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:listar_paises_destino' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="layout-grid">
+    {% if pode_excluir %}
+        <article class="card">
+            <div class="alert alert-success">
+                <strong>✓ País pode ser excluído</strong><br>
+                Não existem registros vinculados a este país. Você pode excluí-lo com segurança.
+            </div>
+            <form method="post" action="{% url 'system:excluir_pais_destino' pais.pk %}" onsubmit="return confirm('Deseja realmente excluir o país {{ pais.nome }}?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Excluir País</button>
+            </form>
+        </article>
+    {% else %}
+        <article class="card">
+            <div class="alert alert-danger">
+                <strong>⚠ Não é possível excluir este país</strong><br>
+                Existem registros vinculados a este país que impedem sua exclusão. 
+                Exclua os registros listados abaixo primeiro.
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <strong>{{ total_viagens }}</strong>
+                    <span>Viagem{{ total_viagens|pluralize }}</span>
+                </div>
+                <div class="stat-card">
+                    <strong>{{ total_tipos_visto }}</strong>
+                    <span>Tipo{{ total_tipos_visto|pluralize }} de Visto</span>
+                </div>
+                <div class="stat-card">
+                    <strong>{{ total_clientes_viagem }}</strong>
+                    <span>Cliente{{ total_clientes_viagem|pluralize }} em Viagem</span>
+                </div>
+            </div>
+        </article>
+
+        {% if viagens %}
+        <article class="card">
+            <header>
+                <h2>Viagens Vinculadas</h2>
+                <p>Exclua as viagens abaixo para poder excluir o país</p>
+            </header>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data Viagem</th>
+                        <th>Tipo de Visto</th>
+                        <th>Assessor</th>
+                        <th>Clientes</th>
+                        <th style="width:100px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for viagem in viagens %}
+                        <tr>
+                            <td>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
+                            <td>{{ viagem.tipo_visto.nome }}</td>
+                            <td>{{ viagem.assessor_responsavel.nome }}</td>
+                            <td>{{ viagem.clientes.count }} cliente{{ viagem.clientes.count|pluralize }}</td>
+                            <td>
+                                <a href="{% url 'system:visualizar_viagem' viagem.pk %}" class="btn btn-primary btn-small">Ver</a>
+                                <a href="{% url 'system:editar_viagem' viagem.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                <form method="post" action="{% url 'system:excluir_viagem' viagem.pk %}" onsubmit="return confirm('Deseja realmente excluir esta viagem?');" style="display: inline; margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </article>
+        {% endif %}
+
+        {% if tipos_visto %}
+        <article class="card">
+            <header>
+                <h2>Tipos de Visto Vinculados</h2>
+                <p>Estes tipos de visto serão excluídos automaticamente quando o país for excluído</p>
+            </header>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tipo_visto in tipos_visto %}
+                        <tr>
+                            <td>{{ tipo_visto.nome }}</td>
+                            <td>
+                                {% if tipo_visto.ativo %}
+                                    <span style="color: var(--accent);">Ativo</span>
+                                {% else %}
+                                    <span style="color: var(--text-secondary);">Inativo</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </article>
+        {% endif %}
+    {% endif %}
+</section>
+{% endblock %}
+

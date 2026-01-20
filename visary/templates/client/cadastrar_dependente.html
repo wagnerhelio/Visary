@@ -125,7 +125,6 @@
 
         <form method="post" novalidate>
             {% csrf_token %}
-            <input type="hidden" name="assessor_responsavel" value="{{ cliente_principal.assessor_responsavel.pk }}">
 
             {# Opção para usar email e senha do cliente principal #}
             {% with email_field=form|get_form_field:'email' %}
@@ -149,11 +148,8 @@
                 {% if campo_etapa.nome_campo in form.fields %}
                     {% with field=form|get_form_field:campo_etapa.nome_campo %}
                         {% if field %}
-                            {# Pular assessor_responsavel pois já está como hidden #}
-                            {% if campo_etapa.nome_campo == 'assessor_responsavel' %}
-                                {# Já está como hidden #}
                             {# Pular parceiro_indicador - dependentes não devem ter parceiro #}
-                            {% elif campo_etapa.nome_campo == 'parceiro_indicador' %}
+                            {% if campo_etapa.nome_campo == 'parceiro_indicador' %}
                                 {# Dependentes não devem ter parceiro indicador #}
                             {# Campo Email com opção de usar do cliente principal #}
                             {% elif campo_etapa.nome_campo == 'email' %}

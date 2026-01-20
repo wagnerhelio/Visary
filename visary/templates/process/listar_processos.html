@@ -124,7 +124,81 @@
         font-size: 0.85rem;
     }
 
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .filtros-card header {
+        margin-bottom: 20px;
+    }
+
+    .filtros-card h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: var(--text-primary);
+    }
+
+    .filtros-form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .filtros-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .filtros-form label {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 6px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .filtros-form input,
+    .filtros-form select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .filtros-form input:focus,
+    .filtros-form select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .filtros-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+    }
+
     @media (max-width: 768px) {
+        .filtros-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filtros-actions {
+            flex-direction: column;
+        }
+    }
         .card {
             height: calc(100vh - 250px);
             max-height: calc(100vh - 250px);
@@ -156,6 +230,39 @@
 {% endblock %}
 
 {% block app_content %}
+<section class="filtros-card">
+    <header>
+        <h2>Filtros</h2>
+    </header>
+    <form method="get" class="filtros-form">
+        <div class="filtros-grid">
+            <div>
+                <label for="cliente">Cliente</label>
+                <input type="text" id="cliente" name="cliente" value="{{ filtros_aplicados.cliente }}" placeholder="Nome do cliente">
+            </div>
+            <div>
+                <label for="viagem">Viagem</label>
+                <input type="text" id="viagem" name="viagem" value="{{ filtros_aplicados.viagem }}" placeholder="País ou tipo de visto">
+            </div>
+            <div>
+                <label for="assessor">Assessor</label>
+                <select id="assessor" name="assessor">
+                    <option value="">Todos</option>
+                    {% for assessor in assessores %}
+                        <option value="{{ assessor.nome }}" {% if filtros_aplicados.assessor == assessor.nome %}selected{% endif %}>
+                            {{ assessor.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:listar_processos' %}" class="btn btn-outline">Limpar Filtros</a>
+        </div>
+    </form>
+</section>
+
 <section class="card">
     <div class="table-wrapper">
         <table>
@@ -207,6 +314,7 @@
                     <td>{{ processo.criado_em|date:"d/m/Y H:i" }}</td>
                     <td>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:visualizar_processo' processo.pk %}" class="btn btn-primary btn-small">Visualizar</a>
                             {% if pode_gerenciar_todos or processo.assessor_responsavel == consultor %}
                                 <a href="{% url 'system:editar_processo' processo.pk %}" class="btn btn-outline btn-small">Editar</a>
                                 {% if pode_gerenciar_todos %}
@@ -222,7 +330,11 @@
             {% empty %}
                 <tr>
                     <td colspan="{% if pode_gerenciar_todos %}8{% else %}7{% endif %}" class="empty-state">
-                        Nenhum processo cadastrado até o momento. <a href="{% url 'system:criar_processo' %}">Cadastre o primeiro processo</a>.
+                        {% if filtros_aplicados.cliente or filtros_aplicados.viagem or filtros_aplicados.assessor %}
+                            Nenhum processo encontrado com os filtros aplicados. <a href="{% url 'system:listar_processos' %}">Limpar filtros</a>.
+                        {% else %}
+                            Nenhum processo cadastrado até o momento. <a href="{% url 'system:criar_processo' %}">Cadastre o primeiro processo</a>.
+                        {% endif %}
                     </td>
                 </tr>
             {% endfor %}

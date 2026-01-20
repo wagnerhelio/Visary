@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Visary | Listar Parceiros{% endblock %}
+{% block title %}Visary | Listar Tipos de Formulário de Visto{% endblock %}
 
 {% block base_styles %}
     {{ block.super }}
@@ -96,17 +96,15 @@
     }
 {% endblock %}
 
-{% comment %}Menu lateral definido no base.html{% endcomment %}
-
 {% block app_header %}
 <section class="page-header">
     <div class="page-header__titles">
-        <h1>Listar Parceiros</h1>
-        <p>Visualize e gerencie todos os parceiros cadastrados.</p>
+        <h1>Listar Tipos de Formulário de Visto</h1>
+        <p>Visualize e gerencie todos os tipos de formulário cadastrados.</p>
     </div>
     <div class="actions-inline">
-        <a href="{% url 'system:home_partners' %}" class="btn btn-outline">Voltar</a>
-        <a href="{% url 'system:criar_partner' %}" class="btn btn-primary">Novo Parceiro</a>
+        <a href="{% url 'system:home_tipos_formulario' %}" class="btn btn-outline">Voltar</a>
+        <a href="{% url 'system:criar_formulario' %}" class="btn btn-primary">Novo Tipo de Formulário</a>
     </div>
 </section>
 {% endblock %}
@@ -125,49 +123,44 @@
         <table>
             <thead>
             <tr>
-                <th>Responsável</th>
-                <th>Empresa</th>
-                <th>E-mail</th>
-                <th>Telefone</th>
-                <th>Segmento</th>
-                <th>Cidade/UF</th>
+                <th>Tipo de Visto</th>
+                <th>País</th>
+                <th>Perguntas</th>
                 <th>Status</th>
-                    <th style="width:{% if pode_gerenciar_todos %}220px{% else %}100px{% endif %};">Ações</th>
+                {% if pode_gerenciar_todos %}
+                    <th style="width:120px;">Ações</th>
+                {% endif %}
             </tr>
             </thead>
             <tbody>
-            {% for partner in partners %}
+            {% for formulario in formularios %}
                 <tr>
-                    <td>{{ partner.nome_responsavel }}</td>
-                    <td>{{ partner.nome_empresa|default:"--" }}</td>
-                    <td>{{ partner.email }}</td>
-                    <td>{{ partner.telefone }}</td>
-                    <td>{{ partner.get_segmento_display }}</td>
-                    <td>{{ partner.cidade }}/{{ partner.estado }}</td>
+                    <td>{{ formulario.tipo_visto.nome }}</td>
+                    <td>{{ formulario.tipo_visto.pais_destino.nome }}</td>
+                    <td>{{ formulario.perguntas.count }} pergunta{{ formulario.perguntas.count|pluralize:"s" }}</td>
                     <td>
-                        {% if partner.ativo %}
+                        {% if formulario.ativo %}
                             <span style="color: var(--accent);">Ativo</span>
                         {% else %}
                             <span style="color: var(--text-secondary);">Inativo</span>
                         {% endif %}
                     </td>
-                    <td>
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <a href="{% url 'system:visualizar_partner' partner.pk %}" class="btn btn-primary btn-small">Visualizar</a>
-                            {% if pode_gerenciar_todos %}
-                                <a href="{% url 'system:editar_partner' partner.pk %}" class="btn btn-outline btn-small">Editar</a>
-                                <form method="post" action="{% url 'system:excluir_partner' partner.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ partner.nome_empresa|default:partner.nome_responsavel }}?');" style="margin: 0; display: inline;">
+                    {% if pode_gerenciar_todos %}
+                        <td>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <a href="{% url 'system:editar_formulario' formulario.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                <form method="post" action="{% url 'system:excluir_formulario' formulario.pk %}" onsubmit="return confirm('Deseja realmente excluir o formulário de {{ formulario.tipo_visto.nome }}?');" style="margin: 0; display: inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-danger btn-small">Excluir</button>
                                 </form>
-                            {% endif %}
-                        </div>
-                    </td>
+                            </div>
+                        </td>
+                    {% endif %}
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="8" class="empty-state">
-                        Nenhum parceiro cadastrado até o momento. <a href="{% url 'system:criar_partner' %}">Cadastre o primeiro parceiro</a>.
+                    <td colspan="{% if pode_gerenciar_todos %}5{% else %}4{% endif %}" class="empty-state">
+                        Nenhum tipo de formulário cadastrado até o momento. <a href="{% url 'system:criar_formulario' %}">Cadastre o primeiro tipo de formulário</a>.
                     </td>
                 </tr>
             {% endfor %}

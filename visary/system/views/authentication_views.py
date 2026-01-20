@@ -3,7 +3,6 @@ Views responsáveis pela autenticação de usuários de consultoria.
 """
 
 from __future__ import annotations
-
 from typing import List
 
 from django.conf import settings
@@ -59,6 +58,8 @@ def _processar_login_consultor(request, user, remember: bool):
 
     if not remember:
         request.session.set_expiry(0)
+    else:
+        request.session.set_expiry(1209600)  # 2 semanas
 
     if redirect_to := request.POST.get("next") or request.GET.get("next"):
         return redirect(redirect_to)
@@ -104,23 +105,24 @@ def login_view(request):
 
     form = ConsultancyAuthenticationForm(request.POST or None)
 
-    if request.method == "POST" and form.is_valid():
-        identifier = form.cleaned_data["identifier"].strip()
-        password = form.cleaned_data["password"]
-        remember = form.cleaned_data["remember_me"]
+    if request.method == "POST":
+        if form.is_valid():
+            identifier = form.cleaned_data["identifier"].strip()
+            password = form.cleaned_data["password"]
+            remember = form.cleaned_data["remember_me"]
 
-        # 1. Tentar autenticar como CONSULTOR/ADMIN primeiro
-        user = _autenticar_consultor(identifier, password, request)
+            # 1. Tentar autenticar como CONSULTOR/ADMIN primeiro
+            user = _autenticar_consultor(identifier, password, request)
 
-        if user is not None and user.is_active:
-            return _processar_login_consultor(request, user, remember)
+            if user is not None and user.is_active:
+                return _processar_login_consultor(request, user, remember)
 
-        # 2. Se não encontrou como consultor, tentar como CLIENTE
-        if redirect_response := _autenticar_cliente(identifier, password, request, remember):
-            return redirect_response
+            # 2. Se não encontrou como consultor, tentar como CLIENTE
+            if redirect_response := _autenticar_cliente(identifier, password, request, remember):
+                return redirect_response
 
-        # Credenciais inválidas
-        messages.error(request, "Credenciais inválidas ou usuário inativo.")
+            # Credenciais inválidas
+            messages.error(request, "Credenciais inválidas ou usuário inativo.")
 
     context = {
         "form": form,

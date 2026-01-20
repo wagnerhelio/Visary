@@ -571,7 +571,6 @@
                     <form method="post" novalidate id="form-dependente">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="dependente">
-                        <input type="hidden" name="assessor_responsavel" value="{{ cliente.assessor_responsavel.pk }}">
                         
                         <h4 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-primary);">
                             {% if editando_dependente %}Editar Dependente{% else %}Novo Dependente{% endif %}
@@ -607,11 +606,8 @@
                                     {% if campo_etapa.etapa.pk == etapa_dep.pk and campo_etapa.nome_campo in form_dependente.fields %}
                                         {% with field=form_dependente|get_form_field:campo_etapa.nome_campo %}
                                             {% if field %}
-                                                {# Pular assessor_responsavel pois já está como hidden #}
-                                                {% if campo_etapa.nome_campo == 'assessor_responsavel' %}
-                                                    {# Já está como hidden #}
                                                 {# Pular parceiro_indicador - dependentes não devem ter parceiro #}
-                                                {% elif campo_etapa.nome_campo == 'parceiro_indicador' %}
+                                                {% if campo_etapa.nome_campo == 'parceiro_indicador' %}
                                                     {# Dependentes não devem ter parceiro indicador #}
                                                 {# Campo CEP com botão de busca e UF #}
                                                 {% elif campo_etapa.nome_campo == 'cep' %}

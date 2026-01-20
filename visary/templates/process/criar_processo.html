@@ -189,7 +189,29 @@
                 {% endif %}
             </div>
 
-            <button type="submit" class="btn btn-primary">Criar Processo</button>
+            <div class="etapas-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.1); {% if not etapas_disponiveis %}display: none;{% endif %}">
+                <label style="display: block; margin-bottom: 12px;">
+                    Etapas do Processo
+                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal; display: block; margin-top: 4px;">
+                        Selecione as etapas que deseja incluir no processo
+                    </span>
+                </label>
+                <div class="etapas-checklist">
+                    {% for choice in form.etapas_selecionadas %}
+                        <label>
+                            {{ choice.tag }}
+                            <span style="flex: 1;">{{ choice.choice_label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+                {% if form.etapas_selecionadas.errors %}
+                    <div style="color: rgba(255, 104, 104, 0.9); font-size: 0.85rem; margin-top: 4px;">
+                        {{ form.etapas_selecionadas.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 24px;">Criar Processo</button>
         </form>
     </article>
 </section>
@@ -291,9 +313,56 @@
             });
     }
     
+    // Função para carregar etapas disponíveis da viagem
+    function carregarEtapasDisponiveis(viagemId) {
+        if (!viagemId) {
+            // Ocultar seção de etapas se não houver viagem
+            const etapasSection = document.querySelector('.etapas-section');
+            if (etapasSection) {
+                etapasSection.style.display = 'none';
+            }
+            return;
+        }
+        
+        fetch(`{% url 'system:api_status_processo' %}?viagem_id=${viagemId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar etapas');
+                }
+                return response.json();
+            })
+            .then(etapas => {
+                const etapasSection = document.querySelector('.etapas-section');
+                const etapasChecklist = document.querySelector('.etapas-checklist');
+                
+                if (!etapasSection || !etapasChecklist) return;
+                
+                if (!etapas || etapas.length === 0) {
+                    etapasSection.style.display = 'none';
+                    return;
+                }
+                
+                etapasSection.style.display = 'block';
+                etapasChecklist.innerHTML = '';
+                
+                etapas.forEach(etapa => {
+                    const label = document.createElement('label');
+                    label.innerHTML = `
+                        <input type="checkbox" name="etapas_selecionadas" value="${etapa.id}" checked>
+                        <span style="flex: 1;">${etapa.nome}</span>
+                    `;
+                    etapasChecklist.appendChild(label);
+                });
+            })
+            .catch(error => {
+                console.error('Erro ao buscar etapas da viagem:', error);
+            });
+    }
+    
     // Listener para mudança na seleção de viagem
     viagemSelect.addEventListener('change', function() {
         filtrarClientesPorViagem(this.value);
+        carregarEtapasDisponiveis(this.value);
     });
     
     // Armazenar cliente pré-selecionado se houver
@@ -319,12 +388,13 @@
         return viagemSelect.value;
     }
     
-    // Se viagem já está pré-selecionada, filtrar clientes após DOM estar pronto
+    // Se viagem já está pré-selecionada, filtrar clientes e carregar etapas após DOM estar pronto
     const viagemId = obterViagemId();
     if (viagemId) {
         // Aguardar um pouco para garantir que o DOM está completamente carregado
         setTimeout(() => {
             filtrarClientesPorViagem(viagemId);
+            carregarEtapasDisponiveis(viagemId);
         }, 100);
     }
 })();

@@ -102,6 +102,28 @@
         margin-bottom: 16px;
     }
 
+    .etapa-header form {
+        margin-left: auto;
+    }
+
+    .etapa-header .btn-remover-etapa {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        background: rgba(255, 104, 104, 0.2);
+        border: 1px solid rgba(255, 104, 104, 0.4);
+        color: rgba(255, 104, 104, 0.9);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 500;
+    }
+
+    .etapa-header .btn-remover-etapa:hover {
+        background: rgba(255, 104, 104, 0.3);
+        border-color: rgba(255, 104, 104, 0.6);
+        color: rgba(255, 104, 104, 1);
+    }
+
     .etapa-checkbox {
         width: 24px;
         height: 24px;
@@ -259,6 +281,14 @@
                                 <label for="etapa_{{ etapa.pk }}_concluida" class="etapa-nome">
                                     {{ etapa.status.nome }}
                                 </label>
+                                <form method="post" action="{% url 'system:remover_etapa_processo' processo.pk etapa.pk %}" 
+                                      onsubmit="return confirm('Deseja realmente remover a etapa \'{{ etapa.status.nome }}\' deste processo?');" 
+                                      style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-remover-etapa" title="Remover etapa">
+                                        ✕ Remover
+                                    </button>
+                                </form>
                             </div>
 
                             <div class="etapa-info">
@@ -320,6 +350,44 @@
             {% endif %}
         </form>
     </article>
+
+    {% if etapas_disponiveis %}
+    <article class="card">
+        <header style="margin-bottom: 20px;">
+            <h2>Etapas Disponíveis para Adicionar</h2>
+            <p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                Etapas que foram removidas ou ainda não foram adicionadas ao processo.
+            </p>
+        </header>
+
+        <div class="checklist-etapas">
+            {% for status in etapas_disponiveis %}
+                <div class="etapa-item" style="opacity: 0.8; border-color: rgba(86, 244, 156, 0.3);">
+                    <div class="etapa-header">
+                        <div class="etapa-nome" style="flex: 1;">
+                            {{ status.nome }}
+                        </div>
+                        <form method="post" action="{% url 'system:adicionar_etapa_processo' processo.pk status.pk %}" 
+                              style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" title="Adicionar etapa">
+                                + Adicionar
+                            </button>
+                        </form>
+                    </div>
+                    {% if status.prazo_padrao_dias %}
+                    <div class="etapa-info">
+                        <div class="etapa-info-item">
+                            <span class="etapa-info-label">Prazo Padrão</span>
+                            <span class="etapa-info-value">{{ status.prazo_padrao_dias }} dias</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </article>
+    {% endif %}
 </section>
 
 <script>

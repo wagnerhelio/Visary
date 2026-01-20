@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Visualizar Processo{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .info-grid {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .info-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.6);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .info-value {
+        font-size: 1rem;
+        color: rgba(245, 245, 245, 0.9);
+        font-weight: 500;
+    }
+
+    .info-value a {
+        color: var(--accent);
+        text-decoration: none;
+        transition: opacity 0.2s ease;
+    }
+
+    .info-value a:hover {
+        opacity: 0.8;
+    }
+
+    /* Checklist de Etapas */
+    .checklist-etapas {
+        display: grid;
+        gap: 16px;
+        margin-top: 24px;
+    }
+
+    .etapa-item {
+        background: rgba(12, 19, 35, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 20px;
+        transition: all 0.2s ease;
+    }
+
+    .etapa-item:hover {
+        border-color: rgba(86, 244, 156, 0.3);
+        background: rgba(12, 19, 35, 0.6);
+    }
+
+    .etapa-item.concluida {
+        border-color: rgba(86, 244, 156, 0.5);
+        background: rgba(86, 244, 156, 0.1);
+    }
+
+    .etapa-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .etapa-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: default;
+        pointer-events: none;
+    }
+
+    .etapa-nome {
+        flex: 1;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        cursor: default;
+    }
+
+    .etapa-info {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        margin-top: 12px;
+    }
+
+    .etapa-info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .etapa-info-label {
+        font-size: 0.75rem;
+        color: rgba(245, 245, 245, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .etapa-info-value {
+        font-size: 0.95rem;
+        color: rgba(245, 245, 245, 0.9);
+        font-weight: 500;
+    }
+
+    .etapa-observacoes {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .etapa-observacoes-label {
+        font-size: 0.75rem;
+        color: rgba(245, 245, 245, 0.6);
+        margin-bottom: 8px;
+        display: block;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .etapa-observacoes-text {
+        font-size: 0.9rem;
+        color: rgba(245, 245, 245, 0.8);
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    .etapa-observacoes-text:empty::before {
+        content: "Nenhuma observação registrada.";
+        color: rgba(245, 245, 245, 0.4);
+        font-style: italic;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, rgba(86, 244, 156, 0.8), rgba(86, 244, 156, 1));
+        transition: width 0.3s ease;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-warning {
+        background: rgba(255, 193, 7, 0.2);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    @media (min-width: 1120px) {
+        .layout-grid {
+            max-width: 900px;
+            margin: 0 auto;
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .layout-grid {
+            max-width: 100%;
+            margin-inline: auto;
+        }
+
+        .etapa-info {
+            grid-template-columns: 1fr;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Visualizar Processo</h1>
+        <p>Detalhes completos do processo de visto.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:listar_processos' %}" class="btn btn-outline">Voltar</a>
+        {% if pode_editar %}
+            <a href="{% url 'system:editar_processo' processo.pk %}" class="btn btn-primary">Editar</a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="layout-grid">
+    <!-- Informações do Processo -->
+    <article class="card">
+        <header style="margin-bottom: 24px;">
+            <h2>Informações do Processo</h2>
+        </header>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Cliente</span>
+                <span class="info-value">
+                    <a href="{% url 'system:visualizar_cliente' processo.cliente.pk %}">
+                        {{ processo.cliente.nome }}
+                    </a>
+                    {% if processo.cliente.is_dependente %}
+                        <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.6); display: block; margin-top: 4px;">
+                            Dependente de {{ processo.cliente.cliente_principal.nome|default:"-" }}
+                        </span>
+                    {% endif %}
+                </span>
+            </div>
+            
+            <div class="info-item">
+                <span class="info-label">Viagem</span>
+                <span class="info-value">
+                    <a href="{% url 'system:visualizar_viagem' processo.viagem.pk %}">
+                        {{ processo.viagem.tipo_visto.nome }}
+                    </a>
+                    <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.6); display: block; margin-top: 4px;">
+                        {{ processo.viagem.pais_destino.nome }}
+                    </span>
+                </span>
+            </div>
+            
+            <div class="info-item">
+                <span class="info-label">Assessor Responsável</span>
+                <span class="info-value">{{ processo.assessor_responsavel.nome }}</span>
+            </div>
+            
+            <div class="info-item">
+                <span class="info-label">Status</span>
+                <span class="info-value">
+                    <span class="badge {% if processo.progresso_percentual == 100 %}badge-success{% else %}badge-warning{% endif %}">
+                        {{ processo.get_status_display }}
+                    </span>
+                </span>
+            </div>
+            
+            <div class="info-item">
+                <span class="info-label">Progresso</span>
+                <span class="info-value">
+                    {{ processo.etapas_concluidas }}/{{ processo.total_etapas }} etapas ({{ processo.progresso_percentual }}%)
+                </span>
+            </div>
+            
+            <div class="info-item">
+                <span class="info-label">Criado em</span>
+                <span class="info-value">{{ processo.criado_em|date:"d/m/Y H:i" }}</span>
+            </div>
+            
+            {% if processo.atualizado_em %}
+            <div class="info-item">
+                <span class="info-label">Atualizado em</span>
+                <span class="info-value">{{ processo.atualizado_em|date:"d/m/Y H:i" }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </article>
+
+    <!-- Etapas do Processo -->
+    <article class="card">
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+                <h2>Etapas do Processo</h2>
+                <p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+                    Progresso: {{ processo.etapas_concluidas }}/{{ processo.total_etapas }} etapas concluídas ({{ processo.progresso_percentual }}%)
+                </p>
+            </div>
+        </header>
+
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ processo.progresso_percentual }}%;"></div>
+        </div>
+
+        <div class="checklist-etapas">
+            {% for item in etapas_com_datas %}
+                {% with etapa=item.etapa data_finalizacao=item.data_finalizacao %}
+                    <div class="etapa-item {% if etapa.concluida %}concluida{% endif %}">
+                        <div class="etapa-header">
+                            <input 
+                                type="checkbox" 
+                                class="etapa-checkbox"
+                                {% if etapa.concluida %}checked{% endif %}
+                                disabled>
+                            <label class="etapa-nome">
+                                {{ etapa.status.nome }}
+                            </label>
+                        </div>
+
+                        <div class="etapa-info">
+                            <div class="etapa-info-item">
+                                <span class="etapa-info-label">Prazo (dias)</span>
+                                <span class="etapa-info-value">
+                                    {% if etapa.prazo_dias %}{{ etapa.prazo_dias }}{% else %}{{ etapa.status.prazo_padrao_dias|default:"—" }}{% endif %}
+                                </span>
+                            </div>
+
+                            <div class="etapa-info-item">
+                                <span class="etapa-info-label">Data Finalização</span>
+                                <span class="etapa-info-value">
+                                    {% if data_finalizacao %}
+                                        {{ data_finalizacao|date:"d/m/Y" }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </span>
+                            </div>
+
+                            <div class="etapa-info-item">
+                                <span class="etapa-info-label">Data de Conclusão</span>
+                                <span class="etapa-info-value">
+                                    {% if etapa.data_conclusao %}
+                                        {{ etapa.data_conclusao|date:"d/m/Y" }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        {% if etapa.observacoes %}
+                        <div class="etapa-observacoes">
+                            <span class="etapa-observacoes-label">Observações</span>
+                            <div class="etapa-observacoes-text">{{ etapa.observacoes }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endwith %}
+            {% empty %}
+                <p style="color: rgba(245, 245, 245, 0.6); text-align: center; padding: 40px 20px;">
+                    Nenhuma etapa configurada para este processo.
+                </p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+{% endblock %}
+

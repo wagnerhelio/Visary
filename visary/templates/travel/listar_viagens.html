@@ -396,8 +396,9 @@
                             {% if item.total_clientes > 0 %}
                                 <a href="{% url 'system:criar_processo' %}?viagem_id={{ item.viagem.pk }}" class="btn btn-outline btn-small" style="background: linear-gradient(135deg, #4dd0e1 0%, #56f49c 100%);">Criar Processo</a>
                             {% endif %}
+                            <a href="{% url 'system:visualizar_viagem' item.viagem.pk %}" class="btn btn-primary btn-small">Visualizar</a>
                             {% if item.tem_formulario and item.total_clientes > 0 %}
-                                <a href="{% url 'system:listar_formularios_viagem' item.viagem.pk %}" class="btn btn-primary btn-small">Formulários</a>
+                                <a href="{% url 'system:listar_formularios_viagem' item.viagem.pk %}" class="btn btn-outline btn-small">Formulários</a>
                             {% endif %}
                             {% if item.pode_editar_excluir %}
                                 <a href="{% url 'system:editar_viagem' item.viagem.pk %}" class="btn btn-outline btn-small">Editar</a>

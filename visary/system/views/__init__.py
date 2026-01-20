@@ -39,6 +39,7 @@ from .client_views import (
     listar_clientes_view,
     remover_dependente,
     usuario_pode_gerenciar_todos,
+    visualizar_cliente,
 )
 from .etapa_views import (
     criar_campo_etapa,
@@ -65,7 +66,10 @@ from .form_views import (
     excluir_opcao_selecao,
     excluir_pergunta,
     home_formularios,
+    home_tipos_formulario,
     listar_formularios,
+    listar_tipos_formulario,
+    selecionar_viagem_cliente_formulario,
 )
 from .partners_views import (
     criar_partner,
@@ -73,17 +77,21 @@ from .partners_views import (
     excluir_partner,
     home_partners,
     listar_partners,
+    visualizar_partner,
 )
 from .process_views import (
     api_cliente_info,
     api_prazo_status_processo,
     api_clientes_viagem,
     api_status_processo,
+    adicionar_etapa_processo,
     criar_processo,
     editar_processo,
     excluir_processo,
     home_processos,
     listar_processos,
+    remover_etapa_processo,
+    visualizar_processo,
 )
 from .status_processo_views import (
     criar_status_processo,
@@ -105,6 +113,7 @@ from .travel_views import (
     excluir_tipo_visto,
     excluir_viagem,
     home_paises_destino,
+    verificar_exclusao_pais_destino,
     home_tipos_visto,
     home_viagens,
     listar_formularios_viagem,
@@ -112,6 +121,9 @@ from .travel_views import (
     listar_tipos_visto,
     listar_viagens,
     visualizar_formulario_cliente,
+    visualizar_pais_destino,
+    visualizar_tipo_visto,
+    visualizar_viagem,
 )
 
 __all__ = (
@@ -150,6 +162,7 @@ __all__ = (
     "excluir_cliente",
     "excluir_modulo",
     "excluir_pais_destino",
+    "verificar_exclusao_pais_destino",
     "excluir_perfil",
     "excluir_respostas_formulario",
     "criar_campo_etapa",
@@ -186,15 +199,20 @@ __all__ = (
     "excluir_opcao_selecao",
     "excluir_pergunta",
     "excluir_partner",
+    "visualizar_partner",
+    "adicionar_etapa_processo",
     "excluir_processo",
     "excluir_status_processo",
+    "remover_etapa_processo",
     "home_formularios",
     "home_partners",
     "home_processos",
     "listar_financeiro",
     "listar_formularios",
     "listar_formularios_viagem",
+    "listar_tipos_formulario",
     "listar_modulos",
+    "selecionar_viagem_cliente_formulario",
     "listar_partners",
     "listar_paises_destino",
     "listar_perfis",
@@ -205,5 +223,10 @@ __all__ = (
     "listar_viagens",
     "login_view",
     "usuario_pode_gerenciar_todos",
+    "visualizar_cliente",
     "visualizar_formulario_cliente",
+    "visualizar_pais_destino",
+    "visualizar_processo",
+    "visualizar_tipo_visto",
+    "visualizar_viagem",
 )

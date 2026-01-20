@@ -129,9 +129,7 @@
                 <th>Código ISO</th>
                 <th>Status</th>
                 <th>Cadastro</th>
-                {% if pode_gerenciar_todos %}
-                    <th style="width:120px;">Ações</th>
-                {% endif %}
+                    <th style="width:{% if pode_gerenciar_todos %}220px{% else %}100px{% endif %};">Ações</th>
             </tr>
             </thead>
             <tbody>
@@ -147,21 +145,19 @@
                         {% endif %}
                     </td>
                     <td>{{ pais.criado_em|date:"d/m/Y" }}</td>
-                    {% if pode_gerenciar_todos %}
-                        <td>
-                            <div style="display: flex; gap: 8px; align-items: center;">
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:visualizar_pais_destino' pais.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                            {% if pode_gerenciar_todos %}
                                 <a href="{% url 'system:editar_pais_destino' pais.pk %}" class="btn btn-outline btn-small">Editar</a>
-                                <form method="post" action="{% url 'system:excluir_pais_destino' pais.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ pais.nome }}?');" style="margin: 0;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-danger btn-small">Excluir</button>
-                                </form>
-                            </div>
-                        </td>
-                    {% endif %}
+                                <a href="{% url 'system:verificar_exclusao_pais_destino' pais.pk %}" class="btn btn-danger btn-small">Excluir</a>
+                            {% endif %}
+                        </div>
+                    </td>
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="{% if pode_gerenciar_todos %}5{% else %}4{% endif %}" class="empty-state">
+                    <td colspan="5" class="empty-state">
                         Nenhum país cadastrado até o momento. <a href="{% url 'system:criar_pais_destino' %}">Cadastre o primeiro país</a>.
                     </td>
                 </tr>

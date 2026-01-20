@@ -179,6 +179,82 @@
     .btn-primary.btn-small:hover {
         background: linear-gradient(135deg, rgba(86, 244, 156, 1), rgba(86, 244, 156, 0.9));
     }
+
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .filtros-card header {
+        margin-bottom: 20px;
+    }
+
+    .filtros-card h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: var(--text-primary);
+    }
+
+    .filtros-form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .filtros-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .filtros-form label {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 6px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .filtros-form input,
+    .filtros-form select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .filtros-form input:focus,
+    .filtros-form select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .filtros-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    @media (max-width: 768px) {
+        .filtros-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filtros-actions {
+            flex-direction: column;
+        }
+    }
 {% endblock %}
 
 {% comment %}Menu lateral definido no base.html{% endcomment %}
@@ -200,12 +276,97 @@
     <strong>{{ total_viagens }}</strong>
 </section>
 
+{% if pode_gerenciar_todos %}
+<section class="viagens-list">
+    <article class="viagens-list-card">
+        <header>
+            <h2>Minhas Viagens</h2>
+            <p>Como administrador, você não possui clientes vinculados diretamente. Use a opção "Listar Viagens" para visualizar todas as viagens do sistema.</p>
+        </header>
+        <div class="empty-state">
+            Nenhuma viagem vinculada aos seus clientes.
+        </div>
+    </article>
+</section>
+{% elif not pode_gerenciar_todos %}
+<section class="filtros-card">
+    <header>
+        <h2>Filtros</h2>
+    </header>
+    <form method="get" class="filtros-form">
+        <div class="filtros-grid">
+            <div>
+                <label for="pais">País de Destino</label>
+                <select id="pais" name="pais">
+                    <option value="">Todos</option>
+                    {% for pais in paises %}
+                        <option value="{{ pais.pk }}" {% if filtros_aplicados.pais == pais.pk %}selected{% endif %}>
+                            {{ pais.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="tipo_visto">Tipo de Visto</label>
+                <select id="tipo_visto" name="tipo_visto">
+                    <option value="">Todos</option>
+                    {% for tipo in tipos_visto %}
+                        <option value="{{ tipo.pk }}" {% if filtros_aplicados.tipo_visto == tipo.pk %}selected{% endif %}>
+                            {{ tipo.pais_destino.nome }} - {{ tipo.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="cliente">Cliente Vinculado</label>
+                <select id="cliente" name="cliente">
+                    <option value="">Todos</option>
+                    {% for cliente in clientes %}
+                        <option value="{{ cliente.pk }}" {% if filtros_aplicados.cliente == cliente.pk %}selected{% endif %}>
+                            {{ cliente.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="data_viagem_inicio">Data Viagem (Início)</label>
+                <input type="date" id="data_viagem_inicio" name="data_viagem_inicio" value="{{ filtros_aplicados.data_viagem_inicio }}">
+            </div>
+            <div>
+                <label for="data_viagem_fim">Data Viagem (Fim)</label>
+                <input type="date" id="data_viagem_fim" name="data_viagem_fim" value="{{ filtros_aplicados.data_viagem_fim }}">
+            </div>
+            <div>
+                <label for="data_retorno_inicio">Data Retorno (Início)</label>
+                <input type="date" id="data_retorno_inicio" name="data_retorno_inicio" value="{{ filtros_aplicados.data_retorno_inicio }}">
+            </div>
+            <div>
+                <label for="data_retorno_fim">Data Retorno (Fim)</label>
+                <input type="date" id="data_retorno_fim" name="data_retorno_fim" value="{{ filtros_aplicados.data_retorno_fim }}">
+            </div>
+            <div>
+                <label for="valor_min">Valor Mínimo</label>
+                <input type="number" step="0.01" id="valor_min" name="valor_min" value="{{ filtros_aplicados.valor_min }}" placeholder="0.00">
+            </div>
+            <div>
+                <label for="valor_max">Valor Máximo</label>
+                <input type="number" step="0.01" id="valor_max" name="valor_max" value="{{ filtros_aplicados.valor_max }}" placeholder="0.00">
+            </div>
+        </div>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:home_viagens' %}" class="btn btn-outline">Limpar Filtros</a>
+        </div>
+    </form>
+</section>
+{% endif %}
+
 {% if viagens %}
 <section class="viagens-list">
     <article class="viagens-list-card">
         <header>
-            <h2>Últimas Viagens</h2>
-            <p>Viagens mais recentes</p>
+            <h2>Minhas Viagens</h2>
+            <p>Viagens vinculadas aos seus clientes</p>
         </header>
         <table class="viagens-table">
             <thead>
@@ -259,7 +420,21 @@
                     <td>{{ viagem.data_prevista_retorno|date:"d/m/Y" }}</td>
                     <td>R$ {{ viagem.valor_assessoria|floatformat:2 }}</td>
                     <td>
-                        <a href="{% url 'system:listar_formularios_viagem' viagem.pk %}" class="btn btn-primary btn-small">Formulários</a>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:visualizar_viagem' viagem.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                            {% if pode_gerenciar_todos or viagem.assessor_responsavel == consultor %}
+                                <a href="{% url 'system:editar_viagem' viagem.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                {% if pode_gerenciar_todos %}
+                                    <form method="post" action="{% url 'system:excluir_viagem' viagem.pk %}" onsubmit="return confirm('Deseja realmente excluir esta viagem?');" style="margin: 0;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                            {% if viagem.tipo_visto.formulario and viagem.clientes.count > 0 %}
+                                <a href="{% url 'system:listar_formularios_viagem' viagem.pk %}" class="btn btn-outline btn-small">Formulários</a>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -271,11 +446,15 @@
 <section class="viagens-list">
     <article class="viagens-list-card">
         <header>
-            <h2>Últimas Viagens</h2>
-            <p>Viagens mais recentes</p>
+            <h2>Minhas Viagens</h2>
+            <p>Viagens vinculadas aos seus clientes</p>
         </header>
         <div class="empty-state">
-            Nenhuma viagem cadastrada até o momento. <a href="{% url 'system:criar_viagem' %}">Cadastre a primeira viagem</a>.
+            {% if filtros_aplicados.pais or filtros_aplicados.tipo_visto or filtros_aplicados.cliente or filtros_aplicados.data_viagem_inicio or filtros_aplicados.data_viagem_fim or filtros_aplicados.data_retorno_inicio or filtros_aplicados.data_retorno_fim or filtros_aplicados.valor_min or filtros_aplicados.valor_max %}
+                Nenhuma viagem encontrada com os filtros aplicados. <a href="{% url 'system:home_viagens' %}">Limpar filtros</a>.
+            {% else %}
+                Nenhuma viagem cadastrada até o momento. <a href="{% url 'system:criar_viagem' %}">Cadastre a primeira viagem</a>.
+            {% endif %}
         </div>
     </article>
 </section>

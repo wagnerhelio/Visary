@@ -1,0 +1,37 @@
+& c:/Users/wagne/Documents/GitHub/Visary/.venv/Scripts/Activate.ps1
+cd  .\visary\
+python cleanup.py
+python manage.py makemigrations
+python manage.py migrate
+python manage.py criar_superuser_admin
+python manage.py runserver 0.0.0.0:8000
+& c:/Users/wagne/Documents/GitHub/Visary/.venv/Scripts/Activate.ps1
+ngrok http 8000
+python cleanup.py
+python manage.py makemigrations
+python manage.py migrate
+python manage.py criar_superuser_admin
+python manage.py runserver 0.0.0.0:8000
+python cleanup.py
+python manage.py makemigrations
+python manage.py migrate
+python manage.py criar_superuser_admin
+clear
+python manage.py runserver 0.0.0.0:8000
+clear
+python manage.py runserver 0.0.0.0:8000
+clear
+python manage.py runserver 0.0.0.0:8000
+clear
+python manage.py runserver 0.0.0.0:8000
+python cleanup.py
+python manage.py makemigrations
+python manage.py migrate
+python manage.py criar_superuser_admin
+python manage.py runserver 0.0.0.0:8000
+& c:/Users/wagne/Documents/GitHub/Visary/.venv/Scripts/Activate.ps1
+ngrok http 8000
+clear
+python manage.py runserver 0.0.0.0:8000
+clear
+python manage.py runserver 0.0.0.0:8000

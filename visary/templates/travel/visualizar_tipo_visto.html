@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Visualizar Tipo de Visto{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .card header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .card h2 {
+        margin: 0;
+        font-size: 1.4rem;
+        color: var(--text-primary);
+    }
+
+    .card p {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .info-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .info-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.6);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .info-value {
+        font-size: 0.95rem;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .badge-primary {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-gray {
+        background: rgba(158, 158, 158, 0.2);
+        color: rgba(158, 158, 158, 0.95);
+        border: 1px solid rgba(158, 158, 158, 0.4);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    td {
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .empty-state {
+        padding: 24px;
+        text-align: center;
+        color: var(--text-secondary);
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        border-radius: 12px;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .descricao {
+        padding: 16px;
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.2);
+        border-radius: 12px;
+        color: rgba(245, 245, 245, 0.88);
+        line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        table {
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            padding: 10px 8px;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Visualizar Tipo de Visto</h1>
+        <p>{{ tipo_visto.nome }} - {{ tipo_visto.pais_destino.nome }}</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:listar_tipos_visto' %}" class="btn btn-outline">Voltar</a>
+        {% if pode_editar %}
+            <a href="{% url 'system:editar_tipo_visto' tipo_visto.pk %}" class="btn btn-primary">Editar</a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="layout-grid">
+    <article class="card">
+        <header>
+            <h2>Informações do Tipo de Visto</h2>
+            <p>Dados cadastrais do tipo de visto</p>
+        </header>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Nome</span>
+                <span class="info-value">{{ tipo_visto.nome }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">País de Destino</span>
+                <span class="info-value">
+                    <a href="{% url 'system:visualizar_pais_destino' tipo_visto.pais_destino.pk %}" style="color: var(--accent); text-decoration: none;">
+                        {{ tipo_visto.pais_destino.nome }}
+                    </a>
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status</span>
+                <span class="info-value">
+                    {% if tipo_visto.ativo %}
+                        <span class="badge badge-primary">Ativo</span>
+                    {% else %}
+                        <span class="badge badge-gray">Inativo</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Criado em</span>
+                <span class="info-value">{{ tipo_visto.criado_em|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Criado por</span>
+                <span class="info-value">{{ tipo_visto.criado_por.get_full_name|default:tipo_visto.criado_por.username }}</span>
+            </div>
+        </div>
+        {% if tipo_visto.descricao %}
+        <div style="margin-top: 20px;">
+            <span class="info-label">Descrição</span>
+            <div class="descricao">{{ tipo_visto.descricao|linebreaks }}</div>
+        </div>
+        {% endif %}
+    </article>
+
+    {% if formulario %}
+    <article class="card">
+        <header>
+            <h2>Formulário Vinculado</h2>
+            <p>Formulário de visto associado a este tipo de visto</p>
+        </header>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Status do Formulário</span>
+                <span class="info-value">
+                    {% if formulario.ativo %}
+                        <span class="badge badge-primary">Ativo</span>
+                    {% else %}
+                        <span class="badge badge-gray">Inativo</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Total de Perguntas</span>
+                <span class="info-value">{{ formulario.perguntas.count }} pergunta{{ formulario.perguntas.count|pluralize }}</span>
+            </div>
+        </div>
+        <div style="margin-top: 20px;">
+            <a href="{% url 'system:editar_formulario' formulario.pk %}" class="btn btn-outline">Gerenciar Formulário</a>
+        </div>
+    </article>
+    {% endif %}
+
+    <article class="card">
+        <header>
+            <h2>Viagens Vinculadas</h2>
+            <p>{{ total_viagens }} viagem{{ total_viagens|pluralize }} cadastrada{{ total_viagens|pluralize }}</p>
+        </header>
+        {% if viagens %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data Viagem</th>
+                        <th>País</th>
+                        <th>Assessor</th>
+                        <th>Clientes</th>
+                        <th style="width:100px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for viagem in viagens %}
+                        <tr>
+                            <td>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
+                            <td>{{ viagem.pais_destino.nome }}</td>
+                            <td>{{ viagem.assessor_responsavel.nome }}</td>
+                            <td>{{ viagem.clientes.count }} cliente{{ viagem.clientes.count|pluralize }}</td>
+                            <td>
+                                <a href="{% url 'system:visualizar_viagem' viagem.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                Nenhuma viagem vinculada a este tipo de visto.
+            </div>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}
+

@@ -56,6 +56,11 @@
                    data-close-sidebar>
                     Processos
                 </a>
+                <a class="nav-item {% if request.resolver_match.url_name == 'home_formularios' or request.resolver_match.url_name == 'visualizar_formulario_cliente' or request.resolver_match.url_name == 'editar_formulario_cliente' or request.resolver_match.url_name == 'listar_formularios_viagem' %}is-active{% endif %}"
+                   href="{% url 'system:home_formularios' %}"
+                   data-close-sidebar>
+                    Formulários
+                </a>
                 <a class="nav-item {% if 'partners' in request.resolver_match.url_name or 'partner' in request.resolver_match.url_name %}is-active{% endif %}" 
                    href="{% url 'system:home_partners' %}" 
                    data-close-sidebar>
@@ -71,10 +76,10 @@
                    data-close-sidebar>
                     Tipos de Visto
                 </a>
-                <a class="nav-item {% if 'formularios' in request.resolver_match.url_name or 'formulario' in request.resolver_match.url_name or 'pergunta' in request.resolver_match.url_name %}is-active{% endif %}"
-                   href="{% url 'system:home_formularios' %}"
+                <a class="nav-item {% if request.resolver_match.url_name == 'home_tipos_formulario' or request.resolver_match.url_name == 'listar_tipos_formulario' or request.resolver_match.url_name == 'criar_formulario' or request.resolver_match.url_name == 'editar_formulario' or request.resolver_match.url_name == 'excluir_formulario' or request.resolver_match.url_name == 'criar_pergunta' or request.resolver_match.url_name == 'editar_pergunta' or request.resolver_match.url_name == 'excluir_pergunta' or request.resolver_match.url_name == 'criar_opcao_selecao' or request.resolver_match.url_name == 'editar_opcao_selecao' or request.resolver_match.url_name == 'excluir_opcao_selecao' %}is-active{% endif %}"
+                   href="{% url 'system:home_tipos_formulario' %}"
                    data-close-sidebar>
-                    Formulários de Visto
+                    Tipos de Formulário de Visto
                 </a>
                 {% if perfil_usuario == 'Administrador' or request.user.is_superuser %}
                 <a class="nav-item {% if 'financeiro' in request.resolver_match.url_name %}is-active{% endif %}"

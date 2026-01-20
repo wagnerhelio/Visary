@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static tz %}
 
-{% block title %}Visary | Formulários de Visto{% endblock %}
+{% block title %}Visary | Formulários{% endblock %}
 
 {% block base_styles %}
     {{ block.super }}
@@ -111,12 +111,63 @@
         font-size: 0.9rem;
     }
 
+    .formularios-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .formularios-table th {
+        text-align: left;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .formularios-table td {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .formularios-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
     .empty-state {
         padding: 18px;
         border-radius: 16px;
         border: 1px dashed rgba(86, 244, 156, 0.35);
         color: rgba(245, 245, 245, 0.72);
         text-align: center;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-warning {
+        background: rgba(255, 193, 7, 0.2);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
     }
 
     @media (max-width: 768px) {
@@ -135,59 +186,100 @@
     }
 {% endblock %}
 
-{% comment %}Menu lateral definido no base.html{% endcomment %}
-
 {% block app_header %}
 <section class="page-header">
     <div class="page-header__titles">
-        <h1>Formulários de Visto</h1>
-        <p>Gerencie formulários dinâmicos vinculados aos tipos de visto.</p>
+        <h1>Formulários</h1>
+        <p>Formulários preenchidos pelos clientes.</p>
     </div>
 </section>
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <section class="stats-card">
-    <span>Total de formulários cadastrados</span>
+    <span>Total de formulários preenchidos</span>
     <strong>{{ total_formularios }}</strong>
 </section>
 
-{% if formularios %}
+{% if formularios_respostas %}
 <section class="formularios-list">
     <article class="formularios-list-card">
         <header>
-            <h2>Formulários mais recentes</h2>
-            <p>Últimos formulários cadastrados</p>
+            <h2>Meus Formulários</h2>
+            <p>Formulários preenchidos pelos seus clientes</p>
         </header>
-        <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: 12px;">
-            {% for formulario in formularios %}
-                <li style="padding: 12px; background: rgba(86, 244, 156, 0.08); border-radius: 12px; border: 1px solid rgba(86, 244, 156, 0.2);">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <strong style="color: var(--text-primary);">
-                                {{ formulario.tipo_visto.nome }}
-                            </strong>
-                            <span style="color: var(--text-secondary); font-size: 0.85rem; margin-left: 8px;">
-                                ({{ formulario.tipo_visto.pais_destino.nome }})
-                            </span>
-                        </div>
-                        {% if formulario.ativo %}
-                            <span style="color: var(--accent); font-size: 0.75rem; font-weight: 600;">Ativo</span>
-                        {% else %}
-                            <span style="color: var(--text-secondary); font-size: 0.75rem;">Inativo</span>
-                        {% endif %}
-                    </div>
-                </li>
-            {% endfor %}
-        </ul>
+        <table class="formularios-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Data Viagem</th>
+                    <th>País</th>
+                    <th>Tipo de Visto</th>
+                    <th>Progresso</th>
+                    <th style="width:{% if pode_gerenciar_todos %}220px{% else %}180px{% endif %};">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in formularios_respostas %}
+                    {% for cliente_info in item.clientes %}
+                    <tr>
+                        <td>
+                            <strong>{{ cliente_info.cliente.nome }}</strong>
+                            {% if cliente_info.cliente.is_dependente %}
+                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                    Dependente de {{ cliente_info.cliente.cliente_principal.nome|default:"-" }}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
+                        <td>{{ item.viagem.pais_destino.nome }}</td>
+                        <td>{{ cliente_info.tipo_visto.nome|default:"-" }}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="flex: 1; background: rgba(255, 255, 255, 0.1); border-radius: 8px; height: 8px; overflow: hidden;">
+                                    <div style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); height: 100%; width: {% if cliente_info.total_perguntas > 0 %}{% widthratio cliente_info.total_respostas cliente_info.total_perguntas 100 %}{% else %}0{% endif %}%; transition: width 0.3s ease;"></div>
+                                </div>
+                                <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7); min-width: 45px;">
+                                    {% if cliente_info.total_perguntas > 0 %}
+                                        {% widthratio cliente_info.total_respostas cliente_info.total_perguntas 100 %}%
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                {{ cliente_info.total_respostas }} de {{ cliente_info.total_perguntas }} perguntas
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <a href="{% url 'system:visualizar_formulario_cliente' item.viagem.pk cliente_info.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                                <a href="{% url 'system:editar_formulario_cliente' item.viagem.pk cliente_info.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                {% if pode_gerenciar_todos %}
+                                    <form method="post" action="{% url 'system:excluir_respostas_formulario' item.viagem.pk cliente_info.cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir todas as respostas deste formulário?');" style="margin: 0; display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </article>
+</section>
+{% else %}
+<section class="formularios-list">
+    <article class="formularios-list-card">
+        <header>
+            <h2>Meus Formulários</h2>
+            <p>Formulários disponíveis para os seus clientes</p>
+        </header>
+        <div class="empty-state">
+            Nenhum formulário disponível até o momento.
+        </div>
     </article>
 </section>
 {% endif %}
@@ -196,16 +288,15 @@
     <article class="action-card">
         <div class="action-card__icon">➕</div>
         <h3>Criar Formulário</h3>
-        <p>Cadastre um novo formulário para um tipo de visto</p>
-        <a href="{% url 'system:criar_formulario' %}" class="btn btn-primary">Criar</a>
+        <p>Preencha um formulário para uma viagem/cliente já cadastrado</p>
+        <a href="{% url 'system:selecionar_viagem_cliente_formulario' %}" class="btn btn-primary">Criar</a>
     </article>
 
     <article class="action-card">
         <div class="action-card__icon">📋</div>
         <h3>Listar Formulários</h3>
-        <p>Visualize todos os formulários cadastrados</p>
+        <p>Visualize todos os formulários preenchidos pelos seus clientes</p>
         <a href="{% url 'system:listar_formularios' %}" class="btn btn-outline">Listar</a>
     </article>
 </section>
 {% endblock %}
-

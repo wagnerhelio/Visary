@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Tipos de Formulário de Visto{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .stats-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 32px;
+        text-align: center;
+    }
+
+    .stats-card span {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .stats-card strong {
+        display: block;
+        font-size: 2.5rem;
+        color: var(--accent);
+        font-weight: 700;
+    }
+
+    .actions-grid {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        margin-top: 32px;
+    }
+
+    .action-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .action-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 32px 64px rgba(5, 8, 17, 0.6);
+    }
+
+    .action-card__icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: #081423;
+    }
+
+    .action-card h3 {
+        margin: 0;
+        font-size: 1.3rem;
+        color: var(--text-primary);
+    }
+
+    .action-card p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .action-card .btn {
+        margin-top: auto;
+    }
+
+    .formularios-list {
+        margin-top: 32px;
+    }
+
+    .formularios-list-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+    }
+
+    .formularios-list-card header {
+        margin-bottom: 20px;
+    }
+
+    .formularios-list-card h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: var(--text-primary);
+    }
+
+    .formularios-list-card p {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .empty-state {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        color: rgba(245, 245, 245, 0.72);
+        text-align: center;
+    }
+
+    @media (max-width: 768px) {
+        .actions-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .action-card {
+            padding: 24px;
+        }
+
+        .stats-card {
+            padding: 24px;
+        }
+    }
+{% endblock %}
+
+{% comment %}Menu lateral definido no base.html{% endcomment %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Tipos de Formulário de Visto</h1>
+        <p>Gerencie formulários dinâmicos vinculados aos tipos de visto.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="stats-card">
+    <span>Total de tipos de formulário cadastrados</span>
+    <strong>{{ total_formularios }}</strong>
+</section>
+
+{% if formularios %}
+<section class="formularios-list">
+    <article class="formularios-list-card">
+        <header>
+            <h2>Tipos de formulário mais recentes</h2>
+            <p>Últimos tipos de formulário cadastrados</p>
+        </header>
+        <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: 12px;">
+            {% for formulario in formularios %}
+                <li style="padding: 12px; background: rgba(86, 244, 156, 0.08); border-radius: 12px; border: 1px solid rgba(86, 244, 156, 0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: var(--text-primary);">
+                                {{ formulario.tipo_visto.nome }}
+                            </strong>
+                            <span style="color: var(--text-secondary); font-size: 0.85rem; margin-left: 8px;">
+                                ({{ formulario.tipo_visto.pais_destino.nome }})
+                            </span>
+                        </div>
+                        {% if formulario.ativo %}
+                            <span style="color: var(--accent); font-size: 0.75rem; font-weight: 600;">Ativo</span>
+                        {% else %}
+                            <span style="color: var(--text-secondary); font-size: 0.75rem;">Inativo</span>
+                        {% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </article>
+</section>
+{% endif %}
+
+<section class="actions-grid">
+    <article class="action-card">
+        <div class="action-card__icon">➕</div>
+        <h3>Criar Formulário</h3>
+        <p>Cadastre um novo tipo de formulário para um tipo de visto</p>
+        <a href="{% url 'system:criar_formulario' %}" class="btn btn-primary">Criar</a>
+    </article>
+
+    <article class="action-card">
+        <div class="action-card__icon">📋</div>
+        <h3>Listar Formulários</h3>
+        <p>Visualize todos os tipos de formulário cadastrados</p>
+        <a href="{% url 'system:listar_tipos_formulario' %}" class="btn btn-outline">Listar</a>
+    </article>
+</section>
+{% endblock %}
+

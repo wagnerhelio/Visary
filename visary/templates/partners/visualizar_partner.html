@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Visualizar Parceiro{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .card header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .card h2 {
+        margin: 0;
+        font-size: 1.4rem;
+        color: var(--text-primary);
+    }
+
+    .card p {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .info-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .info-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.6);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .info-value {
+        font-size: 0.95rem;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .badge-primary {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-gray {
+        background: rgba(158, 158, 158, 0.2);
+        color: rgba(158, 158, 158, 0.95);
+        border: 1px solid rgba(158, 158, 158, 0.4);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    td {
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .empty-state {
+        padding: 24px;
+        text-align: center;
+        color: var(--text-secondary);
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        border-radius: 12px;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        table {
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            padding: 10px 8px;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Visualizar Parceiro</h1>
+        <p>{{ partner.nome_empresa|default:partner.nome_responsavel }}</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:listar_partners' %}" class="btn btn-outline">Voltar</a>
+        {% if pode_editar %}
+            <a href="{% url 'system:editar_partner' partner.pk %}" class="btn btn-primary">Editar</a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="layout-grid">
+    <article class="card">
+        <header>
+            <h2>Informações do Parceiro</h2>
+            <p>Dados cadastrais do parceiro</p>
+        </header>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Nome do Responsável</span>
+                <span class="info-value">{{ partner.nome_responsavel }}</span>
+            </div>
+            {% if partner.nome_empresa %}
+            <div class="info-item">
+                <span class="info-label">Nome da Empresa</span>
+                <span class="info-value">{{ partner.nome_empresa }}</span>
+            </div>
+            {% endif %}
+            <div class="info-item">
+                <span class="info-label">E-mail</span>
+                <span class="info-value">{{ partner.email }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Telefone</span>
+                <span class="info-value">{{ partner.telefone }}</span>
+            </div>
+            {% if partner.cpf %}
+            <div class="info-item">
+                <span class="info-label">CPF</span>
+                <span class="info-value">{{ partner.cpf }}</span>
+            </div>
+            {% endif %}
+            {% if partner.cnpj %}
+            <div class="info-item">
+                <span class="info-label">CNPJ</span>
+                <span class="info-value">{{ partner.cnpj }}</span>
+            </div>
+            {% endif %}
+            <div class="info-item">
+                <span class="info-label">Segmento</span>
+                <span class="info-value">{{ partner.get_segmento_display }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Cidade/Estado</span>
+                <span class="info-value">{{ partner.cidade }}/{{ partner.estado }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status</span>
+                <span class="info-value">
+                    {% if partner.ativo %}
+                        <span class="badge badge-primary">Ativo</span>
+                    {% else %}
+                        <span class="badge badge-gray">Inativo</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </article>
+
+    <article class="card">
+        <header>
+            <h2>Clientes Vinculados</h2>
+            <p>Clientes que foram indicados por este parceiro</p>
+        </header>
+        {% if clientes_vinculados %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>E-mail</th>
+                        <th>Telefone</th>
+                        <th>Assessor</th>
+                        <th style="width:100px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes_vinculados %}
+                        <tr>
+                            <td>
+                                <strong>{{ cliente.nome }}</strong>
+                                {% if cliente.is_dependente %}
+                                    <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                        Dependente de {{ cliente.cliente_principal.nome|default:"-" }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>{{ cliente.email }}</td>
+                            <td>{{ cliente.telefone }}</td>
+                            <td>{{ cliente.assessor_responsavel.nome|default:"-" }}</td>
+                            <td>
+                                <a href="{% url 'system:visualizar_cliente' cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                Nenhum cliente vinculado a este parceiro.
+            </div>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}
+

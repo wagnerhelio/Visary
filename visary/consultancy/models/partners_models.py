@@ -20,20 +20,20 @@ class Partner(models.Model):
     ]
 
     nome_responsavel = models.CharField("Nome do Responsável", max_length=200)
-    nome_empresa = models.CharField("Nome da Empresa", max_length=200, blank=True)
-    cpf = models.CharField("CPF", max_length=14, blank=True)
-    cnpj = models.CharField("CNPJ", max_length=18, blank=True)
+    nome_empresa = models.CharField("Nome da Empresa", max_length=200, blank=True, null=True)
+    cpf = models.CharField("CPF", max_length=14, blank=True, null=True)
+    cnpj = models.CharField("CNPJ", max_length=18, blank=True, null=True)
     email = models.EmailField("E-mail", unique=True)
     senha = models.CharField("Senha", max_length=128)
-    telefone = models.CharField("Telefone", max_length=20)
+    telefone = models.CharField("Telefone", max_length=20, blank=True, null=True)
     segmento = models.CharField(
         "Segmento",
         max_length=50,
         choices=SEGMENTO_CHOICES,
         default="outros",
     )
-    cidade = models.CharField("Cidade", max_length=100)
-    estado = models.CharField("Estado", max_length=2)
+    cidade = models.CharField("Cidade", max_length=100, blank=True, null=True)
+    estado = models.CharField("Estado", max_length=2, blank=True, null=True)
     ativo = models.BooleanField("Ativo", default=True)
     criado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,

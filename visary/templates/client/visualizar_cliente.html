@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Visualizar Cliente{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .card header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .card h2 {
+        margin: 0;
+        font-size: 1.4rem;
+        color: var(--text-primary);
+    }
+
+    .card p {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .info-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .info-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.6);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .info-value {
+        font-size: 0.95rem;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .badge-primary {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-warning {
+        background: rgba(255, 193, 7, 0.2);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .badge-danger {
+        background: rgba(244, 67, 54, 0.2);
+        color: rgba(244, 67, 54, 0.95);
+        border: 1px solid rgba(244, 67, 54, 0.4);
+    }
+
+    .badge-gray {
+        background: rgba(158, 158, 158, 0.2);
+        color: rgba(158, 158, 158, 0.95);
+        border: 1px solid rgba(158, 158, 158, 0.4);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    td {
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .empty-state {
+        padding: 24px;
+        text-align: center;
+        color: var(--text-secondary);
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        border-radius: 12px;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    @media (max-width: 768px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        table {
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            padding: 10px 8px;
+        }
+    }
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Visualizar Cliente</h1>
+        <p>Informações completas do cliente, viagens e processos</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_clientes' %}" class="btn btn-outline">Voltar</a>
+        <a href="{% url 'system:editar_cliente' cliente.pk %}" class="btn btn-primary">Editar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<div class="layout-grid">
+    <!-- Informações do Cliente -->
+    <section class="card">
+        <header>
+            <h2>Informações do Cliente</h2>
+        </header>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Nome</span>
+                <span class="info-value">{{ cliente.nome }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status</span>
+                <span class="info-value">
+                    {% if cliente.is_principal %}
+                        <span class="badge badge-primary">Principal</span>
+                    {% else %}
+                        <span class="badge badge-warning">Dependente</span>
+                        {% if cliente.cliente_principal %}
+                            <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                de {{ cliente.cliente_principal.nome }}
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">E-mail</span>
+                <span class="info-value">{{ cliente.email|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Telefone</span>
+                <span class="info-value">{{ cliente.telefone|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Telefone Secundário</span>
+                <span class="info-value">{{ cliente.telefone_secundario|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Data de Nascimento</span>
+                <span class="info-value">{{ cliente.data_nascimento|date:"d/m/Y"|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Nacionalidade</span>
+                <span class="info-value">{{ cliente.nacionalidade|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Assessor Responsável</span>
+                <span class="info-value">{{ cliente.assessor_responsavel.nome|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status Financeiro</span>
+                <span class="info-value">
+                    {% if status_financeiro == "Pendente" %}
+                        <span class="badge badge-warning">Pendente</span>
+                    {% elif status_financeiro == "Pago" %}
+                        <span class="badge badge-primary">Pago</span>
+                    {% elif status_financeiro == "Cancelado" %}
+                        <span class="badge badge-danger">Cancelado</span>
+                    {% else %}
+                        <span class="badge badge-gray">Sem registros</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Data de Cadastro</span>
+                <span class="info-value">{{ cliente.criado_em|localtime|date:"d/m/Y H:i" }}</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Viagens -->
+    <section class="card">
+        <header>
+            <h2>Viagens</h2>
+            <p>Viagens vinculadas ao cliente</p>
+        </header>
+        {% if viagens %}
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>País</th>
+                        <th>Tipo de Visto</th>
+                        <th>Data Viagem</th>
+                        <th>Data Retorno</th>
+                        <th>Valor</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for viagem in viagens %}
+                    <tr>
+                        <td>{{ viagem.pais_destino.nome }}</td>
+                        <td>{{ viagem.tipo_visto.nome }}</td>
+                        <td>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
+                        <td>{{ viagem.data_prevista_retorno|date:"d/m/Y"|default:"-" }}</td>
+                        <td>R$ {{ viagem.valor_assessoria|floatformat:2 }}</td>
+                        <td>
+                            <a href="{% url 'system:listar_formularios_viagem' viagem.pk %}" class="btn btn-outline btn-small">Formulários</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            Nenhuma viagem vinculada a este cliente.
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Processos -->
+    <section class="card">
+        <header>
+            <h2>Processos</h2>
+            <p>Processos de visto vinculados ao cliente</p>
+        </header>
+        {% if processos %}
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Viagem</th>
+                        <th>País</th>
+                        <th>Progresso</th>
+                        <th>Assessor</th>
+                        <th>Criado em</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for processo in processos %}
+                    <tr>
+                        <td>{{ processo.viagem.pais_destino.nome }} - {{ processo.viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
+                        <td>{{ processo.viagem.pais_destino.nome }}</td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="flex: 1; background: rgba(255, 255, 255, 0.1); border-radius: 8px; height: 8px; overflow: hidden;">
+                                    <div style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); height: 100%; width: {{ processo.progresso_percentual }}%; transition: width 0.3s ease;"></div>
+                                </div>
+                                <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7); min-width: 45px;">{{ processo.progresso_percentual }}%</span>
+                            </div>
+                            <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                {{ processo.etapas_concluidas }} de {{ processo.total_etapas }} etapas
+                            </div>
+                        </td>
+                        <td>{{ processo.assessor_responsavel.nome }}</td>
+                        <td>{{ processo.criado_em|localtime|date:"d/m/Y" }}</td>
+                        <td>
+                            <a href="{% url 'system:editar_processo' processo.pk %}" class="btn btn-outline btn-small">Ver Processo</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            Nenhum processo vinculado a este cliente.
+        </div>
+        {% endif %}
+    </section>
+
+    <!-- Registros Financeiros -->
+    {% if registros_financeiros %}
+    <section class="card">
+        <header>
+            <h2>Registros Financeiros</h2>
+            <p>Registros financeiros vinculados ao cliente</p>
+        </header>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Viagem</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th>Data Pagamento</th>
+                        <th>Criado em</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in registros_financeiros %}
+                    <tr>
+                        <td>{{ registro.viagem.pais_destino.nome }} - {{ registro.viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
+                        <td>R$ {{ registro.valor|floatformat:2 }}</td>
+                        <td>
+                            {% if registro.status == "pendente" %}
+                                <span class="badge badge-warning">Pendente</span>
+                            {% elif registro.status == "pago" %}
+                                <span class="badge badge-primary">Pago</span>
+                            {% elif registro.status == "cancelado" %}
+                                <span class="badge badge-danger">Cancelado</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ registro.data_pagamento|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ registro.criado_em|localtime|date:"d/m/Y" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
+

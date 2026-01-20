@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import models
-from django.db.models import Q, QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -23,8 +23,10 @@ from consultancy.models import (
     CampoEtapaCliente,
     ClienteConsultoria,
     EtapaCadastroCliente,
+    Processo,
     Viagem,
 )
+from consultancy.models.financial_models import Financeiro, StatusFinanceiro
 from consultancy.services.cep import buscar_endereco_por_cep
 from system.models import UsuarioConsultoria
 
@@ -32,6 +34,80 @@ User = get_user_model()
 
 # Configurar logger para debug do cadastro de clientes
 logger = logging.getLogger(__name__)
+
+
+def _aplicar_filtros_clientes(clientes, request, incluir_assessor=False):
+    """Aplica filtros de busca aos clientes e retorna queryset filtrado e dicionário de filtros."""
+    filtros = {
+        "nome": request.GET.get("nome", "").strip(),
+        "telefone": request.GET.get("telefone", "").strip(),
+        "telefone_secundario": request.GET.get("telefone_secundario", "").strip(),
+        "email": request.GET.get("email", "").strip(),
+        "nacionalidade": request.GET.get("nacionalidade", "").strip(),
+        "data_nascimento": request.GET.get("data_nascimento", "").strip(),
+        "data_cadastro_inicio": request.GET.get("data_cadastro_inicio", "").strip(),
+        "data_cadastro_fim": request.GET.get("data_cadastro_fim", "").strip(),
+        "status_financeiro": request.GET.get("status_financeiro", "").strip(),
+    }
+    
+    if incluir_assessor:
+        filtros["assessor"] = request.GET.get("assessor", "").strip()
+    
+    if filtros["nome"]:
+        clientes = clientes.filter(nome__icontains=filtros["nome"])
+    if incluir_assessor and filtros.get("assessor"):
+        with suppress(ValueError, TypeError):
+            clientes = clientes.filter(assessor_responsavel_id=int(filtros["assessor"]))
+    if filtros["telefone"]:
+        clientes = clientes.filter(telefone__icontains=filtros["telefone"])
+    if filtros["telefone_secundario"]:
+        clientes = clientes.filter(telefone_secundario__icontains=filtros["telefone_secundario"])
+    if filtros["email"]:
+        clientes = clientes.filter(email__icontains=filtros["email"])
+    if filtros["nacionalidade"]:
+        clientes = clientes.filter(nacionalidade__icontains=filtros["nacionalidade"])
+    if filtros["data_nascimento"]:
+        clientes = clientes.filter(data_nascimento=filtros["data_nascimento"])
+    if filtros["data_cadastro_inicio"]:
+        clientes = clientes.filter(criado_em__date__gte=filtros["data_cadastro_inicio"])
+    if filtros["data_cadastro_fim"]:
+        clientes = clientes.filter(criado_em__date__lte=filtros["data_cadastro_fim"])
+    if filtros["status_financeiro"]:
+        if filtros["status_financeiro"] == "pendente":
+            clientes = clientes.filter(registros_financeiros__status=StatusFinanceiro.PENDENTE).distinct()
+        elif filtros["status_financeiro"] == "pago":
+            clientes = clientes.filter(registros_financeiros__status=StatusFinanceiro.PAGO).distinct()
+        elif filtros["status_financeiro"] == "cancelado":
+            clientes = clientes.filter(registros_financeiros__status=StatusFinanceiro.CANCELADO).distinct()
+        elif filtros["status_financeiro"] == "sem_registros":
+            clientes = clientes.annotate(
+                total_registros=Count("registros_financeiros")
+            ).filter(total_registros=0)
+    
+    return clientes, filtros
+
+
+def _obter_status_financeiro_cliente(cliente: ClienteConsultoria) -> str:
+    """
+    Determina o status financeiro do cliente baseado nos registros financeiros.
+    
+    Retorna:
+    - "Pendente" se houver registros pendentes
+    - "Pago" se todos os registros estão pagos
+    - "Cancelado" se todos os registros estão cancelados
+    - "Sem registros" se não houver registros financeiros
+    """
+    registros = Financeiro.objects.filter(cliente=cliente)
+    
+    if not registros.exists():
+        return "Sem registros"
+    
+    tem_pendente = registros.filter(status=StatusFinanceiro.PENDENTE).exists()
+    tem_pago = registros.filter(status=StatusFinanceiro.PAGO).exists()
+    tem_cancelado = registros.filter(status=StatusFinanceiro.CANCELADO).exists()
+    
+    # Prioridade: Pendente > Pago > Cancelado
+    return "Pendente" if tem_pendente else "Pago" if tem_pago else "Cancelado" if tem_cancelado else "Sem registros"
 
 
 def listar_clientes(user: User) -> QuerySet[ClienteConsultoria]:
@@ -115,23 +191,42 @@ def excluir_cliente(request, pk: int):
 def home_clientes(request):
     """Página inicial de clientes com opções de navegação."""
     consultor = obter_consultor_usuario(request.user)
-    clientes = listar_clientes(request.user)
+    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
-    # Determinar perfil do usuário
-    if consultor and consultor.perfil:
-        perfil_usuario = consultor.perfil.nome
-    elif request.user.is_superuser:
-        perfil_usuario = "Administrador"
-    else:
-        perfil_usuario = None
+    perfil_usuario = consultor.perfil.nome if consultor and consultor.perfil else ("Administrador" if request.user.is_superuser else None)
     
-    contexto = {
+    # Se for admin, não mostrar clientes (não tem clientes vinculados)
+    if pode_gerenciar_todos:
+        return render(request, "client/home_clientes.html", {
+            "total_clientes": 0,
+            "clientes_com_status": [],
+            "perfil_usuario": perfil_usuario,
+            "filtros": {},
+            "pode_excluir_clientes": pode_gerenciar_todos,
+        })
+    
+    # Buscar apenas clientes vinculados ao usuário
+    clientes = listar_clientes(request.user).prefetch_related("dependentes", "viagens")
+    
+    # Aplicar filtros
+    clientes, filtros = _aplicar_filtros_clientes(clientes, request)
+    
+    # Adicionar status financeiro aos clientes
+    clientes_com_status = [
+        {
+            "cliente": cliente,
+            "status_financeiro": _obter_status_financeiro_cliente(cliente),
+        }
+        for cliente in clientes
+    ]
+    
+    return render(request, "client/home_clientes.html", {
         "total_clientes": clientes.count(),
-        "clientes": clientes[:10],  # Limita a 10 clientes mais recentes
+        "clientes_com_status": clientes_com_status,
         "perfil_usuario": perfil_usuario,
-    }
-    
-    return render(request, "client/home_clientes.html", contexto)
+        "pode_excluir_clientes": pode_gerenciar_todos,
+        "filtros": filtros,
+    })
 
 
 @login_required
@@ -140,73 +235,34 @@ def listar_clientes_view(request):
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
-    # Buscar clientes com filtros de permissão (incluindo dependentes)
-    if pode_gerenciar_todos:
-        # Administradores veem todos os clientes
-        clientes = ClienteConsultoria.objects.select_related(
-            "assessor_responsavel",
-            "criado_por",
-            "assessor_responsavel__perfil",
-            "cliente_principal",
-            "cliente_principal__assessor_responsavel",
-        ).prefetch_related("dependentes", "viagens").order_by("-criado_em")
-    else:
-        # Usuários normais veem apenas clientes acessíveis (incluindo dependentes)
-        clientes = listar_clientes(request.user).prefetch_related("dependentes", "viagens")
+    # Listar TODOS os clientes, independente de assessor
+    clientes = ClienteConsultoria.objects.select_related(
+        "assessor_responsavel",
+        "criado_por",
+        "assessor_responsavel__perfil",
+        "cliente_principal",
+        "cliente_principal__assessor_responsavel",
+    ).prefetch_related("dependentes", "viagens").order_by("-criado_em")
     
-    # Aplicar filtros
-    nome = request.GET.get("nome", "").strip()
-    assessor_id = request.GET.get("assessor", "").strip()
-    telefone = request.GET.get("telefone", "").strip()
-    telefone_secundario = request.GET.get("telefone_secundario", "").strip()
-    email = request.GET.get("email", "").strip()
-    nacionalidade = request.GET.get("nacionalidade", "").strip()
-    data_nascimento = request.GET.get("data_nascimento", "").strip()
-    data_cadastro_inicio = request.GET.get("data_cadastro_inicio", "").strip()
-    data_cadastro_fim = request.GET.get("data_cadastro_fim", "").strip()
+    # Aplicar filtros (incluindo filtro de assessor)
+    clientes, filtros = _aplicar_filtros_clientes(clientes, request, incluir_assessor=True)
     
-    if nome:
-        clientes = clientes.filter(nome__icontains=nome)
-    if assessor_id:
-        with suppress(ValueError, TypeError):
-            clientes = clientes.filter(assessor_responsavel_id=int(assessor_id))
-    if telefone:
-        clientes = clientes.filter(telefone__icontains=telefone)
-    if telefone_secundario:
-        clientes = clientes.filter(telefone_secundario__icontains=telefone_secundario)
-    if email:
-        clientes = clientes.filter(email__icontains=email)
-    if nacionalidade:
-        clientes = clientes.filter(nacionalidade__icontains=nacionalidade)
-    if data_nascimento:
-        clientes = clientes.filter(data_nascimento=data_nascimento)
-    if data_cadastro_inicio:
-        clientes = clientes.filter(criado_em__date__gte=data_cadastro_inicio)
-    if data_cadastro_fim:
-        clientes = clientes.filter(criado_em__date__lte=data_cadastro_fim)
+    # Adicionar status financeiro aos clientes
+    clientes_com_status = [
+        {
+            "cliente": cliente,
+            "status_financeiro": _obter_status_financeiro_cliente(cliente),
+        }
+        for cliente in clientes
+    ]
     
-    # Buscar assessores para o filtro
-    assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
-    
-    contexto = {
-        "clientes": clientes,
-        "assessores": assessores,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+    return render(request, "client/listar_clientes.html", {
+        "clientes_com_status": clientes_com_status,
+        "assessores": UsuarioConsultoria.objects.filter(ativo=True).order_by("nome"),
+        "perfil_usuario": consultor.perfil.nome if consultor and consultor.perfil else None,
         "pode_excluir_clientes": pode_gerenciar_todos,
-        "filtros": {
-            "nome": nome,
-            "assessor": assessor_id,
-            "telefone": telefone,
-            "telefone_secundario": telefone_secundario,
-            "email": email,
-            "nacionalidade": nacionalidade,
-            "data_nascimento": data_nascimento,
-            "data_cadastro_inicio": data_cadastro_inicio,
-            "data_cadastro_fim": data_cadastro_fim,
-        },
-    }
-    
-    return render(request, "client/listar_clientes.html", contexto)
+        "filtros": filtros,
+    })
 
 
 # ============================================================================
@@ -476,10 +532,28 @@ def _salvar_etapa_na_sessao(form, etapa_atual, request):
     dados_atualizados = dados_existentes.copy()
     dados_atualizados.update(form.cleaned_data)
     
-    # Preservar assessor_responsavel se estiver nos dados existentes mas não no cleaned_data
-    # (pode acontecer se o campo não estiver na etapa atual)
-    if 'assessor_responsavel' in dados_existentes and 'assessor_responsavel' not in form.cleaned_data:
-        dados_atualizados['assessor_responsavel'] = dados_existentes['assessor_responsavel']
+    # Preservar assessor_responsavel se:
+    # 1. Estiver nos dados existentes E
+    # 2. Não estiver no cleaned_data OU estiver vazio/None no cleaned_data
+    # (pode acontecer se o campo não estiver na etapa atual ou vier vazio do POST)
+    assessor_existente = dados_existentes.get('assessor_responsavel')
+    assessor_cleaned = form.cleaned_data.get('assessor_responsavel')
+    
+    # Converter assessor_cleaned para ID se for um objeto
+    assessor_cleaned_id = None
+    if assessor_cleaned:
+        if hasattr(assessor_cleaned, 'pk'):
+            assessor_cleaned_id = assessor_cleaned.pk
+        elif isinstance(assessor_cleaned, (int, str)) and str(assessor_cleaned).strip():
+            try:
+                assessor_cleaned_id = int(assessor_cleaned)
+            except (ValueError, TypeError):
+                assessor_cleaned_id = None
+    
+    # Preservar se não houver valor válido no cleaned_data
+    if assessor_existente and not assessor_cleaned_id:
+        dados_atualizados['assessor_responsavel'] = assessor_existente
+        logger.debug(f"🔒 Preservando assessor_responsavel da sessão: {assessor_existente}")
     
     # Marcar etapa como concluída
     if etapa_atual.campo_booleano:
@@ -536,9 +610,7 @@ def _criar_dependente_do_banco(dados_dependente: dict, cliente_principal: Client
         logger.info(f"📝 Criando dependente: {nome_dependente} (email: {email_dependente}) para cliente principal: {cliente_principal.nome}")
         
         # Verificar se email já existe e permitir apenas se for do cliente principal ou outro dependente do mesmo grupo
-        if email_dependente:
-            cliente_existente = ClienteConsultoria.objects.filter(email=email_dependente).first()
-            if cliente_existente:
+        if email_dependente and (cliente_existente := ClienteConsultoria.objects.filter(email=email_dependente).first()):
                 # Permitir apenas se o email pertence ao cliente principal ou outro dependente do mesmo grupo
                 if cliente_existente.pk != cliente_principal.pk and cliente_existente.cliente_principal_id != cliente_principal.pk:
                     logger.error(f"❌ Email {email_dependente} já está em uso por outro cliente: {cliente_existente.nome}")
@@ -585,8 +657,7 @@ def _criar_dependente_do_banco(dados_dependente: dict, cliente_principal: Client
             dependente.cliente_principal_id = cliente_principal.pk
         
         # Salvar senha: usar do cliente principal se solicitado, senão usar a senha fornecida
-        usar_dados_principal = dados_dependente.get('usar_dados_cliente_principal', False)
-        if usar_dados_principal:
+        if usar_dados_principal := dados_dependente.get('usar_dados_cliente_principal', False):
             # Copiar o hash da senha do cliente principal
             dependente.senha = cliente_principal.senha
             logger.info("ℹ️ Copiando hash da senha do cliente principal para o dependente")
@@ -693,6 +764,98 @@ def _processar_dependentes_temporarios(request, cliente: ClienteConsultoria) -> 
     return dependentes_salvos
 
 
+def _recuperar_assessor_dos_dados_temporarios(dados_temporarios: dict) -> UsuarioConsultoria | None:
+    """Recupera assessor dos dados temporários convertendo o ID se necessário."""
+    if not (assessor_id_temp := dados_temporarios.get('assessor_responsavel')):
+        return None
+    
+    try:
+        if isinstance(assessor_id_temp, str) and assessor_id_temp.strip():
+            assessor_id_temp = int(assessor_id_temp)
+        elif not isinstance(assessor_id_temp, int):
+            return None
+        
+        return UsuarioConsultoria.objects.filter(pk=assessor_id_temp, ativo=True).first()
+    except (ValueError, TypeError) as e:
+        logger.warning(f"⚠️ Erro ao converter assessor_responsavel dos dados temporários: {e}")
+        return None
+
+
+def _definir_assessor_com_log(cliente: ClienteConsultoria, assessor: UsuarioConsultoria, origem: str) -> None:
+    """Define o assessor no cliente e registra log."""
+    cliente.assessor_responsavel = assessor
+    logger.info(f"✅ Assessor {origem}: {assessor.nome} (ID: {assessor.pk})")
+
+
+def _garantir_assessor_responsavel(cliente: ClienteConsultoria, dados_temporarios: dict, user) -> None:
+    """Garante que o cliente tenha um assessor_responsavel definido."""
+    if cliente.assessor_responsavel_id:
+        return
+    
+    if assessor := _recuperar_assessor_dos_dados_temporarios(dados_temporarios):
+        _definir_assessor_com_log(cliente, assessor, "recuperado dos dados temporários")
+        return
+    
+    if consultor := obter_consultor_usuario(user):
+        _definir_assessor_com_log(cliente, consultor, "definido a partir do usuário logado")
+        return
+    
+    logger.error(f"❌ Não foi possível determinar o assessor. Dados temporários: assessor_responsavel={dados_temporarios.get('assessor_responsavel')}")
+    raise ValueError("Não foi possível determinar o assessor responsável. Por favor, selecione um assessor na primeira etapa.")
+
+
+def _processar_e_logar_dependentes(request, cliente: ClienteConsultoria) -> int:
+    """Processa dependentes temporários e adiciona logs apropriados."""
+    logger.info("🔍 Verificando dependentes temporários na sessão antes de processar...")
+    dependentes_temporarios_antes = request.session.get("dependentes_temporarios", [])
+    logger.info(f"📋 Dependentes temporários encontrados na sessão: {len(dependentes_temporarios_antes)}")
+    if dependentes_temporarios_antes:
+        logger.info(f"📋 Conteúdo dos dependentes temporários: {dependentes_temporarios_antes}")
+    
+    dependentes_salvos = _processar_dependentes_temporarios(request, cliente)
+    
+    if dependentes_salvos > 0:
+        logger.info(f"✅ {dependentes_salvos} dependente(s) vinculado(s) ao cliente {cliente.nome}")
+        _adicionar_log_debug(request, f"{dependentes_salvos} dependente(s) vinculado(s) ao cliente")
+    else:
+        logger.warning(f"⚠️ Nenhum dependente foi salvo para o cliente {cliente.nome}")
+        if dependentes_temporarios_antes:
+            logger.error(f"❌ Havia {len(dependentes_temporarios_antes)} dependente(s) na sessão, mas nenhum foi salvo!")
+    
+    return dependentes_salvos
+
+
+def _validar_dados_temporarios(dados_temporarios: dict | None) -> None:
+    """Valida se há dados temporários na sessão."""
+    if not dados_temporarios:
+        raise ValueError("Dados não encontrados na sessão. Por favor, inicie o cadastro novamente.")
+
+
+def _criar_e_configurar_cliente(dados_temporarios: dict, user) -> ClienteConsultoria:
+    """Cria e configura instância do cliente com dados temporários."""
+    cliente = ClienteConsultoria()
+    _aplicar_dados_ao_cliente(cliente, dados_temporarios)
+    cliente.criado_por = user
+    _garantir_assessor_responsavel(cliente, dados_temporarios, user)
+    return cliente
+
+
+def _configurar_senha_e_etapas(cliente: ClienteConsultoria, dados_temporarios: dict) -> None:
+    """Configura senha e marca etapas como concluídas."""
+    if senha := dados_temporarios.get('senha'):
+        cliente.set_password(senha)
+    _marcar_etapas_concluidas(cliente, dados_temporarios)
+
+
+def _salvar_e_logar_cliente(request, cliente: ClienteConsultoria) -> None:
+    """Salva cliente, processa dependentes e adiciona logs."""
+    cliente.save()
+    _processar_e_logar_dependentes(request, cliente)
+    logger.info(f"✅ Cliente '{cliente.nome}' salvo no banco (ID: {cliente.pk})")
+    _adicionar_log_debug(request, f"Cliente '{cliente.nome}' salvo no banco (ID: {cliente.pk})")
+    request.session.modified = True
+
+
 def _criar_cliente_do_banco(request) -> ClienteConsultoria:
     """
     Cria e salva o cliente no banco de dados a partir dos dados da sessão.
@@ -714,52 +877,32 @@ def _criar_cliente_do_banco(request) -> ClienteConsultoria:
         Adiciona log na sessão indicando que o cliente foi salvo no banco
     """
     dados_temporarios = _obter_dados_temporarios_sessao(request)
+    _validar_dados_temporarios(dados_temporarios)
     
-    if not dados_temporarios:
-        raise ValueError("Dados não encontrados na sessão. Por favor, inicie o cadastro novamente.")
+    cliente = _criar_e_configurar_cliente(dados_temporarios, request.user)
+    _configurar_senha_e_etapas(cliente, dados_temporarios)
+    _salvar_e_logar_cliente(request, cliente)
     
-    # Criar instância do cliente e aplicar dados
-    cliente = ClienteConsultoria()
-    _aplicar_dados_ao_cliente(cliente, dados_temporarios)
-    
-    # Configurar metadados do cliente
-    cliente.criado_por = request.user
-    
-    # Garantir que assessor_responsavel esteja definido
-    if not cliente.assessor_responsavel_id:
-        if consultor := obter_consultor_usuario(request.user):
-            cliente.assessor_responsavel = consultor
-        else:
-            raise ValueError("Não foi possível determinar o assessor responsável. Por favor, selecione um assessor na primeira etapa.")
-    
-    if senha := dados_temporarios.get('senha'):
-        cliente.set_password(senha)
-    
-    _marcar_etapas_concluidas(cliente, dados_temporarios)
-    cliente.save()
-    
-    # Processar dependentes temporários ANTES de limpar a sessão
-    logger.info("🔍 Verificando dependentes temporários na sessão antes de processar...")
-    dependentes_temporarios_antes = request.session.get("dependentes_temporarios", [])
-    logger.info(f"📋 Dependentes temporários encontrados na sessão: {len(dependentes_temporarios_antes)}")
-    if dependentes_temporarios_antes:
-        logger.info(f"📋 Conteúdo dos dependentes temporários: {dependentes_temporarios_antes}")
-    
-    dependentes_salvos = _processar_dependentes_temporarios(request, cliente)
-    
-    # Adicionar logs de debug
-    logger.info(f"✅ Cliente '{cliente.nome}' salvo no banco (ID: {cliente.pk})")
-    _adicionar_log_debug(request, f"Cliente '{cliente.nome}' salvo no banco (ID: {cliente.pk})")
-    if dependentes_salvos > 0:
-        logger.info(f"✅ {dependentes_salvos} dependente(s) vinculado(s) ao cliente {cliente.nome}")
-        _adicionar_log_debug(request, f"{dependentes_salvos} dependente(s) vinculado(s) ao cliente")
-    else:
-        logger.warning(f"⚠️ Nenhum dependente foi salvo para o cliente {cliente.nome}")
-        if dependentes_temporarios_antes:
-            logger.error(f"❌ Havia {len(dependentes_temporarios_antes)} dependente(s) na sessão, mas nenhum foi salvo!")
-    
-    request.session.modified = True
     return cliente
+
+
+def _obter_ids_clientes_com_dependentes(cliente: ClienteConsultoria) -> list:
+    """Coleta IDs do cliente principal e seus dependentes."""
+    clientes_ids = [cliente.pk]
+    dependentes = ClienteConsultoria.objects.filter(cliente_principal=cliente)
+    clientes_ids.extend(dependentes.values_list('pk', flat=True))
+    return clientes_ids
+
+
+def _criar_redirect_viagem_com_clientes(request, cliente: ClienteConsultoria):
+    """Cria redirect para criar viagem com clientes pré-selecionados."""
+    logger.info(f"🚀 Redirecionando para criar viagem com cliente {cliente.nome} (ID: {cliente.pk})")
+    # Coletar todos os clientes (principal + dependentes)
+    clientes_ids = _obter_ids_clientes_com_dependentes(cliente)
+    redirect_url = f"{reverse('system:criar_viagem')}?clientes={','.join(map(str, clientes_ids))}"
+    logger.info(f"✅ Redirect para criar viagem: {redirect_url}")
+    _adicionar_log_debug(request, f"Redirecionando para criar viagem com {len(clientes_ids)} cliente(s)")
+    return redirect(redirect_url)
 
 
 def _finalizar_cadastro_cliente(request, cliente: ClienteConsultoria, criar_viagem: bool = False):
@@ -790,9 +933,7 @@ def _finalizar_cadastro_cliente(request, cliente: ClienteConsultoria, criar_viag
         logger.info(f"⚠️ Tentativa de finalizar cadastro duplicada para cliente {cliente.pk} - redirecionando sem mensagem")
         if criar_viagem:
             # Coletar todos os clientes (principal + dependentes)
-            clientes_ids = [cliente.pk]
-            dependentes = ClienteConsultoria.objects.filter(cliente_principal=cliente)
-            clientes_ids.extend(dependentes.values_list('pk', flat=True))
+            clientes_ids = _obter_ids_clientes_com_dependentes(cliente)
             return redirect(f"{reverse('system:criar_viagem')}?clientes={','.join(map(str, clientes_ids))}")
         return redirect("system:home_clientes")
     
@@ -831,15 +972,7 @@ def _finalizar_cadastro_cliente(request, cliente: ClienteConsultoria, criar_viag
     
     # Se criar_viagem for True, redirecionar para criar viagem com clientes pré-selecionados
     if criar_viagem:
-        logger.info(f"🚀 Redirecionando para criar viagem com cliente {cliente.nome} (ID: {cliente.pk})")
-        # Coletar todos os clientes (principal + dependentes)
-        clientes_ids = [cliente.pk]
-        dependentes = ClienteConsultoria.objects.filter(cliente_principal=cliente)
-        clientes_ids.extend(dependentes.values_list('pk', flat=True))
-        redirect_url = f"{reverse('system:criar_viagem')}?clientes={','.join(map(str, clientes_ids))}"
-        logger.info(f"✅ Redirect para criar viagem: {redirect_url}")
-        _adicionar_log_debug(request, f"Redirecionando para criar viagem com {len(clientes_ids)} cliente(s)")
-        return redirect(redirect_url)
+        return _criar_redirect_viagem_com_clientes(request, cliente)
     
     # Redirecionar para home de clientes
     redirect_url_name = "system:home_clientes"
@@ -896,6 +1029,94 @@ def _exibir_erros_formulario(request, form, campos_etapa_nomes, prefixo=""):
             for error in errors:
                 messages.error(request, f"{prefixo}{field_label}: {error}")
 
+def _obter_assessor_id_dependente(request, cliente, dados_temporarios):
+    """Obtém o ID do assessor para o formulário de dependente."""
+    assessor_id = None
+    
+    # Tentar obter do cliente temporário (instância)
+    if hasattr(cliente, 'assessor_responsavel_id') and cliente.assessor_responsavel_id:
+        assessor_id = cliente.assessor_responsavel_id
+    # Tentar obter dos dados temporários (sessão)
+    elif dados_temporarios and (assessor_valor := dados_temporarios.get('assessor_responsavel')):
+        # Converter para int se necessário
+        try:
+            assessor_id = int(assessor_valor) if isinstance(assessor_valor, str) else assessor_valor
+        except (ValueError, TypeError):
+            assessor_id = None
+    
+    # Se ainda não tem assessor, usar o consultor atual
+    if not assessor_id:
+        if consultor := obter_consultor_usuario(request.user):
+            assessor_id = consultor.pk
+    
+    return assessor_id
+
+
+def _preparar_dados_iniciais_dependente(request, assessor_id):
+    """Prepara dados iniciais para o formulário de dependente."""
+    dependente_editando_dados = request.session.get('dependente_editando_dados')
+    dados_iniciais = None
+    usar_dados_principal_edit = False
+    
+    if dependente_editando_dados:
+        # Carregar dados do dependente sendo editado
+        dados_iniciais = dependente_editando_dados.copy()
+        usar_dados_principal_edit = dependente_editando_dados.get('usar_dados_cliente_principal', False)
+        logger.info(f"📝 Carregando dados do dependente para edição: {dados_iniciais.get('nome', 'Desconhecido')}")
+        # Se não tiver assessor nos dados do dependente, usar o do cliente principal
+        if assessor_id and ('assessor_responsavel' not in dados_iniciais or not dados_iniciais.get('assessor_responsavel')):
+            dados_iniciais['assessor_responsavel'] = assessor_id
+    elif assessor_id:
+        # Se não está editando, criar dados_iniciais com o assessor_id
+        dados_iniciais = {'assessor_responsavel': assessor_id}
+    
+    return dados_iniciais, usar_dados_principal_edit
+
+
+def _preencher_campos_endereco_dependente(form_dependente, cliente, dados_temporarios):
+    """Preenche campos de endereço do formulário de dependente."""
+    campos_endereco = ['cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf']
+    for campo in campos_endereco:
+        if campo in form_dependente.fields:
+            # Tentar obter do cliente temporário (instância)
+            if hasattr(cliente, campo) and (valor := getattr(cliente, campo)):
+                form_dependente.fields[campo].initial = valor
+            # Tentar obter dos dados temporários (sessão)
+            elif dados_temporarios and (valor := dados_temporarios.get(campo)):
+                form_dependente.fields[campo].initial = valor
+
+
+def _configurar_campos_formulario_dependente(form_dependente, primeira_etapa, etapas):
+    """Configura campos do formulário de dependente baseado nas etapas."""
+    if not etapas:
+        # Fallback: usar apenas primeira etapa
+        _configurar_campos_formulario(form_dependente, primeira_etapa)
+        return
+    
+    # Obter todas as etapas: dados pessoais, endereço e passaporte
+    etapas_dependente = etapas.filter(ativo=True).exclude(campo_booleano='etapa_membros').order_by("ordem")
+    campos_dependente = set()
+    for etapa in etapas_dependente:
+        campos_etapa = CampoEtapaCliente.objects.filter(etapa=etapa, ativo=True).exclude(nome_campo="parceiro_indicador")
+        campos_dependente.update(campos_etapa.values_list("nome_campo", flat=True))
+    
+    # Configurar obrigatoriedade apenas para campos da primeira etapa
+    campos_primeira_etapa_dict = {
+        campo.nome_campo: campo
+        for campo in CampoEtapaCliente.objects.filter(etapa=primeira_etapa, ativo=True)
+    }
+    
+    for field_name, field in form_dependente.fields.items():
+        if field_name == 'confirmar_senha':
+            continue
+        # Campos da primeira etapa: usar configuração
+        # Campos de outras etapas: tornar opcionais mas visíveis
+        if campo_config := campos_primeira_etapa_dict.get(field_name):
+            field.required = campo_config.obrigatorio
+        elif field_name in campos_dependente:
+            # Campos de endereço e passaporte: opcionais
+            field.required = False
+
 
 def _criar_formulario_dependente(request, cliente, primeira_etapa, etapas=None):
     """
@@ -909,16 +1130,14 @@ def _criar_formulario_dependente(request, cliente, primeira_etapa, etapas=None):
     # cliente aqui é o cliente_principal quando usado para criar dependente
     cliente_principal = cliente if isinstance(cliente, ClienteConsultoria) and cliente.is_principal else None
     
-    # Verificar se está editando um dependente
-    dependente_editando_dados = request.session.get('dependente_editando_dados')
-    dados_iniciais = None
-    usar_dados_principal_edit = False
-    if dependente_editando_dados:
-        # Carregar dados do dependente sendo editado
-        dados_iniciais = dependente_editando_dados.copy()
-        usar_dados_principal_edit = dependente_editando_dados.get('usar_dados_cliente_principal', False)
-        logger.info(f"📝 Carregando dados do dependente para edição: {dados_iniciais.get('nome', 'Desconhecido')}")
+    # Obter dados temporários e assessor_id
+    dados_temporarios = _obter_dados_temporarios_sessao(request)
+    assessor_id = _obter_assessor_id_dependente(request, cliente, dados_temporarios)
     
+    # Preparar dados iniciais
+    dados_iniciais, usar_dados_principal_edit = _preparar_dados_iniciais_dependente(request, assessor_id)
+    
+    # Criar formulário
     form_dependente = ClienteConsultoriaForm(
         data=None,
         initial=dados_iniciais,
@@ -927,23 +1146,7 @@ def _criar_formulario_dependente(request, cliente, primeira_etapa, etapas=None):
         usar_dados_principal=usar_dados_principal_edit
     )
     
-    # Obter assessor_responsavel dos dados temporários do cliente principal
-    dados_temporarios = _obter_dados_temporarios_sessao(request)
-    assessor_id = None
-    
-    # Tentar obter do cliente temporário (instância)
-    if hasattr(cliente, 'assessor_responsavel_id') and cliente.assessor_responsavel_id:
-        assessor_id = cliente.assessor_responsavel_id
-    # Tentar obter dos dados temporários (sessão)
-    elif dados_temporarios and 'assessor_responsavel' in dados_temporarios:
-        assessor_id = dados_temporarios['assessor_responsavel']
-    
-    # Se ainda não tem assessor, usar o consultor atual
-    if not assessor_id:
-        if consultor := obter_consultor_usuario(request.user):
-            assessor_id = consultor.pk
-    
-    # Definir assessor_responsavel no formulário se encontrado
+    # Garantir que assessor_responsavel esteja definido no formulário
     if assessor_id:
         form_dependente.fields["assessor_responsavel"].initial = assessor_id
     
@@ -951,120 +1154,74 @@ def _criar_formulario_dependente(request, cliente, primeira_etapa, etapas=None):
     if "parceiro_indicador" in form_dependente.fields:
         del form_dependente.fields["parceiro_indicador"]
     
-    # Preencher campos de endereço do cliente principal
-    campos_endereco = ['cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf']
-    for campo in campos_endereco:
-        if campo in form_dependente.fields:
-            # Tentar obter do cliente temporário (instância)
-            if hasattr(cliente, campo):
-                valor = getattr(cliente, campo)
-                if valor:
-                    form_dependente.fields[campo].initial = valor
-            # Tentar obter dos dados temporários (sessão)
-            elif dados_temporarios and campo in dados_temporarios:
-                valor = dados_temporarios[campo]
-                if valor:
-                    form_dependente.fields[campo].initial = valor
+    # Preencher campos de endereço
+    _preencher_campos_endereco_dependente(form_dependente, cliente, dados_temporarios)
     
-    # Configurar campos: incluir primeira etapa (dados pessoais), endereço e passaporte
-    # Não usar _configurar_campos_formulario que limita apenas à primeira etapa
-    # Em vez disso, tornar campos de outras etapas opcionais mas visíveis
-    if etapas:
-        # Obter todas as etapas: dados pessoais, endereço e passaporte
-        etapas_dependente = etapas.filter(ativo=True).exclude(campo_booleano='etapa_membros').order_by("ordem")
-        campos_dependente = set()
-        for etapa in etapas_dependente:
-            campos_etapa = CampoEtapaCliente.objects.filter(etapa=etapa, ativo=True).exclude(nome_campo="parceiro_indicador")
-            campos_dependente.update(campos_etapa.values_list("nome_campo", flat=True))
-        
-        # Configurar obrigatoriedade apenas para campos da primeira etapa
-        campos_primeira_etapa_dict = {
-            campo.nome_campo: campo
-            for campo in CampoEtapaCliente.objects.filter(etapa=primeira_etapa, ativo=True)
-        }
-        
-        for field_name, field in form_dependente.fields.items():
-            if field_name == 'confirmar_senha':
-                # confirmar_senha é obrigatório se senha estiver presente
-                continue
-            campo_config = campos_primeira_etapa_dict.get(field_name)
-            # Campos da primeira etapa: usar configuração
-            # Campos de outras etapas: tornar opcionais mas visíveis
-            if campo_config:
-                field.required = campo_config.obrigatorio
-            elif field_name in campos_dependente:
-                # Campos de endereço e passaporte: opcionais
-                field.required = False
-    else:
-        # Fallback: usar apenas primeira etapa
-        _configurar_campos_formulario(form_dependente, primeira_etapa)
+    # Configurar campos do formulário
+    _configurar_campos_formulario_dependente(form_dependente, primeira_etapa, etapas)
     
     return form_dependente
+
+def _remover_parceiro_indicador(form):
+    """Remove parceiro_indicador do formulário de dependente."""
+    if "parceiro_indicador" in form.fields:
+        del form.fields["parceiro_indicador"]
+
+
+def _tornar_senha_opcional(form):
+    """Torna campos de senha opcionais no formulário."""
+    if 'senha' in form.fields:
+        form.fields['senha'].required = False
+    if 'confirmar_senha' in form.fields:
+        form.fields['confirmar_senha'].required = False
+
+
+def _preencher_email_cliente_principal(form, cliente_principal, usar_dados_principal, user):
+    """Preenche email do cliente principal no formulário."""
+    if not (usar_dados_principal and cliente_principal and 'email' in form.data):
+        return form
+    
+    from django.http import QueryDict
+    if isinstance(form.data, QueryDict):
+        form_data = form.data.copy()
+        form_data['email'] = cliente_principal.email
+        form = ClienteConsultoriaForm(
+            data=form_data,
+            user=user,
+            cliente_principal=cliente_principal,
+            usar_dados_principal=usar_dados_principal
+        )
+        _remover_parceiro_indicador(form)
+    
+    return form
 
 
 def _preparar_formulario_dependente_post(request, primeira_etapa, etapas=None, cliente_principal=None):
     """Prepara formulário de dependente a partir de dados POST."""
-    # Verificar se deve usar dados do cliente principal
     usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
     
     # Criar formulário com a flag usar_dados_principal desde o início
-    form = ClienteConsultoriaForm(data=request.POST, user=request.user, cliente_principal=cliente_principal, usar_dados_principal=usar_dados_principal)
-    # Remover parceiro_indicador do formulário de dependente
-    if "parceiro_indicador" in form.fields:
-        del form.fields["parceiro_indicador"]
+    form = ClienteConsultoriaForm(
+        data=request.POST,
+        user=request.user,
+        cliente_principal=cliente_principal,
+        usar_dados_principal=usar_dados_principal
+    )
+    _remover_parceiro_indicador(form)
     
-    # Se estiver usando dados do cliente principal, tornar senha opcional e preencher email
-    if usar_dados_principal and cliente_principal:
-        # Preencher email do cliente principal
-        if 'email' in form.data:
-            from django.http import QueryDict
-            if isinstance(form.data, QueryDict):
-                form_data = form.data.copy()
-                form_data['email'] = cliente_principal.email
-                form = ClienteConsultoriaForm(data=form_data, user=request.user, cliente_principal=cliente_principal, usar_dados_principal=usar_dados_principal)
-                if "parceiro_indicador" in form.fields:
-                    del form.fields["parceiro_indicador"]
-        # Tornar senha opcional
-        if 'senha' in form.fields:
-            form.fields['senha'].required = False
-        if 'confirmar_senha' in form.fields:
-            form.fields['confirmar_senha'].required = False
+    # Preencher email se estiver usando dados do cliente principal
+    form = _preencher_email_cliente_principal(form, cliente_principal, usar_dados_principal, request.user)
     
-    # Configurar campos: incluir primeira etapa, endereço e passaporte
-    if etapas:
-        etapas_dependente = etapas.filter(ativo=True).exclude(campo_booleano='etapa_membros').order_by("ordem")
-        campos_dependente = set()
-        for etapa in etapas_dependente:
-            campos_etapa = CampoEtapaCliente.objects.filter(etapa=etapa, ativo=True).exclude(nome_campo="parceiro_indicador")
-            campos_dependente.update(campos_etapa.values_list("nome_campo", flat=True))
-        
-        campos_primeira_etapa_dict = {
-            campo.nome_campo: campo
-            for campo in CampoEtapaCliente.objects.filter(etapa=primeira_etapa, ativo=True)
-        }
-        
-        for field_name, field in form.fields.items():
-            if field_name == 'confirmar_senha':
-                continue
-            # Se estiver usando dados do cliente principal, senha não é obrigatória
-            if usar_dados_principal and field_name in ('senha', 'confirmar_senha'):
-                field.required = False
-                continue
-            campo_config = campos_primeira_etapa_dict.get(field_name)
-            if campo_config:
-                field.required = campo_config.obrigatorio
-            elif field_name in campos_dependente:
-                field.required = False
-    else:
-        _configurar_campos_formulario(form, primeira_etapa)
-    
-    # IMPORTANTE: Garantir que senha não é obrigatória se usar_dados_principal
-    # Isso deve ser feito DEPOIS de todas as outras configurações
+    # Tornar senha opcional se estiver usando dados do cliente principal
     if usar_dados_principal:
-        if 'senha' in form.fields:
-            form.fields['senha'].required = False
-        if 'confirmar_senha' in form.fields:
-            form.fields['confirmar_senha'].required = False
+        _tornar_senha_opcional(form)
+    
+    # Configurar campos do formulário
+    _configurar_campos_formulario_dependente(form, primeira_etapa, etapas)
+    
+    # Garantir que senha não é obrigatória se usar_dados_principal (após todas as configurações)
+    if usar_dados_principal:
+        _tornar_senha_opcional(form)
     
     return form
 
@@ -1169,6 +1326,52 @@ def _processar_dependente_valido(request, form_dependente_post, etapa_atual):
     logger.info(f"✅ Dependente {nome_dependente} adicionado com sucesso. Redirecionando...")
     return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
 
+def _obter_cliente_principal_dependente(dados_temporarios, cliente_temporario, usar_dados_principal):
+    """Obtém o cliente principal para o formulário de dependente."""
+    cliente_principal = None
+    
+    if dados_temporarios and 'cliente_principal_id' in dados_temporarios:
+        cliente_principal_id = dados_temporarios['cliente_principal_id']
+        with suppress(ClienteConsultoria.DoesNotExist):
+            cliente_principal = ClienteConsultoria.objects.get(pk=cliente_principal_id)
+    elif cliente_temporario and isinstance(cliente_temporario, ClienteConsultoria) and cliente_temporario.is_principal:
+        cliente_principal = cliente_temporario
+    
+    # Se não tem cliente_principal salvo, usar cliente_temporario se tiver email
+    if usar_dados_principal and not cliente_principal and cliente_temporario:
+        cliente_principal = cliente_temporario
+    
+    return cliente_principal
+
+
+def _garantir_assessor_no_formulario(form_dependente_post, cliente_temporario, dados_temporarios, cliente_principal, request, primeira_etapa):
+    """Garante que assessor_responsavel esteja definido no formulário."""
+    if form_dependente_post.data.get('assessor_responsavel'):
+        return form_dependente_post
+    
+    # Obter assessor_id usando a mesma lógica de outras funções
+    assessor_id = _obter_assessor_id_dependente(request, cliente_temporario, dados_temporarios)
+    
+    if not assessor_id:
+        return form_dependente_post
+    
+    # Adicionar assessor aos dados do formulário
+    from django.http import QueryDict
+    if isinstance(form_dependente_post.data, QueryDict):
+        form_data = form_dependente_post.data.copy()
+        form_data['assessor_responsavel'] = str(assessor_id)
+        usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
+        form_dependente_post = ClienteConsultoriaForm(
+            data=form_data,
+            user=request.user,
+            cliente_principal=cliente_principal,
+            usar_dados_principal=usar_dados_principal
+        )
+        _remover_parceiro_indicador(form_dependente_post)
+        _configurar_campos_formulario(form_dependente_post, primeira_etapa)
+    
+    return form_dependente_post
+
 
 def _processar_cadastro_dependente(request, etapa_atual, cliente_temporario, etapas):
     """
@@ -1188,69 +1391,35 @@ def _processar_cadastro_dependente(request, etapa_atual, cliente_temporario, eta
         tuple: (HttpResponseRedirect | None, ClienteConsultoriaForm | None)
             - Se válido: (redirect, None)
             - Se inválido: (None, form_com_erros)
-    
-    Debug:
-        Adiciona log na sessão quando dependente é processado
     """
     if not (primeira_etapa := etapas.filter(ativo=True).order_by("ordem").first()):
         return None, None
     
-    # Obter cliente_principal dos dados temporários se disponível
+    # Obter dados temporários e cliente_principal
     dados_temporarios = _obter_dados_temporarios_sessao(request)
-    cliente_principal = None
-    if dados_temporarios and 'cliente_principal_id' in dados_temporarios:
-        cliente_principal_id = dados_temporarios['cliente_principal_id']
-        try:
-            cliente_principal = ClienteConsultoria.objects.get(pk=cliente_principal_id)
-        except ClienteConsultoria.DoesNotExist:
-            pass
-    elif cliente_temporario and isinstance(cliente_temporario, ClienteConsultoria) and cliente_temporario.is_principal:
-        cliente_principal = cliente_temporario
-    
-    # Verificar se deve usar dados do cliente principal (precisar ter cliente_principal ou cliente_temporario com email)
     usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
-    # Se não tem cliente_principal salvo, usar cliente_temporario se tiver email
-    if usar_dados_principal and not cliente_principal and cliente_temporario:
-        cliente_principal = cliente_temporario
+    cliente_principal = _obter_cliente_principal_dependente(dados_temporarios, cliente_temporario, usar_dados_principal)
     
-    form_dependente_post = _preparar_formulario_dependente_post(request, primeira_etapa, etapas, cliente_principal=cliente_principal)
+    # Preparar formulário
+    form_dependente_post = _preparar_formulario_dependente_post(
+        request, primeira_etapa, etapas, cliente_principal=cliente_principal
+    )
     
-    # Garantir que assessor_responsavel seja definido se não veio no POST
-    if not form_dependente_post.data.get('assessor_responsavel'):
-        assessor_id = None
-        # Tentar obter do cliente temporário
-        if hasattr(cliente_temporario, 'assessor_responsavel_id') and cliente_temporario.assessor_responsavel_id:
-            assessor_id = cliente_temporario.assessor_responsavel_id
-        # Tentar obter dos dados temporários
-        elif dados_temporarios and 'assessor_responsavel' in dados_temporarios:
-            assessor_id = dados_temporarios['assessor_responsavel']
-        # Usar consultor atual como fallback
-        if not assessor_id:
-            if consultor := obter_consultor_usuario(request.user):
-                assessor_id = consultor.pk
-        
-        # Se encontrou assessor, adicionar aos dados do formulário
-        if assessor_id:
-            # Criar QueryDict mutável para adicionar o campo
-            from django.http import QueryDict
-            if isinstance(form_dependente_post.data, QueryDict):
-                form_data = form_dependente_post.data.copy()
-                form_data['assessor_responsavel'] = str(assessor_id)
-                usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
-                form_dependente_post = ClienteConsultoriaForm(data=form_data, user=request.user, cliente_principal=cliente_principal, usar_dados_principal=usar_dados_principal)
-                if "parceiro_indicador" in form_dependente_post.fields:
-                    del form_dependente_post.fields["parceiro_indicador"]
-                _configurar_campos_formulario(form_dependente_post, primeira_etapa)
+    # Garantir que assessor_responsavel esteja definido
+    form_dependente_post = _garantir_assessor_no_formulario(
+        form_dependente_post, cliente_temporario, dados_temporarios, cliente_principal, request, primeira_etapa
+    )
     
+    # Validar e processar
     campos_primeira_etapa = CampoEtapaCliente.objects.filter(
         etapa=primeira_etapa, ativo=True
     ).exclude(nome_campo="parceiro_indicador").order_by("ordem", "nome_campo")
     
     if form_dependente_post.is_valid():
         return _processar_dependente_valido(request, form_dependente_post, etapa_atual), None
-    logger.error(f"❌ Formulário de dependente inválido: {form_dependente_post.errors}")
     
-    # Exibir erros do formulário de dependente
+    # Exibir erros
+    logger.error(f"❌ Formulário de dependente inválido: {form_dependente_post.errors}")
     campos_etapa_nomes = set(campos_primeira_etapa.values_list("nome_campo", flat=True))
     _exibir_erros_formulario(request, form_dependente_post, campos_etapa_nomes, prefixo="Dependente - ")
     return None, form_dependente_post
@@ -1296,6 +1465,24 @@ def _preparar_contexto_dependentes(request, etapa_atual, cliente_temporario, eta
     # Verificar se está editando um dependente para passar dados ao contexto
     dependente_editando_dados = request.session.get('dependente_editando_dados')
     
+    # Calcular assessor_id: usar do cliente temporário ou do consultor logado como fallback
+    assessor_id = None
+    if cliente_temporario and hasattr(cliente_temporario, 'assessor_responsavel_id') and cliente_temporario.assessor_responsavel_id:
+        assessor_id = cliente_temporario.assessor_responsavel_id
+    else:
+        # Tentar obter dos dados temporários
+        dados_temporarios = _obter_dados_temporarios_sessao(request)
+        if dados_temporarios and (assessor_valor := dados_temporarios.get('assessor_responsavel')):
+            # Converter para int se necessário
+            try:
+                assessor_id = int(assessor_valor) if isinstance(assessor_valor, str) else assessor_valor
+            except (ValueError, TypeError):
+                assessor_id = None
+        # Se ainda não tem, usar o consultor logado
+        if not assessor_id:
+            if consultor := obter_consultor_usuario(request.user):
+                assessor_id = consultor.pk
+    
     contexto['primeira_etapa'] = primeira_etapa
     contexto['campos_primeira_etapa'] = campos_primeira_etapa
     contexto['campos_dependente'] = campos_dependente  # Todos os campos (dados pessoais, endereço, passaporte)
@@ -1304,6 +1491,7 @@ def _preparar_contexto_dependentes(request, etapa_atual, cliente_temporario, eta
     contexto['dependentes_temporarios'] = dependentes_temporarios  # Lista de dicionários
     contexto['dependentes'] = []  # Lista vazia pois cliente ainda não está salvo
     contexto['dependente_editando_dados'] = dependente_editando_dados  # Dados do dependente sendo editado (se houver)
+    contexto['assessor_id'] = assessor_id  # ID do assessor para o campo hidden
 
 
 def _processar_cancelamento_cadastro(request):
@@ -1499,8 +1687,19 @@ def _preparar_contexto_final(request, etapa_atual, cliente_temporario, etapas, c
 
 def _criar_formulario_cliente(request, etapa_atual, dados_iniciais=None):
     """Cria e configura formulário de cliente."""
+    # Se há POST, usar dados da sessão como initial para preservar assessor_responsavel
+    initial_data = {}
+    if request.POST:
+        dados_temporarios = _obter_dados_temporarios_sessao(request)
+        if dados_temporarios and 'assessor_responsavel' in dados_temporarios:
+            assessor_id = dados_temporarios.get('assessor_responsavel')
+            # Preservar assessor se o POST vier vazio
+            if assessor_id and (not request.POST.get('assessor_responsavel') or request.POST.get('assessor_responsavel') == ''):
+                initial_data['assessor_responsavel'] = assessor_id
+    
     form = ClienteConsultoriaForm(
         data=request.POST or dados_iniciais,
+        initial=initial_data or None,
         instance=None,
         user=request.user
     )
@@ -1517,6 +1716,25 @@ def _validar_etapa_anterior(etapa_atual, etapas, request):
     return redirect(f"{request.path}?etapa_id={primeira_etapa.pk}")
 
 
+def _criar_e_validar_cliente_do_banco(request) -> ClienteConsultoria:
+    """Cria cliente do banco e valida assessor_responsavel."""
+    logger.info("📝 Criando cliente do banco...")
+    cliente = _criar_cliente_do_banco(request)
+    logger.info(f"✅ Cliente criado com sucesso: {cliente.nome} (ID: {cliente.pk})")
+    
+    # Ensure assessor_responsavel is set if it's still None
+    if not cliente.assessor_responsavel_id:
+        logger.warning("⚠️ assessor_responsavel não definido, tentando definir...")
+        if consultor := obter_consultor_usuario(request.user):
+            cliente.assessor_responsavel = consultor
+            cliente.save(update_fields=['assessor_responsavel'])
+            logger.info(f"✅ assessor_responsavel definido: {consultor.nome}")
+        else:
+            raise ValueError("Não foi possível determinar o assessor responsável. Por favor, selecione um assessor na primeira etapa.")
+    
+    return cliente
+
+
 def _processar_finalizacao_etapa_membros(request, etapa_atual, etapas, criar_viagem=False):
     """Processa finalização quando está na etapa de membros."""
     logger.info(f"🔄 _processar_finalizacao_etapa_membros chamada - criar_viagem={criar_viagem}")
@@ -1526,20 +1744,7 @@ def _processar_finalizacao_etapa_membros(request, etapa_atual, etapas, criar_via
         _salvar_dados_temporarios_sessao(request, dados_temporarios)
         
         try:
-            logger.info("📝 Criando cliente do banco...")
-            cliente = _criar_cliente_do_banco(request)
-            logger.info(f"✅ Cliente criado com sucesso: {cliente.nome} (ID: {cliente.pk})")
-            
-            # Ensure assessor_responsavel is set if it's still None
-            if not cliente.assessor_responsavel_id:
-                logger.warning("⚠️ assessor_responsavel não definido, tentando definir...")
-                if consultor := obter_consultor_usuario(request.user):
-                    cliente.assessor_responsavel = consultor
-                    cliente.save(update_fields=['assessor_responsavel'])
-                    logger.info(f"✅ assessor_responsavel definido: {consultor.nome}")
-                else:
-                    raise ValueError("Não foi possível determinar o assessor responsável. Por favor, selecione um assessor na primeira etapa.")
-            
+            cliente = _criar_e_validar_cliente_do_banco(request)
             logger.info(f"🚀 Finalizando cadastro e redirecionando (criar_viagem={criar_viagem})...")
             return _finalizar_cadastro_cliente(request, cliente, criar_viagem)
         except Exception as e:
@@ -1675,7 +1880,7 @@ def _processar_post_cadastro_cliente(request, etapa_atual, etapas, campos_etapa_
     print(f"   Todos os valores de 'acao' no POST: {request.POST.getlist('acao')}", flush=True)
     _adicionar_log_debug(request, f"POST recebido - Ação: {acao}, Form Type: {form_type}, Etapa: {etapa_atual.nome}")
     
-    if acao == "finalizar" or acao == "finalizar_e_criar_viagem":
+    if acao in ("finalizar", "finalizar_e_criar_viagem"):
         _log_finalizar_cadastro(request, etapa_atual)
     
     # Processar cancelamento
@@ -1683,16 +1888,14 @@ def _processar_post_cadastro_cliente(request, etapa_atual, etapas, campos_etapa_
         return _processar_cancelamento_cadastro(request), None, None
     
     # Processar remoção de dependente
-    if acao == "remover_dependente":
-        if etapa_atual.campo_booleano == 'etapa_membros':
-            return _processar_remover_dependente(request, etapa_atual), None, None
+    if acao == "remover_dependente" and etapa_atual.campo_booleano == 'etapa_membros':
+        return _processar_remover_dependente(request, etapa_atual), None, None
     
     if acao == "editar_dependente":
         if etapa_atual.campo_booleano == 'etapa_membros':
             return _processar_editar_dependente(request, etapa_atual), None, None
-        else:
-            messages.error(request, "Ação inválida para esta etapa.")
-            return redirect(f"{request.path}?etapa_id={etapa_atual.pk}"), None, None
+        messages.error(request, "Ação inválida para esta etapa.")
+        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}"), None, None
     
     # Processar cadastro de dependente se necessário
     form_dependente = None
@@ -1721,7 +1924,7 @@ def _processar_post_cadastro_cliente(request, etapa_atual, etapas, campos_etapa_
         return redirect_response, None, None
     
     # Processar finalização - DEVE SER PROCESSADO ANTES DE VALIDAR O FORMULÁRIO
-    if acao == "finalizar" or acao == "finalizar_e_criar_viagem":
+    if acao in ("finalizar", "finalizar_e_criar_viagem"):
         print("▶️ Iniciando processamento de finalização do cadastro...")
         logger.info("▶️ Iniciando processamento de finalização do cadastro...")
         criar_viagem = (acao == "finalizar_e_criar_viagem")
@@ -1824,6 +2027,71 @@ def cadastrar_cliente_view(request):
 
 
 @login_required
+def visualizar_cliente(request, pk: int):
+    """Visualiza todas as informações do cliente, incluindo viagens e processos."""
+    consultor = obter_consultor_usuario(request.user)
+    cliente = get_object_or_404(
+        ClienteConsultoria.objects.select_related(
+            "assessor_responsavel",
+            "cliente_principal",
+            "assessor_responsavel__perfil",
+        ).prefetch_related("dependentes"),
+        pk=pk,
+    )
+
+    # Verificar permissão
+    pode_visualizar = usuario_pode_gerenciar_todos(request.user, consultor) or (
+        cliente.assessor_responsavel == consultor
+        or cliente.criado_por == request.user
+    )
+    
+    if not pode_visualizar:
+        raise PermissionDenied
+    
+    # Buscar viagens do cliente
+    viagens = Viagem.objects.filter(
+        clientes=cliente
+    ).select_related(
+        "pais_destino",
+        "tipo_visto",
+        "assessor_responsavel",
+    ).prefetch_related("clientes").order_by("-data_prevista_viagem")
+    
+    # Buscar processos do cliente
+    processos = Processo.objects.filter(
+        cliente=cliente
+    ).select_related(
+        "viagem",
+        "viagem__pais_destino",
+        "viagem__tipo_visto",
+        "assessor_responsavel",
+    ).prefetch_related("etapas", "etapas__status").order_by("-criado_em")
+    
+    # Buscar registros financeiros do cliente
+    registros_financeiros = Financeiro.objects.filter(
+        cliente=cliente
+    ).select_related(
+        "viagem",
+        "assessor_responsavel",
+    ).order_by("-criado_em")
+    
+    # Status financeiro
+    status_financeiro = _obter_status_financeiro_cliente(cliente)
+    
+    contexto = {
+        "cliente": cliente,
+        "viagens": viagens,
+        "processos": processos,
+        "registros_financeiros": registros_financeiros,
+        "status_financeiro": status_financeiro,
+        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "pode_gerenciar_todos": usuario_pode_gerenciar_todos(request.user, consultor),
+    }
+    
+    return render(request, "client/visualizar_cliente.html", contexto)
+
+
+@login_required
 def editar_cliente_view(request, pk: int):
     """Formulário para editar cliente existente."""
     consultor = obter_consultor_usuario(request.user)
@@ -1886,10 +2154,9 @@ def api_buscar_cep(request):
 
     try:
         endereco = buscar_endereco_por_cep(cep)
+        return JsonResponse(endereco)
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=400)
-
-    return JsonResponse(endereco)
 
 
 @login_required
@@ -1903,19 +2170,16 @@ def api_dados_cliente(request):
 
     try:
         cliente = ClienteConsultoria.objects.get(pk=cliente_id)
-    except ClienteConsultoria.DoesNotExist:
-        return JsonResponse({"error": "Cliente não encontrado."}, status=404)
-
-    data_base = cliente.criado_em.date().isoformat()
-
-    return JsonResponse(
-        {
+        data_base = cliente.criado_em.date().isoformat()
+        response_data = {
             "data_base": data_base,
             "cliente": {
                 "nome": cliente.nome,
             },
         }
-    )
+        return JsonResponse(response_data)
+    except ClienteConsultoria.DoesNotExist:
+        return JsonResponse({"error": "Cliente não encontrado."}, status=404)
 
 
 @login_required
@@ -1964,6 +2228,13 @@ def cadastrar_dependente(request, pk: int):
         etapas = EtapaCadastroCliente.objects.filter(ativo=True).order_by("ordem")
         form = _criar_formulario_dependente(request, cliente_principal, primeira_etapa, etapas)
     
+    # Calcular assessor_id: usar do cliente principal ou do consultor logado como fallback
+    assessor_id = None
+    if cliente_principal.assessor_responsavel:
+        assessor_id = cliente_principal.assessor_responsavel.pk
+    elif consultor:
+        assessor_id = consultor.pk
+    
     contexto = {
         "cliente_principal": cliente_principal,
         "form": form,
@@ -1971,6 +2242,7 @@ def cadastrar_dependente(request, pk: int):
         "campos_etapa": campos_etapa,
         "dependentes": cliente_principal.dependentes.all().order_by("nome"),
         "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "assessor_id": assessor_id,
     }
     
     return render(request, "client/cadastrar_dependente.html", contexto)

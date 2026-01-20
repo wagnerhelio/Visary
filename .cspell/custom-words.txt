@@ -53,3 +53,10 @@ bwignore
 lpignore
 serialização
 Nasc
+brazilcep
+pycep
+correios
+pycep-correios
+pycep_correios
+ViaCEP
+BrasilAPI

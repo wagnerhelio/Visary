@@ -32,9 +32,45 @@ class ProcessoForm(forms.ModelForm):
             "assessor_responsavel": forms.Select(attrs={"class": "input"}),
         }
 
+    etapas_selecionadas = forms.MultipleChoiceField(
+        required=False,
+        widget=forms.CheckboxSelectMultiple,
+        label="Etapas do Processo",
+        help_text="Selecione as etapas que deseja incluir no processo"
+    )
+
     def __init__(self, *args, user: User | None = None, cliente_id: int | None = None, viagem_id: int | None = None, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._user = user
+        self._viagem_id = viagem_id
+        
+        # Configurar campo de etapas se viagem_id fornecido ou se viagem foi selecionada no POST
+        viagem_id_para_etapas = viagem_id
+        if not viagem_id_para_etapas and self.data:
+            # Tentar obter viagem_id do POST
+            viagem_id_post = self.data.get('viagem') or self.data.get('viagem_hidden')
+            if viagem_id_post:
+                try:
+                    viagem_id_para_etapas = int(viagem_id_post)
+                except (ValueError, TypeError):
+                    pass
+        
+        if viagem_id_para_etapas:
+            from consultancy.models import ViagemStatusProcesso
+            status_vinculados = ViagemStatusProcesso.objects.filter(
+                viagem_id=viagem_id_para_etapas,
+                ativo=True
+            ).select_related('status').order_by('status__ordem', 'status__nome')
+            
+            choices = [(vs.status.pk, vs.status.nome) for vs in status_vinculados]
+            self.fields['etapas_selecionadas'].choices = choices
+            self.fields['etapas_selecionadas'].widget = forms.CheckboxSelectMultiple()
+            # Por padrão, selecionar todas as etapas (apenas em GET, não em POST)
+            if not self.instance.pk and not self.data:
+                self.fields['etapas_selecionadas'].initial = [str(pk) for pk, _ in choices]
+        else:
+            self.fields['etapas_selecionadas'].widget = forms.HiddenInput()
+            self.fields['etapas_selecionadas'].choices = []
 
         # Filtrar viagens ativas
         from consultancy.models import Viagem, ClienteConsultoria
@@ -305,25 +341,45 @@ class ProcessoForm(forms.ModelForm):
         return processo
 
     def _criar_etapas(self, processo: Processo) -> None:
-        """Cria as etapas do processo baseadas nos status vinculados à viagem."""
-        status_vinculados = ViagemStatusProcesso.objects.filter(
-            viagem=processo.viagem,
-            ativo=True
-        ).select_related('status').order_by('status__ordem', 'status__nome')
-
-        for viagem_status in status_vinculados:
-            status = viagem_status.status
-            # Usar o prazo padrão do status se disponível
-            prazo_dias = status.prazo_padrao_dias if status.prazo_padrao_dias > 0 else 0
-
-            EtapaProcesso.objects.get_or_create(
-                processo=processo,
-                status=status,
-                defaults={
-                    'prazo_dias': prazo_dias,
-                    'ordem': status.ordem,
-                }
-            )
+        """Cria as etapas do processo baseadas nas etapas selecionadas no formulário."""
+        etapas_selecionadas = self.cleaned_data.get('etapas_selecionadas', [])
+        
+        if not etapas_selecionadas:
+            # Se nenhuma etapa selecionada, criar todas por padrão (comportamento anterior)
+            status_vinculados = ViagemStatusProcesso.objects.filter(
+                viagem=processo.viagem,
+                ativo=True
+            ).select_related('status').order_by('status__ordem', 'status__nome')
+            
+            for viagem_status in status_vinculados:
+                status = viagem_status.status
+                prazo_dias = status.prazo_padrao_dias if status.prazo_padrao_dias > 0 else 0
+                
+                EtapaProcesso.objects.get_or_create(
+                    processo=processo,
+                    status=status,
+                    defaults={
+                        'prazo_dias': prazo_dias,
+                        'ordem': status.ordem,
+                    }
+                )
+        else:
+            # Criar apenas as etapas selecionadas
+            from consultancy.models import StatusProcesso
+            status_ids = [int(sid) for sid in etapas_selecionadas]
+            status_selecionados = StatusProcesso.objects.filter(pk__in=status_ids)
+            
+            for status in status_selecionados:
+                prazo_dias = status.prazo_padrao_dias if status.prazo_padrao_dias > 0 else 0
+                
+                EtapaProcesso.objects.get_or_create(
+                    processo=processo,
+                    status=status,
+                    defaults={
+                        'prazo_dias': prazo_dias,
+                        'ordem': status.ordem,
+                    }
+                )
 
 
 class EtapaProcessoForm(forms.ModelForm):

@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q, Count
 from django.db import models
-from django.http import JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -26,7 +26,7 @@ from consultancy.models import (
     ViagemStatusProcesso,
 )
 from system.models import UsuarioConsultoria
-from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos
+from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
 
 
 @login_required
@@ -35,34 +35,67 @@ def home_processos(request):
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
+    # Se for admin, não mostrar processos (não tem clientes vinculados)
     if pode_gerenciar_todos:
-        processos = Processo.objects.select_related(
-            "viagem",
-            "viagem__pais_destino",
-            "viagem__tipo_visto",
-            "cliente",
-            "assessor_responsavel",
-        ).prefetch_related("etapas", "etapas__status").order_by("-criado_em")[:10]
-    elif consultor:
-        processos = Processo.objects.select_related(
-            "viagem",
-            "viagem__pais_destino",
-            "viagem__tipo_visto",
-            "cliente",
-            "assessor_responsavel",
-        ).prefetch_related("etapas", "etapas__status").filter(
-            assessor_responsavel=consultor
-        ).order_by("-criado_em")[:10]
-    else:
-        processos = Processo.objects.none()
-
-    total_processos = Processo.objects.count() if pode_gerenciar_todos else processos.count()
+        contexto = {
+            "total_processos": 0,
+            "processos": [],
+            "perfil_usuario": consultor.perfil.nome if consultor else None,
+            "pode_gerenciar_todos": pode_gerenciar_todos,
+            "filtros_aplicados": {},
+        }
+        return render(request, "process/home_processos.html", contexto)
+    
+    # Buscar apenas clientes vinculados ao usuário
+    from system.views.client_views import listar_clientes
+    clientes_usuario = listar_clientes(request.user)
+    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
+    
+    # Buscar processos apenas dos clientes vinculados ao usuário
+    processos = Processo.objects.filter(
+        cliente__pk__in=clientes_ids
+    ).select_related(
+        "viagem",
+        "viagem__pais_destino",
+        "viagem__tipo_visto",
+        "cliente",
+        "assessor_responsavel",
+    ).prefetch_related("etapas", "etapas__status").distinct().order_by("-criado_em")
+    
+    # Aplicar filtros
+    filtro_cliente = request.GET.get("cliente", "").strip()
+    filtro_viagem = request.GET.get("viagem", "").strip()
+    filtro_assessor = request.GET.get("assessor", "").strip()
+    
+    if filtro_cliente:
+        processos = processos.filter(cliente__nome__icontains=filtro_cliente)
+    if filtro_viagem:
+        processos = processos.filter(
+            Q(viagem__pais_destino__nome__icontains=filtro_viagem) |
+            Q(viagem__tipo_visto__nome__icontains=filtro_viagem)
+        )
+    if filtro_assessor:
+        processos = processos.filter(assessor_responsavel__nome__icontains=filtro_assessor)
+    
+    # Limitar a 10 processos mais recentes (após aplicar filtros)
+    processos_limitados = processos[:10]
+    
+    # Buscar opções para os filtros
+    assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
 
     contexto = {
-        "processos": processos,
-        "total_processos": total_processos,
+        "processos": processos_limitados,
+        "total_processos": processos.count(),
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "consultor": consultor,
+        "filtros_aplicados": {
+            "cliente": filtro_cliente,
+            "viagem": filtro_viagem,
+            "assessor": filtro_assessor,
+        },
+        "clientes": clientes_usuario.order_by("nome"),
+        "assessores": assessores,
     }
 
     return render(request, "process/home_processos.html", contexto)
@@ -289,81 +322,159 @@ def _obter_proximo_cliente_viagem_separada(cliente: ClienteConsultoria, viagem_a
     return None
 
 
+def _redirecionar_para_proximo_cliente(request, processo: Processo, proximo_cliente_info: dict, mensagem_especifica: str = None) -> HttpResponseRedirect:
+    """Redireciona para criar processo do próximo cliente com mensagem apropriada."""
+    try:
+        proximo_cliente = ClienteConsultoria.objects.get(pk=proximo_cliente_info['cliente_id'])
+        mensagem = mensagem_especifica or f"Processo criado para {processo.cliente.nome}. Criando processo para {proximo_cliente.nome}..."
+    except ClienteConsultoria.DoesNotExist:
+        mensagem = f"Processo criado para {processo.cliente.nome}. Criando próximo processo..."
+    
+    messages.info(request, mensagem)
+    return redirect(
+        f"{reverse('system:criar_processo')}?cliente_id={proximo_cliente_info['cliente_id']}&viagem_id={proximo_cliente_info['viagem_id']}"
+    )
+
+
+def _processar_proximo_cliente(request, processo: Processo) -> HttpResponseRedirect | None:
+    """Processa e redireciona para próximo cliente que precisa de processo."""
+    if proximo_cliente_processo := _obter_proximo_cliente_mesma_viagem(processo.viagem, processo.cliente):
+        return _redirecionar_para_proximo_cliente(request, processo, proximo_cliente_processo)
+    
+    if proximo_cliente_viagem_separada := _obter_proximo_cliente_viagem_separada(processo.cliente, processo.viagem):
+        mensagem = f"Processo criado para {processo.cliente.nome}. Criando processo em viagem separada..."
+        return _redirecionar_para_proximo_cliente(request, processo, proximo_cliente_viagem_separada, mensagem)
+    
+    return None
+
+
+def _processar_post_criar_processo(request, cliente_id, viagem_id) -> HttpResponseRedirect | None:
+    """Processa requisição POST para criar processo."""
+    _limpar_mensagens_duplicadas_sessao(request)
+    storage = messages.get_messages(request)
+    storage.used = True
+    
+    form = ProcessoForm(request.POST, user=request.user, cliente_id=cliente_id, viagem_id=viagem_id)
+    if not form.is_valid():
+        messages.error(request, "Não foi possível cadastrar o processo. Verifique os campos.")
+        return None
+    
+    processo = form.save()
+    
+    if redirect_response := _processar_proximo_cliente(request, processo):
+        return redirect_response
+    
+    messages.success(request, f"Todos os processos foram criados com sucesso! Processo criado para {processo.cliente.nome}.")
+    return redirect("system:home_processos")
+
+
+def _determinar_cliente_pre_selecionado(cliente_id, viagem_id) -> bool:
+    """Determina se o cliente foi pré-selecionado (explicitamente ou automaticamente)."""
+    if cliente_id:
+        return True
+    
+    if not viagem_id:
+        return False
+    
+    with suppress(Viagem.DoesNotExist):
+        viagem = Viagem.objects.get(pk=viagem_id)
+        return viagem.clientes.count() == 1
+    
+    return False
+
+
+def _obter_etapas_disponiveis_viagem(viagem_id) -> list:
+    """Retorna os status disponíveis vinculados à viagem para seleção de etapas."""
+    if not viagem_id:
+        return []
+    
+    try:
+        status_vinculados = ViagemStatusProcesso.objects.filter(
+            viagem_id=viagem_id,
+            ativo=True
+        ).select_related('status').order_by('status__ordem', 'status__nome')
+        
+        return [viagem_status.status for viagem_status in status_vinculados]
+    except (Viagem.DoesNotExist, ValueError):
+        return []
+
+
+def _preparar_contexto_criar_processo(consultor, form, cliente_id, viagem_id) -> dict:
+    """Prepara contexto para renderização do template de criar processo."""
+    etapas_disponiveis = _obter_etapas_disponiveis_viagem(viagem_id) if viagem_id else []
+    
+    return {
+        "form": form,
+        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "cliente_pre_selecionado": _determinar_cliente_pre_selecionado(cliente_id, viagem_id),
+        "viagem_pre_selecionada": bool(viagem_id),
+        "etapas_disponiveis": etapas_disponiveis,
+    }
+
+
 @login_required
 def criar_processo(request):
     """Formulário para cadastrar novo processo."""
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    # Limpar mensagens de viagem se vier de redirect de criar viagem
     if request.method == "GET":
         _limpar_mensagens_viagem_sessao(request)
 
-    # Obter parâmetros de pré-seleção da URL
     cliente_id = request.GET.get("cliente_id")
     viagem_id = request.GET.get("viagem_id")
 
     if request.method == "POST":
-        _limpar_mensagens_duplicadas_sessao(request)
-        storage = messages.get_messages(request)
-        storage.used = True
-        
+        if redirect_response := _processar_post_criar_processo(request, cliente_id, viagem_id):
+            return redirect_response
         form = ProcessoForm(request.POST, user=request.user, cliente_id=cliente_id, viagem_id=viagem_id)
-        if form.is_valid():
-            processo = form.save()
-            
-            # PRIMEIRO: Verificar se há outros clientes na MESMA viagem que precisam de processo
-            proximo_cliente_processo = _obter_proximo_cliente_mesma_viagem(processo.viagem, processo.cliente)
-            
-            if proximo_cliente_processo:
-                # Encontrou cliente na mesma viagem que precisa de processo
-                try:
-                    proximo_cliente = ClienteConsultoria.objects.get(pk=proximo_cliente_processo['cliente_id'])
-                    messages.info(request, f"Processo criado para {processo.cliente.nome}. Criando processo para {proximo_cliente.nome}...")
-                except ClienteConsultoria.DoesNotExist:
-                    messages.info(request, f"Processo criado para {processo.cliente.nome}. Criando próximo processo...")
-                return redirect(
-                    f"{reverse('system:criar_processo')}?cliente_id={proximo_cliente_processo['cliente_id']}&viagem_id={proximo_cliente_processo['viagem_id']}"
-                )
-            
-            # DEPOIS: Se não há mais clientes na mesma viagem, verificar viagens separadas
-            proximo_cliente_viagem_separada = _obter_proximo_cliente_viagem_separada(processo.cliente, processo.viagem)
-            if proximo_cliente_viagem_separada:
-                # Encontrou cliente em viagem separada que precisa de processo
-                try:
-                    proximo_cliente_sep = ClienteConsultoria.objects.get(pk=proximo_cliente_viagem_separada['cliente_id'])
-                    messages.info(request, f"Processo criado para {processo.cliente.nome}. Criando processo para {proximo_cliente_sep.nome} em viagem separada...")
-                except ClienteConsultoria.DoesNotExist:
-                    messages.info(request, f"Processo criado para {processo.cliente.nome}. Criando processo em viagem separada...")
-                return redirect(
-                    f"{reverse('system:criar_processo')}?cliente_id={proximo_cliente_viagem_separada['cliente_id']}&viagem_id={proximo_cliente_viagem_separada['viagem_id']}"
-                )
-            
-            # Adicionar mensagem apenas quando não há mais processos para criar
-            messages.success(request, f"Todos os processos foram criados com sucesso! Processo criado para {processo.cliente.nome}.")
-            return redirect("system:listar_processos")
-        else:
-            messages.error(request, "Não foi possível cadastrar o processo. Verifique os campos.")
     else:
         form = ProcessoForm(user=request.user, cliente_id=cliente_id, viagem_id=viagem_id)
 
-    # Verificar se cliente foi pré-selecionado (explicitamente ou automaticamente)
-    cliente_pre_selecionado = bool(cliente_id)
-    if not cliente_pre_selecionado and viagem_id:
-        # Verificar se há apenas um cliente na viagem (foi pré-selecionado automaticamente)
-        with suppress(Viagem.DoesNotExist):
-            viagem = Viagem.objects.get(pk=viagem_id)
-            if viagem.clientes.count() == 1:
-                cliente_pre_selecionado = True
-    
+    contexto = _preparar_contexto_criar_processo(consultor, form, cliente_id, viagem_id)
+    return render(request, "process/criar_processo.html", contexto)
+
+
+@login_required
+def visualizar_processo(request, pk: int):
+    """Visualiza todas as informações do processo."""
+    consultor = obter_consultor_usuario(request.user)
+    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+
+    processo = get_object_or_404(
+        Processo.objects.select_related(
+            "viagem",
+            "viagem__pais_destino",
+            "viagem__tipo_visto",
+            "cliente",
+            "cliente__cliente_principal",
+            "assessor_responsavel",
+        ).prefetch_related("etapas", "etapas__status"),
+        pk=pk
+    )
+
+    # Verificar permissão
+    # Qualquer usuário autenticado pode visualizar processos
+    # Apenas restringir edição/exclusão baseado em permissões
+    pode_visualizar = True
+
+    # Buscar etapas do processo
+    etapas = processo.etapas.select_related("status").order_by("ordem", "status__nome").all()
+
+    # Calcular datas de finalização para cada etapa
+    etapas_com_datas = _calcular_datas_finalizacao_etapas(processo, etapas)
+    data_base = processo.cliente.criado_em.date()
+
     contexto = {
-        "form": form,
+        "processo": processo,
+        "etapas_com_datas": etapas_com_datas,
+        "data_base": data_base,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "cliente_pre_selecionado": cliente_pre_selecionado,
-        "viagem_pre_selecionada": bool(viagem_id),
+        "pode_gerenciar_todos": pode_gerenciar_todos,
+        "pode_editar": pode_gerenciar_todos or (consultor and processo.assessor_responsavel == consultor),
     }
 
-    return render(request, "process/criar_processo.html", contexto)
+    return render(request, "process/visualizar_processo.html", contexto)
 
 
 @login_required
@@ -405,11 +516,15 @@ def editar_processo(request, pk: int):
     # Calcular datas de finalização para cada etapa
     etapas_com_datas = _calcular_datas_finalizacao_etapas(processo, etapas)
     data_base = processo.cliente.criado_em.date()
+    
+    # Obter etapas disponíveis para adicionar (que foram removidas)
+    etapas_disponiveis = _obter_etapas_disponiveis_para_adicionar(processo)
 
     contexto = {
         "processo": processo,
         "etapas_com_datas": etapas_com_datas,
         "data_base": data_base,
+        "etapas_disponiveis": etapas_disponiveis,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
     }
@@ -436,37 +551,119 @@ def excluir_processo(request, pk: int):
 
 
 @login_required
+@require_http_methods(["POST"])
+def remover_etapa_processo(request, processo_pk: int, etapa_pk: int):
+    """Remove uma etapa do processo."""
+    consultor = obter_consultor_usuario(request.user)
+    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+    
+    processo = get_object_or_404(
+        Processo.objects.select_related("assessor_responsavel"),
+        pk=processo_pk
+    )
+    
+    # Verificar permissão
+    if not pode_gerenciar_todos and processo.assessor_responsavel != consultor:
+        raise PermissionDenied("Você não tem permissão para remover etapas deste processo.")
+    
+    etapa = get_object_or_404(
+        EtapaProcesso.objects.filter(processo=processo),
+        pk=etapa_pk
+    )
+    
+    etapa_nome = etapa.status.nome
+    etapa.delete()
+    
+    messages.success(request, f"Etapa '{etapa_nome}' removida do processo com sucesso.")
+    return redirect("system:editar_processo", pk=processo.pk)
+
+
+def _obter_etapas_disponiveis_para_adicionar(processo: Processo):
+    """Retorna os status disponíveis que podem ser adicionados como etapas ao processo."""
+    # Obter todos os status vinculados à viagem
+    status_vinculados = ViagemStatusProcesso.objects.filter(
+        viagem=processo.viagem,
+        ativo=True
+    ).select_related('status').order_by('status__ordem', 'status__nome')
+    
+    # Obter IDs dos status que já têm etapa no processo
+    status_ids_existentes = set(
+        processo.etapas.values_list('status_id', flat=True)
+    )
+    
+    # Filtrar apenas os que não têm etapa ainda
+    return [
+        viagem_status.status
+        for viagem_status in status_vinculados
+        if viagem_status.status.pk not in status_ids_existentes
+    ]
+
+
+@login_required
+@require_http_methods(["POST"])
+def adicionar_etapa_processo(request, processo_pk: int, status_pk: int):
+    """Adiciona uma etapa ao processo baseada em um status disponível."""
+    consultor = obter_consultor_usuario(request.user)
+    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+    
+    processo = get_object_or_404(
+        Processo.objects.select_related("assessor_responsavel", "viagem"),
+        pk=processo_pk
+    )
+    
+    # Verificar permissão
+    if not pode_gerenciar_todos and processo.assessor_responsavel != consultor:
+        raise PermissionDenied("Você não tem permissão para adicionar etapas a este processo.")
+    
+    # Verificar se o status está vinculado à viagem
+    viagem_status = get_object_or_404(
+        ViagemStatusProcesso.objects.filter(
+            viagem=processo.viagem,
+            status_id=status_pk,
+            ativo=True
+        )
+    )
+    
+    status = viagem_status.status
+    
+    # Verificar se já existe etapa com este status
+    if EtapaProcesso.objects.filter(processo=processo, status=status).exists():
+        messages.error(request, f"Etapa '{status.nome}' já existe neste processo.")
+        return redirect("system:editar_processo", pk=processo.pk)
+    
+    # Criar a etapa
+    prazo_dias = max(status.prazo_padrao_dias or 0, 0)
+    
+    EtapaProcesso.objects.create(
+        processo=processo,
+        status=status,
+        prazo_dias=prazo_dias,
+        ordem=status.ordem,
+    )
+    
+    messages.success(request, f"Etapa '{status.nome}' adicionada ao processo com sucesso.")
+    return redirect("system:editar_processo", pk=processo.pk)
+
+
+@login_required
 def listar_processos(request):
     """Lista todos os processos."""
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    # Filtrar processos: admin vê todos, assessor vê apenas os seus
-    if pode_gerenciar_todos:
-        processos = Processo.objects.select_related(
-            "viagem",
-            "viagem__pais_destino",
-            "viagem__tipo_visto",
-            "cliente",
-            "assessor_responsavel",
-        ).prefetch_related("etapas", "etapas__status").order_by("-criado_em")
-    elif consultor:
-        processos = Processo.objects.select_related(
-            "viagem",
-            "viagem__pais_destino",
-            "viagem__tipo_visto",
-            "cliente",
-            "assessor_responsavel",
-        ).prefetch_related("etapas", "etapas__status").filter(
-            assessor_responsavel=consultor
-        ).order_by("-criado_em")
-    else:
-        processos = Processo.objects.none()
+    # Listar TODOS os processos, independente de assessor
+    processos = Processo.objects.select_related(
+        "viagem",
+        "viagem__pais_destino",
+        "viagem__tipo_visto",
+        "cliente",
+        "assessor_responsavel",
+    ).prefetch_related("etapas", "etapas__status").order_by("-criado_em")
 
     # Aplicar filtros se fornecidos
-    filtro_cliente = request.GET.get("cliente", "")
-    filtro_viagem = request.GET.get("viagem", "")
-    filtro_assessor = request.GET.get("assessor", "")
+    filtro_cliente = request.GET.get("cliente", "").strip()
+    filtro_viagem = request.GET.get("viagem", "").strip()
+    filtro_assessor = request.GET.get("assessor", "").strip()
 
     if filtro_cliente:
         processos = processos.filter(cliente__nome__icontains=filtro_cliente)
@@ -478,14 +675,23 @@ def listar_processos(request):
     if filtro_assessor:
         processos = processos.filter(assessor_responsavel__nome__icontains=filtro_assessor)
 
+    # Buscar opções para os filtros
+    assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
+    # Listar TODOS os clientes para os filtros
+    clientes = ClienteConsultoria.objects.all().order_by("nome")
+
     contexto = {
         "processos": processos,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
         "consultor": consultor,
-        "filtro_cliente": filtro_cliente,
-        "filtro_viagem": filtro_viagem,
-        "filtro_assessor": filtro_assessor,
+        "filtros_aplicados": {
+            "cliente": filtro_cliente,
+            "viagem": filtro_viagem,
+            "assessor": filtro_assessor,
+        },
+        "clientes": clientes,
+        "assessores": assessores,
     }
 
     return render(request, "process/listar_processos.html", contexto)
@@ -532,10 +738,10 @@ def api_cliente_info(request):
 
     try:
         cliente = ClienteConsultoria.objects.get(pk=cliente_id)
+        criado_em = cliente.criado_em.isoformat()
+        return JsonResponse({"criado_em": criado_em})
     except ClienteConsultoria.DoesNotExist:
         return JsonResponse({"error": "Cliente não encontrado."}, status=404)
-
-    return JsonResponse({"criado_em": cliente.criado_em.isoformat()})
 
 
 @login_required

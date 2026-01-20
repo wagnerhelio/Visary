@@ -119,7 +119,112 @@
         text-align: center;
     }
 
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .filtros-card header {
+        margin-bottom: 20px;
+    }
+
+    .filtros-card h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: var(--text-primary);
+    }
+
+    .filtros-form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .filtros-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .filtros-form label {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 6px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .filtros-form input,
+    .filtros-form select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .filtros-form input:focus,
+    .filtros-form select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .filtros-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    .processos-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .processos-table th {
+        text-align: left;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .processos-table td {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .processos-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
     @media (max-width: 768px) {
+        .filtros-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filtros-actions {
+            flex-direction: column;
+        }
+
         .actions-grid {
             grid-template-columns: 1fr;
             gap: 16px;
@@ -152,37 +257,130 @@
     <strong>{{ total_processos }}</strong>
 </section>
 
+{% if pode_gerenciar_todos %}
+<section class="processos-list">
+    <article class="processos-list-card">
+        <header>
+            <h2>Meus Processos</h2>
+            <p>Como administrador, você não possui clientes vinculados diretamente. Use a opção "Listar Processos" para visualizar todos os processos do sistema.</p>
+        </header>
+        <div class="empty-state">
+            Nenhum processo vinculado aos seus clientes.
+        </div>
+    </article>
+</section>
+{% elif not pode_gerenciar_todos %}
+<section class="filtros-card">
+    <header>
+        <h2>Filtros</h2>
+    </header>
+    <form method="get" class="filtros-form">
+        <div class="filtros-grid">
+            <div>
+                <label for="cliente">Cliente</label>
+                <input type="text" id="cliente" name="cliente" value="{{ filtros_aplicados.cliente }}" placeholder="Nome do cliente">
+            </div>
+            <div>
+                <label for="viagem">Viagem</label>
+                <input type="text" id="viagem" name="viagem" value="{{ filtros_aplicados.viagem }}" placeholder="País ou tipo de visto">
+            </div>
+            <div>
+                <label for="assessor">Assessor</label>
+                <select id="assessor" name="assessor">
+                    <option value="">Todos</option>
+                    {% for assessor in assessores %}
+                        <option value="{{ assessor.nome }}" {% if filtros_aplicados.assessor == assessor.nome %}selected{% endif %}>
+                            {{ assessor.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:home_processos' %}" class="btn btn-outline">Limpar Filtros</a>
+        </div>
+    </form>
+</section>
+{% endif %}
+
 {% if processos %}
 <section class="processos-list">
     <article class="processos-list-card">
         <header>
-            <h2>Processos mais recentes</h2>
-            <p>Últimos processos cadastrados</p>
+            <h2>Meus Processos</h2>
+            <p>Processos vinculados aos seus clientes</p>
         </header>
-        <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: 12px;">
-            {% for processo in processos %}
-                <li style="padding: 12px; background: rgba(86, 244, 156, 0.08); border-radius: 12px; border: 1px solid rgba(86, 244, 156, 0.2);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                        <div>
-                            <strong style="color: var(--text-primary);">{{ processo.cliente.nome }}</strong>
-                            <span style="color: var(--text-secondary); font-size: 0.85rem; margin-left: 8px;">
-                                - {{ processo.viagem.pais_destino.nome }}
-                            </span>
+        <table class="processos-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Viagem</th>
+                    <th>País</th>
+                    <th>Progresso</th>
+                    <th>Assessor</th>
+                    <th style="width:180px;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for processo in processos %}
+                <tr>
+                    <td>
+                        <strong>{{ processo.cliente.nome }}</strong>
+                        {% if processo.cliente.is_dependente %}
+                            <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                Dependente de {{ processo.cliente.cliente_principal.nome|default:"-" }}
+                            </div>
+                        {% endif %}
+                    </td>
+                    <td>{{ processo.viagem.tipo_visto.nome }}</td>
+                    <td>{{ processo.viagem.pais_destino.nome }}</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="flex: 1; background: rgba(255, 255, 255, 0.1); border-radius: 8px; height: 8px; overflow: hidden;">
+                                <div style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); height: 100%; width: {{ processo.progresso_percentual }}%; transition: width 0.3s ease;"></div>
+                            </div>
+                            <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7); min-width: 45px;">{{ processo.progresso_percentual }}%</span>
                         </div>
-                        <div style="display: flex; gap: 12px; align-items: center;">
-                            <span style="color: var(--accent); font-size: 0.85rem; font-weight: 600;">
-                                {{ processo.get_status_display }}
-                            </span>
-                            {% if processo.prazo_dias > 0 %}
-                                <span style="color: var(--text-secondary); font-size: 0.75rem;">
-                                    {{ processo.prazo_dias }} dia{{ processo.prazo_dias|pluralize }}
-                                </span>
+                        <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                            {{ processo.etapas_concluidas }} de {{ processo.total_etapas }} etapas
+                        </div>
+                    </td>
+                    <td>{{ processo.assessor_responsavel.nome }}</td>
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:visualizar_processo' processo.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                            {% if pode_gerenciar_todos or processo.assessor_responsavel == consultor %}
+                                <a href="{% url 'system:editar_processo' processo.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                {% if pode_gerenciar_todos %}
+                                    <form method="post" action="{% url 'system:excluir_processo' processo.pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="margin: 0;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                    </form>
+                                {% endif %}
                             {% endif %}
                         </div>
-                    </div>
-                </li>
-            {% endfor %}
-        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </article>
+</section>
+{% else %}
+<section class="processos-list">
+    <article class="processos-list-card">
+        <header>
+            <h2>Meus Processos</h2>
+            <p>Processos vinculados aos seus clientes</p>
+        </header>
+        <div class="empty-state">
+            {% if filtros_aplicados.cliente or filtros_aplicados.viagem or filtros_aplicados.assessor %}
+                Nenhum processo encontrado com os filtros aplicados. <a href="{% url 'system:home_processos' %}">Limpar filtros</a>.
+            {% else %}
+                Nenhum processo cadastrado até o momento. <a href="{% url 'system:criar_processo' %}">Cadastre o primeiro processo</a>.
+            {% endif %}
+        </div>
     </article>
 </section>
 {% endif %}

@@ -241,6 +241,16 @@
                 <label for="data_cadastro_fim">Cadastro (Fim)</label>
                 <input type="date" id="data_cadastro_fim" name="data_cadastro_fim" value="{{ filtros.data_cadastro_fim }}">
             </div>
+            <div>
+                <label for="status_financeiro">Status Financeiro</label>
+                <select id="status_financeiro" name="status_financeiro">
+                    <option value="">Todos os status</option>
+                    <option value="pendente" {% if filtros.status_financeiro == "pendente" %}selected{% endif %}>Pendente</option>
+                    <option value="pago" {% if filtros.status_financeiro == "pago" %}selected{% endif %}>Pago</option>
+                    <option value="cancelado" {% if filtros.status_financeiro == "cancelado" %}selected{% endif %}>Cancelado</option>
+                    <option value="sem_registros" {% if filtros.status_financeiro == "sem_registros" %}selected{% endif %}>Sem registros</option>
+                </select>
+            </div>
         </div>
         <div class="filtros-actions">
             <button type="submit" class="btn btn-primary">Filtrar</button>
@@ -256,6 +266,7 @@
             <tr>
                 <th>Nome</th>
                 <th>Status</th>
+                <th>Status Financeiro</th>
                 <th>Assessor</th>
                 <th>Telefone</th>
                 <th>E-mail</th>
@@ -264,11 +275,11 @@
             </tr>
             </thead>
             <tbody>
-            {% for cliente in clientes %}
+            {% for item in clientes_com_status %}
                 <tr>
-                    <td>{{ cliente.nome }}</td>
+                    <td>{{ item.cliente.nome }}</td>
                     <td>
-                        {% if cliente.is_principal %}
+                        {% if item.cliente.is_principal %}
                             <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
                                 Principal
                             </span>
@@ -276,53 +287,72 @@
                             <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
                                 Dependente
                             </span>
-                            {% if cliente.cliente_principal %}
+                            {% if item.cliente.cliente_principal %}
                                 <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
-                                    de {{ cliente.cliente_principal.nome }}
+                                    de {{ item.cliente.cliente_principal.nome }}
                                 </div>
                             {% endif %}
                         {% endif %}
                     </td>
-                    <td>{{ cliente.assessor_responsavel.nome }}</td>
-                    <td>{{ cliente.telefone }}</td>
-                    <td>{{ cliente.email }}</td>
-                    <td>{{ cliente.criado_em|localtime|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if item.status_financeiro == "Pendente" %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
+                                Pendente
+                            </span>
+                        {% elif item.status_financeiro == "Pago" %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
+                                Pago
+                            </span>
+                        {% elif item.status_financeiro == "Cancelado" %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(244, 67, 54, 0.2); color: rgba(244, 67, 54, 0.95); border: 1px solid rgba(244, 67, 54, 0.4);">
+                                Cancelado
+                            </span>
+                        {% else %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(158, 158, 158, 0.2); color: rgba(158, 158, 158, 0.95); border: 1px solid rgba(158, 158, 158, 0.4);">
+                                Sem registros
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.cliente.assessor_responsavel.nome }}</td>
+                    <td>{{ item.cliente.telefone }}</td>
+                    <td>{{ item.cliente.email }}</td>
+                    <td>{{ item.cliente.criado_em|localtime|date:"d/m/Y" }}</td>
                     <td>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            {% if cliente.is_principal %}
-                                {% with dependentes=cliente.dependentes.all %}
+                            {% if item.cliente.is_principal %}
+                                {% with dependentes=item.cliente.dependentes.all %}
                                     {% if dependentes %}
-                                        <a href="{% url 'system:criar_viagem' %}?clientes={{ cliente.pk }}{% for dependente in dependentes %},{{ dependente.pk }}{% endfor %}" class="btn btn-primary btn-small" style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); border: none;">
+                                        <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}{% for dependente in dependentes %},{{ dependente.pk }}{% endfor %}" class="btn btn-primary btn-small" style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); border: none;">
                                             Criar Viagem
                                         </a>
                                     {% else %}
-                                        <a href="{% url 'system:criar_viagem' %}?clientes={{ cliente.pk }}" class="btn btn-primary btn-small" style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); border: none;">
+                                        <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small" style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); border: none;">
                                             Criar Viagem
                                         </a>
                                     {% endif %}
                                 {% endwith %}
                             {% endif %}
-                            {% with viagens=cliente.viagens.all %}
+                            {% with viagens=item.cliente.viagens.all %}
                                 {% if viagens %}
                                     {% for viagem in viagens %}
                                         {% if forloop.first %}
                                             {% if forloop.last %}
                                                 {# Apenas uma viagem - usar o cliente atual #}
-                                                <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk cliente.pk %}" class="btn btn-outline btn-small">Visualizar Formulário</a>
+                                                <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" class="btn btn-outline btn-small">Visualizar Formulário</a>
                                             {% else %}
                                                 {# Múltiplas viagens - mostrar dropdown #}
                                                 <div style="position: relative; display: inline-block;">
-                                                    <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('viagens-dropdown-{{ cliente.pk }}').style.display = document.getElementById('viagens-dropdown-{{ cliente.pk }}').style.display === 'block' ? 'none' : 'block'">
+                                                    <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('viagens-dropdown-{{ item.cliente.pk }}').style.display = document.getElementById('viagens-dropdown-{{ item.cliente.pk }}').style.display === 'block' ? 'none' : 'block'">
                                                         Visualizar Formulários ▼
                                                     </button>
-                                                    <div id="viagens-dropdown-{{ cliente.pk }}" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: 8px; padding: 8px; min-width: 200px; z-index: 1000; box-shadow: 0 8px 16px rgba(0,0,0,0.3);">
-                                                        <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk cliente.pk %}" style="display: block; padding: 8px 12px; border-radius: 6px; color: var(--text-primary); text-decoration: none; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='rgba(86, 244, 156, 0.1)'" onmouseout="this.style.background='transparent'">
+                                                    <div id="viagens-dropdown-{{ item.cliente.pk }}" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: 8px; padding: 8px; min-width: 200px; z-index: 1000; box-shadow: 0 8px 16px rgba(0,0,0,0.3);">
+                                                        <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" style="display: block; padding: 8px 12px; border-radius: 6px; color: var(--text-primary); text-decoration: none; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='rgba(86, 244, 156, 0.1)'" onmouseout="this.style.background='transparent'">
                                                             {{ viagem.pais_destino.nome }} - {{ viagem.data_prevista_viagem|date:"d/m/Y" }}
                                                         </a>
                                             {% endif %}
                                         {% else %}
                                             {# Continuar populando o dropdown #}
-                                            <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk cliente.pk %}" style="display: block; padding: 8px 12px; border-radius: 6px; color: var(--text-primary); text-decoration: none; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='rgba(86, 244, 156, 0.1)'" onmouseout="this.style.background='transparent'">
+                                            <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" style="display: block; padding: 8px 12px; border-radius: 6px; color: var(--text-primary); text-decoration: none; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='rgba(86, 244, 156, 0.1)'" onmouseout="this.style.background='transparent'">
                                                 {{ viagem.pais_destino.nome }} - {{ viagem.data_prevista_viagem|date:"d/m/Y" }}
                                             </a>
                                         {% endif %}
@@ -333,9 +363,10 @@
                                     {% endfor %}
                                 {% endif %}
                             {% endwith %}
+                            <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                            <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
                             {% if pode_excluir_clientes %}
-                                <a href="{% url 'system:editar_cliente' cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
-                                <form method="post" action="{% url 'system:excluir_cliente' cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ cliente.nome }}?');" style="margin: 0;">
+                                <form method="post" action="{% url 'system:excluir_cliente' item.cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ item.cliente.nome }}?');" style="margin: 0;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-danger btn-small">Excluir</button>
                                 </form>
@@ -346,7 +377,7 @@
             {% empty %}
                 <tr>
                     <td colspan="7" class="empty-state">
-                        {% if filtros.nome or filtros.assessor or filtros.telefone or filtros.email or filtros.nacionalidade or filtros.data_nascimento or filtros.data_cadastro_inicio or filtros.data_cadastro_fim %}
+                        {% if filtros.nome or filtros.assessor or filtros.telefone or filtros.email or filtros.nacionalidade or filtros.data_nascimento or filtros.data_cadastro_inicio or filtros.data_cadastro_fim or filtros.status_financeiro %}
                             Nenhum cliente encontrado com os filtros aplicados. <a href="{% url 'system:listar_clientes_view' %}">Limpar filtros</a>.
                         {% else %}
                             Nenhum cliente cadastrado até o momento. <a href="{% url 'system:cadastrar_cliente' %}">Cadastre o primeiro cliente</a>.

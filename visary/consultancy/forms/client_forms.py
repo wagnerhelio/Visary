@@ -178,6 +178,18 @@ class ClienteConsultoriaForm(forms.ModelForm):
         }
 
     def __init__(self, *args, user: Optional[User] = None, cliente_principal=None, usar_dados_principal: bool = False, **kwargs) -> None:
+        # Capturar initial antes de chamar super() para verificar se assessor_responsavel já está definido
+        initial_dict = kwargs.get('initial', {}) if 'initial' in kwargs else {}
+        initial_assessor = initial_dict.get('assessor_responsavel') if initial_dict else None
+        # Converter para int se necessário e garantir que não seja vazio/None
+        if initial_assessor:
+            try:
+                initial_assessor = int(initial_assessor) if isinstance(initial_assessor, str) else initial_assessor
+            except (ValueError, TypeError):
+                initial_assessor = None
+        else:
+            initial_assessor = None
+        
         super().__init__(*args, **kwargs)
         self._user = user
         self.cliente_principal = cliente_principal
@@ -216,14 +228,26 @@ class ClienteConsultoriaForm(forms.ModelForm):
 
         # Pré-preenche assessor responsável se o usuário for um UsuarioConsultoria
         # (funciona tanto para assessores quanto para administradores)
-        if user is not None:
-            consultor = (
-                UsuarioConsultoria.objects.filter(email__iexact=user.email, ativo=True)
-                .order_by("-atualizado_em")
-                .first()
-            )
-            if consultor and not self.instance.pk:  # Só pré-preenche em criação, não em edição
-                self.fields["assessor_responsavel"].initial = consultor.pk
+        # MAS só se não houver um valor já definido em initial (ex: dados temporários ou cliente principal)
+        if user is not None and not self.instance.pk:  # Só pré-preenche em criação, não em edição
+            # Verificar se o campo já tem um initial definido (pode ter vindo do initial passado ou do super().__init__)
+            campo_initial = self.fields["assessor_responsavel"].initial
+            
+            # Se já há um valor definido em initial (ex: do cliente principal ou dados temporários), não sobrescrever
+            if not initial_assessor and not campo_initial:
+                consultor = (
+                    UsuarioConsultoria.objects.filter(email__iexact=user.email, ativo=True)
+                    .order_by("-atualizado_em")
+                    .first()
+                )
+                if consultor:
+                    # Não definir se estiver criando dependente (cliente_principal não é None)
+                    # Nesse caso, o assessor deve vir do cliente principal
+                    if cliente_principal is None:
+                        self.fields["assessor_responsavel"].initial = consultor.pk
+            # Se há um initial_assessor passado, garantir que está aplicado
+            elif initial_assessor:
+                self.fields["assessor_responsavel"].initial = initial_assessor
     
     def full_clean(self):
         """Sobrescreve full_clean para garantir que senha seja opcional quando usar_dados_principal."""

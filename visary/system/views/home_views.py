@@ -13,7 +13,6 @@ def home(request):
     """
     Página inicial resumida do painel.
     """
-
     consultor = obter_consultor_usuario(request.user)
 
     clientes_qs = listar_clientes(request.user)
