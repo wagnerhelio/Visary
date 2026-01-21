@@ -250,6 +250,28 @@
 
 {% block app_content %}
 <section class="layout-grid">
+    {% if pode_gerenciar_todos %}
+    <article class="card form-card">
+        <header style="margin-bottom: 20px;">
+            <h2>Informações do Processo</h2>
+        </header>
+        <form method="post">
+            {% csrf_token %}
+            <div>
+                <label for="assessor_responsavel">Assessor Responsável</label>
+                <select id="assessor_responsavel" name="assessor_responsavel" required>
+                    {% for assessor in assessores_disponiveis %}
+                        <option value="{{ assessor.pk }}" {% if assessor.pk == processo.assessor_responsavel.pk %}selected{% endif %}>
+                            {{ assessor.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" name="alterar_assessor" class="btn btn-primary" style="margin-top: 16px;">Alterar Assessor</button>
+        </form>
+    </article>
+    {% endif %}
+
     <article class="card">
         <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <div>
@@ -264,12 +286,14 @@
             <div class="progress-fill" style="width: {{ processo.progresso_percentual }}%;"></div>
         </div>
 
-        <form method="post">
-            {% csrf_token %}
-            <div class="checklist-etapas">
-                {% for item in etapas_com_datas %}
-                    {% with etapa=item.etapa data_finalizacao=item.data_finalizacao %}
-                        <div class="etapa-item {% if etapa.concluida %}concluida{% endif %}" data-etapa-id="{{ etapa.pk }}">
+        <div class="checklist-etapas">
+            {% for item in etapas_com_datas %}
+                {% with etapa=item.etapa data_finalizacao=item.data_finalizacao %}
+                    <div class="etapa-item {% if etapa.concluida %}concluida{% endif %}" data-etapa-id="{{ etapa.pk }}">
+                        <form method="post" style="display: contents;">
+                            {% csrf_token %}
+                            <!-- Hidden input para garantir que checkbox desmarcado seja tratado -->
+                            <input type="hidden" name="etapa_{{ etapa.pk }}_concluida_presente" value="1">
                             <div class="etapa-header">
                                 <input 
                                     type="checkbox" 
@@ -277,18 +301,15 @@
                                     id="etapa_{{ etapa.pk }}_concluida"
                                     class="etapa-checkbox"
                                     {% if etapa.concluida %}checked{% endif %}
-                                    onchange="this.closest('.etapa-item').classList.toggle('concluida', this.checked);">
+                                    onchange="atualizarEstadoEtapa({{ etapa.pk }}, this.checked);">
                                 <label for="etapa_{{ etapa.pk }}_concluida" class="etapa-nome">
                                     {{ etapa.status.nome }}
                                 </label>
-                                <form method="post" action="{% url 'system:remover_etapa_processo' processo.pk etapa.pk %}" 
-                                      onsubmit="return confirm('Deseja realmente remover a etapa \'{{ etapa.status.nome }}\' deste processo?');" 
-                                      style="display: inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn-remover-etapa" title="Remover etapa">
-                                        ✕ Remover
-                                    </button>
-                                </form>
+                                <button type="button" class="btn-remover-etapa" 
+                                        onclick="if(confirm('Deseja realmente remover a etapa \'{{ etapa.status.nome }}\' deste processo?')) { var form = document.createElement('form'); form.method = 'post'; form.action = '{% url 'system:remover_etapa_processo' processo.pk etapa.pk %}'; var csrf = document.createElement('input'); csrf.type = 'hidden'; csrf.name = 'csrfmiddlewaretoken'; csrf.value = '{{ csrf_token }}'; form.appendChild(csrf); document.body.appendChild(form); form.submit(); }"
+                                        title="Remover etapa">
+                                    ✕ Remover
+                                </button>
                             </div>
 
                             <div class="etapa-info">
@@ -297,6 +318,7 @@
                                     <input 
                                         type="number" 
                                         name="etapa_{{ etapa.pk }}_prazo" 
+                                        id="etapa_{{ etapa.pk }}_prazo"
                                         value="{% if etapa.prazo_dias %}{{ etapa.prazo_dias }}{% else %}{{ etapa.status.prazo_padrao_dias|default:0 }}{% endif %}"
                                         class="etapa-prazo-input"
                                         min="0"
@@ -321,6 +343,7 @@
                                     <input 
                                         type="date" 
                                         name="etapa_{{ etapa.pk }}_data" 
+                                        id="etapa_{{ etapa.pk }}_data"
                                         value="{% if etapa.data_conclusao %}{{ etapa.data_conclusao|date:'Y-m-d' }}{% endif %}"
                                         class="etapa-prazo-input"
                                         style="font-size: 0.85rem;">
@@ -336,19 +359,49 @@
                                     id="etapa_{{ etapa.pk }}_obs"
                                     placeholder="Adicione observações sobre esta etapa...">{{ etapa.observacoes }}</textarea>
                             </div>
-                        </div>
-                    {% endwith %}
-                {% empty %}
-                    <p style="color: rgba(245, 245, 245, 0.6); text-align: center; padding: 40px 20px;">
-                        Nenhuma etapa configurada para esta viagem. Configure as etapas na seção de Status de Processo.
-                    </p>
-                {% endfor %}
-            </div>
 
-            {% if etapas_com_datas %}
-                <button type="submit" class="btn btn-primary" style="margin-top: 24px;">Salvar Alterações das Etapas</button>
-            {% endif %}
+                            <div style="margin-top: 16px;">
+                                <button type="submit" name="salvar_etapa" value="{{ etapa.pk }}" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.9rem;">
+                                    Salvar Esta Etapa
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                {% endwith %}
+            {% empty %}
+                <p style="color: rgba(245, 245, 245, 0.6); text-align: center; padding: 40px 20px;">
+                    Nenhuma etapa configurada para esta viagem. Configure as etapas na seção de Status de Processo.
+                </p>
+            {% endfor %}
+        </div>
+
+        {% if etapas_com_datas %}
+        <form method="post" id="form-salvar-tudo" action="{% url 'system:editar_processo' processo.pk %}" style="margin-top: 24px;" onsubmit="return coletarValoresTodasEtapas(event);">
+            {% csrf_token %}
+            <button type="submit" name="salvar_tudo" value="1" class="btn btn-primary" id="btn-salvar-tudo">Salvar Todas as Etapas</button>
         </form>
+        <script>
+            // Garantir que a função seja chamada mesmo se houver problemas
+            document.addEventListener('DOMContentLoaded', function() {
+                const form = document.getElementById('form-salvar-tudo');
+                const btn = document.getElementById('btn-salvar-tudo');
+                
+                if (form && btn) {
+                    // Adicionar listener adicional como backup
+                    btn.addEventListener('click', function(e) {
+                        console.log('🔵 Botão clicado - listener adicional');
+                        if (e.defaultPrevented) {
+                            console.log('⚠️  Evento já foi prevenido');
+                        }
+                    });
+                    
+                    form.addEventListener('submit', function(e) {
+                        console.log('🔵 Evento submit capturado no form');
+                    });
+                }
+            });
+        </script>
+        {% endif %}
     </article>
 
     {% if etapas_disponiveis %}
@@ -413,5 +466,249 @@ document.addEventListener('DOMContentLoaded', function() {
         atualizarDataFinalizacao(etapaId, input.value);
     });
 });
+
+function atualizarEstadoEtapa(etapaId, concluida) {
+    // Atualizar classe visual do item da etapa
+    const etapaItem = document.querySelector(`.etapa-item[data-etapa-id="${etapaId}"]`);
+    if (etapaItem) {
+        etapaItem.classList.toggle('concluida', concluida);
+    }
+    
+    // Se marcado como concluída, preencher data de conclusão com hoje (se estiver vazia)
+    if (concluida) {
+        const dataConclusaoInput = document.getElementById('etapa_' + etapaId + '_data');
+        if (dataConclusaoInput && !dataConclusaoInput.value) {
+            // Obter data de hoje no formato YYYY-MM-DD
+            const hoje = new Date();
+            const ano = hoje.getFullYear();
+            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            const dia = String(hoje.getDate()).padStart(2, '0');
+            const dataHoje = `${ano}-${mes}-${dia}`;
+            dataConclusaoInput.value = dataHoje;
+        }
+    }
+}
+
+function coletarValoresTodasEtapas(event) {
+    console.log('🔵 coletarValoresTodasEtapas: Função chamada');
+    console.log('🔵 Event:', event);
+    
+    // Sempre prevenir o comportamento padrão
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    const form = document.getElementById('form-salvar-tudo');
+    if (!form) {
+        console.error('❌ Erro: formulário não encontrado');
+        console.error('❌ Tentando encontrar formulário alternativo...');
+        const forms = document.querySelectorAll('form');
+        console.log('📋 Formulários encontrados na página:', forms.length);
+        alert('Erro: formulário não encontrado. Verifique o console para mais detalhes.');
+        return false;
+    }
+    
+    console.log('✅ Formulário encontrado:', form);
+    console.log('✅ Form action:', form.action);
+    console.log('✅ Form method:', form.method);
+    
+    // Limpar TODOS os inputs hidden relacionados a etapas
+    const allHidden = form.querySelectorAll('input[type="hidden"]');
+    console.log('🗑️  Removendo', allHidden.length, 'campos hidden existentes');
+    allHidden.forEach(function(input) {
+        if (input.name && input.name.startsWith('etapa_')) {
+            input.remove();
+        }
+    });
+    
+    // Coletar todos os valores de todas as etapas
+    const etapaItems = document.querySelectorAll('.etapa-item[data-etapa-id]');
+    console.log('📋 Etapas encontradas:', etapaItems.length);
+    if (etapaItems.length === 0) {
+        console.error('❌ Nenhuma etapa encontrada');
+        alert('Nenhuma etapa encontrada para salvar');
+        return false;
+    }
+    
+    let camposAdicionados = 0;
+    const dadosColetados = [];
+    
+    etapaItems.forEach(function(etapaItem) {
+        const etapaId = etapaItem.dataset.etapaId;
+        const etapaDados = {etapaId: etapaId};
+        
+        // 1. Checkbox concluída - SEMPRE coletar usando getElementById (mais confiável)
+        const checkbox = document.getElementById('etapa_' + etapaId + '_concluida');
+        if (checkbox !== null) {
+            const hiddenCheckbox = document.createElement('input');
+            hiddenCheckbox.type = 'hidden';
+            hiddenCheckbox.name = 'etapa_' + etapaId + '_concluida';
+            // IMPORTANTE: Sempre enviar 'on' se marcado, ou campo vazio se desmarcado
+            // O backend verifica se o valor é 'on' para determinar se está concluída
+            hiddenCheckbox.value = checkbox.checked ? 'on' : '';
+            form.appendChild(hiddenCheckbox);
+            camposAdicionados++;
+            etapaDados.concluida = checkbox.checked;
+        } else {
+            console.warn('Checkbox não encontrado para etapa ' + etapaId);
+        }
+        
+        // 2. Prazo - usar getElementById como fallback
+        let prazoInput = document.getElementById('etapa_' + etapaId + '_prazo');
+        if (!prazoInput) {
+            prazoInput = document.querySelector(`input[name="etapa_${etapaId}_prazo"]`);
+        }
+        if (!prazoInput) {
+            // Tentar encontrar dentro do etapaItem
+            prazoInput = etapaItem.querySelector(`input[type="number"][name*="${etapaId}_prazo"]`);
+        }
+        if (prazoInput) {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'etapa_' + etapaId + '_prazo';
+            const prazoValue = prazoInput.value.trim();
+            hiddenInput.value = prazoValue || '0';
+            form.appendChild(hiddenInput);
+            camposAdicionados++;
+            etapaDados.prazo = hiddenInput.value;
+        } else {
+            console.warn('Campo prazo não encontrado para etapa ' + etapaId);
+        }
+        
+        // 3. Data conclusão - usar getElementById primeiro
+        let dataInput = document.getElementById('etapa_' + etapaId + '_data');
+        if (!dataInput) {
+            dataInput = document.querySelector(`input[name="etapa_${etapaId}_data"]`);
+        }
+        if (!dataInput) {
+            // Tentar encontrar dentro do etapaItem
+            dataInput = etapaItem.querySelector(`input[type="date"][name*="${etapaId}_data"]`);
+        }
+        if (dataInput) {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'etapa_' + etapaId + '_data';
+            hiddenInput.value = dataInput.value.trim() || '';
+            form.appendChild(hiddenInput);
+            camposAdicionados++;
+            etapaDados.data = hiddenInput.value;
+        }
+        
+        // 4. Observações - usar getElementById primeiro
+        let obsTextarea = document.getElementById('etapa_' + etapaId + '_obs');
+        if (!obsTextarea) {
+            obsTextarea = document.querySelector(`textarea[name="etapa_${etapaId}_obs"]`);
+        }
+        if (!obsTextarea) {
+            // Tentar encontrar dentro do etapaItem
+            obsTextarea = etapaItem.querySelector(`textarea[name*="${etapaId}_obs"]`);
+        }
+        if (obsTextarea) {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'etapa_' + etapaId + '_obs';
+            hiddenInput.value = obsTextarea.value.trim() || '';
+            form.appendChild(hiddenInput);
+            camposAdicionados++;
+            etapaDados.obs = hiddenInput.value.length;
+        }
+        
+        dadosColetados.push(etapaDados);
+    });
+    
+    // Verificar se coletou algum campo
+    console.log('📊 Total de campos adicionados:', camposAdicionados);
+    console.log('📊 Dados coletados:', dadosColetados);
+    
+    if (camposAdicionados === 0) {
+        console.error('❌ Erro: Nenhum campo foi coletado das etapas.');
+        alert('Erro: Nenhum campo foi coletado das etapas.');
+        return false;
+    }
+    
+    // Verificar se todas as etapas foram processadas
+    const camposEsperados = etapaItems.length * 4; // checkbox, prazo, data, obs
+    if (camposAdicionados < camposEsperados) {
+        console.warn('⚠️  Aviso: Nem todos os campos foram coletados. Esperado:', camposEsperados, 'Coletado:', camposAdicionados);
+    }
+    
+    // Verificar se o formulário tem CSRF token
+    const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (!csrfToken) {
+        console.error('❌ Erro: CSRF token não encontrado no formulário');
+        alert('Erro: Token de segurança não encontrado. Recarregue a página e tente novamente.');
+        return false;
+    }
+    
+    // IMPORTANTE: Garantir que o botão salvar_tudo seja incluído no POST
+    // Como estamos fazendo preventDefault, o botão não será incluído automaticamente
+    let salvarTudoInput = form.querySelector('input[name="salvar_tudo"]');
+    if (!salvarTudoInput) {
+        salvarTudoInput = document.createElement('input');
+        salvarTudoInput.type = 'hidden';
+        salvarTudoInput.name = 'salvar_tudo';
+        salvarTudoInput.value = '1';
+        form.appendChild(salvarTudoInput);
+        console.log('✅ Campo salvar_tudo adicionado ao formulário');
+    } else {
+        console.log('✅ Campo salvar_tudo já existe no formulário');
+    }
+    
+    console.log('✅ Todos os campos coletados. Submetendo formulário...');
+    const camposParaEnviar = Array.from(form.querySelectorAll('input[type="hidden"]'));
+    console.log('📤 Total de campos hidden:', camposParaEnviar.length);
+    console.log('📤 Campos que serão enviados:', camposParaEnviar.map(input => `${input.name}=${input.value.substring(0, 50)}`));
+    
+    // Verificar se há campos antes de submeter
+    if (camposParaEnviar.length === 0) {
+        console.error('❌ Erro: Nenhum campo hidden encontrado no formulário');
+        alert('Erro: Nenhum campo foi coletado. Verifique o console para mais detalhes.');
+        return false;
+    }
+    
+    // Verificar se salvar_tudo está presente
+    const salvarTudoPresente = camposParaEnviar.some(input => input.name === 'salvar_tudo');
+    if (!salvarTudoPresente) {
+        console.error('❌ Erro: Campo salvar_tudo não encontrado nos campos para enviar');
+        alert('Erro: Campo salvar_tudo não encontrado. Recarregue a página e tente novamente.');
+        return false;
+    }
+    console.log('✅ Campo salvar_tudo confirmado nos campos para enviar');
+    
+    // Mostrar visualmente que está submetendo
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Salvando...';
+    }
+    
+    // Forçar submissão do formulário
+    console.log('📤 Submetendo formulário agora...');
+    try {
+        // Criar um evento de submit para garantir que o Django receba corretamente
+        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+        form.dispatchEvent(submitEvent);
+        
+        // Se o evento não foi cancelado, fazer o submit
+        if (!submitEvent.defaultPrevented) {
+            form.submit();
+            console.log('✅ Formulário submetido com sucesso');
+        } else {
+            console.warn('⚠️  Submit foi cancelado');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao submeter formulário:', error);
+        console.error('❌ Stack trace:', error.stack);
+        alert('Erro ao submeter formulário: ' + error.message + '\n\nVerifique o console para mais detalhes.');
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Salvar Todas as Etapas';
+        }
+        return false;
+    }
+    
+    return false;
+}
 </script>
 {% endblock %}

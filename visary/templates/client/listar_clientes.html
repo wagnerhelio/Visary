@@ -214,32 +214,8 @@
                 </select>
             </div>
             <div>
-                <label for="telefone">Telefone</label>
-                <input type="text" id="telefone" name="telefone" value="{{ filtros.telefone }}" placeholder="Telefone principal">
-            </div>
-            <div>
-                <label for="telefone_secundario">Telefone Secundário</label>
-                <input type="text" id="telefone_secundario" name="telefone_secundario" value="{{ filtros.telefone_secundario }}" placeholder="Telefone secundário">
-            </div>
-            <div>
                 <label for="email">E-mail</label>
                 <input type="email" id="email" name="email" value="{{ filtros.email }}" placeholder="E-mail do cliente">
-            </div>
-            <div>
-                <label for="nacionalidade">Nacionalidade</label>
-                <input type="text" id="nacionalidade" name="nacionalidade" value="{{ filtros.nacionalidade }}" placeholder="Nacionalidade">
-            </div>
-            <div>
-                <label for="data_nascimento">Data de Nascimento</label>
-                <input type="date" id="data_nascimento" name="data_nascimento" value="{{ filtros.data_nascimento }}">
-            </div>
-            <div>
-                <label for="data_cadastro_inicio">Cadastro (Início)</label>
-                <input type="date" id="data_cadastro_inicio" name="data_cadastro_inicio" value="{{ filtros.data_cadastro_inicio }}">
-            </div>
-            <div>
-                <label for="data_cadastro_fim">Cadastro (Fim)</label>
-                <input type="date" id="data_cadastro_fim" name="data_cadastro_fim" value="{{ filtros.data_cadastro_fim }}">
             </div>
             <div>
                 <label for="status_financeiro">Status Financeiro</label>
@@ -267,6 +243,8 @@
                 <th>Nome</th>
                 <th>Status</th>
                 <th>Status Financeiro</th>
+                <th>Status do Formulário</th>
+                <th>Parceiro Indicador</th>
                 <th>Assessor</th>
                 <th>Telefone</th>
                 <th>E-mail</th>
@@ -311,6 +289,42 @@
                             <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(158, 158, 158, 0.2); color: rgba(158, 158, 158, 0.95); border: 1px solid rgba(158, 158, 158, 0.4);">
                                 Sem registros
                             </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.status_formulario == "Completo" %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
+                                ✓ Completo
+                            </span>
+                            {% if item.total_perguntas > 0 %}
+                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                    {{ item.total_respostas }}/{{ item.total_perguntas }} pergunta{{ item.total_perguntas|pluralize }}
+                                </div>
+                            {% endif %}
+                        {% elif item.status_formulario == "Parcial" %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
+                                Parcial
+                            </span>
+                            {% if item.total_perguntas > 0 %}
+                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                    {{ item.total_respostas }}/{{ item.total_perguntas }} pergunta{{ item.total_perguntas|pluralize }}
+                                </div>
+                            {% endif %}
+                        {% elif item.status_formulario == "Não preenchido" %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(244, 67, 54, 0.2); color: rgba(244, 67, 54, 0.95); border: 1px solid rgba(244, 67, 54, 0.4);">
+                                Não preenchido
+                            </span>
+                        {% else %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(158, 158, 158, 0.2); color: rgba(158, 158, 158, 0.95); border: 1px solid rgba(158, 158, 158, 0.4);">
+                                Sem formulário
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.cliente.parceiro_indicador %}
+                            {{ item.cliente.parceiro_indicador }}
+                        {% else %}
+                            <span style="color: rgba(245, 245, 245, 0.5);">—</span>
                         {% endif %}
                     </td>
                     <td>{{ item.cliente.assessor_responsavel.nome }}</td>
@@ -376,8 +390,8 @@
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="7" class="empty-state">
-                        {% if filtros.nome or filtros.assessor or filtros.telefone or filtros.email or filtros.nacionalidade or filtros.data_nascimento or filtros.data_cadastro_inicio or filtros.data_cadastro_fim or filtros.status_financeiro %}
+                    <td colspan="9" class="empty-state">
+                        {% if filtros.nome or filtros.assessor or filtros.email or filtros.status_financeiro %}
                             Nenhum cliente encontrado com os filtros aplicados. <a href="{% url 'system:listar_clientes_view' %}">Limpar filtros</a>.
                         {% else %}
                             Nenhum cliente cadastrado até o momento. <a href="{% url 'system:cadastrar_cliente' %}">Cadastre o primeiro cliente</a>.

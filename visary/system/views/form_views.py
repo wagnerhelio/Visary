@@ -26,17 +26,7 @@ def home_formularios(request):
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    # Se for admin, não mostrar formulários (não tem clientes vinculados)
-    if pode_gerenciar_todos:
-        contexto = {
-            "total_formularios": 0,
-            "formularios_respostas": [],
-            "perfil_usuario": consultor.perfil.nome if consultor else None,
-            "pode_gerenciar_todos": pode_gerenciar_todos,
-        }
-        return render(request, "forms/home_formularios.html", contexto)
-    
-    # Buscar apenas clientes vinculados ao usuário
+    # Buscar clientes vinculados ao usuário (para administradores retorna todos, para assessores retorna apenas os vinculados)
     clientes_usuario = listar_clientes(request.user)
     clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
     

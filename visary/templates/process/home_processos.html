@@ -257,19 +257,7 @@
     <strong>{{ total_processos }}</strong>
 </section>
 
-{% if pode_gerenciar_todos %}
-<section class="processos-list">
-    <article class="processos-list-card">
-        <header>
-            <h2>Meus Processos</h2>
-            <p>Como administrador, você não possui clientes vinculados diretamente. Use a opção "Listar Processos" para visualizar todos os processos do sistema.</p>
-        </header>
-        <div class="empty-state">
-            Nenhum processo vinculado aos seus clientes.
-        </div>
-    </article>
-</section>
-{% elif not pode_gerenciar_todos %}
+{% if not pode_gerenciar_todos %}
 <section class="filtros-card">
     <header>
         <h2>Filtros</h2>
@@ -350,7 +338,7 @@
                     <td>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                             <a href="{% url 'system:visualizar_processo' processo.pk %}" class="btn btn-primary btn-small">Visualizar</a>
-                            {% if pode_gerenciar_todos or processo.assessor_responsavel == consultor %}
+                            {% if pode_gerenciar_todos or consultor and processo.assessor_responsavel.pk == consultor.pk %}
                                 <a href="{% url 'system:editar_processo' processo.pk %}" class="btn btn-outline btn-small">Editar</a>
                                 {% if pode_gerenciar_todos %}
                                     <form method="post" action="{% url 'system:excluir_processo' processo.pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="margin: 0;">

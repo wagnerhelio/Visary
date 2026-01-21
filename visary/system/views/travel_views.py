@@ -111,20 +111,7 @@ def home_viagens(request):
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
-    # Se for admin, não mostrar viagens (não tem clientes vinculados)
-    if pode_gerenciar_todos:
-        contexto = {
-            "total_viagens": 0,
-            "viagens": [],
-            "viagens_formularios_nao_preenchidos": [],
-            "perfil_usuario": consultor.perfil.nome if consultor else None,
-            "mensagens_filtradas": _filtrar_mensagens_para_template(request),
-            "filtros_aplicados": {},
-            "pode_gerenciar_todos": pode_gerenciar_todos,
-        }
-        return render(request, "travel/home_viagens.html", contexto)
-    
-    # Buscar apenas clientes vinculados ao usuário
+    # Buscar clientes vinculados ao usuário (para administradores retorna todos, para assessores retorna apenas os vinculados)
     clientes_usuario = listar_clientes(request.user)
     clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
     
@@ -1018,7 +1005,7 @@ def _obter_queryset_viagens(consultor, pode_gerenciar_todos):
     ).prefetch_related("clientes", "clientes__parceiro_indicador")
     
     if not pode_gerenciar_todos and consultor:
-        queryset = queryset.filter(assessor_responsavel=consultor)
+        queryset = queryset.filter(assessor_responsavel_id=consultor.pk)
     
     return queryset.order_by("-data_prevista_viagem")
 
@@ -1124,7 +1111,7 @@ def _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor):
         clientes_sem_processo = total_clientes - total_processos if total_clientes > 0 else 0
         
         parceiros_vinculados = {cliente.parceiro_indicador for cliente in viagem.clientes.all() if cliente.parceiro_indicador}
-        pode_editar_excluir = pode_gerenciar_todos or (consultor and viagem.assessor_responsavel == consultor)
+        pode_editar_excluir = pode_gerenciar_todos or (consultor and viagem.assessor_responsavel_id == consultor.pk)
         
         viagens_com_info.append({
             "viagem": viagem,
@@ -1388,7 +1375,7 @@ def visualizar_viagem(request, pk: int):
         "assessor_responsavel",
     ).order_by("-criado_em")
     
-    pode_editar = pode_gerenciar_todos or (consultor and viagem.assessor_responsavel == consultor)
+    pode_editar = pode_gerenciar_todos or (consultor and viagem.assessor_responsavel_id == consultor.pk)
     
     contexto = {
         "viagem": viagem,
@@ -1415,7 +1402,7 @@ def editar_viagem(request, pk: int):
     )
     
     # Verificar se o usuário tem permissão: admin pode editar todas, assessor apenas as suas
-    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel != consultor):
+    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para editar esta viagem.")
     
     if request.method == "POST":
@@ -1450,7 +1437,7 @@ def excluir_viagem(request, pk: int):
     )
     
     # Verificar se o usuário tem permissão: admin pode excluir todas, assessor apenas as suas
-    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel != consultor):
+    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para excluir esta viagem.")
     
     pais_destino = viagem.pais_destino.nome
@@ -1550,7 +1537,7 @@ def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
         pk=viagem_id
     )
     
-    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel != consultor):
+    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
     
     cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)

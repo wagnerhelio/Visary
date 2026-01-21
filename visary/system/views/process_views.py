@@ -35,18 +35,7 @@ def home_processos(request):
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    # Se for admin, não mostrar processos (não tem clientes vinculados)
-    if pode_gerenciar_todos:
-        contexto = {
-            "total_processos": 0,
-            "processos": [],
-            "perfil_usuario": consultor.perfil.nome if consultor else None,
-            "pode_gerenciar_todos": pode_gerenciar_todos,
-            "filtros_aplicados": {},
-        }
-        return render(request, "process/home_processos.html", contexto)
-    
-    # Buscar apenas clientes vinculados ao usuário
+    # Buscar clientes vinculados ao usuário (para administradores retorna todos, para assessores retorna apenas os vinculados)
     from system.views.client_views import listar_clientes
     clientes_usuario = listar_clientes(request.user)
     clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
@@ -139,26 +128,142 @@ def _limpar_mensagens_viagem_sessao(request):
     storage.used = True
 
 
-def _atualizar_etapas_processo(processo: Processo, request) -> int:
+def _atualizar_etapas_processo(processo: Processo, request, etapa_id: int | None = None) -> int:
     """Atualiza as etapas do processo com dados do POST. Retorna número de etapas atualizadas."""
     etapas_atualizadas = 0
-    for etapa in processo.etapas.all():
-        etapa_id = str(etapa.pk)
-        concluida = request.POST.get(f"etapa_{etapa_id}_concluida") == "on"
-        prazo_dias = request.POST.get(f"etapa_{etapa_id}_prazo", "")
-        data_conclusao = request.POST.get(f"etapa_{etapa_id}_data", "") or None
-        observacoes = request.POST.get(f"etapa_{etapa_id}_obs", "")
+    
+    # Se etapa_id fornecido, atualizar apenas essa etapa
+    if etapa_id:
+        try:
+            etapa = processo.etapas.get(pk=etapa_id)
+            etapa_id_str = str(etapa.pk)
+            
+            # Obter valores do POST
+            concluida = request.POST.get(f"etapa_{etapa_id_str}_concluida") == "on"
+            prazo_dias = request.POST.get(f"etapa_{etapa_id_str}_prazo", "").strip()
+            data_conclusao = request.POST.get(f"etapa_{etapa_id_str}_data", "").strip() or None
+            observacoes = request.POST.get(f"etapa_{etapa_id_str}_obs", "").strip()
 
-        etapa.concluida = concluida
-        if prazo_dias:
-            with suppress(ValueError):
-                etapa.prazo_dias = int(prazo_dias)
-        if data_conclusao:
-            with suppress(ValueError, TypeError):
-                etapa.data_conclusao = parse_date(data_conclusao)
-        etapa.observacoes = observacoes
-        etapa.save()
-        etapas_atualizadas += 1
+            # Atualizar campos
+            etapa.concluida = concluida
+            etapa.observacoes = observacoes or ""
+            
+            # Atualizar prazo_dias
+            if prazo_dias:
+                try:
+                    etapa.prazo_dias = int(prazo_dias)
+                except ValueError:
+                    # Manter valor atual se conversão falhar
+                    pass
+            else:
+                etapa.prazo_dias = 0
+            
+            # Atualizar data_conclusao
+            if data_conclusao:
+                try:
+                    etapa.data_conclusao = parse_date(data_conclusao)
+                except (ValueError, TypeError):
+                    etapa.data_conclusao = None
+            else:
+                # Se desmarcou a etapa, limpar data de conclusão
+                if not concluida:
+                    etapa.data_conclusao = None
+            
+            # Salvar com campos específicos
+            etapa.save(update_fields=["concluida", "prazo_dias", "data_conclusao", "observacoes", "atualizado_em"])
+            
+            # Recarregar do banco para garantir que foi salvo
+            etapa.refresh_from_db()
+            etapas_atualizadas = 1
+        except EtapaProcesso.DoesNotExist:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Etapa {etapa_id} não encontrada no processo {processo.pk}")
+            return 0
+        except Exception as e:
+            # Log do erro para debug
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Erro ao atualizar etapa {etapa_id}: {e}", exc_info=True)
+            return 0
+    else:
+        # Atualizar todas as etapas
+        etapas_no_processo = list(processo.etapas.all())
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        print(f"📋 Processando {len(etapas_no_processo)} etapa(s) do processo {processo.pk}", flush=True)
+        
+        for etapa in etapas_no_processo:
+            etapa_id_str = str(etapa.pk)
+            
+            # Obter valores do POST
+            concluida_val = request.POST.get(f"etapa_{etapa_id_str}_concluida", "")
+            concluida = concluida_val == "on"
+            prazo_dias_str = request.POST.get(f"etapa_{etapa_id_str}_prazo", "").strip()
+            data_conclusao_str = request.POST.get(f"etapa_{etapa_id_str}_data", "").strip() or None
+            observacoes = request.POST.get(f"etapa_{etapa_id_str}_obs", "").strip()
+            
+            # Armazenar valores antigos para comparação
+            concluida_antes = etapa.concluida
+            prazo_antes = etapa.prazo_dias
+            data_antes = etapa.data_conclusao
+            obs_antes = etapa.observacoes
+
+            # Atualizar campos
+            etapa.concluida = concluida
+            etapa.observacoes = observacoes or ""
+            
+            # Atualizar prazo_dias - sempre processar, mesmo se vazio
+            try:
+                if prazo_dias_str:
+                    etapa.prazo_dias = int(prazo_dias_str)
+                else:
+                    # Se não enviado ou vazio, manter 0
+                    etapa.prazo_dias = 0
+            except ValueError:
+                # Manter valor atual se conversão falhar
+                pass
+            
+            # Atualizar data_conclusao
+            if data_conclusao_str:
+                try:
+                    etapa.data_conclusao = parse_date(data_conclusao_str)
+                except (ValueError, TypeError):
+                    etapa.data_conclusao = None
+            else:
+                # Se desmarcou a etapa, limpar data de conclusão
+                if not concluida:
+                    etapa.data_conclusao = None
+            
+            # Verificar se houve mudanças
+            houve_mudanca = (
+                etapa.concluida != concluida_antes or
+                etapa.prazo_dias != prazo_antes or
+                etapa.data_conclusao != data_antes or
+                etapa.observacoes != obs_antes
+            )
+            
+            # Sempre salvar se houve mudança ou se os campos estão presentes no POST
+            campos_presentes = any([
+                f"etapa_{etapa_id_str}_concluida" in request.POST,
+                f"etapa_{etapa_id_str}_prazo" in request.POST,
+                f"etapa_{etapa_id_str}_data" in request.POST,
+                f"etapa_{etapa_id_str}_obs" in request.POST,
+            ])
+            
+            if houve_mudanca or campos_presentes:
+                try:
+                    etapa.save(update_fields=["concluida", "prazo_dias", "data_conclusao", "observacoes", "atualizado_em"])
+                    etapa.refresh_from_db()
+                    etapas_atualizadas += 1
+                    print(f"  ✅ Etapa {etapa_id_str} ({etapa.status.nome}): salva - Concluída: {concluida}, Prazo: {etapa.prazo_dias}, Data: {etapa.data_conclusao}", flush=True)
+                except Exception as e:
+                    print(f"  ❌ Erro ao salvar etapa {etapa_id_str}: {e}", flush=True)
+                    logger.error(f"Erro ao salvar etapa {etapa_id_str}: {e}", exc_info=True)
+            else:
+                print(f"  ⏭️  Etapa {etapa_id_str} ({etapa.status.nome}): sem mudanças, não salva", flush=True)
+    
     return etapas_atualizadas
 
 
@@ -471,7 +576,7 @@ def visualizar_processo(request, pk: int):
         "data_base": data_base,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
-        "pode_editar": pode_gerenciar_todos or (consultor and processo.assessor_responsavel == consultor),
+        "pode_editar": pode_gerenciar_todos or (consultor and processo.assessor_responsavel_id == consultor.pk),
     }
 
     return render(request, "process/visualizar_processo.html", contexto)
@@ -495,14 +600,92 @@ def editar_processo(request, pk: int):
     )
 
     # Verificar permissão
-    if not pode_gerenciar_todos and processo.assessor_responsavel != consultor:
+    if not pode_gerenciar_todos and (not consultor or processo.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para editar este processo.")
 
     if request.method == "POST":
-        etapas_atualizadas = _atualizar_etapas_processo(processo, request)
-        if etapas_atualizadas > 0:
-            messages.success(request, f"{etapas_atualizadas} etapa(s) atualizada(s).")
-        return redirect("system:editar_processo", pk=processo.pk)
+        # Debug: verificar todas as chaves do POST
+        import logging
+        logger = logging.getLogger(__name__)
+        print(f"\n{'='*80}", flush=True)
+        print(f"🔍 DEBUG POST - Processo {processo.pk}", flush=True)
+        print(f"   POST keys: {list(request.POST.keys())}", flush=True)
+        print(f"   'salvar_tudo' in POST: {'salvar_tudo' in request.POST}", flush=True)
+        print(f"   'salvar_etapa' in POST: {'salvar_etapa' in request.POST}", flush=True)
+        print(f"   'alterar_assessor' in POST: {'alterar_assessor' in request.POST}", flush=True)
+        if 'salvar_tudo' in request.POST:
+            print(f"   Valor de salvar_tudo: {request.POST.get('salvar_tudo')}", flush=True)
+        print(f"{'='*80}\n", flush=True)
+        
+        # Verificar se está alterando o assessor responsável
+        if "alterar_assessor" in request.POST:
+            if pode_gerenciar_todos:
+                try:
+                    novo_assessor_id = int(request.POST.get("assessor_responsavel"))
+                    novo_assessor = UsuarioConsultoria.objects.get(pk=novo_assessor_id, ativo=True)
+                    processo.assessor_responsavel = novo_assessor
+                    processo.save(update_fields=["assessor_responsavel"])
+                    messages.success(request, f"Assessor responsável alterado para {novo_assessor.nome}.")
+                except (ValueError, TypeError, UsuarioConsultoria.DoesNotExist):
+                    messages.error(request, "Erro ao alterar o assessor responsável. Verifique os dados.")
+            else:
+                messages.error(request, "Você não tem permissão para alterar o assessor responsável.")
+            return redirect("system:editar_processo", pk=processo.pk)
+        
+        # Verificar se está salvando uma etapa específica
+        if "salvar_etapa" in request.POST:
+            try:
+                etapa_id = int(request.POST.get("salvar_etapa"))
+                # Verificar se a etapa existe
+                if not processo.etapas.filter(pk=etapa_id).exists():
+                    messages.error(request, f"Etapa {etapa_id} não encontrada no processo.")
+                else:
+                    etapas_atualizadas = _atualizar_etapas_processo(processo, request, etapa_id=etapa_id)
+                    if etapas_atualizadas > 0:
+                        messages.success(request, "Etapa salva com sucesso.")
+                    else:
+                        messages.error(request, "Erro ao salvar a etapa. Verifique se os dados foram preenchidos corretamente.")
+            except (ValueError, TypeError) as e:
+                messages.error(request, f"Erro ao processar a solicitação: {str(e)}")
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Erro ao salvar etapa: {e}", exc_info=True)
+                messages.error(request, f"Erro ao salvar a etapa: {str(e)}")
+            return redirect("system:editar_processo", pk=processo.pk)
+        
+        # Salvar todas as etapas
+        if "salvar_tudo" in request.POST:
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            try:
+                # Debug: verificar POST data
+                post_keys = [k for k in request.POST.keys() if k.startswith('etapa_')]
+                print(f"\n{'='*80}", flush=True)
+                print(f"🔵 SALVANDO TODAS AS ETAPAS", flush=True)
+                print(f"   Processo ID: {processo.pk}", flush=True)
+                print(f"   Total de campos no POST: {len(post_keys)}", flush=True)
+                print(f"   Campos: {post_keys[:30]}", flush=True)
+                print(f"{'='*80}\n", flush=True)
+                
+                logger.info(f"Salvando todas as etapas. POST com {len(post_keys)} campos de etapa.")
+                
+                etapas_atualizadas = _atualizar_etapas_processo(processo, request)
+                
+                print(f"\n{'='*80}", flush=True)
+                print(f"✅ RESULTADO: {etapas_atualizadas} etapa(s) atualizada(s)", flush=True)
+                print(f"{'='*80}\n", flush=True)
+                
+                if etapas_atualizadas > 0:
+                    messages.success(request, f"{etapas_atualizadas} etapa(s) atualizada(s) com sucesso.")
+                else:
+                    messages.warning(request, "Nenhuma etapa foi atualizada. Verifique se há etapas no processo e se os dados foram preenchidos.")
+            except Exception as e:
+                logger.error(f"Erro ao salvar todas as etapas: {e}", exc_info=True)
+                print(f"\n❌ ERRO ao salvar todas as etapas: {e}", flush=True)
+                messages.error(request, f"Erro ao salvar as etapas: {str(e)}")
+            return redirect("system:editar_processo", pk=processo.pk)
 
     # Buscar etapas do processo
     etapas = processo.etapas.select_related("status").order_by("ordem", "status__nome").all()
@@ -520,6 +703,9 @@ def editar_processo(request, pk: int):
     # Obter etapas disponíveis para adicionar (que foram removidas)
     etapas_disponiveis = _obter_etapas_disponiveis_para_adicionar(processo)
 
+    # Buscar assessores disponíveis para alteração
+    assessores_disponiveis = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
+    
     contexto = {
         "processo": processo,
         "etapas_com_datas": etapas_com_datas,
@@ -527,6 +713,7 @@ def editar_processo(request, pk: int):
         "etapas_disponiveis": etapas_disponiveis,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "assessores_disponiveis": assessores_disponiveis,
     }
 
     return render(request, "process/editar_processo.html", contexto)
@@ -563,7 +750,7 @@ def remover_etapa_processo(request, processo_pk: int, etapa_pk: int):
     )
     
     # Verificar permissão
-    if not pode_gerenciar_todos and processo.assessor_responsavel != consultor:
+    if not pode_gerenciar_todos and (not consultor or processo.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para remover etapas deste processo.")
     
     etapa = get_object_or_404(
@@ -612,7 +799,7 @@ def adicionar_etapa_processo(request, processo_pk: int, status_pk: int):
     )
     
     # Verificar permissão
-    if not pode_gerenciar_todos and processo.assessor_responsavel != consultor:
+    if not pode_gerenciar_todos and (not consultor or processo.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para adicionar etapas a este processo.")
     
     # Verificar se o status está vinculado à viagem

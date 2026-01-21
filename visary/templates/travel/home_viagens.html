@@ -276,19 +276,7 @@
     <strong>{{ total_viagens }}</strong>
 </section>
 
-{% if pode_gerenciar_todos %}
-<section class="viagens-list">
-    <article class="viagens-list-card">
-        <header>
-            <h2>Minhas Viagens</h2>
-            <p>Como administrador, você não possui clientes vinculados diretamente. Use a opção "Listar Viagens" para visualizar todas as viagens do sistema.</p>
-        </header>
-        <div class="empty-state">
-            Nenhuma viagem vinculada aos seus clientes.
-        </div>
-    </article>
-</section>
-{% elif not pode_gerenciar_todos %}
+{% if not pode_gerenciar_todos %}
 <section class="filtros-card">
     <header>
         <h2>Filtros</h2>
@@ -422,7 +410,7 @@
                     <td>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                             <a href="{% url 'system:visualizar_viagem' viagem.pk %}" class="btn btn-primary btn-small">Visualizar</a>
-                            {% if pode_gerenciar_todos or viagem.assessor_responsavel == consultor %}
+                            {% if pode_gerenciar_todos or consultor and viagem.assessor_responsavel.pk == consultor.pk %}
                                 <a href="{% url 'system:editar_viagem' viagem.pk %}" class="btn btn-outline btn-small">Editar</a>
                                 {% if pode_gerenciar_todos %}
                                     <form method="post" action="{% url 'system:excluir_viagem' viagem.pk %}" onsubmit="return confirm('Deseja realmente excluir esta viagem?');" style="margin: 0;">

@@ -22,8 +22,11 @@ from consultancy.forms import ClienteConsultoriaForm
 from consultancy.models import (
     CampoEtapaCliente,
     ClienteConsultoria,
+    ClienteViagem,
     EtapaCadastroCliente,
+    FormularioVisto,
     Processo,
+    RespostaFormulario,
     Viagem,
 )
 from consultancy.models.financial_models import Financeiro, StatusFinanceiro
@@ -40,13 +43,7 @@ def _aplicar_filtros_clientes(clientes, request, incluir_assessor=False):
     """Aplica filtros de busca aos clientes e retorna queryset filtrado e dicionário de filtros."""
     filtros = {
         "nome": request.GET.get("nome", "").strip(),
-        "telefone": request.GET.get("telefone", "").strip(),
-        "telefone_secundario": request.GET.get("telefone_secundario", "").strip(),
         "email": request.GET.get("email", "").strip(),
-        "nacionalidade": request.GET.get("nacionalidade", "").strip(),
-        "data_nascimento": request.GET.get("data_nascimento", "").strip(),
-        "data_cadastro_inicio": request.GET.get("data_cadastro_inicio", "").strip(),
-        "data_cadastro_fim": request.GET.get("data_cadastro_fim", "").strip(),
         "status_financeiro": request.GET.get("status_financeiro", "").strip(),
     }
     
@@ -58,20 +55,8 @@ def _aplicar_filtros_clientes(clientes, request, incluir_assessor=False):
     if incluir_assessor and filtros.get("assessor"):
         with suppress(ValueError, TypeError):
             clientes = clientes.filter(assessor_responsavel_id=int(filtros["assessor"]))
-    if filtros["telefone"]:
-        clientes = clientes.filter(telefone__icontains=filtros["telefone"])
-    if filtros["telefone_secundario"]:
-        clientes = clientes.filter(telefone_secundario__icontains=filtros["telefone_secundario"])
     if filtros["email"]:
         clientes = clientes.filter(email__icontains=filtros["email"])
-    if filtros["nacionalidade"]:
-        clientes = clientes.filter(nacionalidade__icontains=filtros["nacionalidade"])
-    if filtros["data_nascimento"]:
-        clientes = clientes.filter(data_nascimento=filtros["data_nascimento"])
-    if filtros["data_cadastro_inicio"]:
-        clientes = clientes.filter(criado_em__date__gte=filtros["data_cadastro_inicio"])
-    if filtros["data_cadastro_fim"]:
-        clientes = clientes.filter(criado_em__date__lte=filtros["data_cadastro_fim"])
     if filtros["status_financeiro"]:
         if filtros["status_financeiro"] == "pendente":
             clientes = clientes.filter(registros_financeiros__status=StatusFinanceiro.PENDENTE).distinct()
@@ -110,6 +95,125 @@ def _obter_status_financeiro_cliente(cliente: ClienteConsultoria) -> str:
     return "Pendente" if tem_pendente else "Pago" if tem_pago else "Cancelado" if tem_cancelado else "Sem registros"
 
 
+def _obter_tipo_visto_cliente(viagem, cliente):
+    """Obtém o tipo de visto individual do cliente na viagem, ou o tipo de visto da viagem como fallback."""
+    with suppress(ClienteViagem.DoesNotExist):
+        cliente_viagem = ClienteViagem.objects.select_related('tipo_visto__formulario').get(
+            viagem=viagem, cliente=cliente
+        )
+        if cliente_viagem.tipo_visto:
+            return cliente_viagem.tipo_visto
+    return viagem.tipo_visto
+
+
+def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
+    """Obtém o formulário de um tipo de visto diretamente do banco de dados."""
+    if not tipo_visto or not hasattr(tipo_visto, 'pk') or not tipo_visto.pk:
+        return None
+    try:
+        if apenas_ativo:
+            return FormularioVisto.objects.select_related('tipo_visto').get(
+                tipo_visto_id=tipo_visto.pk,
+                ativo=True
+            )
+        return FormularioVisto.objects.select_related('tipo_visto').get(
+            tipo_visto_id=tipo_visto.pk
+        )
+    except FormularioVisto.DoesNotExist:
+        return None
+
+
+def _obter_status_formulario_cliente(cliente: ClienteConsultoria) -> dict:
+    """
+    Determina o status do formulário do cliente baseado em todas as suas viagens.
+    
+    Retorna um dicionário com:
+    - "status": "Completo", "Parcial", "Não preenchido", ou "Sem formulário"
+    - "total_perguntas": total de perguntas
+    - "total_respostas": total de respostas
+    - "completo": boolean indicando se está completo
+    """
+    # Buscar todas as viagens do cliente ordenadas pela mais recente
+    # Usar prefetch_related para otimizar consultas
+    viagens = cliente.viagens.select_related(
+        'tipo_visto__formulario'
+    ).prefetch_related(
+        'tipo_visto__formulario__perguntas'
+    ).order_by('-data_prevista_viagem')
+    
+    if not viagens.exists():
+        return {
+            "status": "Sem formulário",
+            "total_perguntas": 0,
+            "total_respostas": 0,
+            "completo": False,
+        }
+    
+    # Verificar a viagem mais recente (ou melhor status entre todas)
+    melhor_status = None
+    melhor_info = None
+    
+    for viagem in viagens:
+        # Obter o tipo_visto individual do cliente
+        tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
+        
+        if not tipo_visto_cliente:
+            continue
+        
+        # Buscar formulário diretamente do banco de dados
+        formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=True)
+        
+        if not formulario:
+            continue
+        
+        # Calcular informações do formulário para este cliente
+        total_perguntas = formulario.perguntas.filter(ativo=True).count()
+        total_respostas = RespostaFormulario.objects.filter(
+            viagem=viagem,
+            cliente=cliente
+        ).count()
+        
+        completo = total_respostas == total_perguntas if total_perguntas > 0 else False
+        
+        info = {
+            "total_perguntas": total_perguntas,
+            "total_respostas": total_respostas,
+            "completo": completo,
+        }
+        
+        # Priorizar: Completo > Parcial > Não preenchido
+        if completo:
+            status = "Completo"
+        elif total_respostas > 0:
+            status = "Parcial"
+        else:
+            status = "Não preenchido"
+        
+        info["status"] = status
+        
+        # Atualizar melhor status (prioridade: Completo > Parcial > Não preenchido)
+        if not melhor_info:
+            melhor_info = info
+            melhor_status = status
+        elif status == "Completo" and melhor_status != "Completo":
+            melhor_info = info
+            melhor_status = status
+        elif status == "Parcial" and melhor_status == "Não preenchido":
+            melhor_info = info
+            melhor_status = status
+    
+    if melhor_info:
+        return melhor_info
+    
+    # Nenhuma viagem com formulário encontrada
+    return {
+        "status": "Sem formulário",
+        "total_perguntas": 0,
+        "total_respostas": 0,
+        "completo": False,
+    }
+
+
 def listar_clientes(user: User) -> QuerySet[ClienteConsultoria]:
     """
     Retorna queryset dos clientes com relacionamentos carregados.
@@ -122,32 +226,26 @@ def listar_clientes(user: User) -> QuerySet[ClienteConsultoria]:
         "assessor_responsavel__perfil",
         "cliente_principal",
         "cliente_principal__assessor_responsavel",
+        "parceiro_indicador",
     ).order_by("-criado_em")
 
     if user.is_superuser or user.is_staff:
         return queryset
 
-    try:
-        consultor = UsuarioConsultoria.objects.select_related("perfil").get(
-            email__iexact=user.email,
-            ativo=True,
-        )
-    except UsuarioConsultoria.DoesNotExist:
+    consultor = obter_consultor_usuario(user)
+    if not consultor:
         return queryset.none()
 
-    if consultor.perfil.nome.lower() == "administrador":
-        return queryset
-
     # Incluir clientes principais e dependentes acessíveis
-    # Clientes principais: assessor_responsavel OU criado_por
-    # Dependentes: cliente_principal acessível OU assessor_responsavel OU criado_por
-    # Usar Q para combinar condições: cliente principal OU dependente com cliente principal acessível
+    # Clientes principais: apenas os onde assessor_responsavel_id corresponde ao consultor
+    # Dependentes: apenas os cujo cliente_principal tem assessor_responsavel_id correspondente ao consultor
+    # NOTA: Filtramos apenas por assessor_responsavel_id para garantir que apenas clientes vinculados ao assessor sejam exibidos
+    consultor_id = consultor.pk
     return queryset.filter(
-        # Cliente principal acessível diretamente
-        Q(assessor_responsavel=consultor) | Q(criado_por=user) |
-        # OU dependente cujo cliente principal é acessível
-        Q(cliente_principal__assessor_responsavel=consultor) |
-        Q(cliente_principal__criado_por=user)
+        # Cliente principal vinculado ao assessor
+        Q(assessor_responsavel_id=consultor_id) |
+        # OU dependente cujo cliente principal está vinculado ao assessor
+        Q(cliente_principal__assessor_responsavel_id=consultor_id)
     ).distinct()
 
 
@@ -160,11 +258,26 @@ def usuario_pode_gerenciar_todos(user: User, consultor: UsuarioConsultoria | Non
 
 
 def obter_consultor_usuario(user: User) -> UsuarioConsultoria | None:
-    return (
+    """Obtém o consultor associado ao usuário usando username (que é o email do consultor)."""
+    if not user or not user.username:
+        return None
+    
+    # Buscar pelo username primeiro (que é o email do consultor via _sync_consultant_user)
+    consultor = (
         UsuarioConsultoria.objects.select_related("perfil")
-        .filter(email__iexact=user.email, ativo=True)
+        .filter(email__iexact=user.username.strip(), ativo=True)
         .first()
     )
+    
+    # Fallback: tentar buscar por email do user se não encontrar por username
+    if not consultor and user.email:
+        consultor = (
+            UsuarioConsultoria.objects.select_related("perfil")
+            .filter(email__iexact=user.email.strip(), ativo=True)
+            .first()
+        )
+    
+    return consultor
 
 
 @login_required
@@ -195,30 +308,25 @@ def home_clientes(request):
     
     perfil_usuario = consultor.perfil.nome if consultor and consultor.perfil else ("Administrador" if request.user.is_superuser else None)
     
-    # Se for admin, não mostrar clientes (não tem clientes vinculados)
-    if pode_gerenciar_todos:
-        return render(request, "client/home_clientes.html", {
-            "total_clientes": 0,
-            "clientes_com_status": [],
-            "perfil_usuario": perfil_usuario,
-            "filtros": {},
-            "pode_excluir_clientes": pode_gerenciar_todos,
-        })
-    
-    # Buscar apenas clientes vinculados ao usuário
+    # Buscar clientes vinculados ao usuário (para administradores retorna todos, para assessores retorna apenas os vinculados)
     clientes = listar_clientes(request.user).prefetch_related("dependentes", "viagens")
     
     # Aplicar filtros
     clientes, filtros = _aplicar_filtros_clientes(clientes, request)
     
-    # Adicionar status financeiro aos clientes
-    clientes_com_status = [
-        {
+    # Adicionar status financeiro e status do formulário aos clientes
+    clientes_com_status = []
+    for cliente in clientes:
+        status_financeiro = _obter_status_financeiro_cliente(cliente)
+        status_formulario = _obter_status_formulario_cliente(cliente)
+        clientes_com_status.append({
             "cliente": cliente,
-            "status_financeiro": _obter_status_financeiro_cliente(cliente),
-        }
-        for cliente in clientes
-    ]
+            "status_financeiro": status_financeiro,
+            "status_formulario": status_formulario["status"],
+            "total_perguntas": status_formulario["total_perguntas"],
+            "total_respostas": status_formulario["total_respostas"],
+            "completo": status_formulario["completo"],
+        })
     
     return render(request, "client/home_clientes.html", {
         "total_clientes": clientes.count(),
@@ -242,19 +350,25 @@ def listar_clientes_view(request):
         "assessor_responsavel__perfil",
         "cliente_principal",
         "cliente_principal__assessor_responsavel",
+        "parceiro_indicador",
     ).prefetch_related("dependentes", "viagens").order_by("-criado_em")
     
     # Aplicar filtros (incluindo filtro de assessor)
     clientes, filtros = _aplicar_filtros_clientes(clientes, request, incluir_assessor=True)
     
-    # Adicionar status financeiro aos clientes
-    clientes_com_status = [
-        {
+    # Adicionar status financeiro e status do formulário aos clientes
+    clientes_com_status = []
+    for cliente in clientes:
+        status_financeiro = _obter_status_financeiro_cliente(cliente)
+        status_formulario = _obter_status_formulario_cliente(cliente)
+        clientes_com_status.append({
             "cliente": cliente,
-            "status_financeiro": _obter_status_financeiro_cliente(cliente),
-        }
-        for cliente in clientes
-    ]
+            "status_financeiro": status_financeiro,
+            "status_formulario": status_formulario["status"],
+            "total_perguntas": status_formulario["total_perguntas"],
+            "total_respostas": status_formulario["total_respostas"],
+            "completo": status_formulario["completo"],
+        })
     
     return render(request, "client/listar_clientes.html", {
         "clientes_com_status": clientes_com_status,
@@ -2041,7 +2155,7 @@ def visualizar_cliente(request, pk: int):
 
     # Verificar permissão
     pode_visualizar = usuario_pode_gerenciar_todos(request.user, consultor) or (
-        cliente.assessor_responsavel == consultor
+        consultor and cliente.assessor_responsavel_id == consultor.pk
         or cliente.criado_por == request.user
     )
     
@@ -2105,7 +2219,7 @@ def editar_cliente_view(request, pk: int):
 
     # Verificar permissão
     pode_editar = usuario_pode_gerenciar_todos(request.user, consultor) or (
-        cliente.assessor_responsavel == consultor
+        consultor and cliente.assessor_responsavel_id == consultor.pk
         or cliente.criado_por == request.user
     )
     
@@ -2191,7 +2305,7 @@ def cadastrar_dependente(request, pk: int):
     cliente_principal = get_object_or_404(ClienteConsultoria, pk=pk)
     
     # Verificar permissão
-    if not pode_gerenciar_todos and cliente_principal.assessor_responsavel != consultor:
+    if not pode_gerenciar_todos and (not consultor or cliente_principal.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para gerenciar este cliente.")
     
     # Obter a primeira etapa (Dados Pessoais)
@@ -2257,7 +2371,7 @@ def adicionar_dependente(request, pk: int):
     cliente_principal = get_object_or_404(ClienteConsultoria, pk=pk)
 
     # Verificar permissão
-    if not pode_gerenciar_todos and cliente_principal.assessor_responsavel != consultor:
+    if not pode_gerenciar_todos and (not consultor or cliente_principal.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para gerenciar este cliente.")
 
     if request.method == "POST":
@@ -2302,7 +2416,7 @@ def remover_dependente(request, pk: int, dependente_id: int):
     dependente = get_object_or_404(ClienteConsultoria, pk=dependente_id)
 
     # Verificar permissão
-    if not pode_gerenciar_todos and cliente_principal.assessor_responsavel != consultor:
+    if not pode_gerenciar_todos and (not consultor or cliente_principal.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para gerenciar este cliente.")
 
     # Verificar se o dependente realmente pertence a este cliente principal

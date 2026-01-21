@@ -320,19 +320,7 @@
 </section>
 {% endif %}
 
-{% if pode_excluir_clientes %}
-<section class="clientes-list">
-    <article class="clientes-list-card">
-        <header>
-            <h2>Meus Clientes</h2>
-            <p>Como administrador, você não possui clientes vinculados diretamente. Use a opção "Listar Clientes" para visualizar todos os clientes do sistema.</p>
-        </header>
-        <div class="empty-state">
-            Nenhum cliente vinculado ao seu usuário.
-        </div>
-    </article>
-</section>
-{% elif clientes_com_status %}
+{% if clientes_com_status %}
 <section class="clientes-list">
     <article class="clientes-list-card">
         <header>
@@ -345,6 +333,8 @@
                     <th>Nome</th>
                     <th>Status</th>
                     <th>Status Financeiro</th>
+                    <th>Status do Formulário</th>
+                    <th>Parceiro Indicador</th>
                     <th>Telefone</th>
                     <th>E-mail</th>
                     <th style="width:180px;">Ações</th>
@@ -398,6 +388,42 @@
                             <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(158, 158, 158, 0.2); color: rgba(158, 158, 158, 0.95); border: 1px solid rgba(158, 158, 158, 0.4);">
                                 Sem registros
                             </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.status_formulario == "Completo" %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
+                                ✓ Completo
+                            </span>
+                            {% if item.total_perguntas > 0 %}
+                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                    {{ item.total_respostas }}/{{ item.total_perguntas }} pergunta{{ item.total_perguntas|pluralize }}
+                                </div>
+                            {% endif %}
+                        {% elif item.status_formulario == "Parcial" %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
+                                Parcial
+                            </span>
+                            {% if item.total_perguntas > 0 %}
+                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                                    {{ item.total_respostas }}/{{ item.total_perguntas }} pergunta{{ item.total_perguntas|pluralize }}
+                                </div>
+                            {% endif %}
+                        {% elif item.status_formulario == "Não preenchido" %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(244, 67, 54, 0.2); color: rgba(244, 67, 54, 0.95); border: 1px solid rgba(244, 67, 54, 0.4);">
+                                Não preenchido
+                            </span>
+                        {% else %}
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(158, 158, 158, 0.2); color: rgba(158, 158, 158, 0.95); border: 1px solid rgba(158, 158, 158, 0.4);">
+                                Sem formulário
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.cliente.parceiro_indicador %}
+                            {{ item.cliente.parceiro_indicador }}
+                        {% else %}
+                            <span style="color: rgba(245, 245, 245, 0.5);">—</span>
                         {% endif %}
                     </td>
                     <td>{{ item.cliente.telefone }}</td>

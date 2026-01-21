@@ -78,10 +78,65 @@
         }
     }
 
+    .etapas-checklist {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .etapas-checklist label {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        background: rgba(12, 19, 35, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin: 0;
+        font-size: 0.9rem;
+        color: rgba(245, 245, 245, 0.9);
+        font-weight: normal;
+        text-transform: none;
+        letter-spacing: normal;
+    }
+
+    .etapas-checklist label:hover {
+        background: rgba(12, 19, 35, 0.85);
+        border-color: rgba(86, 244, 156, 0.3);
+        box-shadow: 0 0 0 2px rgba(86, 244, 156, 0.1);
+    }
+
+    .etapas-checklist label:has(input:checked) {
+        background: rgba(86, 244, 156, 0.15);
+        border-color: rgba(86, 244, 156, 0.5);
+        box-shadow: 0 0 0 2px rgba(86, 244, 156, 0.15);
+    }
+
+    .etapas-checklist input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        min-width: 18px;
+        cursor: pointer;
+        margin: 0;
+        accent-color: rgba(86, 244, 156, 0.8);
+    }
+
+    .etapas-checklist label span {
+        flex: 1;
+        display: block;
+    }
+
     @media (max-width: 768px) {
         .layout-grid {
             max-width: 480px;
             margin-inline: auto;
+        }
+
+        .etapas-checklist label {
+            padding: 12px 14px;
+            font-size: 0.85rem;
         }
     }
 {% endblock %}
@@ -189,7 +244,8 @@
                 {% endif %}
             </div>
 
-            <div class="etapas-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.1); {% if not etapas_disponiveis %}display: none;{% endif %}">
+            {% if etapas_disponiveis and form.etapas_selecionadas.field.choices %}
+            <div class="etapas-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
                 <label style="display: block; margin-bottom: 12px;">
                     Etapas do Processo
                     <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: normal; display: block; margin-top: 4px;">
@@ -210,6 +266,9 @@
                     </div>
                 {% endif %}
             </div>
+            {% else %}
+                {{ form.etapas_selecionadas }}
+            {% endif %}
 
             <button type="submit" class="btn btn-primary" style="margin-top: 24px;">Criar Processo</button>
         </form>
@@ -218,6 +277,41 @@
 
 <script>
 (function() {
+    // Função para atualizar estilo dos checkboxes de etapas
+    function atualizarEstilosEtapas() {
+        const checkboxes = document.querySelectorAll('.etapas-checklist input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            const label = checkbox.closest('label');
+            if (label) {
+                if (checkbox.checked) {
+                    label.style.background = 'rgba(86, 244, 156, 0.15)';
+                    label.style.borderColor = 'rgba(86, 244, 156, 0.5)';
+                    label.style.boxShadow = '0 0 0 2px rgba(86, 244, 156, 0.15)';
+                } else {
+                    label.style.background = 'rgba(12, 19, 35, 0.72)';
+                    label.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                    label.style.boxShadow = 'none';
+                }
+            }
+        });
+    }
+
+    // Adicionar listeners para checkboxes de etapas
+    document.addEventListener('DOMContentLoaded', function() {
+        const etapasChecklist = document.querySelector('.etapas-checklist');
+        if (etapasChecklist) {
+            // Atualizar estilos iniciais
+            atualizarEstilosEtapas();
+            
+            // Adicionar listeners para mudanças
+            etapasChecklist.addEventListener('change', function(e) {
+                if (e.target.type === 'checkbox') {
+                    atualizarEstilosEtapas();
+                }
+            });
+        }
+    });
+
     const viagemSelect = document.getElementById('{{ form.viagem.id_for_label }}');
     const clienteSelect = document.getElementById('{{ form.cliente.id_for_label }}');
     
@@ -347,12 +441,75 @@
                 
                 etapas.forEach(etapa => {
                     const label = document.createElement('label');
-                    label.innerHTML = `
-                        <input type="checkbox" name="etapas_selecionadas" value="${etapa.id}" checked>
-                        <span style="flex: 1;">${etapa.nome}</span>
-                    `;
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '12px';
+                    label.style.padding = '14px 16px';
+                    label.style.background = 'rgba(86, 244, 156, 0.15)';
+                    label.style.border = '1px solid rgba(86, 244, 156, 0.5)';
+                    label.style.borderRadius = '12px';
+                    label.style.cursor = 'pointer';
+                    label.style.transition = 'all 0.2s ease';
+                    label.style.margin = '0';
+                    label.style.fontSize = '0.9rem';
+                    label.style.color = 'rgba(245, 245, 245, 0.9)';
+                    label.style.fontWeight = 'normal';
+                    label.style.boxShadow = '0 0 0 2px rgba(86, 244, 156, 0.15)';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = 'etapas_selecionadas';
+                    checkbox.value = etapa.id;
+                    checkbox.checked = true;
+                    checkbox.style.width = '18px';
+                    checkbox.style.height = '18px';
+                    checkbox.style.minWidth = '18px';
+                    checkbox.style.cursor = 'pointer';
+                    checkbox.style.margin = '0';
+                    checkbox.style.accentColor = 'rgba(86, 244, 156, 0.8)';
+                    
+                    const span = document.createElement('span');
+                    span.style.flex = '1';
+                    span.style.display = 'block';
+                    span.textContent = etapa.nome;
+                    
+                    label.appendChild(checkbox);
+                    label.appendChild(span);
                     etapasChecklist.appendChild(label);
+                    
+                    // Adicionar listener para mudança de estado
+                    checkbox.addEventListener('change', function() {
+                        if (checkbox.checked) {
+                            label.style.background = 'rgba(86, 244, 156, 0.15)';
+                            label.style.borderColor = 'rgba(86, 244, 156, 0.5)';
+                            label.style.boxShadow = '0 0 0 2px rgba(86, 244, 156, 0.15)';
+                        } else {
+                            label.style.background = 'rgba(12, 19, 35, 0.72)';
+                            label.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                            label.style.boxShadow = 'none';
+                        }
+                    });
+                    
+                    // Adicionar hover effect
+                    label.addEventListener('mouseenter', function() {
+                        if (!checkbox.checked) {
+                            label.style.background = 'rgba(12, 19, 35, 0.85)';
+                            label.style.borderColor = 'rgba(86, 244, 156, 0.3)';
+                            label.style.boxShadow = '0 0 0 2px rgba(86, 244, 156, 0.1)';
+                        }
+                    });
+                    
+                    label.addEventListener('mouseleave', function() {
+                        if (!checkbox.checked) {
+                            label.style.background = 'rgba(12, 19, 35, 0.72)';
+                            label.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                            label.style.boxShadow = 'none';
+                        }
+                    });
                 });
+                
+                // Chamar função de atualização de estilos após criar todas as etapas
+                atualizarEstilosEtapas();
             })
             .catch(error => {
                 console.error('Erro ao buscar etapas da viagem:', error);
