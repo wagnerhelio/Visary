@@ -1,0 +1,59 @@
+---
+description: Complete file reading - always read files completely before analysis, corrections or implementations
+alwaysApply: true
+globs: ["*"]
+---
+
+# Complete File Reading
+
+## Fundamental Principle
+
+**ALWAYS read complete files, from start to finish, before making analyses, corrections or implementations**. Partial analyses can miss important problems, hidden references, or critical context.
+
+## Mandatory Rule
+
+### Complete Reading Before Any Action
+
+- **NEVER make analyses based on partial reading** of files
+- **NEVER make corrections based on partial reading** of files
+- **NEVER make implementations based on partial reading** of files
+- **ALWAYS read the complete file** (from start to finish, until EOF) before:
+  - Analyzing code
+  - Reviewing code
+  - Correcting code
+  - Implementing changes
+  - Identifying unused fields
+  - Mapping functionalities
+  - Any other action that depends on code understanding
+
+## Process for Large Files
+
+When a file is too large for a single reading call:
+1. **Read in multiple sequential calls** until EOF
+2. **Maintain complete context** of all read parts
+3. **Only after reading the complete file**, start analysis/correction/implementation
+4. **NEVER** start corrections after reading only part of the file
+
+## Why This Is Important
+
+### Unused Field Identification
+
+- Fields can be referenced anywhere in the file
+- Partial analysis can miss important references
+- Only possible to guarantee a field is unused after reading the complete file
+
+### Context and Dependencies
+
+- Imports, classes, functions can be anywhere in the file
+- Relationships and dependencies may not be visible in partial reading
+- Complete flow understanding requires complete reading
+
+### Safe Corrections
+
+- Corrections based on partial analysis can break unanalyzed code
+- Changes can affect unread parts of the file
+- Only safe to correct after understanding the entire file
+
+## Exceptions
+
+**No exceptions**: this rule applies to all analysis, correction or implementation situations.

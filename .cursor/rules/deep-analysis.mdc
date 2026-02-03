@@ -1,0 +1,65 @@
+---
+description: Deep analysis and diagnosis - end-to-end mapping with traceability
+alwaysApply: false
+---
+
+# Deep Analysis and Diagnosis
+
+## Objective
+
+Map implementation "end-to-end" with traceability by file and functionality. Point out problems without softening.
+
+## File Reading
+
+- **ALWAYS read each file completely, from start to finish**, without partial analyses
+- For large files: read in multiple sequential calls until EOF, but **analyze complete file** before mapping
+- **NEVER make mapping based on partial analysis**: only map after having read and understood entire file
+
+## Process (6 Phases)
+
+### Phase 0 — Inventory
+
+List folders/files by category. Identify entrypoints.
+
+### Phase 1 — Functionality Map
+
+For each functionality: name, input/output, flow, involved files, data/fields, dependencies.
+
+### Phase 2 — File-by-File Map
+
+For each file: real responsibility, exports/classes/functions, who uses, configs, problems, status (ACTIVE/DEAD/DUPLICATED), evidence.
+
+### Phase 3 — Field Tracking
+
+For each critical field: where it's born, where it's validated, where it's read/written, transformations, where it can break.
+
+### Phase 4 — Diagnosis
+
+"What's good" (short) + "What's bad" (detailed): architecture, reliability, security, performance, maintainability, testability. Impact + evidence + suggestion.
+
+### Phase 5 — Dead File and Duplications
+
+List dead files/code and duplications. Point out consequences.
+
+### Phase 6 — Prioritized Implementation
+
+**NEVER create plans in files**. Implement directly, prioritizing:
+- P0: Fix immediately (implement now)
+- P1: Next correction (implement next)
+- P2: Later (implement when possible)
+
+Each correction: implement directly in affected files, don't document the plan.
+
+## Output Format
+
+1. INPUT MAP
+2. FUNCTIONALITY MAP
+3. FILE INDEX
+4. FIELD TRACKING
+5. PROBLEMS
+6. DEAD FILES / DUPLICATED
+7. PRIORITIZED PLAN
+
+## Checkpoint
+
+If reaching limit, finish with: last analyzed file, next 10 in queue, mapped functionalities, tracked fields, pending hypotheses.
