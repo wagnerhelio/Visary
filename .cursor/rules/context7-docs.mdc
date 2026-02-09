@@ -1,0 +1,12 @@
+---
+description: Consultar Context7 para Django, HTML, CSS, JS e ORM SQLite3/Postgres
+globs: "**/*.py,**/templates/**/*.html,**/static/**/*.css,**/static/**/*.js"
+alwaysApply: false
+---
+
+# Consultar documentação via Context7
+
+- Ao trabalhar com backend ou modelos: consultar MCP Context7 para documentação de **Django** (views, models, ORM, migrations, settings).
+- Ao trabalhar com templates ou frontend: consultar **HTML**, **CSS** e **JavaScript** no Context7.
+- Para acesso a dados: consultar **ORM do Django** e, quando aplicável, **SQLite3** e **PostgreSQL** (incluindo diferenças e boas práticas).
+- Use resolve-library-id e query-docs para obter trechos e convenções atualizadas antes de implementar.

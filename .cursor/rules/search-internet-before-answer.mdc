@@ -1,0 +1,12 @@
+---
+description: Antes de responder, buscar na internet para melhorar resposta ou contexto
+alwaysApply: true
+---
+
+# Buscar na internet antes de responder
+
+- Antes de dar qualquer resposta técnica ou de implementação, use busca na web para:
+  - Atualizar informações (APIs, versões, boas práticas).
+  - Melhorar o contexto da resposta.
+  - Confirmar documentação oficial quando relevante.
+- Priorize fontes oficiais (docs, repositórios) quando a dúvida for sobre bibliotecas ou frameworks.

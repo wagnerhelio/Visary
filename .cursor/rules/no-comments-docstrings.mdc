@@ -1,0 +1,11 @@
+---
+description: Não gerar código com comentários nem docstrings
+globs: "**/*.py,**/*.js,**/*.ts,**/*.html,**/*.css"
+alwaysApply: true
+---
+
+# Sem comentários e docstrings
+
+- Nunca inclua comentários em linhas de código (nem # em Python nem // ou /* */ em JS/HTML/CSS).
+- Nunca inclua docstrings em funções, classes ou módulos.
+- Código deve ser autoexplicativo; nomes de variáveis, funções e classes devem transmitir a intenção.

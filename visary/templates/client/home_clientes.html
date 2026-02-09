@@ -274,32 +274,19 @@
                 <input type="text" id="nome" name="nome" value="{{ filtros.nome }}" placeholder="Nome do cliente">
             </div>
             <div>
-                <label for="telefone">Telefone</label>
-                <input type="text" id="telefone" name="telefone" value="{{ filtros.telefone }}" placeholder="Telefone principal">
-            </div>
-            <div>
-                <label for="telefone_secundario">Telefone Secundário</label>
-                <input type="text" id="telefone_secundario" name="telefone_secundario" value="{{ filtros.telefone_secundario }}" placeholder="Telefone secundário">
+                <label for="assessor">Assessor</label>
+                <select id="assessor" name="assessor">
+                    <option value="">Todos os assessores</option>
+                    {% for assessor in assessores %}
+                        <option value="{{ assessor.pk }}" {% if filtros.assessor == assessor.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ assessor.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
             <div>
                 <label for="email">E-mail</label>
                 <input type="email" id="email" name="email" value="{{ filtros.email }}" placeholder="E-mail do cliente">
-            </div>
-            <div>
-                <label for="nacionalidade">Nacionalidade</label>
-                <input type="text" id="nacionalidade" name="nacionalidade" value="{{ filtros.nacionalidade }}" placeholder="Nacionalidade">
-            </div>
-            <div>
-                <label for="data_nascimento">Data de Nascimento</label>
-                <input type="date" id="data_nascimento" name="data_nascimento" value="{{ filtros.data_nascimento }}">
-            </div>
-            <div>
-                <label for="data_cadastro_inicio">Cadastro (Início)</label>
-                <input type="date" id="data_cadastro_inicio" name="data_cadastro_inicio" value="{{ filtros.data_cadastro_inicio }}">
-            </div>
-            <div>
-                <label for="data_cadastro_fim">Cadastro (Fim)</label>
-                <input type="date" id="data_cadastro_fim" name="data_cadastro_fim" value="{{ filtros.data_cadastro_fim }}">
             </div>
             <div>
                 <label for="status_financeiro">Status Financeiro</label>
@@ -317,6 +304,56 @@
             <a href="{% url 'system:home_clientes' %}" class="btn btn-outline">Limpar Filtros</a>
         </div>
     </form>
+</section>
+{% endif %}
+
+{# Meus Processos - progressos por cliente (visível na home de clientes) #}
+{% if processos %}
+<section class="processos-card" style="margin-top: 16px;">
+    <header>
+        <h2>Meus Processos</h2>
+        <p>Processos vinculados aos seus clientes</p>
+    </header>
+    <div class="table-wrapper">
+        <table class="clientes-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Viagem</th>
+                    <th>País</th>
+                    <th>Progresso</th>
+                    <th>Assessor</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for proc in processos %}
+                <tr>
+                    <td>
+                        {{ proc.cliente_nome }}
+                    </td>
+                    <td>{{ proc.viagem_str }}</td>
+                    <td>{{ proc.pais_destino }}</td>
+                    <td>
+                        <div style="width: 180px; height: 8px; background: #2b2f3a; border-radius: 6px; overflow: hidden;">
+                            <div style="width: {{ proc.progresso }}%; height: 100%; background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%);"></div>
+                        </div>
+                        <span style="font-size: 0.75rem; color: #b9c6e7;">{{ proc.progresso }}%</span>
+                    </td>
+                    <td>{{ proc.assessor }}</td>
+                    <td>
+                        <a href="{% url 'system:visualizar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                        <a href="{% url 'system:editar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Editar</a>
+                        <form method="post" action="{% url 'system:excluir_processo' proc.processo_pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </section>
 {% endif %}
 
@@ -475,7 +512,9 @@
                                 {% endif %}
                             {% endwith %}
                             <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
-                            <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            {% if item.pode_editar %}
+                                <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>

@@ -1,0 +1,13 @@
+---
+description: Validar código na IDE, ORM Django, Postgres e Playwright ao finalizar resposta
+alwaysApply: true
+---
+
+# Validação ao finalizar resposta
+
+1. **IDE**: Rodar verificação de lints/alertas nos arquivos alterados; corrigir qualquer problema reportado.
+2. **Django ORM**: Consultar o banco via ORM do Django para confirmar que os dados e a modelagem estão corretos para o que foi implementado.
+3. **Postgres MCP**: Usar o MCP do Postgres para gerar e executar SQL de verificação (consultas, integridade, modelagem) quando o projeto usar Postgres.
+4. **Playwright MCP**: Usar o MCP do Playwright para validar a interface no browser: conferir que a tela exibe as informações corretas e que os fluxos principais funcionam.
+
+Só considerar a resposta finalizada após essas validações quando forem aplicáveis ao contexto da tarefa.

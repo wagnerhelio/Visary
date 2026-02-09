@@ -266,42 +266,12 @@
                     {% endfor %}
                 </select>
             </div>
-            <div>
-                <label for="data_viagem_inicio">Data Viagem (Início)</label>
-                <input type="date" id="data_viagem_inicio" name="data_viagem_inicio" value="{{ filtros_aplicados.data_viagem_inicio }}">
-            </div>
-            <div>
-                <label for="data_viagem_fim">Data Viagem (Fim)</label>
-                <input type="date" id="data_viagem_fim" name="data_viagem_fim" value="{{ filtros_aplicados.data_viagem_fim }}">
-            </div>
-            <div>
-                <label for="data_retorno_inicio">Data Retorno (Início)</label>
-                <input type="date" id="data_retorno_inicio" name="data_retorno_inicio" value="{{ filtros_aplicados.data_retorno_inicio }}">
-            </div>
-            <div>
-                <label for="data_retorno_fim">Data Retorno (Fim)</label>
-                <input type="date" id="data_retorno_fim" name="data_retorno_fim" value="{{ filtros_aplicados.data_retorno_fim }}">
-            </div>
-            <div>
-                <label for="valor_min">Valor Mínimo</label>
-                <input type="number" id="valor_min" name="valor_min" step="0.01" min="0" value="{{ filtros_aplicados.valor_min }}">
-            </div>
-            <div>
-                <label for="valor_max">Valor Máximo</label>
-                <input type="number" id="valor_max" name="valor_max" step="0.01" min="0" value="{{ filtros_aplicados.valor_max }}">
-            </div>
-            <div>
-                <label for="data_criacao_inicio">Data Criação (Início)</label>
-                <input type="date" id="data_criacao_inicio" name="data_criacao_inicio" value="{{ filtros_aplicados.data_criacao_inicio }}">
-            </div>
-            <div>
-                <label for="data_criacao_fim">Data Criação (Fim)</label>
-                <input type="date" id="data_criacao_fim" name="data_criacao_fim" value="{{ filtros_aplicados.data_criacao_fim }}">
-            </div>
+            <!-- filtros removidos: datas e valores -->
+            <!-- filtros de criação removidos -->
         </div>
         <div class="filtros-actions">
-            <button type="submit" class="btn btn-primary">Filtrar</button>
-            <a href="{% url 'system:listar_viagens' %}" class="btn btn-outline">Limpar Filtros</a>
+            <button type="submit" class="btn btn-primary" style="display:none">Filtrar</button>
+            <a href="#" class="btn btn-outline" style="display:none">Limpar Filtros</a>
         </div>
     </form>
 </section>

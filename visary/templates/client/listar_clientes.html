@@ -244,6 +244,7 @@
                 <th>Status</th>
                 <th>Status Financeiro</th>
                 <th>Status do Formulário</th>
+                <th>Progresso</th>
                 <th>Parceiro Indicador</th>
                 <th>Assessor</th>
                 <th>Telefone</th>
@@ -255,14 +256,14 @@
             <tbody>
             {% for item in clientes_com_status %}
                 <tr>
-                    <td>{{ item.cliente.nome }}</td>
                     <td>
+                        <div style="font-weight: 500;">{{ item.cliente.nome }}</div>
                         {% if item.cliente.is_principal %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4); margin-top: 6px;">
                                 Principal
                             </span>
                         {% else %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
+                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4); margin-top: 6px;">
                                 Dependente
                             </span>
                             {% if item.cliente.cliente_principal %}
@@ -270,6 +271,20 @@
                                     de {{ item.cliente.cliente_principal.nome }}
                                 </div>
                             {% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if progressos %}
+                        {% for prog in progressos %}
+                            {% if prog.cliente_pk == item.cliente.pk %}
+                                <div style="width: 120px; height: 8px; background: #2b2f3a; border-radius: 6px; overflow:hidden;">
+                                    <div style="width: {{ prog.progresso }}%; height: 100%; background: linear-gradient(135deg, #56f49c, #4dd0e1);"></div>
+                                </div>
+                                <span style="font-size: 0.75rem; color: #b9c6e7;">{{ prog.progresso }}%</span>
+                            {% endif %}
+                        {% endfor %}
+                        {% else %}
+                            <span style="color: rgba(245,245,245,0.5);">-</span>
                         {% endif %}
                     </td>
                     <td>
@@ -378,7 +393,9 @@
                                 {% endif %}
                             {% endwith %}
                             <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
-                            <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            {% if item.pode_editar %}
+                                <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            {% endif %}
                             {% if pode_excluir_clientes %}
                                 <form method="post" action="{% url 'system:excluir_cliente' item.cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ item.cliente.nome }}?');" style="margin: 0;">
                                     {% csrf_token %}

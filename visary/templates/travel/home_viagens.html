@@ -276,78 +276,7 @@
     <strong>{{ total_viagens }}</strong>
 </section>
 
-{% if not pode_gerenciar_todos %}
-<section class="filtros-card">
-    <header>
-        <h2>Filtros</h2>
-    </header>
-    <form method="get" class="filtros-form">
-        <div class="filtros-grid">
-            <div>
-                <label for="pais">País de Destino</label>
-                <select id="pais" name="pais">
-                    <option value="">Todos</option>
-                    {% for pais in paises %}
-                        <option value="{{ pais.pk }}" {% if filtros_aplicados.pais == pais.pk %}selected{% endif %}>
-                            {{ pais.nome }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="tipo_visto">Tipo de Visto</label>
-                <select id="tipo_visto" name="tipo_visto">
-                    <option value="">Todos</option>
-                    {% for tipo in tipos_visto %}
-                        <option value="{{ tipo.pk }}" {% if filtros_aplicados.tipo_visto == tipo.pk %}selected{% endif %}>
-                            {{ tipo.pais_destino.nome }} - {{ tipo.nome }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="cliente">Cliente Vinculado</label>
-                <select id="cliente" name="cliente">
-                    <option value="">Todos</option>
-                    {% for cliente in clientes %}
-                        <option value="{{ cliente.pk }}" {% if filtros_aplicados.cliente == cliente.pk %}selected{% endif %}>
-                            {{ cliente.nome }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="data_viagem_inicio">Data Viagem (Início)</label>
-                <input type="date" id="data_viagem_inicio" name="data_viagem_inicio" value="{{ filtros_aplicados.data_viagem_inicio }}">
-            </div>
-            <div>
-                <label for="data_viagem_fim">Data Viagem (Fim)</label>
-                <input type="date" id="data_viagem_fim" name="data_viagem_fim" value="{{ filtros_aplicados.data_viagem_fim }}">
-            </div>
-            <div>
-                <label for="data_retorno_inicio">Data Retorno (Início)</label>
-                <input type="date" id="data_retorno_inicio" name="data_retorno_inicio" value="{{ filtros_aplicados.data_retorno_inicio }}">
-            </div>
-            <div>
-                <label for="data_retorno_fim">Data Retorno (Fim)</label>
-                <input type="date" id="data_retorno_fim" name="data_retorno_fim" value="{{ filtros_aplicados.data_retorno_fim }}">
-            </div>
-            <div>
-                <label for="valor_min">Valor Mínimo</label>
-                <input type="number" step="0.01" id="valor_min" name="valor_min" value="{{ filtros_aplicados.valor_min }}" placeholder="0.00">
-            </div>
-            <div>
-                <label for="valor_max">Valor Máximo</label>
-                <input type="number" step="0.01" id="valor_max" name="valor_max" value="{{ filtros_aplicados.valor_max }}" placeholder="0.00">
-            </div>
-        </div>
-        <div class="filtros-actions">
-            <button type="submit" class="btn btn-primary">Filtrar</button>
-            <a href="{% url 'system:home_viagens' %}" class="btn btn-outline">Limpar Filtros</a>
-        </div>
-    </form>
-</section>
-{% endif %}
+ {% comment %}Filtro removido da home. Padronização com Listar Usuários conforme solicitação.{% endcomment %}
 
 {% if viagens %}
 <section class="viagens-list">
@@ -438,7 +367,7 @@
             <p>Viagens vinculadas aos seus clientes</p>
         </header>
         <div class="empty-state">
-            {% if filtros_aplicados.pais or filtros_aplicados.tipo_visto or filtros_aplicados.cliente or filtros_aplicados.data_viagem_inicio or filtros_aplicados.data_viagem_fim or filtros_aplicados.data_retorno_inicio or filtros_aplicados.data_retorno_fim or filtros_aplicados.valor_min or filtros_aplicados.valor_max %}
+        {% if filtros_aplicados.pais or filtros_aplicados.tipo_visto or filtros_aplicados.cliente %}
                 Nenhuma viagem encontrada com os filtros aplicados. <a href="{% url 'system:home_viagens' %}">Limpar filtros</a>.
             {% else %}
                 Nenhuma viagem cadastrada até o momento. <a href="{% url 'system:criar_viagem' %}">Cadastre a primeira viagem</a>.

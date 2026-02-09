@@ -1,0 +1,19 @@
+---
+description: Não gerar migrations manualmente; usar cleanup, makemigrations, migrate e runserver
+globs: "**/visary/**/*.py,**/migrations/*.py"
+alwaysApply: false
+---
+
+# Migrations e fluxo de limpeza/servidor
+
+- **Não** gerar ou editar arquivos de migrations manualmente (incluindo 0001_initial.py ou outros).
+- **Não** corrigir migrations existentes editando-os; corrigir o código das models/views e depois recriar migrations.
+- Fluxo obrigatório após alterações que afetem models ou ambiente:
+  1. `clear` (ou equivalente no shell).
+  2. `python cleanup.py`
+  3. `python manage.py makemigrations`
+  4. `python manage.py migrate`
+  5. `python manage.py criar_superuser_admin`
+  6. `python manage.py runserver 8000`
+- Validar o terminal: conferir que os logs do runserver estão corretos e sem erros antes de dar a resposta como concluída.
+- O script cleanup.py fica em `visary/cleanup.py`; manage.py em `visary/manage.py`. Executar a partir do diretório que contém `manage.py` ou ajustar caminhos conforme a raiz do projeto.
