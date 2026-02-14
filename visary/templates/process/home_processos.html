@@ -252,9 +252,29 @@
 {% endblock %}
 
 {% block app_content %}
-<section class="stats-card">
-    <span>Total de processos cadastrados</span>
-    <strong>{{ total_processos }}</strong>
+<section class="actions-grid">
+    <article class="action-card">
+        <div class="action-card__icon">➕</div>
+        <h3>Criar Processo</h3>
+        <p>Cadastre um novo processo</p>
+        <a href="{% url 'system:criar_processo' %}" class="btn btn-primary">Criar</a>
+    </article>
+
+    <article class="action-card">
+        <div class="action-card__icon">📋</div>
+        <h3>Listar Processos</h3>
+        <p>Visualize todos os processos cadastrados</p>
+        <a href="{% url 'system:listar_processos' %}" class="btn btn-outline">Listar</a>
+    </article>
+
+    {% if pode_gerenciar_todos %}
+    <article class="action-card">
+        <div class="action-card__icon">⚙️</div>
+        <h3>Gerenciar Status</h3>
+        <p>Crie e edite os status dos processos</p>
+        <a href="{% url 'system:listar_status_processo' %}" class="btn btn-outline">Gerenciar</a>
+    </article>
+    {% endif %}
 </section>
 
 {% if not pode_gerenciar_todos %}
@@ -293,7 +313,7 @@
 {% endif %}
 
 {% if processos %}
-<section class="processos-list">
+<section class="processos-list" style="margin-top: 32px;">
     <article class="processos-list-card">
         <header>
             <h2>Meus Processos</h2>
@@ -356,7 +376,7 @@
     </article>
 </section>
 {% else %}
-<section class="processos-list">
+<section class="processos-list" style="margin-top: 32px;">
     <article class="processos-list-card">
         <header>
             <h2>Meus Processos</h2>
@@ -372,30 +392,4 @@
     </article>
 </section>
 {% endif %}
-
-<section class="actions-grid">
-    <article class="action-card">
-        <div class="action-card__icon">➕</div>
-        <h3>Criar Processo</h3>
-        <p>Cadastre um novo processo</p>
-        <a href="{% url 'system:criar_processo' %}" class="btn btn-primary">Criar</a>
-    </article>
-
-    <article class="action-card">
-        <div class="action-card__icon">📋</div>
-        <h3>Listar Processos</h3>
-        <p>Visualize todos os processos cadastrados</p>
-        <a href="{% url 'system:listar_processos' %}" class="btn btn-outline">Listar</a>
-    </article>
-
-    {% if pode_gerenciar_todos %}
-    <article class="action-card">
-        <div class="action-card__icon">⚙️</div>
-        <h3>Gerenciar Status</h3>
-        <p>Crie e edite os status dos processos</p>
-        <a href="{% url 'system:listar_status_processo' %}" class="btn btn-outline">Gerenciar</a>
-    </article>
-    {% endif %}
-</section>
 {% endblock %}
-

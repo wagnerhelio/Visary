@@ -196,13 +196,32 @@
 {% endblock %}
 
 {% block app_content %}
-<section class="stats-card">
-    <span>Total de formulários preenchidos</span>
-    <strong>{{ total_formularios }}</strong>
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<section class="actions-grid">
+    <article class="action-card">
+        <div class="action-card__icon">➕</div>
+        <h3>Criar Formulário</h3>
+        <p>Preencha um formulário para uma viagem/cliente já cadastrado</p>
+        <a href="{% url 'system:selecionar_viagem_cliente_formulario' %}" class="btn btn-primary">Criar</a>
+    </article>
+
+    <article class="action-card">
+        <div class="action-card__icon">📋</div>
+        <h3>Listar Formulários</h3>
+        <p>Visualize todos os formulários preenchidos pelos seus clientes</p>
+        <a href="{% url 'system:listar_formularios' %}" class="btn btn-outline">Listar</a>
+    </article>
 </section>
 
 {% if formularios_respostas %}
-<section class="formularios-list">
+<section class="formularios-list" style="margin-top: 32px;">
     <article class="formularios-list-card">
         <header>
             <h2>Meus Formulários</h2>
@@ -271,7 +290,7 @@
     </article>
 </section>
 {% else %}
-<section class="formularios-list">
+<section class="formularios-list" style="margin-top: 32px;">
     <article class="formularios-list-card">
         <header>
             <h2>Meus Formulários</h2>
@@ -283,20 +302,4 @@
     </article>
 </section>
 {% endif %}
-
-<section class="actions-grid">
-    <article class="action-card">
-        <div class="action-card__icon">➕</div>
-        <h3>Criar Formulário</h3>
-        <p>Preencha um formulário para uma viagem/cliente já cadastrado</p>
-        <a href="{% url 'system:selecionar_viagem_cliente_formulario' %}" class="btn btn-primary">Criar</a>
-    </article>
-
-    <article class="action-card">
-        <div class="action-card__icon">📋</div>
-        <h3>Listar Formulários</h3>
-        <p>Visualize todos os formulários preenchidos pelos seus clientes</p>
-        <a href="{% url 'system:listar_formularios' %}" class="btn btn-outline">Listar</a>
-    </article>
-</section>
 {% endblock %}

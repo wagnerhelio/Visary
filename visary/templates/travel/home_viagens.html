@@ -271,15 +271,26 @@
 {% block app_content %}
 {# Mensagens são exibidas no template base, não precisamos exibir aqui #}
 
-<section class="stats-card">
-    <span>Total de viagens cadastradas</span>
-    <strong>{{ total_viagens }}</strong>
+{% comment %}Filtro removido da home. Padronização com Listar Usuários conforme solicitação.{% endcomment %}
+
+<section class="actions-grid">
+    <article class="action-card">
+        <div class="action-card__icon">✈️</div>
+        <h3>Criar Viagem</h3>
+        <p>Cadastre uma nova viagem</p>
+        <a href="{% url 'system:criar_viagem' %}" class="btn btn-primary">Criar</a>
+    </article>
+
+    <article class="action-card">
+        <div class="action-card__icon">📋</div>
+        <h3>Listar Viagens</h3>
+        <p>Visualize e gerencie todas as viagens cadastradas.</p>
+        <a href="{% url 'system:listar_viagens' %}" class="btn btn-outline">Ver Todas</a>
+    </article>
 </section>
 
- {% comment %}Filtro removido da home. Padronização com Listar Usuários conforme solicitação.{% endcomment %}
-
 {% if viagens %}
-<section class="viagens-list">
+<section class="viagens-list" style="margin-top: 32px;">
     <article class="viagens-list-card">
         <header>
             <h2>Minhas Viagens</h2>
@@ -360,7 +371,7 @@
     </article>
 </section>
 {% else %}
-<section class="viagens-list">
+<section class="viagens-list" style="margin-top: 32px;">
     <article class="viagens-list-card">
         <header>
             <h2>Minhas Viagens</h2>
@@ -447,21 +458,4 @@
     </article>
 </section>
 {% endif %}
-
-<section class="actions-grid">
-    <article class="action-card">
-        <div class="action-card__icon">✈️</div>
-        <h3>Criar Viagem</h3>
-        <p>Cadastre uma nova viagem</p>
-        <a href="{% url 'system:criar_viagem' %}" class="btn btn-primary">Criar</a>
-    </article>
-
-    <article class="action-card">
-        <div class="action-card__icon">📋</div>
-        <h3>Listar Viagens</h3>
-        <p>Visualize e gerencie todas as viagens cadastradas.</p>
-        <a href="{% url 'system:listar_viagens' %}" class="btn btn-outline">Ver Todas</a>
-    </article>
-</section>
 {% endblock %}
-

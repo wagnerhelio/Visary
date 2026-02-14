@@ -70,8 +70,32 @@
         <strong>{{ total_clientes }}</strong>
     </article>
     <article class="stat-card">
-        <span>Data do último cadastro</span>
-        <strong>{% if clientes %}{{ clientes.0.criado_em|localtime|date:"d/m/Y" }}{% else %}--{% endif %}</strong>
+        <span>Total de viagens cadastradas</span>
+        <strong>{{ total_viagens }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Total de processos cadastrados</span>
+        <strong>{{ total_processos }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Total de formulários preenchidos</span>
+        <strong>{{ total_formularios }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Total de parceiros cadastrados</span>
+        <strong>{{ total_partners }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Total de países cadastrados</span>
+        <strong>{{ total_paises }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Total de tipos de visto cadastrados</span>
+        <strong>{{ total_tipos }}</strong>
+    </article>
+    <article class="stat-card">
+        <span>Total de tipos de formulário cadastrados</span>
+        <strong>{{ total_tipos_formularios }}</strong>
     </article>
 </section>
 

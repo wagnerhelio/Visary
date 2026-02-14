@@ -155,13 +155,24 @@
     </ul>
 {% endif %}
 
-<section class="stats-card">
-    <span>Total de tipos de visto cadastrados</span>
-    <strong>{{ total_tipos }}</strong>
+<section class="actions-grid">
+    <article class="action-card">
+        <div class="action-card__icon">➕</div>
+        <h3>Criar Tipo de Visto</h3>
+        <p>Cadastre um novo tipo de visto</p>
+        <a href="{% url 'system:criar_tipo_visto' %}" class="btn btn-primary">Criar</a>
+    </article>
+
+    <article class="action-card">
+        <div class="action-card__icon">📋</div>
+        <h3>Listar Tipos de Visto</h3>
+        <p>Visualize todos os tipos de visto cadastrados</p>
+        <a href="{% url 'system:listar_tipos_visto' %}" class="btn btn-outline">Listar</a>
+    </article>
 </section>
 
 {% if tipos_visto %}
-<section class="tipos-list">
+<section class="tipos-list" style="margin-top: 32px;">
     <article class="tipos-list-card">
         <header>
             <h2>Tipos de visto mais recentes</h2>
@@ -187,21 +198,4 @@
     </article>
 </section>
 {% endif %}
-
-<section class="actions-grid">
-    <article class="action-card">
-        <div class="action-card__icon">➕</div>
-        <h3>Criar Tipo de Visto</h3>
-        <p>Cadastre um novo tipo de visto</p>
-        <a href="{% url 'system:criar_tipo_visto' %}" class="btn btn-primary">Criar</a>
-    </article>
-
-    <article class="action-card">
-        <div class="action-card__icon">📋</div>
-        <h3>Listar Tipos de Visto</h3>
-        <p>Visualize todos os tipos de visto cadastrados</p>
-        <a href="{% url 'system:listar_tipos_visto' %}" class="btn btn-outline">Listar</a>
-    </article>
-</section>
 {% endblock %}
-

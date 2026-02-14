@@ -257,9 +257,29 @@
 {% endblock %}
 
 {% block app_content %}
-<section class="stats-card">
-    <span>Total de clientes cadastrados</span>
-    <strong>{{ total_clientes }}</strong>
+<section class="actions-grid">
+    <article class="action-card">
+        <div class="action-card__icon">➕</div>
+        <h3>Cadastrar Cliente</h3>
+        <p>Adicione um novo cliente ao sistema</p>
+        <a href="{% url 'system:cadastrar_cliente' %}" class="btn btn-primary">Cadastrar</a>
+    </article>
+
+    <article class="action-card">
+        <div class="action-card__icon">📋</div>
+        <h3>Listar Clientes</h3>
+        <p>Visualize e gerencie todos os clientes cadastrados</p>
+        <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline">Listar</a>
+    </article>
+
+    {% if perfil_usuario == 'Administrador' %}
+    <article class="action-card">
+        <div class="action-card__icon">⚙️</div>
+        <h3>Configurar Etapas</h3>
+        <p>Configure as etapas e campos do cadastro de clientes</p>
+        <a href="{% url 'system:listar_etapas_cadastro' %}" class="btn btn-outline">Gerenciar Etapas</a>
+    </article>
+    {% endif %}
 </section>
 
 {% if not pode_excluir_clientes %}
@@ -309,7 +329,7 @@
 
 {# Meus Processos - progressos por cliente (visível na home de clientes) #}
 {% if processos %}
-<section class="processos-card" style="margin-top: 16px;">
+<section class="processos-card" style="margin-top: 32px;">
     <header>
         <h2>Meus Processos</h2>
         <p>Processos vinculados aos seus clientes</p>
@@ -358,7 +378,7 @@
 {% endif %}
 
 {% if clientes_com_status %}
-<section class="clientes-list">
+<section class="clientes-list" style="margin-top: 32px;">
     <article class="clientes-list-card">
         <header>
             <h2>Meus Clientes</h2>
@@ -541,7 +561,7 @@ document.addEventListener('click', function(event) {
     </article>
 </section>
 {% else %}
-<section class="clientes-list">
+<section class="clientes-list" style="margin-top: 32px;">
     <article class="clientes-list-card">
         <header>
             <h2>Meus Clientes</h2>
@@ -557,30 +577,5 @@ document.addEventListener('click', function(event) {
     </article>
 </section>
 {% endif %}
-
-<section class="actions-grid">
-    <article class="action-card">
-        <div class="action-card__icon">➕</div>
-        <h3>Cadastrar Cliente</h3>
-        <p>Adicione um novo cliente ao sistema</p>
-        <a href="{% url 'system:cadastrar_cliente' %}" class="btn btn-primary">Cadastrar</a>
-    </article>
-
-    <article class="action-card">
-        <div class="action-card__icon">📋</div>
-        <h3>Listar Clientes</h3>
-        <p>Visualize e gerencie todos os clientes cadastrados</p>
-        <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline">Listar</a>
-    </article>
-
-    {% if perfil_usuario == 'Administrador' %}
-    <article class="action-card">
-        <div class="action-card__icon">⚙️</div>
-        <h3>Configurar Etapas</h3>
-        <p>Configure as etapas e campos do cadastro de clientes</p>
-        <a href="{% url 'system:listar_etapas_cadastro' %}" class="btn btn-outline">Gerenciar Etapas</a>
-    </article>
-    {% endif %}
-</section>
 {% endblock %}
 
