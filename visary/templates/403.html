@@ -1,0 +1,140 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso negado — Visary</title>
+    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --page-bg: radial-gradient(circle at top, #151e35 0%, #050811 70%);
+            --card-bg: rgba(11, 17, 30, 0.82);
+            --accent: #56f49c;
+            --accent-strong: #34c3ff;
+            --text-primary: #f5f5f5;
+            --text-secondary: rgba(245, 245, 245, 0.72);
+            --border-soft: rgba(255, 255, 255, 0.1);
+            --shadow-lg: 0 28px 60px rgba(6, 9, 18, 0.55);
+            --radius-lg: 24px;
+            --radius-md: 16px;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        body {
+            font-family: "Montserrat", sans-serif;
+            color: var(--text-primary);
+            background: var(--page-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .permission-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(244, 67, 54, 0.25);
+            box-shadow: var(--shadow-lg), 0 0 40px rgba(244, 67, 54, 0.08);
+            padding: 48px 40px;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .permission-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(244, 67, 54, 0.12);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 28px auto;
+            font-size: 2rem;
+        }
+
+        .permission-code {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(244, 67, 54, 0.8);
+            margin-bottom: 12px;
+        }
+
+        .permission-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 12px 0;
+            color: var(--text-primary);
+        }
+
+        .permission-description {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin: 0 0 32px 0;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            border: none;
+            font-family: "Montserrat", sans-serif;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: #081423;
+            box-shadow: 0 8px 24px rgba(86, 244, 156, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(86, 244, 156, 0.3);
+        }
+
+        @media (max-width: 480px) {
+            .permission-card {
+                padding: 32px 24px;
+            }
+            .permission-title {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="permission-card">
+        <div class="permission-icon">🔒</div>
+        <p class="permission-code">Erro 403</p>
+        <h1 class="permission-title">Você não possui permissão</h1>
+        <p class="permission-description">
+            Seu perfil não tem acesso a este módulo.<br>
+            Entre em contato com um administrador caso precise de acesso.
+        </p>
+        <a href="javascript:history.back()" class="btn btn-primary">Voltar</a>
+    </div>
+</body>
+</html>

@@ -22,7 +22,7 @@ from consultancy.forms import PaisDestinoForm, TipoVistoForm, ViagemForm
 from consultancy.models import ClienteConsultoria, ClienteViagem, FormularioVisto, OpcaoSelecao, Partner, PaisDestino, Processo, RespostaFormulario, TipoVisto, Viagem
 from consultancy.models.financial_models import Financeiro
 from system.models import UsuarioConsultoria
-from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
+from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos, usuario_tem_acesso_modulo
 
 
 def _filtrar_mensagens_viagem_sessao(stored_messages):
@@ -160,8 +160,9 @@ def home_viagens(request):
 
 @login_required
 def home_paises_destino(request):
-    """Página inicial de países de destino com opções de navegação."""
     consultor = obter_consultor_usuario(request.user)
+    if not usuario_tem_acesso_modulo(request.user, consultor, "Paises de Destino"):
+        raise PermissionDenied
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
     paises = PaisDestino.objects.all().order_by("nome")[:10]
@@ -179,8 +180,9 @@ def home_paises_destino(request):
 
 @login_required
 def home_tipos_visto(request):
-    """Página inicial de tipos de visto com opções de navegação."""
     consultor = obter_consultor_usuario(request.user)
+    if not usuario_tem_acesso_modulo(request.user, consultor, "Tipos de Visto"):
+        raise PermissionDenied
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
     tipos_visto = TipoVisto.objects.select_related("pais_destino").order_by("pais_destino__nome", "nome")[:10]

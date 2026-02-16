@@ -10,7 +10,7 @@ from .form_models import (
     PerguntaFormulario,
     RespostaFormulario,
 )
-from .financial_models import Financeiro
+from .financial_models import Financeiro, StatusFinanceiro
 from .partners_models import Partner
 from .process_models import EtapaProcesso, Processo, StatusProcesso, ViagemStatusProcesso
 from .travel_models import ClienteViagem, PaisDestino, TipoVisto, Viagem
@@ -22,6 +22,7 @@ __all__ = (
     "EtapaCadastroCliente",
     "EtapaProcesso",
     "Financeiro",
+    "StatusFinanceiro",
     "FormularioVisto",
     "OpcaoSelecao",
     "Partner",

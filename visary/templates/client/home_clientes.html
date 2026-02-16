@@ -363,11 +363,13 @@
                     <td>{{ proc.assessor }}</td>
                     <td>
                         <a href="{% url 'system:visualizar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Visualizar</a>
-                        <a href="{% url 'system:editar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Editar</a>
-                        <form method="post" action="{% url 'system:excluir_processo' proc.processo_pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="display: inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-danger btn-small">Excluir</button>
-                        </form>
+                        {% if proc.pode_editar %}
+                            <a href="{% url 'system:editar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Editar</a>
+                            <form method="post" action="{% url 'system:excluir_processo' proc.processo_pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                            </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

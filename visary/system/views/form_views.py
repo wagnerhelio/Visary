@@ -14,16 +14,17 @@ from consultancy.forms import (
     PerguntaFormularioForm,
 )
 from consultancy.models import FormularioVisto, OpcaoSelecao, PerguntaFormulario, Viagem
-from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
+from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos, usuario_tem_acesso_modulo
 
 
 @login_required
 def home_formularios(request):
-    """Página inicial de formulários dos clientes."""
     from consultancy.models import ClienteViagem, RespostaFormulario
     from contextlib import suppress
-    
+
     consultor = obter_consultor_usuario(request.user)
+    if not usuario_tem_acesso_modulo(request.user, consultor, "Formularios"):
+        raise PermissionDenied
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
     # Buscar clientes vinculados ao usuário (para administradores retorna todos, para assessores retorna apenas os vinculados)
@@ -247,8 +248,9 @@ def listar_formularios(request):
 
 @login_required
 def home_tipos_formulario(request):
-    """Página inicial de tipos de formulário de visto."""
     consultor = obter_consultor_usuario(request.user)
+    if not usuario_tem_acesso_modulo(request.user, consultor, "Tipos de Formulario de Visto"):
+        raise PermissionDenied
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
     formularios = FormularioVisto.objects.select_related("tipo_visto").all().order_by(

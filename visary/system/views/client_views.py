@@ -247,6 +247,14 @@ def usuario_pode_gerenciar_todos(user: User, consultor: UsuarioConsultoria | Non
     )
 
 
+def usuario_tem_acesso_modulo(user: User, consultor: UsuarioConsultoria | None, nome_modulo: str) -> bool:
+    if user.is_superuser or user.is_staff:
+        return True
+    if not consultor:
+        return False
+    return consultor.perfil.modulos.filter(nome=nome_modulo).exists()
+
+
 def usuario_pode_editar_cliente(user: User, consultor: UsuarioConsultoria | None, cliente) -> bool:
     if usuario_pode_gerenciar_todos(user, consultor):
         return True
@@ -307,15 +315,31 @@ def home_clientes(request):
     
     perfil_usuario = consultor.perfil.nome if consultor and consultor.perfil else ("Administrador" if request.user.is_superuser else None)
     
-    # Buscar clientes vinculados ao usuário (para administradores retorna todos, para assessores retorna apenas os vinculados)
-    clientes = listar_clientes(request.user).prefetch_related("dependentes", "viagens")
-    
-    # Aplicar filtros (agora também considera assessor, igual ao listar_clientes)
-    clientes, filtros = _aplicar_filtros_clientes(clientes, request, incluir_assessor=True)
-    
-    # Adicionar status financeiro e status do formulário aos clientes
+    base_qs = ClienteConsultoria.objects.select_related(
+        "assessor_responsavel",
+        "criado_por",
+        "assessor_responsavel__perfil",
+        "cliente_principal",
+        "cliente_principal__assessor_responsavel",
+        "parceiro_indicador",
+    ).prefetch_related("dependentes", "viagens").order_by("-criado_em")
+
+    _, filtros = _aplicar_filtros_clientes(base_qs, request, incluir_assessor=True)
+
+    if pode_gerenciar_todos:
+        meus_clientes = listar_clientes(request.user)
+    elif consultor:
+        meus_clientes = base_qs.filter(
+            Q(assessor_responsavel=consultor) |
+            Q(cliente_principal__assessor_responsavel=consultor)
+        ).distinct()
+    else:
+        meus_clientes = base_qs.none()
+
+    meus_clientes, _ = _aplicar_filtros_clientes(meus_clientes, request, incluir_assessor=True)
+
     clientes_com_status = []
-    for cliente in clientes:
+    for cliente in meus_clientes:
         status_financeiro = _obter_status_financeiro_cliente(cliente)
         status_formulario = _obter_status_formulario_cliente(cliente)
         clientes_com_status.append({
@@ -327,25 +351,27 @@ def home_clientes(request):
             "completo": status_formulario["completo"],
             "pode_editar": usuario_pode_editar_cliente(request.user, consultor, cliente),
         })
-    # Progressos dos processos vinculados aos clientes (para exibir na home)
+
     processos_display = []
-    for c in clientes:
-        for proc in Processo.objects.filter(cliente=c).select_related("viagem","viagem__pais_destino","viagem__tipo_visto","assessor_responsavel").prefetch_related("etapas", "etapas__status"):
+    for c in meus_clientes:
+        for proc in Processo.objects.filter(cliente=c).select_related(
+            "viagem", "viagem__pais_destino", "viagem__tipo_visto", "assessor_responsavel"
+        ).prefetch_related("etapas", "etapas__status"):
             processos_display.append({
-                'cliente_pk': c.pk,
-                'processo_pk': proc.pk,
-                'cliente_nome': c.nome,
-                'viagem_str': str(proc.viagem),
-                'pais_destino': proc.viagem.pais_destino.nome if proc.viagem and proc.viagem.pais_destino else '',
-                'progresso': proc.progresso_percentual,
-                'assessor': proc.assessor_responsavel.nome if proc.assessor_responsavel else '',
+                "cliente_pk": c.pk,
+                "processo_pk": proc.pk,
+                "cliente_nome": c.nome,
+                "viagem_str": str(proc.viagem),
+                "pais_destino": proc.viagem.pais_destino.nome if proc.viagem and proc.viagem.pais_destino else "",
+                "progresso": proc.progresso_percentual,
+                "assessor": proc.assessor_responsavel.nome if proc.assessor_responsavel else "",
+                "pode_editar": pode_gerenciar_todos,
             })
-    
-    # Fornece a lista de assessores para o filtro, igual à tela de listar clientes
+
     assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
 
     return render(request, "client/home_clientes.html", {
-        "total_clientes": clientes.count(),
+        "total_clientes": meus_clientes.count(),
         "clientes_com_status": clientes_com_status,
         "perfil_usuario": perfil_usuario,
         "pode_excluir_clientes": pode_gerenciar_todos,

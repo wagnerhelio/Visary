@@ -10,13 +10,14 @@ from django.views.decorators.http import require_http_methods
 
 from consultancy.forms import PartnerForm
 from consultancy.models import Partner
-from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos
+from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos, usuario_tem_acesso_modulo
 
 
 @login_required
 def home_partners(request):
-    """Página inicial de parceiros com opções de navegação."""
     consultor = obter_consultor_usuario(request.user)
+    if not usuario_tem_acesso_modulo(request.user, consultor, "Parceiros"):
+        raise PermissionDenied
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
     partners = Partner.objects.all().order_by("nome_empresa", "nome_responsavel")[:10]
