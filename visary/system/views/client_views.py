@@ -338,11 +338,10 @@ def home_clientes(request):
 
     meus_clientes, _ = _aplicar_filtros_clientes(meus_clientes, request, incluir_assessor=True)
 
-    clientes_com_status = []
-    for cliente in meus_clientes:
+    def _build_item(cliente):
         status_financeiro = _obter_status_financeiro_cliente(cliente)
         status_formulario = _obter_status_formulario_cliente(cliente)
-        clientes_com_status.append({
+        return {
             "cliente": cliente,
             "status_financeiro": status_financeiro,
             "status_formulario": status_formulario["status"],
@@ -350,7 +349,19 @@ def home_clientes(request):
             "total_respostas": status_formulario["total_respostas"],
             "completo": status_formulario["completo"],
             "pode_editar": usuario_pode_editar_cliente(request.user, consultor, cliente),
-        })
+        }
+
+    principais = [c for c in meus_clientes if not c.cliente_principal_id]
+    dependentes = [c for c in meus_clientes if c.cliente_principal_id]
+    principais.sort(key=lambda c: c.pk)
+    dependentes.sort(key=lambda c: c.pk)
+
+    clientes_com_status = []
+    for principal in principais:
+        clientes_com_status.append(_build_item(principal))
+        for dep in dependentes:
+            if dep.cliente_principal_id == principal.pk:
+                clientes_com_status.append(_build_item(dep))
 
     processos_display = []
     for c in meus_clientes:
@@ -400,12 +411,10 @@ def listar_clientes_view(request):
     # Aplicar filtros (incluindo filtro de assessor)
     clientes, filtros = _aplicar_filtros_clientes(clientes, request, incluir_assessor=True)
     
-    # Adicionar status financeiro e status do formulário aos clientes
-    clientes_com_status = []
-    for cliente in clientes:
+    def _build_item(cliente):
         status_financeiro = _obter_status_financeiro_cliente(cliente)
         status_formulario = _obter_status_formulario_cliente(cliente)
-        clientes_com_status.append({
+        return {
             "cliente": cliente,
             "status_financeiro": status_financeiro,
             "status_formulario": status_formulario["status"],
@@ -413,9 +422,20 @@ def listar_clientes_view(request):
             "total_respostas": status_formulario["total_respostas"],
             "completo": status_formulario["completo"],
             "pode_editar": usuario_pode_editar_cliente(request.user, consultor, cliente),
-        })
+        }
 
-    # Progresso dos processos por cliente (para exibição na lista)
+    principais = [c for c in clientes if not c.cliente_principal_id]
+    dependentes = [c for c in clientes if c.cliente_principal_id]
+    principais.sort(key=lambda c: c.pk)
+    dependentes.sort(key=lambda c: c.pk)
+
+    clientes_com_status = []
+    for principal in principais:
+        clientes_com_status.append(_build_item(principal))
+        for dep in dependentes:
+            if dep.cliente_principal_id == principal.pk:
+                clientes_com_status.append(_build_item(dep))
+
     progressos = []
     for c in clientes:
         for proc in Processo.objects.filter(cliente=c):
@@ -774,27 +794,20 @@ def _criar_dependente_do_banco(dados_dependente: dict, cliente_principal: Client
         ClienteConsultoria: Dependente salvo ou None se houver erro
     """
     nome_dependente = dados_dependente.get('nome', 'Desconhecido')
-    email_dependente = dados_dependente.get('email', '')
-    
+    cpf_dependente = dados_dependente.get('cpf', '')
+
     try:
-        logger.info(f"📝 Criando dependente: {nome_dependente} (email: {email_dependente}) para cliente principal: {cliente_principal.nome}")
-        
-        # Verificar se email já existe e permitir apenas se for do cliente principal ou outro dependente do mesmo grupo
-        if email_dependente and (cliente_existente := ClienteConsultoria.objects.filter(email=email_dependente).first()):
-                # Permitir apenas se o email pertence ao cliente principal ou outro dependente do mesmo grupo
+        logger.info(f"📝 Criando dependente: {nome_dependente} (cpf: {cpf_dependente}) para cliente principal: {cliente_principal.nome}")
+
+        if cpf_dependente:
+            cpf_digits = "".join(c for c in cpf_dependente if c.isdigit())
+            cpf_fmt = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}" if len(cpf_digits) == 11 else cpf_dependente
+            if cliente_existente := ClienteConsultoria.objects.filter(cpf=cpf_fmt).first():
                 if cliente_existente.pk != cliente_principal.pk and cliente_existente.cliente_principal_id != cliente_principal.pk:
-                    logger.error(f"❌ Email {email_dependente} já está em uso por outro cliente: {cliente_existente.nome}")
+                    logger.error(f"❌ CPF {cpf_dependente} já está em uso por outro cliente: {cliente_existente.nome}")
                     return None
-                # Se o email pertence ao cliente principal, usar o mesmo email (permitido)
-                if cliente_existente.pk == cliente_principal.pk:
-                    logger.info(f"ℹ️ Dependente {nome_dependente} compartilhará email com cliente principal")
-        
-        # Verificar se deve usar dados do cliente principal
+
         usar_dados_principal = dados_dependente.get('usar_dados_cliente_principal', False)
-        if usar_dados_principal:
-            # Usar email do cliente principal
-            dados_dependente['email'] = cliente_principal.email
-            logger.info(f"ℹ️ Dependente usará email do cliente principal: {cliente_principal.email}")
         
         # Garantir que confirmar_senha está presente se senha estiver presente
         if 'senha' in dados_dependente and dados_dependente.get('senha') and 'confirmar_senha' not in dados_dependente:
@@ -885,20 +898,19 @@ def _processar_dependentes_temporarios(request, cliente: ClienteConsultoria) -> 
     
     for idx, dados_dependente in enumerate(dependentes_temporarios):
         nome = dados_dependente.get('nome', 'Desconhecido')
-        email = dados_dependente.get('email', '')
-        
-        logger.info(f"🔄 Processando dependente {idx + 1}/{len(dependentes_temporarios)}: {nome} (email: {email})")
+        cpf = dados_dependente.get('cpf', '')
+
+        logger.info(f"🔄 Processando dependente {idx + 1}/{len(dependentes_temporarios)}: {nome} (cpf: {cpf})")
         logger.info(f"📋 Dados do dependente: {dados_dependente}")
-        
-        # Verificar se os dados essenciais estão presentes
+
         if not nome:
             logger.error(f"❌ Dependente {idx + 1} não tem nome - pulando")
             dependentes_com_erro.append(f"Dependente {idx + 1} (sem nome)")
             continue
-        
-        if not email:
-            logger.error(f"❌ Dependente {nome} não tem email - pulando (emails são obrigatórios e únicos)")
-            dependentes_com_erro.append(f"{nome} (sem email)")
+
+        if not cpf:
+            logger.error(f"❌ Dependente {nome} não tem CPF - pulando (CPF é obrigatório e único)")
+            dependentes_com_erro.append(f"{nome} (sem CPF)")
             continue
         
         # Tentar salvar o dependente
@@ -1406,11 +1418,9 @@ def _salvar_dependente(form, cliente_principal, primeira_etapa, user, usar_dados
     if not dependente.criado_por_id:
         dependente.criado_por = user
     
-    # Se deve usar dados do cliente principal, copiar hash da senha
     if usar_dados_principal:
-        dependente.email = cliente_principal.email
         dependente.senha = cliente_principal.senha
-        logger.info(f"ℹ️ Dependente {dependente.nome} usando email e senha do cliente principal")
+        logger.info(f"ℹ️ Dependente {dependente.nome} usando senha do cliente principal")
     
     dependente.save()
     
@@ -1993,21 +2003,8 @@ def _processar_avancar_etapa(request, form, etapa_atual, etapas):
 
 
 def _log_finalizar_cadastro(request, etapa_atual):
-    """Registra log quando o botão 'Finalizar Cadastro' é clicado."""
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print("\n" + "=" * 80, flush=True)
-    print("🔥 BOTÃO 'FINALIZAR CADASTRO' FOI CLICADO!", flush=True)
-    print(f"   Usuário: {request.user.username}", flush=True)
-    print(f"   Etapa atual: {etapa_atual.nome}", flush=True)
-    print(f"   Timestamp: {timestamp}", flush=True)
-    print("=" * 80 + "\n", flush=True)
-    
-    logger.info("=" * 80)
-    logger.info("🔥 BOTÃO 'FINALIZAR CADASTRO' FOI CLICADO!")
-    logger.info(f"   Usuário: {request.user.username}")
-    logger.info(f"   Etapa atual: {etapa_atual.nome}")
-    logger.info(f"   Timestamp: {timestamp}")
-    logger.info("=" * 80)
+    logger.info(f"Finalizar cadastro clicado - usuario={request.user.username} etapa={etapa_atual.nome} ts={timestamp}")
 
 
 def _processar_post_cadastro_cliente(request, etapa_atual, etapas, campos_etapa_nomes):
@@ -2035,19 +2032,8 @@ def _processar_post_cadastro_cliente(request, etapa_atual, etapas, campos_etapa_
     Debug:
         Adiciona logs na sessão para cada etapa do processamento
     """
-    # Log inicial para capturar QUALQUER POST
-    print("\n" + "="*80, flush=True)
-    print("📥 FUNÇÃO _processar_post_cadastro_cliente CHAMADA", flush=True)
-    print(f"   Método: {request.method}", flush=True)
-    print(f"   Path: {request.path}", flush=True)
-    print(f"   POST data: {dict(request.POST)}", flush=True)
-    print("="*80 + "\n", flush=True)
-    
     acao = request.POST.get("acao", "salvar")
     form_type = request.POST.get("form_type", "")
-    
-    print(f"📥 POST RECEBIDO - Ação extraída: '{acao}' | Form Type: '{form_type}' | Etapa: {etapa_atual.nome}", flush=True)
-    print(f"   Todos os valores de 'acao' no POST: {request.POST.getlist('acao')}", flush=True)
     _adicionar_log_debug(request, f"POST recebido - Ação: {acao}, Form Type: {form_type}, Etapa: {etapa_atual.nome}")
     
     if acao in ("finalizar", "finalizar_e_criar_viagem"):
@@ -2076,7 +2062,6 @@ def _processar_post_cadastro_cliente(request, etapa_atual, etapas, campos_etapa_
         and cliente_temporario 
         and form_type == "dependente"
     ):
-        print("🔄 Processando cadastro de dependente...", flush=True)
         redirect_response, form_dependente_result = _processar_cadastro_dependente(
             request, etapa_atual, cliente_temporario, etapas
         )
@@ -2095,14 +2080,9 @@ def _processar_post_cadastro_cliente(request, etapa_atual, etapas, campos_etapa_
     
     # Processar finalização - DEVE SER PROCESSADO ANTES DE VALIDAR O FORMULÁRIO
     if acao in ("finalizar", "finalizar_e_criar_viagem"):
-        print("▶️ Iniciando processamento de finalização do cadastro...")
-        logger.info("▶️ Iniciando processamento de finalização do cadastro...")
         criar_viagem = (acao == "finalizar_e_criar_viagem")
         _adicionar_log_debug(request, f"Ação '{acao}' detectada - processando finalização (criar_viagem={criar_viagem})")
         redirect_result = _processar_finalizacao(request, form, etapa_atual, etapas, campos_etapa_nomes, form_dependente, criar_viagem)
-        redirect_status = redirect_result[0] is not None
-        print(f"✅ Processamento de finalização concluído - Redirect: {redirect_status}")
-        logger.info(f"✅ Processamento de finalização concluído - Redirect: {redirect_status}")
         return redirect_result
     
     # Se estiver na etapa de membros e não há próxima etapa, considerar como finalizar

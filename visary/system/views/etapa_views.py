@@ -87,6 +87,7 @@ def _obter_campos_disponiveis(campos_ja_vinculados: set) -> list:
     campos_modelo = [
         "assessor_responsavel",
         "nome",
+        "cpf",
         "data_nascimento",
         "nacionalidade",
         "telefone",

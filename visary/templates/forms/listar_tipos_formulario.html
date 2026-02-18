@@ -29,6 +29,14 @@
         max-height: 100%;
     }
 
+    thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--card-bg);
+        backdrop-filter: blur(4px);
+    }
+
     table {
         width: 100%;
         border-collapse: collapse;
@@ -131,7 +139,7 @@
                 <tr>
                     <td>{{ formulario.tipo_visto.nome }}</td>
                     <td>{{ formulario.tipo_visto.pais_destino.nome }}</td>
-                    <td>{{ formulario.perguntas.count }} pergunta{{ formulario.perguntas.count|pluralize:"s" }}</td>
+                    <td>{% with n=formulario.perguntas.count %}{{ n }} pergunta{{ n|pluralize:"s" }}{% endwith %}</td>
                     <td>
                         {% if formulario.ativo %}
                             <span style="color: var(--accent);">Ativo</span>

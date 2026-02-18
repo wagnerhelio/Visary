@@ -87,14 +87,6 @@
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <section class="layout-grid">
     <article class="card">
         <div class="info-box">
@@ -126,21 +118,19 @@
         <form method="post" novalidate>
             {% csrf_token %}
 
-            {# Opção para usar email e senha do cliente principal #}
-            {% with email_field=form|get_form_field:'email' %}
-                {% if email_field and cliente_principal.email %}
-                {% with usar_dados_post=request.POST.usar_dados_cliente_principal|default:"" %}
-                <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
-                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
-                        <input type="checkbox" id="usar-dados-cliente-principal" name="usar_dados_cliente_principal" {% if usar_dados_post == 'on' %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="color: var(--text-primary); font-weight: 500;">Usar email e senha do cliente principal</span>
-                    </label>
-                    <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
-                        O dependente usará o mesmo email ({{ cliente_principal.email }}) e senha do cliente principal para login.
-                    </p>
-                </div>
-                {% endwith %}
-                {% endif %}
+            {# Opção para usar a mesma senha do titular #}
+            {% with usar_dados_post=request.POST.usar_dados_cliente_principal|default:"" %}
+            {% if cliente_principal %}
+            <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                    <input type="checkbox" id="usar-dados-cliente-principal" name="usar_dados_cliente_principal" {% if usar_dados_post == 'on' %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                    <span style="color: var(--text-primary); font-weight: 500;">Usar a mesma senha do titular</span>
+                </label>
+                <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
+                    O dependente usará a mesma senha do cliente principal para acessar o sistema.
+                </p>
+            </div>
+            {% endif %}
             {% endwith %}
 
             {# Renderizar apenas os campos da primeira etapa #}
@@ -222,34 +212,15 @@
     // Controlar checkbox "Usar dados do cliente principal"
     const checkboxUsarDados = document.getElementById('usar-dados-cliente-principal');
     if (checkboxUsarDados) {
-        const emailField = document.querySelector('#email-dependente-container input[name="email"]');
         const senhaField = document.querySelector('#senha-dependente-container input[name="senha"]');
         const confirmarSenhaField = document.querySelector('#senha-dependente-container input[name="confirmar_senha"]');
-        const emailContainer = document.getElementById('email-dependente-container');
         const senhaContainer = document.getElementById('senha-dependente-container');
-        
-        {% if cliente_principal.email %}
-        const emailClientePrincipal = '{{ cliente_principal.email|escapejs }}';
-        {% else %}
-        const emailClientePrincipal = '';
-        {% endif %}
-        
+
         function toggleUsarDadosCliente() {
             const usarDados = checkboxUsarDados.checked;
-            
-            if (usarDados && emailClientePrincipal) {
-                // Preencher email
-                if (emailField) {
-                    emailField.value = emailClientePrincipal;
-                    emailField.readOnly = true;
-                    emailField.style.backgroundColor = 'rgba(86, 244, 156, 0.1)';
-                    emailField.style.cursor = 'not-allowed';
-                }
-                
-                // Ocultar e tornar opcionais os campos de senha
-                if (senhaContainer) {
-                    senhaContainer.style.display = 'none';
-                }
+
+            if (usarDados) {
+                if (senhaContainer) senhaContainer.style.display = 'none';
                 if (senhaField) {
                     senhaField.required = false;
                     senhaField.value = '';
@@ -259,35 +230,14 @@
                     confirmarSenhaField.value = '';
                 }
             } else {
-                // Restaurar campos
-                if (emailField) {
-                    emailField.value = '';
-                    emailField.readOnly = false;
-                    emailField.style.backgroundColor = '';
-                    emailField.style.cursor = '';
-                    emailField.required = true;
-                }
-                
-                // Mostrar campos de senha
-                if (senhaContainer) {
-                    senhaContainer.style.display = '';
-                }
-                if (senhaField) {
-                    senhaField.required = true;
-                }
-                if (confirmarSenhaField) {
-                    confirmarSenhaField.required = true;
-                }
+                if (senhaContainer) senhaContainer.style.display = '';
+                if (senhaField) senhaField.required = true;
+                if (confirmarSenhaField) confirmarSenhaField.required = true;
             }
         }
-        
+
         checkboxUsarDados.addEventListener('change', toggleUsarDadosCliente);
-        
-        // Executar uma vez ao carregar para aplicar estado inicial se checkbox já estiver marcado
-        // Isso garante que o estado seja aplicado mesmo após recarregamento com erros
-        if (checkboxUsarDados.checked) {
-            toggleUsarDadosCliente();
-        }
+        if (checkboxUsarDados.checked) toggleUsarDadosCliente();
     }
 })();
 </script>

@@ -121,14 +121,6 @@
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <div class="layout-grid">
     <section class="card info-card">
         <h3>Informações do Registro</h3>

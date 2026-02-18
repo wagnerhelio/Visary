@@ -168,17 +168,6 @@
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            {% comment %}Não exibir mensagens de cadastro finalizado nesta tela{% endcomment %}
-            {% if "Cadastro finalizado com sucesso" not in message|stringformat:"s" %}
-                <li class="{{ message.tags }}">{{ message }}</li>
-            {% endif %}
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <section class="layout-grid">
     <article class="card form-card">
         <header>

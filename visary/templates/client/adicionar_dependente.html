@@ -93,14 +93,6 @@
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <section class="layout-grid">
     <article class="card form-card">
         <header>
@@ -123,7 +115,7 @@
                 <select name="dependente_id" id="dependente_id" required>
                     <option value="">Selecione um cliente</option>
                     {% for cliente in clientes_disponiveis %}
-                        <option value="{{ cliente.pk }}">{{ cliente.nome }} ({{ cliente.email }})</option>
+                        <option value="{{ cliente.pk }}">{{ cliente.nome }} (CPF: {{ cliente.cpf }})</option>
                     {% endfor %}
                 </select>
             </div>

@@ -165,15 +165,6 @@
         <a href="{% url 'system:cliente_dashboard' %}" class="btn btn-outline">← Voltar</a>
     </div>
 </div>
-
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <div class="formulario-card">
     <form method="post" action="{% url 'system:cliente_salvar_resposta' viagem.pk %}" novalidate>
         {% csrf_token %}

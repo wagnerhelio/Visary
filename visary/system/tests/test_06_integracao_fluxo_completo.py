@@ -21,6 +21,19 @@ from system.models import Modulo, Perfil, UsuarioConsultoria
 User = get_user_model()
 
 
+def _cpf_from_email(email: str) -> str:
+    digits = str(abs(hash(email)))[:9].zfill(9)
+    def dig(d):
+        w = len(d) + 1
+        s = sum(int(x) * (w - i) for i, x in enumerate(d))
+        r = s % 11
+        return "0" if r < 2 else str(11 - r)
+    d1 = dig(digits)
+    d2 = dig(digits + d1)
+    raw = digits + d1 + d2
+    return f"{raw[:3]}.{raw[3:6]}.{raw[6:9]}-{raw[9:]}"
+
+
 def _setup_admin():
     modulo = Modulo.objects.create(nome="Fluxo Completo", slug="fluxo-completo")
     perfil = Perfil.objects.create(
@@ -60,6 +73,7 @@ class FluxoCompletoClienteSimplesSemMembroTest(TestCase):
         cls.cliente = ClienteConsultoria.objects.create(
             assessor_responsavel=cls.consultor,
             nome="Cliente Fluxo Simples",
+            cpf=_cpf_from_email("fluxo.simples@test.com"),
             data_nascimento=datetime.date(1985, 3, 15),
             nacionalidade="Brasileiro",
             telefone="(11) 91111-7777",
@@ -156,6 +170,7 @@ class FluxoCompletoClienteComMembrosTest(TestCase):
         cls.principal = ClienteConsultoria.objects.create(
             assessor_responsavel=cls.consultor,
             nome="Principal Fluxo Membros",
+            cpf=_cpf_from_email("principal.fcm@test.com"),
             data_nascimento=datetime.date(1980, 5, 20),
             nacionalidade="Brasileiro",
             telefone="(11) 91111-8888",
@@ -166,6 +181,7 @@ class FluxoCompletoClienteComMembrosTest(TestCase):
         cls.dep1 = ClienteConsultoria.objects.create(
             assessor_responsavel=cls.consultor,
             nome="Dependente FCM 1",
+            cpf=_cpf_from_email("dep1.fcm@test.com"),
             data_nascimento=datetime.date(2005, 1, 1),
             nacionalidade="Brasileiro",
             telefone="(11) 91111-9999",

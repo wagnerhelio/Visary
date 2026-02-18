@@ -321,18 +321,19 @@ def _obter_proximo_cliente_mesma_viagem(viagem: Viagem, cliente_atual: ClienteCo
     Returns:
         dict com 'cliente_id' do próximo cliente que precisa de processo na mesma viagem, ou None
     """
-    # Buscar todos os clientes diretamente na viagem
     clientes_na_viagem = viagem.clientes.all()
-    
-    # Buscar emails dos clientes que estão na viagem
-    emails_na_viagem = set(clientes_na_viagem.values_list('email', flat=True))
-    emails_na_viagem = {email for email in emails_na_viagem if email}
-    
-    # Incluir clientes que compartilham o mesmo email
     clientes_relacionados_ids = set(clientes_na_viagem.values_list('pk', flat=True))
-    if emails_na_viagem:
-        clientes_mesmo_email = ClienteConsultoria.objects.filter(email__in=emails_na_viagem)
-        clientes_relacionados_ids.update(clientes_mesmo_email.values_list('pk', flat=True))
+
+    for cliente_viagem in clientes_na_viagem:
+        if cliente_viagem.is_principal:
+            clientes_relacionados_ids.update(
+                ClienteConsultoria.objects.filter(cliente_principal=cliente_viagem).values_list('pk', flat=True)
+            )
+        elif cliente_viagem.cliente_principal_id:
+            clientes_relacionados_ids.add(cliente_viagem.cliente_principal_id)
+            clientes_relacionados_ids.update(
+                ClienteConsultoria.objects.filter(cliente_principal_id=cliente_viagem.cliente_principal_id).values_list('pk', flat=True)
+            )
     
     # Remover o cliente atual
     clientes_relacionados_ids.discard(cliente_atual.pk)
@@ -373,23 +374,18 @@ def _obter_proximo_cliente_viagem_separada(cliente: ClienteConsultoria, viagem_a
     Returns:
         dict com 'cliente_id' e 'viagem_id' do próximo membro que precisa de processo, ou None
     """
-    # Buscar clientes que compartilham o mesmo email (incluindo o próprio cliente para buscar grupo completo)
-    clientes_mesmo_email = ClienteConsultoria.objects.filter(email=cliente.email)
-    
-    # Buscar dependentes do cliente (se for principal)
-    dependentes_ids = set()
+    clientes_relacionados_ids = {cliente.pk}
+
     if cliente.is_principal:
-        dependentes_ids = set(ClienteConsultoria.objects.filter(cliente_principal=cliente).values_list('pk', flat=True))
-    
-    # Se cliente é dependente, buscar o principal e seus outros dependentes
-    if not cliente.is_principal and cliente.cliente_principal:
+        clientes_relacionados_ids.update(
+            ClienteConsultoria.objects.filter(cliente_principal=cliente).values_list('pk', flat=True)
+        )
+    elif cliente.cliente_principal:
         principal = cliente.cliente_principal
-        dependentes_ids = set(ClienteConsultoria.objects.filter(cliente_principal=principal).values_list('pk', flat=True))
-        dependentes_ids.add(principal.pk)
-    
-    # Combinar todos os clientes relacionados (mesmo email + dependentes/principal)
-    clientes_relacionados_ids = set(clientes_mesmo_email.values_list('pk', flat=True))
-    clientes_relacionados_ids.update(dependentes_ids)
+        clientes_relacionados_ids.add(principal.pk)
+        clientes_relacionados_ids.update(
+            ClienteConsultoria.objects.filter(cliente_principal=principal).values_list('pk', flat=True)
+        )
     
     # Remover o cliente atual
     clientes_relacionados_ids.discard(cliente.pk)
@@ -963,19 +959,17 @@ def api_clientes_viagem(request):
         # Clientes diretamente na viagem
         clientes_diretos = viagem.clientes.all()
         
-        # Buscar emails dos clientes que estão na viagem
-        emails_na_viagem = set(clientes_diretos.values_list('email', flat=True))
-        
-        # Remover emails vazios/None
-        emails_na_viagem = {email for email in emails_na_viagem if email}
-        
-        # Incluir clientes que compartilham o mesmo email
         clientes_ids = set(clientes_diretos.values_list('pk', flat=True))
-        if emails_na_viagem:
-            clientes_com_mesmo_email = ClienteConsultoria.objects.filter(
-                email__in=emails_na_viagem
-            )
-            clientes_ids.update(clientes_com_mesmo_email.values_list('pk', flat=True))
+        for cliente_direto in clientes_diretos:
+            if cliente_direto.is_principal:
+                clientes_ids.update(
+                    ClienteConsultoria.objects.filter(cliente_principal=cliente_direto).values_list('pk', flat=True)
+                )
+            elif cliente_direto.cliente_principal_id:
+                clientes_ids.add(cliente_direto.cliente_principal_id)
+                clientes_ids.update(
+                    ClienteConsultoria.objects.filter(cliente_principal_id=cliente_direto.cliente_principal_id).values_list('pk', flat=True)
+                )
         
         # Obter todos os clientes (diretos + mesmo email) ordenados
         # Ordenar: principais primeiro, depois dependentes

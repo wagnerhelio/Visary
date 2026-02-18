@@ -43,10 +43,24 @@ def _setup_base():
     return consultor, django_user
 
 
-def _cliente_base(consultor, django_user, email="cli@test.com", principal=None):
+def _cpf_from_email(email: str) -> str:
+    digits = str(abs(hash(email)))[:9].zfill(9)
+    def dig(d):
+        w = len(d) + 1
+        s = sum(int(x) * (w - i) for i, x in enumerate(d))
+        r = s % 11
+        return "0" if r < 2 else str(11 - r)
+    d1 = dig(digits)
+    d2 = dig(digits + d1)
+    raw = digits + d1 + d2
+    return f"{raw[:3]}.{raw[3:6]}.{raw[6:9]}-{raw[9:]}"
+
+
+def _cliente_base(consultor, django_user, email="cli@test.com", principal=None, cpf=None):
     return ClienteConsultoria.objects.create(
         assessor_responsavel=consultor,
         nome="Cliente Base",
+        cpf=cpf or _cpf_from_email(email),
         data_nascimento=datetime.date(1990, 6, 15),
         nacionalidade="Brasileiro",
         telefone="(11) 91111-1111",
@@ -242,6 +256,7 @@ class ClienteComParceiroTest(TestCase):
         cls.cliente = ClienteConsultoria.objects.create(
             assessor_responsavel=cls.consultor,
             nome="Cliente Parceiro",
+            cpf="138.280.720-05",
             data_nascimento=datetime.date(1985, 3, 20),
             nacionalidade="Brasileiro",
             telefone="(21) 98888-8888",
@@ -298,6 +313,7 @@ class ClientePassaporteTest(TestCase):
         cls.cliente = ClienteConsultoria.objects.create(
             assessor_responsavel=cls.consultor,
             nome="Cliente Passaporte",
+            cpf="699.034.060-00",
             data_nascimento=datetime.date(1980, 1, 1),
             nacionalidade="Brasileiro",
             telefone="(11) 99999-0000",

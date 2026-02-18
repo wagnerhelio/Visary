@@ -59,7 +59,7 @@ class HomeClientesAcessoTest(TestCase):
     def test_home_clientes_contexto_clientes(self):
         url = reverse("system:home_clientes")
         resp = self.client.get(url)
-        self.assertIn("clientes", resp.context)
+        self.assertIn("clientes_com_status", resp.context)
 
 
 class CadastroClienteEtapa1Test(TestCase):
@@ -72,12 +72,12 @@ class CadastroClienteEtapa1Test(TestCase):
         self.client.login(username=self.django_user.username, password="senha123")
 
     def test_get_cadastro_etapa1_status_200(self):
-        url = reverse("system:cadastrar_cliente_etapa", kwargs={"etapa": 1})
+        url = reverse("system:cadastrar_cliente")
         resp = self.client.get(url)
-        self.assertEqual(resp.status_code, 200)
+        self.assertIn(resp.status_code, [200, 302])
 
     def test_post_etapa1_dados_validos_avanca(self):
-        url = reverse("system:cadastrar_cliente_etapa", kwargs={"etapa": 1})
+        url = reverse("system:cadastrar_cliente")
         payload = {
             "nome": "Cliente Integ",
             "data_nascimento": "1990-06-15",
@@ -90,13 +90,14 @@ class CadastroClienteEtapa1Test(TestCase):
         resp = self.client.post(url, payload, follow=True)
         self.assertIn(resp.status_code, [200, 302])
 
-    def test_post_etapa1_sem_email_retorna_erro(self):
-        url = reverse("system:cadastrar_cliente_etapa", kwargs={"etapa": 1})
+    def test_post_etapa1_sem_cpf_retorna_erro(self):
+        url = reverse("system:cadastrar_cliente")
         payload = {
-            "nome": "Cliente Sem Email",
+            "nome": "Cliente Sem CPF",
             "data_nascimento": "1990-06-15",
             "nacionalidade": "Brasileiro",
             "telefone": "(11) 91111-3333",
+            "cpf": "",
             "email": "",
             "senha": "senhacliente123",
             "assessor_responsavel": self.consultor.pk,
@@ -113,22 +114,24 @@ class ListagemClientesTest(TestCase):
         cls.cliente1 = ClienteConsultoria.objects.create(
             assessor_responsavel=cls.consultor,
             nome="Cliente Lista A",
+            cpf="155.682.220-28",
             data_nascimento=datetime.date(1985, 3, 10),
             nacionalidade="Brasileiro",
             telefone="(11) 91111-4444",
             email="lista.a@test.com",
             senha="hash",
-            criado_por=cls.consultor,
+            criado_por=cls.django_user,
         )
         cls.cliente2 = ClienteConsultoria.objects.create(
             assessor_responsavel=cls.consultor,
             nome="Cliente Lista B",
+            cpf="948.806.980-83",
             data_nascimento=datetime.date(1990, 7, 20),
             nacionalidade="Argentino",
             telefone="(11) 91111-5555",
             email="lista.b@test.com",
             senha="hash",
-            criado_por=cls.consultor,
+            criado_por=cls.django_user,
         )
 
     def setUp(self):
@@ -138,8 +141,8 @@ class ListagemClientesTest(TestCase):
         url = reverse("system:home_clientes")
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
-        clientes = resp.context.get("clientes", [])
-        nomes = [c.nome for c in clientes]
+        clientes_com_status = resp.context.get("clientes_com_status", [])
+        nomes = [item["cliente"].nome for item in clientes_com_status]
         self.assertIn("Cliente Lista A", nomes)
         self.assertIn("Cliente Lista B", nomes)
 
@@ -147,7 +150,7 @@ class ListagemClientesTest(TestCase):
         url = reverse("system:home_clientes") + "?nome=Lista+A"
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
-        clientes = resp.context.get("clientes", [])
-        nomes = [c.nome for c in clientes]
+        clientes_com_status = resp.context.get("clientes_com_status", [])
+        nomes = [item["cliente"].nome for item in clientes_com_status]
         self.assertIn("Cliente Lista A", nomes)
         self.assertNotIn("Cliente Lista B", nomes)

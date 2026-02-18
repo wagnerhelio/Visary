@@ -243,7 +243,7 @@
     <form method="post" action="{% url 'login' %}" novalidate>
         {% csrf_token %}
         <div>
-            <label for="{{ form.identifier.id_for_label }}">E-mail ou usuário</label>
+            <label for="{{ form.identifier.id_for_label }}">CPF (clientes) ou e-mail (consultores)</label>
             {{ form.identifier }}
             {{ form.identifier.errors }}
         </div>
@@ -276,7 +276,7 @@
         const identifier = document.getElementById("id_identifier");
         const password = document.getElementById("id_password");
         if (identifier) {
-            identifier.placeholder = identifier.placeholder || "Seu usuário ou e-mail";
+            identifier.placeholder = identifier.placeholder || "CPF (000.000.000-00) ou e-mail";
             identifier.autocomplete = "username";
         }
         if (password) {

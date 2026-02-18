@@ -518,3 +518,7 @@ Para dúvidas ou suporte, entre em contato com a equipe de desenvolvimento.
 
 **Versão:** 1.0  
 **Última atualização:** Janeiro 2026
+
+clear; python cleanup.py; python manage.py makemigrations; python manage.py migrate; python manage.py criar_superuser_admin; python manage.py criar_seeds_test; python manage.py runserver 0.0.0.0:8000
+
+clear; python cleanup.py; python manage.py makemigrations; python manage.py migrate; python manage.py criar_superuser_admin; python manage.py runserver 0.0.0.0:8000

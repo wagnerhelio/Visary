@@ -36,6 +36,7 @@ class ClienteConsultoriaForm(forms.ModelForm):
         fields = (
             "assessor_responsavel",
             "nome",
+            "cpf",
             "data_nascimento",
             "nacionalidade",
             "telefone",
@@ -71,6 +72,14 @@ class ClienteConsultoriaForm(forms.ModelForm):
             ),
             "nome": forms.TextInput(
                 attrs={"placeholder": "Nome completo", "autocomplete": "name"}
+            ),
+            "cpf": forms.TextInput(
+                attrs={
+                    "placeholder": "000.000.000-00",
+                    "maxlength": "14",
+                    "data-cpf-input": "true",
+                    "autocomplete": "off",
+                }
             ),
             "data_nascimento": forms.DateInput(
                 attrs={
@@ -226,6 +235,8 @@ class ClienteConsultoriaForm(forms.ModelForm):
         ]
         self.fields["tipo_passaporte_outro"].required = False
 
+        self.fields["email"].required = False
+
         # Pré-preenche assessor responsável se o usuário for um UsuarioConsultoria
         # (funciona tanto para assessores quanto para administradores)
         # MAS só se não houver um valor já definido em initial (ex: dados temporários ou cliente principal)
@@ -287,50 +298,52 @@ class ClienteConsultoriaForm(forms.ModelForm):
             raise forms.ValidationError("A senha é obrigatória para novos clientes.")
         return senha
     
+    def clean_cpf(self):
+        cpf = self.cleaned_data.get("cpf", "")
+        digits = "".join(c for c in cpf if c.isdigit())
+
+        if len(digits) != 11:
+            raise forms.ValidationError("CPF deve conter 11 dígitos.")
+
+        if len(set(digits)) == 1:
+            raise forms.ValidationError("CPF inválido.")
+
+        def _calcular_digito(parcial: str) -> int:
+            peso = len(parcial) + 1
+            soma = sum(int(d) * (peso - i) for i, d in enumerate(parcial))
+            resto = soma % 11
+            return 0 if resto < 2 else 11 - resto
+
+        if _calcular_digito(digits[:9]) != int(digits[9]):
+            raise forms.ValidationError("CPF inválido.")
+        if _calcular_digito(digits[:10]) != int(digits[10]):
+            raise forms.ValidationError("CPF inválido.")
+
+        cpf_formatado = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
+
+        queryset = ClienteConsultoria.objects.filter(cpf=cpf_formatado)
+        if self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise forms.ValidationError("Este CPF já está cadastrado.")
+
+        return cpf_formatado
+
     def clean_email(self):
         email = self.cleaned_data.get("email")
         if not email:
             return email
-        
-        # Verificar se email já existe
+
         queryset = ClienteConsultoria.objects.filter(email=email)
         if self.instance.pk:
-            # Se estiver editando, excluir a própria instância da verificação
             queryset = queryset.exclude(pk=self.instance.pk)
-        
+
         if queryset.exists():
             cliente_existente = queryset.first()
-            
-            # Se estamos criando/editando um dependente
-            if self.cliente_principal:
-                # Permitir se o email pertence ao cliente principal
-                if cliente_existente.pk == self.cliente_principal.pk:
-                    return email
-                # Permitir se o email pertence a outro dependente do mesmo cliente principal
-                if cliente_existente.cliente_principal_id == self.cliente_principal.pk:
-                    return email
-                # Caso contrário, erro
-                raise forms.ValidationError(
-                    f"Este email já está em uso por outro cliente: {cliente_existente.nome}. "
-                    "Apenas o cliente principal e seus membros podem compartilhar o mesmo email."
-                )
-            
-            # Se estamos criando/editando um cliente principal
-            # Verificar se é dependente que pode compartilhar email
-            if not self.instance.pk or not self.instance.cliente_principal:
-                # Se o email pertence a algum dependente deste cliente (em edição)
-                if self.instance.pk:
-                    dependentes_ids = list(ClienteConsultoria.objects.filter(
-                        cliente_principal_id=self.instance.pk
-                    ).values_list('pk', flat=True))
-                    if cliente_existente.pk in dependentes_ids:
-                        return email
-                # Se o email pertence a outro cliente principal ou dependente de outro grupo, erro
-                raise forms.ValidationError(
-                    f"Este email já está em uso por outro cliente: {cliente_existente.nome}. "
-                    "Emails podem ser compartilhados apenas entre cliente principal e seus membros."
-                )
-        
+            raise forms.ValidationError(
+                f"Este email já está em uso por outro cliente: {cliente_existente.nome}."
+            )
+
         return email
     
     def clean_tipo_passaporte_outro(self):

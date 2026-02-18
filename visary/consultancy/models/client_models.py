@@ -21,6 +21,12 @@ class ClienteConsultoria(models.Model):
         verbose_name="Assessor responsável",
     )
     nome = models.CharField("Nome completo", max_length=160)
+    cpf = models.CharField(
+        "CPF",
+        max_length=14,
+        unique=True,
+        help_text="CPF utilizado para login. Formato: 000.000.000-00",
+    )
     data_nascimento = models.DateField("Data de nascimento")
     nacionalidade = models.CharField("Nacionalidade", max_length=100)
     telefone = models.CharField("Telefone", max_length=20)
@@ -29,7 +35,7 @@ class ClienteConsultoria(models.Model):
         max_length=20,
         blank=True,
     )
-    email = models.EmailField("E-mail")
+    email = models.EmailField("E-mail", blank=True, default="")
     senha = models.CharField(
         "Senha de acesso",
         max_length=128,

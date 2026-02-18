@@ -12,10 +12,11 @@
       {"nome_campo": "nacionalidade", "tipo_campo": "texto", "ordem": 4, "obrigatorio": true, "ativo": true},
       {"nome_campo": "telefone", "tipo_campo": "texto", "ordem": 5, "obrigatorio": true, "ativo": true},
       {"nome_campo": "telefone_secundario", "tipo_campo": "texto", "ordem": 6, "obrigatorio": false, "ativo": true},
-      {"nome_campo": "email", "tipo_campo": "texto", "ordem": 7, "obrigatorio": true, "ativo": true},
-      {"nome_campo": "senha", "tipo_campo": "texto", "ordem": 8, "obrigatorio": true, "ativo": true},
-      {"nome_campo": "confirmar_senha", "tipo_campo": "texto", "ordem": 9, "obrigatorio": true, "ativo": true},
-      {"nome_campo": "parceiro_indicador", "tipo_campo": "selecao", "ordem": 10, "obrigatorio": false, "ativo": true}
+      {"nome_campo": "cpf", "tipo_campo": "texto", "ordem": 7, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "email", "tipo_campo": "texto", "ordem": 8, "obrigatorio": false, "ativo": true},
+      {"nome_campo": "senha", "tipo_campo": "texto", "ordem": 9, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "confirmar_senha", "tipo_campo": "texto", "ordem": 10, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "parceiro_indicador", "tipo_campo": "selecao", "ordem": 11, "obrigatorio": false, "ativo": true}
     ]
   },
   {

@@ -67,30 +67,34 @@ def _processar_login_consultor(request, user, remember: bool):
     return redirect(settings.LOGIN_REDIRECT_URL)
 
 
+def _normalizar_cpf(valor: str) -> str:
+    digits = "".join(c for c in valor if c.isdigit())
+    if len(digits) == 11:
+        return f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
+    return valor
+
+
 def _autenticar_cliente(identifier: str, password: str, request, remember: bool):
-    """Tenta autenticar como cliente."""
-    # Buscar todos os clientes com este email
-    clientes = ClienteConsultoria.objects.filter(email__iexact=identifier)
-    
-    if not clientes.exists():
-        return None
-    
-    # Priorizar cliente principal se houver múltiplos
-    cliente = clientes.filter(cliente_principal__isnull=True).first()
+    """Tenta autenticar como cliente por CPF ou e-mail."""
+    cpf_normalizado = _normalizar_cpf(identifier)
+    cliente = ClienteConsultoria.objects.filter(cpf=cpf_normalizado).first()
+
+    if not cliente and "@" in identifier:
+        cliente = ClienteConsultoria.objects.filter(email__iexact=identifier.strip()).first()
+
     if not cliente:
-        # Se não encontrou principal, pegar o primeiro
-        cliente = clientes.first()
-    
+        return None
+
     if not is_password_usable(cliente.senha):
         messages.error(
             request,
             "Sua senha precisa ser redefinida. Entre em contato com o administrador."
         )
         return None
-    
+
     if cliente.check_password(password):
         return _processar_login_cliente(request, cliente, remember)
-    
+
     return None
 
 
@@ -135,7 +139,7 @@ def _processar_login_cliente(request, cliente: ClienteConsultoria, remember: boo
     """Processa o login do cliente e configura a sessão."""
     request.session["cliente_id"] = cliente.pk
     request.session["cliente_nome"] = cliente.nome
-    request.session["cliente_email"] = cliente.email
+    request.session["cliente_cpf"] = cliente.cpf
 
     if not remember:
         request.session.set_expiry(0)  # Expira ao fechar o navegador

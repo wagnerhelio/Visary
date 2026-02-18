@@ -113,23 +113,17 @@ class ProcessoForm(forms.ModelForm):
                 # Clientes diretamente na viagem
                 clientes_na_viagem = viagem_obj.clientes.all()
                 
-                # Buscar emails dos clientes que estão na viagem
-                emails_na_viagem = set(clientes_na_viagem.values_list('email', flat=True))
-                
-                # Remover emails vazios/None
-                emails_na_viagem = {email for email in emails_na_viagem if email}
-                
-                # Incluir clientes que compartilham o mesmo email dos clientes na viagem
-                clientes_com_mesmo_email = ClienteConsultoria.objects.none()
-                if emails_na_viagem:
-                    clientes_com_mesmo_email = ClienteConsultoria.objects.filter(
-                        email__in=emails_na_viagem
-                    )
-                
-                # Combinar: clientes diretamente na viagem + clientes com mesmo email
                 clientes_ids = set(clientes_na_viagem.values_list('pk', flat=True))
-                if clientes_com_mesmo_email.exists():
-                    clientes_ids.update(clientes_com_mesmo_email.values_list('pk', flat=True))
+                for cliente_viagem in clientes_na_viagem:
+                    if cliente_viagem.is_principal:
+                        clientes_ids.update(
+                            ClienteConsultoria.objects.filter(cliente_principal=cliente_viagem).values_list('pk', flat=True)
+                        )
+                    elif cliente_viagem.cliente_principal_id:
+                        clientes_ids.add(cliente_viagem.cliente_principal_id)
+                        clientes_ids.update(
+                            ClienteConsultoria.objects.filter(cliente_principal_id=cliente_viagem.cliente_principal_id).values_list('pk', flat=True)
+                        )
                 
                 clientes_queryset = clientes_queryset.filter(
                     pk__in=clientes_ids

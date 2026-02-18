@@ -16,6 +16,19 @@ from system.models import Modulo, Perfil, UsuarioConsultoria
 User = get_user_model()
 
 
+def _cpf_from_email(email: str) -> str:
+    digits = str(abs(hash(email)))[:9].zfill(9)
+    def dig(d):
+        w = len(d) + 1
+        s = sum(int(x) * (w - i) for i, x in enumerate(d))
+        r = s % 11
+        return "0" if r < 2 else str(11 - r)
+    d1 = dig(digits)
+    d2 = dig(digits + d1)
+    raw = digits + d1 + d2
+    return f"{raw[:3]}.{raw[3:6]}.{raw[6:9]}-{raw[9:]}"
+
+
 def _setup_admin():
     modulo = Modulo.objects.create(nome="Integ Processos", slug="integ-processos")
     perfil = Perfil.objects.create(
@@ -54,13 +67,15 @@ def _criar_viagem_com_cliente(consultor, django_user, sufixo="A"):
         data_prevista_retorno=datetime.date(2027, 1, 25),
         criado_por=django_user,
     )
+    email_cliente = f"proc.integ.{sufixo.lower()}@test.com"
     cliente = ClienteConsultoria.objects.create(
         assessor_responsavel=consultor,
         nome=f"Cliente Proc Integ {sufixo}",
+        cpf=_cpf_from_email(email_cliente),
         data_nascimento=datetime.date(1990, 1, 1),
         nacionalidade="Brasileiro",
         telefone="(11) 91111-6666",
-        email=f"proc.integ.{sufixo.lower()}@test.com",
+        email=email_cliente,
         senha="hash",
         criado_por=django_user,
     )

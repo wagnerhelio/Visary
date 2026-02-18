@@ -29,6 +29,14 @@
         max-height: 100%;
     }
 
+    thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--card-bg);
+        backdrop-filter: blur(4px);
+    }
+
     table {
         width: 100%;
         border-collapse: collapse;
@@ -58,6 +66,50 @@
         font-size: 0.78rem;
         letter-spacing: 0.08em;
         color: rgba(245, 245, 245, 0.6);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-principal {
+        background: rgba(86, 244, 156, 0.18);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-dependente {
+        background: rgba(255, 193, 7, 0.18);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .nome-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .nome-cell__name {
+        font-weight: 500;
+        color: rgba(245, 245, 245, 0.92);
+        line-height: 1.3;
+    }
+
+    .nome-cell__sub {
+        font-size: 0.75rem;
+        color: rgba(245, 245, 245, 0.5);
+        line-height: 1.2;
+    }
+
+    .row-dependente td:first-child {
+        padding-left: 24px;
+        border-left: 2px solid rgba(255, 193, 7, 0.25);
     }
 
     .progress-badge {
@@ -191,18 +243,18 @@
     }
 
     @media (max-width: 768px) {
+        .card {
+            height: calc(100vh - 250px);
+            max-height: calc(100vh - 250px);
+            min-height: 300px;
+        }
+
         .filtros-grid {
             grid-template-columns: 1fr;
         }
 
         .filtros-actions {
             flex-direction: column;
-        }
-    }
-        .card {
-            height: calc(100vh - 250px);
-            max-height: calc(100vh - 250px);
-            min-height: 300px;
         }
 
         table {
@@ -284,8 +336,18 @@
             </thead>
             <tbody>
             {% for processo in processos %}
-                <tr>
-                    <td>{{ processo.cliente.nome }}</td>
+                <tr {% if processo.cliente.is_dependente %}class="row-dependente"{% endif %}>
+                    <td>
+                        <div class="nome-cell">
+                            <span class="nome-cell__name">{{ processo.cliente.nome }}</span>
+                            {% if processo.cliente.is_dependente %}
+                                <span class="badge badge-dependente">Dependente</span>
+                                <span class="nome-cell__sub">de {{ processo.cliente.cliente_principal.nome|default:"-" }}</span>
+                            {% else %}
+                                <span class="badge badge-principal">Principal</span>
+                            {% endif %}
+                        </div>
+                    </td>
                     <td>{{ processo.viagem.tipo_visto.nome }}</td>
                     <td>{{ processo.viagem.pais_destino.nome }}</td>
                     <td>

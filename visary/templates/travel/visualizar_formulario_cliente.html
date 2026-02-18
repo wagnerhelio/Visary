@@ -5,7 +5,6 @@
 
 {% block base_styles %}
     {{ block.super }}
-    <style>
         .form-header {
             background: var(--card-bg);
             border-radius: 24px;
@@ -166,7 +165,6 @@
         .resposta-value.booleano {
             padding-right: 120px;
         }
-    </style>
 {% endblock %}
 
 {% block app_content %}
@@ -180,15 +178,6 @@
         {% endif %}
     </div>
 </div>
-
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <div class="formulario-card">
     {% for pergunta in perguntas %}
         <div class="form-group">
@@ -207,21 +196,21 @@
                                 <div class="resposta-value" id="resposta_{{ pergunta.pk }}" data-valor="{% if resposta.resposta_texto %}{{ resposta.resposta_texto|escapejs }}{% endif %}">
                                     {% if resposta.resposta_texto %}{{ resposta.resposta_texto }}{% else %}<span class="empty">-</span>{% endif %}
                                 </div>
-                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ pergunta.pk }}')" title="Copiar resposta">
+                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ pergunta.pk }}', this)" title="Copiar resposta">
                                     📋 Copiar
                                 </button>
                             {% elif pergunta.tipo_campo == "data" %}
                                 <div class="resposta-value" id="resposta_{{ pergunta.pk }}" data-valor="{% if resposta.resposta_data %}{{ resposta.resposta_data|date:"d/m/Y"|escapejs }}{% endif %}">
                                     {% if resposta.resposta_data %}{{ resposta.resposta_data|date:"d/m/Y" }}{% else %}<span class="empty">-</span>{% endif %}
                                 </div>
-                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ pergunta.pk }}')" title="Copiar resposta">
+                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ pergunta.pk }}', this)" title="Copiar resposta">
                                     📋 Copiar
                                 </button>
                             {% elif pergunta.tipo_campo == "numero" %}
                                 <div class="resposta-value" id="resposta_{{ pergunta.pk }}" data-valor="{% if resposta.resposta_numero %}{{ resposta.resposta_numero }}{% endif %}">
                                     {% if resposta.resposta_numero %}{{ resposta.resposta_numero }}{% else %}<span class="empty">-</span>{% endif %}
                                 </div>
-                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ pergunta.pk }}')" title="Copiar resposta">
+                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ pergunta.pk }}', this)" title="Copiar resposta">
                                     📋 Copiar
                                 </button>
                             {% elif pergunta.tipo_campo == "booleano" %}
@@ -234,7 +223,7 @@
                                         <span class="empty">Não respondido</span>
                                     {% endif %}
                                 </div>
-                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ pergunta.pk }}')" title="Copiar resposta">
+                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ pergunta.pk }}', this)" title="Copiar resposta">
                                     📋 Copiar
                                 </button>
                             {% elif pergunta.tipo_campo == "selecao" %}
@@ -245,7 +234,7 @@
                                         <span class="empty">Não selecionado</span>
                                     {% endif %}
                                 </div>
-                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ pergunta.pk }}')" title="Copiar resposta">
+                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ pergunta.pk }}', this)" title="Copiar resposta">
                                     📋 Copiar
                                 </button>
                             {% endif %}
@@ -264,66 +253,67 @@
 </div>
 
 <script>
-    function copiarResposta(elementId) {
+    function normalizarTextoParaCopia(texto) {
+        let valor = texto == null ? '' : String(texto);
+        valor = valor.replace(/[\u0000-\u001F\u007F]/g, ' ');
+        valor = valor.replace(/[✓✗⚠📋]/g, ' ');
+        valor = valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        valor = valor.replace(/[.,\-/]/g, ' ');
+        valor = valor.replace(/\s+/g, ' ').trim();
+        return valor;
+    }
+
+    function exibirFeedbackCopia(botao) {
+        if (!botao) {
+            return;
+        }
+        const textoOriginal = botao.getAttribute('data-texto-original') || botao.innerHTML;
+        botao.setAttribute('data-texto-original', textoOriginal);
+        botao.innerHTML = '✓ Copiado!';
+        botao.style.background = 'rgba(86, 244, 156, 0.3)';
+        botao.style.borderColor = 'rgba(86, 244, 156, 0.6)';
+        setTimeout(function() {
+            botao.innerHTML = textoOriginal;
+            botao.style.background = 'rgba(86, 244, 156, 0.15)';
+            botao.style.borderColor = 'rgba(86, 244, 156, 0.4)';
+        }, 2000);
+    }
+
+    function copiarResposta(elementId, botao) {
         const elemento = document.getElementById(elementId);
         if (!elemento) {
             alert('Erro ao encontrar o elemento.');
             return;
         }
         
-        // Tenta pegar o valor do atributo data-valor primeiro
         let valor = elemento.getAttribute('data-valor');
         
-        // Se não tiver data-valor ou estiver vazio, pega do texto do elemento
         if (!valor || valor.trim() === '' || valor === 'undefined') {
             valor = elemento.innerText || elemento.textContent || '';
-            // Remove emojis e badges visuais para pegar apenas o texto limpo
             valor = valor.replace(/[✓✗]/g, '').trim();
-            // Remove espaços extras entre palavras
             valor = valor.replace(/\s+/g, ' ').trim();
         }
-        
-        // Remove caracteres especiais e espaços extras
-        if (typeof valor === 'string') {
-            valor = valor.trim();
-        } else {
-            valor = String(valor).trim();
-        }
+
+        valor = normalizarTextoParaCopia(valor);
         
         if (!valor || valor === 'Não respondido' || valor === 'Não selecionado' || valor === '-' || valor === 'undefined' || valor === '') {
             alert('Não há conteúdo para copiar.');
             return;
         }
         
-        // Usa a API moderna de clipboard
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(valor).then(function() {
-                // Feedback visual
-                const btn = event.target.closest('.btn-copiar');
-                if (btn) {
-                    const textoOriginal = btn.innerHTML;
-                    btn.innerHTML = '✓ Copiado!';
-                    btn.style.background = 'rgba(86, 244, 156, 0.3)';
-                    btn.style.borderColor = 'rgba(86, 244, 156, 0.6)';
-                    
-                    setTimeout(function() {
-                        btn.innerHTML = textoOriginal;
-                        btn.style.background = 'rgba(86, 244, 156, 0.15)';
-                        btn.style.borderColor = 'rgba(86, 244, 156, 0.4)';
-                    }, 2000);
-                }
+                exibirFeedbackCopia(botao);
             }).catch(function(err) {
                 console.error('Erro ao copiar:', err);
-                // Fallback para navegadores antigos
-                copiarFallback(valor);
+                copiarFallback(valor, botao);
             });
         } else {
-            // Fallback para navegadores antigos
-            copiarFallback(valor);
+            copiarFallback(valor, botao);
         }
     }
     
-    function copiarFallback(texto) {
+    function copiarFallback(texto, botao) {
         const textarea = document.createElement('textarea');
         textarea.value = texto;
         textarea.style.position = 'fixed';
@@ -335,24 +325,12 @@
         document.body.appendChild(textarea);
         textarea.focus();
         textarea.select();
-        textarea.setSelectionRange(0, 99999); // Para mobile
+        textarea.setSelectionRange(0, 99999);
         
         try {
             const sucesso = document.execCommand('copy');
             if (sucesso) {
-                const btn = event.target.closest('.btn-copiar');
-                if (btn) {
-                    const textoOriginal = btn.innerHTML;
-                    btn.innerHTML = '✓ Copiado!';
-                    btn.style.background = 'rgba(86, 244, 156, 0.3)';
-                    btn.style.borderColor = 'rgba(86, 244, 156, 0.6)';
-                    
-                    setTimeout(function() {
-                        btn.innerHTML = textoOriginal;
-                        btn.style.background = 'rgba(86, 244, 156, 0.15)';
-                        btn.style.borderColor = 'rgba(86, 244, 156, 0.4)';
-                    }, 2000);
-                }
+                exibirFeedbackCopia(botao);
             } else {
                 alert('Erro ao copiar. Por favor, selecione o texto manualmente.');
             }

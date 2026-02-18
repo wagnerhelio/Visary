@@ -216,7 +216,7 @@
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <a href="{% url 'system:editar_opcao_selecao' opcao.pk %}" class="btn btn-outline btn-small">Editar</a>
-                            <form method="post" action="{% url 'system:excluir_opcao_selecao' opcao.pk %}" onsubmit="return confirm('Deseja realmente excluir a opção: {{ opcao.texto }}?');" style="margin: 0;">
+                            <form method="post" action="{% url 'system:excluir_opcao_selecao' opcao.pk %}" onsubmit="return confirm('Deseja realmente excluir a opção: {{ opcao.texto|escapejs }}?');" style="margin: 0;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-danger btn-small">Excluir</button>
                             </form>

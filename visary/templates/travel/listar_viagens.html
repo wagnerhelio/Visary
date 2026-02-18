@@ -95,6 +95,14 @@
         max-height: 100%;
     }
 
+    thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--card-bg);
+        backdrop-filter: blur(4px);
+    }
+
     table {
         width: 100%;
         border-collapse: collapse;
@@ -115,6 +123,45 @@
         font-size: 0.78rem;
         letter-spacing: 0.08em;
         color: rgba(245, 245, 245, 0.6);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-principal {
+        background: rgba(86, 244, 156, 0.18);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-dependente {
+        background: rgba(255, 193, 7, 0.18);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .nome-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .nome-cell__name {
+        font-weight: 500;
+        color: rgba(245, 245, 245, 0.92);
+        line-height: 1.3;
+    }
+
+    .membros-cell {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
     }
 
     .empty-state {
@@ -160,14 +207,14 @@
     }
 
     @media (max-width: 768px) {
-        .filtros-grid {
-            grid-template-columns: 1fr;
-        }
-
         .card {
             height: calc(100vh - 250px);
             max-height: calc(100vh - 250px);
             min-height: 300px;
+        }
+
+        .filtros-grid {
+            grid-template-columns: 1fr;
         }
 
         table {
@@ -197,14 +244,6 @@
 {% endblock %}
 
 {% block app_content %}
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <section class="filtros-card">
     <header>
         <h2>Filtros</h2>
@@ -270,8 +309,8 @@
             <!-- filtros de criação removidos -->
         </div>
         <div class="filtros-actions">
-            <button type="submit" class="btn btn-primary" style="display:none">Filtrar</button>
-            <a href="#" class="btn btn-outline" style="display:none">Limpar Filtros</a>
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:listar_viagens' %}" class="btn btn-outline">Limpar Filtros</a>
         </div>
     </form>
 </section>
@@ -302,7 +341,10 @@
                             {% if clientes %}
                                 {% for cliente in clientes %}
                                     {% if cliente.is_principal %}
-                                        <strong>{{ cliente.nome }}</strong>{% if not forloop.last %}, {% endif %}
+                                        <div class="nome-cell">
+                                            <span class="nome-cell__name">{{ cliente.nome }}</span>
+                                            <span class="badge badge-principal">Principal</span>
+                                        </div>
                                     {% endif %}
                                 {% empty %}
                                     <span style="color: rgba(245, 245, 245, 0.5);">-</span>
@@ -314,14 +356,14 @@
                     </td>
                     <td>
                         {% with clientes=item.viagem.clientes.all %}
-                            {% if clientes %}
-                                {% for cliente in clientes %}
-                                    {% if not cliente.is_principal %}
-                                        <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7);">{{ cliente.nome }}</span>{% if not forloop.last %}, {% endif %}
-                                    {% endif %}
-                                {% empty %}
-                                    <span style="color: rgba(245, 245, 245, 0.5);">-</span>
-                                {% endfor %}
+                            {% if clientes and clientes.count > 1 %}
+                                <div class="membros-cell">
+                                    {% for cliente in clientes %}
+                                        {% if not cliente.is_principal %}
+                                            <span class="badge badge-dependente">{{ cliente.nome }}</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
                             {% else %}
                                 <span style="color: rgba(245, 245, 245, 0.5);">-</span>
                             {% endif %}

@@ -577,15 +577,17 @@ def _processar_post_criar_viagem(request, form):
         for viagem_sep in viagens_separadas:
             todos_clientes_ids.update(viagem_sep.clientes.all().values_list('pk', flat=True))
         
-        # Buscar emails dos clientes para incluir clientes com mesmo email
         if todos_clientes_ids:
-            clientes_principais = ClienteConsultoria.objects.filter(pk__in=todos_clientes_ids)
-            emails_clientes = set(clientes_principais.values_list('email', flat=True))
-            emails_clientes = {email for email in emails_clientes if email}
-            
-            if emails_clientes:
-                clientes_mesmo_email = ClienteConsultoria.objects.filter(email__in=emails_clientes)
-                todos_clientes_ids.update(clientes_mesmo_email.values_list('pk', flat=True))
+            for cliente_obj in ClienteConsultoria.objects.filter(pk__in=list(todos_clientes_ids)):
+                if cliente_obj.is_principal:
+                    todos_clientes_ids.update(
+                        ClienteConsultoria.objects.filter(cliente_principal=cliente_obj).values_list('pk', flat=True)
+                    )
+                elif cliente_obj.cliente_principal_id:
+                    todos_clientes_ids.add(cliente_obj.cliente_principal_id)
+                    todos_clientes_ids.update(
+                        ClienteConsultoria.objects.filter(cliente_principal_id=cliente_obj.cliente_principal_id).values_list('pk', flat=True)
+                    )
         
         # Se há apenas um cliente em todas as viagens, pré-selecionar
         if len(todos_clientes_ids) == 1:

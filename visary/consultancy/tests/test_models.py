@@ -45,6 +45,7 @@ class ConsultancyModelTests(TestCase):
         cls.principal = ClienteConsultoria.objects.create(
             assessor_responsavel=cls.user,
             nome="Cliente Principal",
+            cpf="418.573.380-82",
             data_nascimento=datetime.date(1990, 1, 1),
             nacionalidade="Brasil",
             telefone="(11) 99999-9999",
@@ -57,6 +58,7 @@ class ConsultancyModelTests(TestCase):
             assessor_responsavel=cls.user,
             cliente_principal=cls.principal,
             nome="Dependente",
+            cpf="803.761.180-02",
             data_nascimento=datetime.date(2010, 1, 1),
             nacionalidade="Brasil",
             telefone="(11) 99999-9998",

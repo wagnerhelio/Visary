@@ -221,7 +221,143 @@
         margin-top: 8px;
     }
 
-    @media (max-width: 768px) {
+    .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .clientes-table td,
+    .clientes-table th {
+        padding: 14px 10px;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .clientes-table td:first-child,
+    .clientes-table th:first-child {
+        white-space: normal;
+        min-width: 160px;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-principal {
+        background: rgba(86, 244, 156, 0.18);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-dependente {
+        background: rgba(255, 193, 7, 0.18);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .badge-pago {
+        background: rgba(86, 244, 156, 0.18);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-pendente {
+        background: rgba(255, 193, 7, 0.18);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .badge-cancelado {
+        background: rgba(244, 67, 54, 0.18);
+        color: rgba(244, 67, 54, 0.95);
+        border: 1px solid rgba(244, 67, 54, 0.4);
+    }
+
+    .badge-sem {
+        background: rgba(158, 158, 158, 0.18);
+        color: rgba(158, 158, 158, 0.95);
+        border: 1px solid rgba(158, 158, 158, 0.4);
+    }
+
+    .badge-completo {
+        background: rgba(86, 244, 156, 0.18);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-parcial {
+        background: rgba(255, 193, 7, 0.18);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .badge-nao-preenchido {
+        background: rgba(244, 67, 54, 0.18);
+        color: rgba(244, 67, 54, 0.95);
+        border: 1px solid rgba(244, 67, 54, 0.4);
+    }
+
+    .nome-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .nome-cell__name {
+        font-weight: 500;
+        color: rgba(245, 245, 245, 0.92);
+        line-height: 1.3;
+    }
+
+    .nome-cell__sub {
+        font-size: 0.75rem;
+        color: rgba(245, 245, 245, 0.5);
+        line-height: 1.2;
+    }
+
+    .acoes-cell {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .progresso-bar {
+        width: 140px;
+        height: 7px;
+        background: #2b2f3a;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .progresso-bar__fill {
+        height: 100%;
+        background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%);
+    }
+
+    .progresso-label {
+        font-size: 0.75rem;
+        color: #b9c6e7;
+        margin-top: 2px;
+    }
+
+    .row-dependente td:first-child {
+        padding-left: 24px;
+        border-left: 2px solid rgba(255, 193, 7, 0.25);
+    }
+
+    /* ── MOBILE CARD LAYOUT ────────────────────────────── */
+    .cliente-card {
+        display: none;
+    }
+
+    @media (max-width: 900px) {
         .actions-grid {
             grid-template-columns: 1fr;
             gap: 16px;
@@ -242,10 +378,132 @@
         .filtros-actions {
             flex-direction: column;
         }
+
+        .clientes-table-desktop {
+            display: none;
+        }
+
+        .cliente-card {
+            display: block;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-soft);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .cliente-card.is-dependente {
+            border-left: 3px solid rgba(255, 193, 7, 0.5);
+            margin-left: 16px;
+        }
+
+        .cliente-card__header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .cliente-card__name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: rgba(245, 245, 245, 0.95);
+            line-height: 1.3;
+        }
+
+        .cliente-card__sub {
+            font-size: 0.75rem;
+            color: rgba(245, 245, 245, 0.5);
+            margin-top: 2px;
+        }
+
+        .cliente-card__badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .cliente-card__info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 12px;
+            font-size: 0.82rem;
+            color: rgba(245, 245, 245, 0.65);
+            margin-bottom: 12px;
+        }
+
+        .cliente-card__info span {
+            display: block;
+            color: rgba(245, 245, 245, 0.88);
+        }
+
+        .cliente-card__acoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .processos-table-desktop th:nth-child(3),
+        .processos-table-desktop th:nth-child(5),
+        .processos-table-desktop td:nth-child(3),
+        .processos-table-desktop td:nth-child(5) {
+            display: none;
+        }
+
+        .progresso-bar {
+            width: 100px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .cliente-card__info {
+            grid-template-columns: 1fr;
+        }
     }
 {% endblock %}
 
-{% comment %}Menu lateral definido no base.html{% endcomment %}
+{% block extra_scripts %}
+<style>
+    .clientes-mobile-list { display: none; }
+    .dropdown-item {
+        display: block;
+        padding: 8px 12px;
+        border-radius: 6px;
+        color: var(--text-primary);
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: background 0.15s;
+    }
+    .dropdown-item:hover { background: rgba(86, 244, 156, 0.1); }
+
+    @media (max-width: 900px) {
+        .clientes-table-desktop { display: none !important; }
+        .clientes-mobile-list { display: block; }
+        .processos-table-desktop { display: none !important; }
+        .processos-mobile { display: block !important; }
+    }
+</style>
+<script>
+(function () {
+    document.addEventListener('click', function (e) {
+        const toggle = e.target.closest('.dropdown-toggle');
+        if (toggle) {
+            e.stopPropagation();
+            const id = toggle.dataset.dropdown;
+            const menu = document.getElementById(id);
+            if (!menu) return;
+            const isOpen = menu.style.display === 'block';
+            document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+            menu.style.display = isOpen ? 'none' : 'block';
+            return;
+        }
+        document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+    });
+}());
+</script>
+{% endblock %}
 
 {% block app_header %}
 <section class="page-header">
@@ -327,15 +585,15 @@
 </section>
 {% endif %}
 
-{# Meus Processos - progressos por cliente (visível na home de clientes) #}
+{# Meus Processos #}
 {% if processos %}
-<section class="processos-card" style="margin-top: 32px;">
+<section class="clientes-list-card processos-card" style="margin-top: 32px;">
     <header>
         <h2>Meus Processos</h2>
         <p>Processos vinculados aos seus clientes</p>
     </header>
     <div class="table-wrapper">
-        <table class="clientes-table">
+        <table class="clientes-table processos-table-desktop">
             <thead>
                 <tr>
                     <th>Cliente</th>
@@ -349,32 +607,62 @@
             <tbody>
                 {% for proc in processos %}
                 <tr>
-                    <td>
-                        {{ proc.cliente_nome }}
-                    </td>
+                    <td>{{ proc.cliente_nome }}</td>
                     <td>{{ proc.viagem_str }}</td>
                     <td>{{ proc.pais_destino }}</td>
                     <td>
-                        <div style="width: 180px; height: 8px; background: #2b2f3a; border-radius: 6px; overflow: hidden;">
-                            <div style="width: {{ proc.progresso }}%; height: 100%; background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%);"></div>
+                        <div class="progresso-bar">
+                            <div class="progresso-bar__fill" style="width: {{ proc.progresso }}%;"></div>
                         </div>
-                        <span style="font-size: 0.75rem; color: #b9c6e7;">{{ proc.progresso }}%</span>
+                        <span class="progresso-label">{{ proc.progresso }}%</span>
                     </td>
                     <td>{{ proc.assessor }}</td>
                     <td>
-                        <a href="{% url 'system:visualizar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Visualizar</a>
-                        {% if proc.pode_editar %}
-                            <a href="{% url 'system:editar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Editar</a>
-                            <form method="post" action="{% url 'system:excluir_processo' proc.processo_pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="display: inline;">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-danger btn-small">Excluir</button>
-                            </form>
-                        {% endif %}
+                        <div class="acoes-cell">
+                            <a href="{% url 'system:visualizar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                            {% if proc.pode_editar %}
+                                <a href="{% url 'system:editar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Editar</a>
+                                <form method="post" action="{% url 'system:excluir_processo' proc.processo_pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                </form>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+    {# Mobile: cards de processo #}
+    <div class="processos-mobile" style="display: none;">
+        {% for proc in processos %}
+        <div class="cliente-card">
+            <div class="cliente-card__header">
+                <div>
+                    <div class="cliente-card__name">{{ proc.cliente_nome }}</div>
+                    <div class="cliente-card__sub">{{ proc.viagem_str }}</div>
+                </div>
+                <div class="acoes-cell">
+                    <a href="{% url 'system:visualizar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                    {% if proc.pode_editar %}
+                        <a href="{% url 'system:editar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Editar</a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="cliente-card__info">
+                Progresso
+                <span>
+                    <div class="progresso-bar" style="width:100%; max-width:180px;">
+                        <div class="progresso-bar__fill" style="width: {{ proc.progresso }}%;"></div>
+                    </div>
+                    <span class="progresso-label">{{ proc.progresso }}%</span>
+                </span>
+                Assessor
+                <span>{{ proc.assessor }}</span>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </section>
 {% endif %}
@@ -386,180 +674,195 @@
             <h2>Meus Clientes</h2>
             <p>Clientes vinculados ao seu usuário</p>
         </header>
-        <table class="clientes-table">
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Status</th>
-                    <th>Status Financeiro</th>
-                    <th>Status do Formulário</th>
-                    <th>Parceiro Indicador</th>
-                    <th>Telefone</th>
-                    <th>E-mail</th>
-                    <th style="width:180px;">Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in clientes_com_status %}
-                <tr>
-                    <td>
-                        {{ item.cliente.nome }}
-                        {% if item.cliente.is_dependente %}
-                            <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4); margin-left: 8px;">
-                                Dependente
-                            </span>
-                            {% if item.cliente.cliente_principal %}
-                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
-                                    de {{ item.cliente.cliente_principal.nome }}
-                                </div>
+
+        {# ── DESKTOP TABLE ─────────────────────────────────── #}
+        <div class="table-wrapper">
+            <table class="clientes-table clientes-table-desktop">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Financeiro</th>
+                        <th>Formulário</th>
+                        <th>Parceiro</th>
+                        <th>Telefone</th>
+                        <th>E-mail</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in clientes_com_status %}
+                    <tr {% if item.cliente.is_dependente %}class="row-dependente"{% endif %}>
+                        <td>
+                            <div class="nome-cell">
+                                <span class="nome-cell__name">{{ item.cliente.nome }}</span>
+                                {% if item.cliente.is_dependente %}
+                                    <span class="badge badge-dependente">Dependente</span>
+                                    {% if item.cliente.cliente_principal %}
+                                        <span class="nome-cell__sub">de {{ item.cliente.cliente_principal.nome }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge badge-principal">Principal</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if item.status_financeiro == "Pendente" %}
+                                <span class="badge badge-pendente">Pendente</span>
+                            {% elif item.status_financeiro == "Pago" %}
+                                <span class="badge badge-pago">Pago</span>
+                            {% elif item.status_financeiro == "Cancelado" %}
+                                <span class="badge badge-cancelado">Cancelado</span>
+                            {% else %}
+                                <span class="badge badge-sem">Sem registros</span>
                             {% endif %}
-                        {% else %}
-                            <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4); margin-left: 8px;">
-                                Principal
-                            </span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if item.cliente.is_principal %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
-                                Principal
-                            </span>
-                        {% else %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
-                                Dependente
-                            </span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if item.status_financeiro == "Pendente" %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
-                                Pendente
-                            </span>
-                        {% elif item.status_financeiro == "Pago" %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
-                                Pago
-                            </span>
-                        {% elif item.status_financeiro == "Cancelado" %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(244, 67, 54, 0.2); color: rgba(244, 67, 54, 0.95); border: 1px solid rgba(244, 67, 54, 0.4);">
-                                Cancelado
-                            </span>
-                        {% else %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(158, 158, 158, 0.2); color: rgba(158, 158, 158, 0.95); border: 1px solid rgba(158, 158, 158, 0.4);">
-                                Sem registros
-                            </span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if item.status_formulario == "Completo" %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
-                                ✓ Completo
-                            </span>
-                            {% if item.total_perguntas > 0 %}
-                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
-                                    {{ item.total_respostas }}/{{ item.total_perguntas }} pergunta{{ item.total_perguntas|pluralize }}
-                                </div>
+                        </td>
+                        <td>
+                            {% if item.status_formulario == "Completo" %}
+                                <span class="badge badge-completo">✓ Completo</span>
+                                {% if item.total_perguntas > 0 %}
+                                    <div class="nome-cell__sub" style="margin-top:4px;">{{ item.total_respostas }}/{{ item.total_perguntas }}</div>
+                                {% endif %}
+                            {% elif item.status_formulario == "Parcial" %}
+                                <span class="badge badge-parcial">Parcial</span>
+                                {% if item.total_perguntas > 0 %}
+                                    <div class="nome-cell__sub" style="margin-top:4px;">{{ item.total_respostas }}/{{ item.total_perguntas }}</div>
+                                {% endif %}
+                            {% elif item.status_formulario == "Não preenchido" %}
+                                <span class="badge badge-nao-preenchido">Não preenchido</span>
+                            {% else %}
+                                <span class="badge badge-sem">Sem formulário</span>
                             {% endif %}
-                        {% elif item.status_formulario == "Parcial" %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
-                                Parcial
-                            </span>
-                            {% if item.total_perguntas > 0 %}
-                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
-                                    {{ item.total_respostas }}/{{ item.total_perguntas }} pergunta{{ item.total_perguntas|pluralize }}
-                                </div>
+                        </td>
+                        <td>
+                            {% if item.cliente.parceiro_indicador %}
+                                <span style="font-size:0.82rem;">{{ item.cliente.parceiro_indicador }}</span>
+                            {% else %}
+                                <span style="color:rgba(245,245,245,0.4);">—</span>
                             {% endif %}
-                        {% elif item.status_formulario == "Não preenchido" %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(244, 67, 54, 0.2); color: rgba(244, 67, 54, 0.95); border: 1px solid rgba(244, 67, 54, 0.4);">
-                                Não preenchido
-                            </span>
-                        {% else %}
-                            <span style="display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(158, 158, 158, 0.2); color: rgba(158, 158, 158, 0.95); border: 1px solid rgba(158, 158, 158, 0.4);">
-                                Sem formulário
-                            </span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if item.cliente.parceiro_indicador %}
-                            {{ item.cliente.parceiro_indicador }}
-                        {% else %}
-                            <span style="color: rgba(245, 245, 245, 0.5);">—</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ item.cliente.telefone }}</td>
-                    <td>{{ item.cliente.email }}</td>
-                    <td>
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            {% if item.cliente.is_principal %}
-                                {% with dependentes=item.cliente.dependentes.all %}
-                                    {% if dependentes %}
-                                        <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}{% for dependente in dependentes %},{{ dependente.pk }}{% endfor %}" class="btn btn-primary btn-small" style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); border: none;">
-                                            Criar Viagem
-                                        </a>
-                                    {% else %}
-                                        <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small" style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); border: none;">
-                                            Criar Viagem
-                                        </a>
+                        </td>
+                        <td style="white-space:nowrap;">{{ item.cliente.telefone }}</td>
+                        <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ item.cliente.email|default:"—" }}</td>
+                        <td>
+                            <div class="acoes-cell">
+                                {% if item.cliente.is_principal %}
+                                    {% with deps=item.cliente.dependentes.all %}
+                                        {% if deps %}
+                                            <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}{% for d in deps %},{{ d.pk }}{% endfor %}" class="btn btn-primary btn-small">Criar Viagem</a>
+                                        {% else %}
+                                            <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small">Criar Viagem</a>
+                                        {% endif %}
+                                    {% endwith %}
+                                {% endif %}
+                                {% with viagens=item.cliente.viagens.all %}
+                                    {% if viagens %}
+                                        {% if viagens|length == 1 %}
+                                            {% for v in viagens %}<a href="{% url 'system:visualizar_formulario_cliente' v.pk item.cliente.pk %}" class="btn btn-outline btn-small">Formulário</a>{% endfor %}
+                                        {% else %}
+                                            <div style="position:relative;display:inline-block;">
+                                                <button type="button" class="btn btn-outline btn-small dropdown-toggle" data-dropdown="drop-{{ item.cliente.pk }}">Formulários ▼</button>
+                                                <div id="drop-{{ item.cliente.pk }}" class="dropdown-menu" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--card-bg);border:1px solid var(--border-soft);border-radius:8px;padding:8px;min-width:200px;z-index:1000;box-shadow:0 8px 16px rgba(0,0,0,0.3);">
+                                                    {% for v in viagens %}
+                                                        <a href="{% url 'system:visualizar_formulario_cliente' v.pk item.cliente.pk %}" class="dropdown-item">{{ v.pais_destino.nome }} — {{ v.data_prevista_viagem|date:"d/m/Y" }}</a>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% endif %}
                                     {% endif %}
                                 {% endwith %}
-                            {% endif %}
-                            {% with viagens=item.cliente.viagens.all %}
-                                {% if viagens %}
-                                    {% for viagem in viagens %}
-                                        {% if forloop.first %}
-                                            {% if forloop.last %}
-                                                {# Apenas uma viagem - usar o cliente atual #}
-                                                <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" class="btn btn-outline btn-small">Visualizar Formulário</a>
-                                            {% else %}
-                                                {# Múltiplas viagens - mostrar dropdown #}
-                                                <div style="position: relative; display: inline-block;">
-                                                    <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('viagens-dropdown-{{ item.cliente.pk }}').style.display = document.getElementById('viagens-dropdown-{{ item.cliente.pk }}').style.display === 'block' ? 'none' : 'block'">
-                                                        Visualizar Formulários ▼
-                                                    </button>
-                                                    <div id="viagens-dropdown-{{ item.cliente.pk }}" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; background: var(--card-bg); border: 1px solid var(--border-soft); border-radius: 8px; padding: 8px; min-width: 200px; z-index: 1000; box-shadow: 0 8px 16px rgba(0,0,0,0.3);">
-                                                        <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" style="display: block; padding: 8px 12px; border-radius: 6px; color: var(--text-primary); text-decoration: none; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='rgba(86, 244, 156, 0.1)'" onmouseout="this.style.background='transparent'">
-                                                            {{ viagem.pais_destino.nome }} - {{ viagem.data_prevista_viagem|date:"d/m/Y" }}
-                                                        </a>
-                                            {% endif %}
-                                        {% else %}
-                                            {# Continuar populando o dropdown #}
-                                            <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" style="display: block; padding: 8px 12px; border-radius: 6px; color: var(--text-primary); text-decoration: none; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='rgba(86, 244, 156, 0.1)'" onmouseout="this.style.background='transparent'">
-                                                {{ viagem.pais_destino.nome }} - {{ viagem.data_prevista_viagem|date:"d/m/Y" }}
-                                            </a>
-                                        {% endif %}
-                                        {% if forloop.last and not forloop.first %}
-                                                    </div>
-                                                </div>
-                                        {% endif %}
-                                    {% endfor %}
+                                <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                                {% if item.pode_editar %}
+                                    <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
                                 {% endif %}
-                            {% endwith %}
-                            <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
-                            {% if item.pode_editar %}
-                                <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# ── MOBILE CARDS ──────────────────────────────────── #}
+        <div class="clientes-mobile-list">
+            {% for item in clientes_com_status %}
+            <div class="cliente-card {% if item.cliente.is_dependente %}is-dependente{% endif %}">
+                <div class="cliente-card__header">
+                    <div>
+                        <div class="cliente-card__name">{{ item.cliente.nome }}</div>
+                        {% if item.cliente.is_dependente and item.cliente.cliente_principal %}
+                            <div class="cliente-card__sub">Dependente de {{ item.cliente.cliente_principal.nome }}</div>
+                        {% endif %}
+                    </div>
+                    {% if item.cliente.is_dependente %}
+                        <span class="badge badge-dependente">Dependente</span>
+                    {% else %}
+                        <span class="badge badge-principal">Principal</span>
+                    {% endif %}
+                </div>
+                <div class="cliente-card__badges">
+                    {% if item.status_financeiro == "Pendente" %}
+                        <span class="badge badge-pendente">Pendente</span>
+                    {% elif item.status_financeiro == "Pago" %}
+                        <span class="badge badge-pago">Pago</span>
+                    {% elif item.status_financeiro == "Cancelado" %}
+                        <span class="badge badge-cancelado">Cancelado</span>
+                    {% else %}
+                        <span class="badge badge-sem">Sem financeiro</span>
+                    {% endif %}
+                    {% if item.status_formulario == "Completo" %}
+                        <span class="badge badge-completo">✓ Completo {% if item.total_perguntas > 0 %}({{ item.total_respostas }}/{{ item.total_perguntas }}){% endif %}</span>
+                    {% elif item.status_formulario == "Parcial" %}
+                        <span class="badge badge-parcial">Parcial {% if item.total_perguntas > 0 %}({{ item.total_respostas }}/{{ item.total_perguntas }}){% endif %}</span>
+                    {% elif item.status_formulario == "Não preenchido" %}
+                        <span class="badge badge-nao-preenchido">Não preenchido</span>
+                    {% else %}
+                        <span class="badge badge-sem">Sem formulário</span>
+                    {% endif %}
+                </div>
+                <div class="cliente-card__info">
+                    Telefone <span>{{ item.cliente.telefone }}</span>
+                    {% if item.cliente.email %}E-mail <span>{{ item.cliente.email }}</span>{% endif %}
+                    {% if item.cliente.parceiro_indicador %}Parceiro <span>{{ item.cliente.parceiro_indicador }}</span>{% endif %}
+                </div>
+                <div class="cliente-card__acoes">
+                    {% if item.cliente.is_principal %}
+                        {% with deps=item.cliente.dependentes.all %}
+                            {% if deps %}
+                                <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}{% for d in deps %},{{ d.pk }}{% endfor %}" class="btn btn-primary btn-small">Criar Viagem</a>
+                            {% else %}
+                                <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small">Criar Viagem</a>
                             {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        {% endwith %}
+                    {% endif %}
+                    {% with viagens=item.cliente.viagens.all %}
+                        {% if viagens %}
+                            {% if viagens|length == 1 %}
+                                {% for v in viagens %}<a href="{% url 'system:visualizar_formulario_cliente' v.pk item.cliente.pk %}" class="btn btn-outline btn-small">Formulário</a>{% endfor %}
+                            {% else %}
+                                <div style="position:relative;display:inline-block;">
+                                    <button type="button" class="btn btn-outline btn-small dropdown-toggle" data-dropdown="dropm-{{ item.cliente.pk }}">Formulários ▼</button>
+                                    <div id="dropm-{{ item.cliente.pk }}" class="dropdown-menu" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--card-bg);border:1px solid var(--border-soft);border-radius:8px;padding:8px;min-width:200px;z-index:1000;box-shadow:0 8px 16px rgba(0,0,0,0.3);">
+                                        {% for v in viagens %}
+                                            <a href="{% url 'system:visualizar_formulario_cliente' v.pk item.cliente.pk %}" class="dropdown-item">{{ v.pais_destino.nome }} — {{ v.data_prevista_viagem|date:"d/m/Y" }}</a>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    {% endwith %}
+                    <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                    {% if item.pode_editar %}
+                        <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
         {% if total_clientes > 10 %}
-        <div style="margin-top: 20px; text-align: center;">
+        <div style="margin-top:20px;text-align:center;">
             <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline">Ver todos os clientes</a>
         </div>
         {% endif %}
-<script>
-// Fechar dropdowns ao clicar fora
-document.addEventListener('click', function(event) {
-    const dropdowns = document.querySelectorAll('[id^="viagens-dropdown-"]');
-    dropdowns.forEach(function(dropdown) {
-        const button = dropdown.previousElementSibling;
-        if (button && !button.contains(event.target) && !dropdown.contains(event.target)) {
-            dropdown.style.display = 'none';
-        }
-    });
-});
-</script>
     </article>
 </section>
 {% else %}

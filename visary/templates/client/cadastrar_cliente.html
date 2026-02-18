@@ -321,7 +321,7 @@
             {% endif %}
         </header>
         {% if etapa_atual.campo_booleano == 'etapa_membros' and cliente and form_dependente %}
-        <div id="email-cliente-principal-data" data-email="{{ cliente.email|default:''|escapejs }}" style="display:none" aria-hidden="true"></div>
+        <div id="senha-cliente-principal-data" data-tem-senha="{{ cliente.senha|yesno:'true,false' }}" style="display:none" aria-hidden="true"></div>
         <div style="margin-bottom: 32px; padding: 24px; background: rgba(86, 244, 156, 0.1); border: 1px solid rgba(86, 244, 156, 0.3); border-radius: 12px;">
             <h3 style="margin: 0 0 16px 0; font-size: 1.2rem; color: rgba(86, 244, 156, 0.95);">Adicionar Membros (Dependentes)</h3>
 
@@ -335,8 +335,8 @@
                     <div style="padding: 12px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <strong>{{ dependente.nome|default:"Sem nome" }}</strong>
-                            {% if dependente.email %}
-                                <br><span style="font-size: 0.85rem; color: var(--text-secondary);">{{ dependente.email }}</span>
+                            {% if dependente.cpf %}
+                                <br><span style="font-size: 0.85rem; color: var(--text-secondary);">CPF: {{ dependente.cpf }}</span>
                             {% endif %}
                         </div>
                         <div style="display: flex; gap: 8px;">
@@ -379,23 +379,22 @@
                         {% if editando_dependente %}Editar Dependente{% else %}Novo Dependente{% endif %}
                     </h4>
 
-                    {% with email_field=form_dependente|get_form_field:'email' %}
-                        {% if email_field and cliente.email %}
-                        {% with usar_dados_post=request.POST.usar_dados_cliente_principal|default:"" %}
-                        {% with usar_dados_editando=dependente_editando_dados.usar_dados_cliente_principal|default:False %}
-                        <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
-                                <input type="checkbox" id="usar-dados-cliente-principal" name="usar_dados_cliente_principal" {% if usar_dados_post == 'on' or usar_dados_editando %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
-                                <span style="color: var(--text-primary); font-weight: 500;">Usar email e senha do cliente principal</span>
-                            </label>
-                            <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
-                                O dependente usará o mesmo email ({{ cliente.email }}) e senha do cliente principal para login.
-                            </p>
-                        </div>
-                        {% endwith %}
-                        {% endwith %}
-                        {% endif %}
+                    {% with usar_dados_post=request.POST.usar_dados_cliente_principal|default:"" %}
+                    {% with usar_dados_editando=dependente_editando_dados.usar_dados_cliente_principal|default:False %}
+                    {% if cliente %}
+                    <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                            <input type="checkbox" id="usar-dados-cliente-principal" name="usar_dados_cliente_principal" {% if usar_dados_post == 'on' or usar_dados_editando %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                            <span style="color: var(--text-primary); font-weight: 500;">Usar a mesma senha do titular</span>
+                        </label>
+                        <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
+                            O dependente usará a mesma senha do cliente principal para acessar o sistema.
+                        </p>
+                    </div>
+                    {% endif %}
                     {% endwith %}
+                    {% endwith %}
+
 
                     {% for etapa_dep in etapas_dependente %}
                         <div class="{% if not forloop.first %}cadastro-margin-top-24{% endif %}">
@@ -558,58 +557,26 @@
 
             var checkboxUsarDados = document.getElementById('usar-dados-cliente-principal');
             if (checkboxUsarDados) {
-                var emailField = document.querySelector('#email-dependente-container input[name="email"]');
                 var senhaField = document.querySelector('#senha-dependente-container input[name="senha"]');
                 var confirmarSenhaField = document.querySelector('#senha-dependente-container input[name="confirmar_senha"]');
                 var senhaContainer = document.getElementById('senha-dependente-container');
-                var emailClientePrincipalEl = document.getElementById('email-cliente-principal-data');
-                var emailClientePrincipal = emailClientePrincipalEl ? (emailClientePrincipalEl.getAttribute('data-email') || '') : '';
 
                 function toggleUsarDadosCliente() {
                     const usarDados = checkboxUsarDados.checked;
 
-                    if (usarDados && emailClientePrincipal) {
-                        if (emailField) {
-                            emailField.value = emailClientePrincipal;
-                            emailField.readOnly = true;
-                            emailField.style.backgroundColor = 'rgba(86, 244, 156, 0.1)';
-                            emailField.style.cursor = 'not-allowed';
-                        }
-                        if (senhaContainer) {
-                            senhaContainer.style.display = 'none';
-                        }
-                        if (senhaField) {
-                            senhaField.required = false;
-                            senhaField.value = '';
-                        }
-                        if (confirmarSenhaField) {
-                            confirmarSenhaField.required = false;
-                            confirmarSenhaField.value = '';
-                        }
+                    if (usarDados) {
+                        if (senhaContainer) senhaContainer.style.display = 'none';
+                        if (senhaField) { senhaField.required = false; senhaField.value = ''; }
+                        if (confirmarSenhaField) { confirmarSenhaField.required = false; confirmarSenhaField.value = ''; }
                     } else {
-                        if (emailField) {
-                            emailField.value = '';
-                            emailField.readOnly = false;
-                            emailField.style.backgroundColor = '';
-                            emailField.style.cursor = '';
-                            emailField.required = true;
-                        }
-                        if (senhaContainer) {
-                            senhaContainer.style.display = '';
-                        }
-                        if (senhaField) {
-                            senhaField.required = true;
-                        }
-                        if (confirmarSenhaField) {
-                            confirmarSenhaField.required = true;
-                        }
+                        if (senhaContainer) senhaContainer.style.display = '';
+                        if (senhaField) senhaField.required = true;
+                        if (confirmarSenhaField) confirmarSenhaField.required = true;
                     }
                 }
 
                 checkboxUsarDados.addEventListener('change', toggleUsarDadosCliente);
-                if (checkboxUsarDados.checked) {
-                    toggleUsarDadosCliente();
-                }
+                if (checkboxUsarDados.checked) toggleUsarDadosCliente();
             }
         })();
         </script>
@@ -818,22 +785,20 @@
                             {% if editando_dependente %}Editar Dependente{% else %}Novo Dependente{% endif %}
                         </h4>
 
-                        {% with email_field=form_dependente|get_form_field:'email' %}
-                            {% if email_field and cliente.email %}
-                            {% with usar_dados_post=request.POST.usar_dados_cliente_principal|default:"" %}
-                            {% with usar_dados_editando=dependente_editando_dados.usar_dados_cliente_principal|default:False %}
-                            <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
-                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
-                                    <input type="checkbox" id="usar-dados-cliente-principal" name="usar_dados_cliente_principal" {% if usar_dados_post == 'on' or usar_dados_editando %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
-                                    <span style="color: var(--text-primary); font-weight: 500;">Usar email e senha do cliente principal</span>
-                                </label>
-                                <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
-                                    O dependente usará o mesmo email ({{ cliente.email }}) e senha do cliente principal para login.
-                                </p>
-                            </div>
-                            {% endwith %}
-                            {% endwith %}
-                            {% endif %}
+                        {% with usar_dados_post=request.POST.usar_dados_cliente_principal|default:"" %}
+                        {% with usar_dados_editando=dependente_editando_dados.usar_dados_cliente_principal|default:False %}
+                        {% if cliente %}
+                        <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                <input type="checkbox" id="usar-dados-cliente-principal" name="usar_dados_cliente_principal" {% if usar_dados_post == 'on' or usar_dados_editando %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
+                                <span style="color: var(--text-primary); font-weight: 500;">Usar a mesma senha do titular</span>
+                            </label>
+                            <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
+                                O dependente usará a mesma senha do cliente principal para acessar o sistema.
+                            </p>
+                        </div>
+                        {% endif %}
+                        {% endwith %}
                         {% endwith %}
 
                         {% for etapa_dep in etapas_dependente %}
@@ -997,58 +962,26 @@
 
                     var checkboxUsarDados = document.getElementById('usar-dados-cliente-principal');
                     if (checkboxUsarDados) {
-                        var emailField = document.querySelector('#email-dependente-container input[name="email"]');
                         var senhaField = document.querySelector('#senha-dependente-container input[name="senha"]');
                         var confirmarSenhaField = document.querySelector('#senha-dependente-container input[name="confirmar_senha"]');
                         var senhaContainer = document.getElementById('senha-dependente-container');
-                        var emailClientePrincipalEl = document.getElementById('email-cliente-principal-data');
-                        var emailClientePrincipal = emailClientePrincipalEl ? (emailClientePrincipalEl.getAttribute('data-email') || '') : '';
 
                     function toggleUsarDadosCliente() {
                         const usarDados = checkboxUsarDados.checked;
 
-                        if (usarDados && emailClientePrincipal) {
-                            if (emailField) {
-                                emailField.value = emailClientePrincipal;
-                                emailField.readOnly = true;
-                                emailField.style.backgroundColor = 'rgba(86, 244, 156, 0.1)';
-                                emailField.style.cursor = 'not-allowed';
-                            }
-                            if (senhaContainer) {
-                                senhaContainer.style.display = 'none';
-                            }
-                            if (senhaField) {
-                                senhaField.required = false;
-                                senhaField.value = '';
-                            }
-                            if (confirmarSenhaField) {
-                                confirmarSenhaField.required = false;
-                                confirmarSenhaField.value = '';
-                            }
+                        if (usarDados) {
+                            if (senhaContainer) senhaContainer.style.display = 'none';
+                            if (senhaField) { senhaField.required = false; senhaField.value = ''; }
+                            if (confirmarSenhaField) { confirmarSenhaField.required = false; confirmarSenhaField.value = ''; }
                         } else {
-                            if (emailField) {
-                                emailField.value = '';
-                                emailField.readOnly = false;
-                                emailField.style.backgroundColor = '';
-                                emailField.style.cursor = '';
-                                emailField.required = true;
-                            }
-                            if (senhaContainer) {
-                                senhaContainer.style.display = '';
-                            }
-                            if (senhaField) {
-                                senhaField.required = true;
-                            }
-                            if (confirmarSenhaField) {
-                                confirmarSenhaField.required = true;
-                            }
+                            if (senhaContainer) senhaContainer.style.display = '';
+                            if (senhaField) senhaField.required = true;
+                            if (confirmarSenhaField) confirmarSenhaField.required = true;
                         }
                     }
 
                     checkboxUsarDados.addEventListener('change', toggleUsarDadosCliente);
-                    if (checkboxUsarDados.checked) {
-                        toggleUsarDadosCliente();
-                    }
+                    if (checkboxUsarDados.checked) toggleUsarDadosCliente();
                 }
             })();
             </script>

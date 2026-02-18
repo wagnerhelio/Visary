@@ -145,6 +145,7 @@ class PartnerClientesIndicadosTest(TestCase):
         cls.cliente1 = ClienteConsultoria.objects.create(
             assessor_responsavel=cls.consultor,
             nome="Cliente Indicado 1",
+            cpf="365.481.380-60",
             data_nascimento=datetime.date(1990, 1, 1),
             nacionalidade="Brasileiro",
             telefone="(11) 91111-1111",
@@ -156,6 +157,7 @@ class PartnerClientesIndicadosTest(TestCase):
         cls.cliente2 = ClienteConsultoria.objects.create(
             assessor_responsavel=cls.consultor,
             nome="Cliente Indicado 2",
+            cpf="073.374.310-71",
             data_nascimento=datetime.date(1992, 2, 2),
             nacionalidade="Brasileiro",
             telefone="(11) 92222-2222",

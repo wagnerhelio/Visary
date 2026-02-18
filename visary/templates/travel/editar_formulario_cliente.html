@@ -171,15 +171,6 @@
         {% endif %}
     </div>
 </div>
-
-{% if messages %}
-    <ul class="messages">
-        {% for message in messages %}
-            <li class="{{ message.tags }}">{{ message }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
 <div class="formulario-card">
     <form method="post" action="{% url 'system:editar_formulario_cliente' viagem.pk cliente.pk %}" novalidate>
         {% csrf_token %}
