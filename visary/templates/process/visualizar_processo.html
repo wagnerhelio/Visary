@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -55,7 +56,7 @@
         opacity: 0.8;
     }
 
-    /* Checklist de Etapas */
+    
     .checklist-etapas {
         display: grid;
         gap: 16px;
@@ -213,6 +214,8 @@
             grid-template-columns: 1fr;
         }
     }
+
+    </style>
 {% endblock %}
 
 {% block app_header %}
@@ -232,7 +235,7 @@
 
 {% block app_content %}
 <section class="layout-grid">
-    <!-- Informações do Processo -->
+    
     <article class="card">
         <header style="margin-bottom: 24px;">
             <h2>Informações do Processo</h2>
@@ -300,7 +303,7 @@
         </div>
     </article>
 
-    <!-- Etapas do Processo -->
+    
     <article class="card">
         <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <div>

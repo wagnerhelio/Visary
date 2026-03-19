@@ -8,7 +8,7 @@ from django.utils.text import slugify
 class ConsultancyViewsTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        # Minimal security setup
+                                
         mod = Modulo.objects.create(nome="Test Modulo", slug=slugify("Test Modulo"))
         perfil = Perfil.objects.create(nome="Administrador", descricao="test", ativo=True)
         cls.user = UsuarioConsultoria.objects.create(

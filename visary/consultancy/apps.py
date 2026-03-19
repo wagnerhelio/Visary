@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models, transaction
+from django.db.utils import OperationalError
 from django.db.models.signals import m2m_changed, post_migrate, post_save
 from django.dispatch import receiver
 
@@ -30,7 +31,7 @@ def _get_models():
 
 
 def _atualizar_campos(instancia, valores):
-    """Atualiza campos de uma instância se os valores forem diferentes."""
+                                                                          
     campos_em_mudanca = [
         campo for campo, valor in valores.items() if getattr(instancia, campo) != valor
     ]
@@ -42,8 +43,8 @@ def _atualizar_campos(instancia, valores):
 
 
 def _ensure_paises_destino(PaisDestino, User, paises_definitions):
-    """Garante que os países de destino estejam cadastrados."""
-    # Buscar ou criar um usuário admin para ser o criador
+                                                               
+                                                         
     admin_user, _ = User.objects.get_or_create(
         username="admin",
         defaults={
@@ -81,8 +82,8 @@ def _ensure_paises_destino(PaisDestino, User, paises_definitions):
 
 
 def _ensure_tipos_visto(TipoVisto, User, paises_por_nome, tipos_visto_definitions):
-    """Garante que os tipos de visto estejam cadastrados."""
-    # Buscar ou criar um usuário admin para ser o criador
+                                                            
+                                                         
     admin_user, _ = User.objects.get_or_create(
         username="admin",
         defaults={
@@ -100,7 +101,7 @@ def _ensure_tipos_visto(TipoVisto, User, paises_por_nome, tipos_visto_definition
     for definicao in tipos_visto_definitions:
         pais_nome = definicao["pais"]
         if pais_nome not in paises_por_nome:
-            continue  # Pular se o país não existir
+            continue                               
 
         pais = paises_por_nome[pais_nome]
         defaults = {
@@ -121,17 +122,17 @@ def _ensure_tipos_visto(TipoVisto, User, paises_por_nome, tipos_visto_definition
                     "ativo": definicao.get("ativo", True),
                 },
             )
-        # Armazenar tipo de visto por nome para uso posterior
+                                                             
         tipos_visto_por_nome[definicao["nome"]] = tipo_visto
     return tipos_visto_por_nome
 
 
 def _load_paises_definitions():
-    """Carrega países de destino a partir de variável de ambiente."""
+                                                                     
     raw = os.environ.get("CONSULTANCY_SEED_PAISES")
     
     if not raw:
-        # Retorna lista vazia se não houver variável de ambiente
+                                                                
         return []
     
     try:
@@ -157,11 +158,11 @@ def _load_paises_definitions():
 
 
 def _load_tipos_visto_definitions():
-    """Carrega tipos de visto a partir de variável de ambiente."""
+                                                                  
     raw = os.environ.get("CONSULTANCY_SEED_TIPOS_VISTO")
     
     if not raw:
-        # Retorna lista vazia se não houver variável de ambiente
+                                                                
         return []
     
     try:
@@ -187,8 +188,8 @@ def _load_tipos_visto_definitions():
 
 
 def _ensure_partners(Partner, User, partners_definitions):
-    """Garante que os parceiros estejam cadastrados."""
-    # Buscar ou criar um usuário admin para ser o criador
+                                                       
+                                                         
     admin_user, _ = User.objects.get_or_create(
         username="admin",
         defaults={
@@ -216,20 +217,20 @@ def _ensure_partners(Partner, User, partners_definitions):
             "criado_por": admin_user,
             "ativo": definicao.get("ativo", True),
         }
-        # Definir senha antes de criar
+                                      
         from django.contrib.auth.hashers import make_password
         senha = definicao.get("senha")
         if senha:
             defaults["senha"] = make_password(senha)
         else:
-            # Senha padrão se não fornecida
+                                           
             defaults["senha"] = make_password("parceiro123")
         
         partner, created = Partner.objects.get_or_create(
             email=definicao["email"], defaults=defaults
         )
         if not created:
-            # Atualizar campos se necessário
+                                            
             _atualizar_campos(
                 partner,
                 {
@@ -244,18 +245,18 @@ def _ensure_partners(Partner, User, partners_definitions):
                     "ativo": definicao.get("ativo", True),
                 },
             )
-            # Atualizar senha se fornecida
+                                          
             if senha := definicao.get("senha"):
                 partner.set_password(senha)
                 partner.save()
 
 
 def _load_partners_definitions():
-    """Carrega parceiros a partir de variável de ambiente."""
+                                                             
     raw = os.environ.get("CONSULTANCY_SEED_PARTNERS")
     
     if not raw:
-        # Retorna lista vazia se não houver variável de ambiente
+                                                                
         return []
     
     try:
@@ -281,19 +282,19 @@ def _load_partners_definitions():
 
 
 def _ensure_status_processo(StatusProcesso, TipoVisto, tipos_visto_por_nome, status_definitions):
-    """Garante que os status de processos estejam cadastrados."""
+                                                                 
     for definicao in status_definitions:
         tipo_visto_nome = definicao.get("tipo_visto")
         tipo_visto = None
         
-        # Se tipo_visto foi fornecido, buscar o objeto correspondente
+                                                                     
         if tipo_visto_nome:
             tipo_visto = tipos_visto_por_nome.get(tipo_visto_nome)
-            # Se o tipo de visto não existir, pular este status
+                                                               
             if not tipo_visto:
                 continue
         
-        # Usar nome como chave única (sem tipo_visto) para evitar duplicatas
+                                                                            
         defaults = {
             "tipo_visto": tipo_visto,
             "nome": definicao["nome"],
@@ -301,7 +302,7 @@ def _ensure_status_processo(StatusProcesso, TipoVisto, tipos_visto_por_nome, sta
             "ordem": definicao.get("ordem", 0),
             "ativo": definicao.get("ativo", True),
         }
-        # Buscar por nome apenas (permitindo que o mesmo nome seja usado para diferentes tipos ou geral)
+                                                                                                        
         status, created = StatusProcesso.objects.get_or_create(
             nome=definicao["nome"],
             tipo_visto=tipo_visto,
@@ -320,11 +321,11 @@ def _ensure_status_processo(StatusProcesso, TipoVisto, tipos_visto_por_nome, sta
 
 
 def _load_status_processo_definitions():
-    """Carrega status de processos a partir de variável de ambiente."""
+                                                                       
     raw = os.environ.get("CONSULTANCY_SEED_STATUS_PROCESSO")
     
     if not raw:
-        # Retorna lista vazia se não houver variável de ambiente
+                                                                
         return []
     
     try:
@@ -342,7 +343,7 @@ def _load_status_processo_definitions():
                 raise ImproperlyConfigured(
                     f"CONSULTANCY_SEED_STATUS_PROCESSO posição {posicao} sem campos: {', '.join(sorted(campos_ausentes))}."
                 )
-            # tipo_visto é opcional - se não fornecido, o status será geral (disponível para todos)
+                                                                                                   
         return status_list
     except json.JSONDecodeError as exc:
         raise ImproperlyConfigured(
@@ -351,10 +352,10 @@ def _load_status_processo_definitions():
 
 
 def _load_formularios_definitions():
-    """Carrega formulários a partir de variável de ambiente ou arquivos JSON em forms_ini."""
+                                                                                             
     formularios = []
     
-    # Primeiro, tenta carregar da variável de ambiente
+                                                      
     raw = os.environ.get("CONSULTANCY_SEED_FORMULARIOS")
     if raw:
         with suppress(json.JSONDecodeError):
@@ -362,9 +363,9 @@ def _load_formularios_definitions():
             if isinstance(formularios_env, list):
                 formularios.extend(formularios_env)
     
-    # Carrega arquivos JSON do diretório forms_ini
+                                                  
     with suppress(Exception):
-        # Caminho para o diretório forms_ini (relativo ao diretório static)
+                                                                           
         base_dir = Path(settings.BASE_DIR)
         forms_ini_dir = base_dir / "static" / "forms_ini"
         
@@ -376,10 +377,10 @@ def _load_formularios_definitions():
                         if isinstance(dados, list):
                             formularios.extend(dados)
                         elif isinstance(dados, dict) and "tipo_visto" in dados:
-                            # Se for um único objeto, adiciona como lista
+                                                                         
                             formularios.append(dados)
     
-    # Valida os formulários carregados
+                                      
     campos_obrigatorios = {"tipo_visto", "perguntas"}
     for posicao, definicao in enumerate(formularios, start=1):
         if not isinstance(definicao, dict):
@@ -390,7 +391,7 @@ def _load_formularios_definitions():
             raise ImproperlyConfigured(
                 f"Formulário posição {posicao} sem campos: {', '.join(sorted(campos_ausentes))}."
             )
-        # Validar perguntas
+                           
         if not isinstance(definicao["perguntas"], list):
             raise ImproperlyConfigured(
                 f"Formulário posição {posicao}: 'perguntas' deve ser uma lista."
@@ -410,7 +411,7 @@ def _load_formularios_definitions():
 
 
 def _carregar_etapas_do_env() -> list:
-    """Carrega etapas de cadastro de cliente da variável de ambiente."""
+                                                                        
     etapas = []
     if raw := os.environ.get("CONSULTANCY_SEED_ETAPAS_CLIENTE"):
         with suppress(json.JSONDecodeError):
@@ -421,7 +422,7 @@ def _carregar_etapas_do_env() -> list:
 
 
 def _carregar_etapas_de_arquivos() -> list:
-    """Carrega etapas de cadastro de cliente de arquivos JSON."""
+                                                                 
     etapas = []
     base_dir = Path(settings.BASE_DIR)
     etapas_ini_dir = base_dir / "static" / "etapas_cliente_ini"
@@ -444,7 +445,7 @@ def _carregar_etapas_de_arquivos() -> list:
 
 
 def _validar_campo_etapa(campo: dict, posicao_etapa: int, idx_campo: int):
-    """Valida um campo individual de uma etapa."""
+                                                  
     if not isinstance(campo, dict):
         raise ImproperlyConfigured(
             f"Etapa posição {posicao_etapa}, campo {idx_campo} deve ser um objeto JSON."
@@ -457,7 +458,7 @@ def _validar_campo_etapa(campo: dict, posicao_etapa: int, idx_campo: int):
 
 
 def _validar_etapas(etapas: list):
-    """Valida todas as etapas e seus campos."""
+                                               
     campos_obrigatorios = {"nome", "ordem"}
     for posicao, definicao in enumerate(etapas, start=1):
         if not isinstance(definicao, dict):
@@ -478,7 +479,7 @@ def _validar_etapas(etapas: list):
 
 
 def _load_etapas_cliente_definitions():
-    """Carrega etapas de cadastro de cliente a partir de variável de ambiente ou arquivos JSON em etapas_cliente_ini."""
+                                                                                                                        
     etapas = []
     etapas.extend(_carregar_etapas_do_env())
     
@@ -492,8 +493,8 @@ def _load_etapas_cliente_definitions():
 
 
 def _ensure_etapas_cliente(EtapaCadastroCliente, CampoEtapaCliente, User, etapas_definitions):
-    """Garante que as etapas de cadastro de cliente e seus campos estejam cadastrados."""
-    # Buscar ou criar um usuário admin para ser o criador
+                                                                                         
+                                                         
     admin_user, _ = User.objects.get_or_create(
         username="admin",
         defaults={
@@ -530,7 +531,7 @@ def _ensure_etapas_cliente(EtapaCadastroCliente, CampoEtapaCliente, User, etapas
                 },
             )
         
-        # Criar ou atualizar campos da etapa
+                                            
         for campo_def in definicao.get("campos", []):
             defaults_campo = {
                 "etapa": etapa,
@@ -558,17 +559,17 @@ def _ensure_etapas_cliente(EtapaCadastroCliente, CampoEtapaCliente, User, etapas
 
 
 def _ensure_formularios(FormularioVisto, PerguntaFormulario, OpcaoSelecao, TipoVisto, tipos_visto_por_nome, formularios_definitions):
-    """Garante que os formulários e perguntas estejam cadastrados."""
+                                                                     
     for definicao in formularios_definitions:
         tipo_visto_nome = definicao.get("tipo_visto")
         if not tipo_visto_nome:
-            continue  # Pular se não houver tipo_visto definido
+            continue                                           
         
         tipo_visto = tipos_visto_por_nome.get(tipo_visto_nome)
         if not tipo_visto:
-            continue  # Pular se o tipo de visto não existir
+            continue                                        
         
-        # Criar ou atualizar formulário
+                                       
         formulario, created = FormularioVisto.objects.get_or_create(
             tipo_visto=tipo_visto,
             defaults={"ativo": True}
@@ -577,7 +578,7 @@ def _ensure_formularios(FormularioVisto, PerguntaFormulario, OpcaoSelecao, TipoV
             formulario.ativo = True
             formulario.save()
         
-        # Criar ou atualizar perguntas
+                                      
         for pergunta_def in definicao.get("perguntas", []):
             defaults = {
                 "formulario": formulario,
@@ -603,7 +604,7 @@ def _ensure_formularios(FormularioVisto, PerguntaFormulario, OpcaoSelecao, TipoV
                     },
                 )
             
-            # Se for tipo "selecao", criar opções
+                                                 
             if pergunta_def["tipo_campo"] == "selecao" and "opcoes" in pergunta_def:
                 opcoes_list = pergunta_def["opcoes"]
                 if isinstance(opcoes_list, list):
@@ -627,14 +628,14 @@ def _ensure_formularios(FormularioVisto, PerguntaFormulario, OpcaoSelecao, TipoV
 
 
 def ensure_initial_consultancy_data(sender, **kwargs):
-    """Garante que os dados iniciais de países, tipos de visto, parceiros, status de processos e formulários estejam cadastrados."""
+                                                                                                                                    
     if sender.name != "consultancy":
         return
 
     try:
         PaisDestino, TipoVisto, Partner, StatusProcesso, FormularioVisto, PerguntaFormulario, OpcaoSelecao, EtapaCadastroCliente, CampoEtapaCliente, User = _get_models()
     except LookupError:
-        # Modelos ainda não foram criados
+                                         
         return
 
     paises_definitions = _load_paises_definitions()
@@ -647,51 +648,58 @@ def ensure_initial_consultancy_data(sender, **kwargs):
     if not paises_definitions and not status_processo_definitions and not formularios_definitions and not etapas_cliente_definitions and not partners_definitions:
         return
 
-    with transaction.atomic():
-        tipos_visto_por_nome = {}
-        if paises_definitions:
-            paises_por_nome = _ensure_paises_destino(PaisDestino, User, paises_definitions)
-            if tipos_visto_definitions:
-                tipos_visto_por_nome = _ensure_tipos_visto(
-                    TipoVisto, User, paises_por_nome, tipos_visto_definitions
-                )
-        
-        # Se tipos_visto_por_nome estiver vazio mas precisamos criar formulários,
-        # buscar tipos de visto existentes no banco
-        if formularios_definitions and not tipos_visto_por_nome:
-            tipos_visto_existentes = TipoVisto.objects.all()
-            tipos_visto_por_nome = {tipo.nome: tipo for tipo in tipos_visto_existentes}
-        
-        if partners_definitions:
-            _ensure_partners(Partner, User, partners_definitions)
-        if status_processo_definitions:
-            _ensure_status_processo(StatusProcesso, TipoVisto, tipos_visto_por_nome, status_processo_definitions)
-        if formularios_definitions:
-            _ensure_formularios(FormularioVisto, PerguntaFormulario, OpcaoSelecao, TipoVisto, tipos_visto_por_nome, formularios_definitions)
-        if etapas_cliente_definitions:
-            _ensure_etapas_cliente(EtapaCadastroCliente, CampoEtapaCliente, User, etapas_cliente_definitions)
+    try:
+        with transaction.atomic():
+            tipos_visto_por_nome = {}
+            if paises_definitions:
+                paises_por_nome = _ensure_paises_destino(PaisDestino, User, paises_definitions)
+                if tipos_visto_definitions:
+                    tipos_visto_por_nome = _ensure_tipos_visto(
+                        TipoVisto, User, paises_por_nome, tipos_visto_definitions
+                    )
+            
+                                                                                 
+                                                       
+            if formularios_definitions and not tipos_visto_por_nome:
+                tipos_visto_existentes = TipoVisto.objects.all()
+                tipos_visto_por_nome = {tipo.nome: tipo for tipo in tipos_visto_definitions}
+            
+            if partners_definitions:
+                _ensure_partners(Partner, User, partners_definitions)
+            if status_processo_definitions:
+                _ensure_status_processo(StatusProcesso, TipoVisto, tipos_visto_por_nome, status_processo_definitions)
+            if formularios_definitions:
+                _ensure_formularios(FormularioVisto, PerguntaFormulario, OpcaoSelecao, TipoVisto, tipos_visto_por_nome, formularios_definitions)
+            if etapas_cliente_definitions:
+                _ensure_etapas_cliente(EtapaCadastroCliente, CampoEtapaCliente, User, etapas_cliente_definitions)
+    except OperationalError:
+                                                                                
+                                                                              
+                                                                          
+        logger.warning("Falha ao garantir dados iniciais (tabelas ainda não prontas).")
+        return
 
 
 def _criar_registros_financeiros_para_viagem(viagem):
-    """Cria registros financeiros para uma viagem."""
+                                                     
     Financeiro = django_apps.get_model("consultancy", "Financeiro")
     
     if viagem.valor_assessoria <= 0:
         return
     
-    # Verificar se já existem registros para esta viagem
+                                                        
     registros_existentes = Financeiro.objects.filter(viagem=viagem)
     clientes_com_registro = set(registros_existentes.exclude(cliente=None).values_list("cliente_id", flat=True))
     
-    # IMPORTANTE: Usar select_related para garantir que cliente_principal está carregado
-    # Isso permite que is_principal funcione corretamente
+                                                                                        
+                                                         
     clientes = viagem.clientes.select_related('cliente_principal').all()
     
     if clientes.exists():
-        # Se houver clientes, REMOVER qualquer registro sem cliente que possa ter sido criado anteriormente
+                                                                                                           
         registros_existentes.filter(cliente=None).delete()
         
-        # Separar clientes principais e dependentes
+                                                   
         cliente_principal = None
         dependentes = []
         
@@ -701,8 +709,8 @@ def _criar_registros_financeiros_para_viagem(viagem):
             else:
                 dependentes.append(cliente)
         
-        # Se houver cliente principal na viagem, criar registro apenas para ele
-        # (dependentes não devem ter registro financeiro separado)
+                                                                               
+                                                                  
         if cliente_principal:
             if cliente_principal.pk not in clientes_com_registro:
                 Financeiro.objects.create(
@@ -714,8 +722,8 @@ def _criar_registros_financeiros_para_viagem(viagem):
                     criado_por=viagem.criado_por,
                 )
         elif dependentes:
-            # Se não houver cliente principal mas houver dependentes, 
-            # criar registro para o cliente principal do primeiro dependente
+                                                                      
+                                                                            
             primeiro_dependente = dependentes[0]
             if primeiro_dependente.cliente_principal:
                 cliente_principal_do_grupo = primeiro_dependente.cliente_principal
@@ -729,8 +737,8 @@ def _criar_registros_financeiros_para_viagem(viagem):
                         criado_por=viagem.criado_por,
                     )
             elif primeiro_dependente.pk not in clientes_com_registro:
-                # Se o dependente não tem cliente_principal, criar registro para o primeiro dependente
-                # (caso onde dependentes estão órfãos ou mal configurados)
+                                                                                                      
+                                                                          
                 Financeiro.objects.create(
                     viagem=viagem,
                     cliente=primeiro_dependente,
@@ -740,7 +748,7 @@ def _criar_registros_financeiros_para_viagem(viagem):
                     criado_por=viagem.criado_por,
                 )
         else:
-            # Se não houver cliente principal nem dependentes (caso raro), criar para o primeiro cliente
+                                                                                                        
             primeiro_cliente = clientes.first()
             if primeiro_cliente and primeiro_cliente.pk not in clientes_com_registro:
                 Financeiro.objects.create(
@@ -752,7 +760,7 @@ def _criar_registros_financeiros_para_viagem(viagem):
                     criado_por=viagem.criado_por,
                 )
     elif not registros_existentes.filter(cliente=None).exists():
-        # Se não houver clientes e não existir registro sem cliente, criar um
+                                                                             
         Financeiro.objects.create(
             viagem=viagem,
             cliente=None,
@@ -764,26 +772,26 @@ def _criar_registros_financeiros_para_viagem(viagem):
 
 
 def _registrar_signals_financeiro():
-    """Registra os signals para criação automática de registros financeiros."""
+                                                                               
     Viagem = django_apps.get_model("consultancy", "Viagem")
     
     @receiver(post_save, sender=Viagem)
     def criar_registro_financeiro(sender, instance, created, **kwargs):
-        """Cria automaticamente um registro financeiro quando uma viagem é criada."""
-        # Só criar registros se já houver clientes vinculados
-        # Caso contrário, o signal m2m_changed cuidará disso quando os clientes forem adicionados
+                                                                                     
+                                                             
+                                                                                                 
         if created and instance.clientes.exists():
             _criar_registros_financeiros_para_viagem(instance)
     
     @receiver(m2m_changed, sender=Viagem.clientes.through)
     def criar_registro_financeiro_ao_adicionar_cliente(sender, instance, action, pk_set, **kwargs):
-        """Cria registros financeiros quando clientes são adicionados à viagem."""
+                                                                                  
         if action == "post_add" and instance.pk:
             _criar_registros_financeiros_para_viagem(instance)
 
 
 def _sincronizar_status_viagem(viagem):
-    """Garante que a viagem possua os status compatíveis com o tipo de visto."""
+                                                                                
     if not viagem:
         return
 
@@ -818,7 +826,7 @@ def _sincronizar_status_viagem(viagem):
 
 
 def _registrar_signals_status_viagem():
-    """Registra os signals responsáveis por manter os status vinculados às viagens."""
+                                                                                      
     Viagem = django_apps.get_model("consultancy", "Viagem")
     StatusProcesso = django_apps.get_model("consultancy", "StatusProcesso")
 
@@ -844,7 +852,7 @@ class ConsultancyConfig(AppConfig):
             return
 
         post_migrate.connect(ensure_initial_consultancy_data, sender=self)
-        # Registrar signals para criação automática de registros financeiros
+                                                                            
         _registrar_signals_financeiro()
         _registrar_signals_status_viagem()
         self._preload_registered = True

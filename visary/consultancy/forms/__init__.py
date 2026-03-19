@@ -1,6 +1,6 @@
-"""
-Formulários do domínio de consultoria.
-"""
+   
+                                      
+   
 
 from .client_forms import ClienteConsultoriaForm
 from .etapa_forms import (

@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -108,6 +109,8 @@
             grid-template-columns: 1fr;
         }
     }
+
+    </style>
 {% endblock %}
 
 {% block app_header %}

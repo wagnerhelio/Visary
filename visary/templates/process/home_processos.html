@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .stats-card {
         background: var(--card-bg);
         border-radius: 24px;
@@ -282,9 +283,11 @@
             padding: 24px;
         }
     }
+
+    </style>
 {% endblock %}
 
-{% comment %}Menu lateral definido no base.html{% endcomment %}
+
 
 {% block app_header %}
 <section class="page-header">

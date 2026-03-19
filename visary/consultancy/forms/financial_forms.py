@@ -1,6 +1,6 @@
-"""
-Formulários relacionados a finanças.
-"""
+   
+                                    
+   
 
 from django import forms
 
@@ -8,7 +8,7 @@ from consultancy.models import Financeiro
 
 
 class DarBaixaFinanceiroForm(forms.ModelForm):
-    """Formulário para dar baixa no pagamento de um registro financeiro."""
+                                                                           
 
     class Meta:
         model = Financeiro

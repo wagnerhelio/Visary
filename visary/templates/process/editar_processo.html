@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -70,7 +71,7 @@
         min-height: 80px;
     }
 
-    /* Checklist de Etapas */
+    
     .checklist-etapas {
         display: grid;
         gap: 16px;
@@ -228,6 +229,8 @@
             grid-template-columns: 1fr;
         }
     }
+
+    </style>
 {% endblock %}
 
 {% block app_header %}
@@ -439,7 +442,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Inicializar todas as datas de finalização
+    
     document.querySelectorAll('.etapa-prazo-input[data-etapa-id]').forEach(function(input) {
         const etapaId = input.dataset.etapaId;
         atualizarDataFinalizacao(etapaId, input.value);
@@ -447,17 +450,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function atualizarEstadoEtapa(etapaId, concluida) {
-    // Atualizar classe visual do item da etapa
+    
     const etapaItem = document.querySelector(`.etapa-item[data-etapa-id="${etapaId}"]`);
     if (etapaItem) {
         etapaItem.classList.toggle('concluida', concluida);
     }
     
-    // Se marcado como concluída, preencher data de conclusão com hoje (se estiver vazia)
+    
     if (concluida) {
         const dataConclusaoInput = document.getElementById('etapa_' + etapaId + '_data');
         if (dataConclusaoInput && !dataConclusaoInput.value) {
-            // Obter data de hoje no formato YYYY-MM-DD
+            
             const hoje = new Date();
             const ano = hoje.getFullYear();
             const mes = String(hoje.getMonth() + 1).padStart(2, '0');

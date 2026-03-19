@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -154,9 +155,11 @@
             font-size: 0.9rem;
         }
     }
+
+    </style>
 {% endblock %}
 
-{% comment %}Menu lateral definido no base.html{% endcomment %}
+
 
 {% block app_header %}
 <section class="page-header">
@@ -284,14 +287,14 @@
         }
     }
 
-    // Carregar tipos de visto ao carregar a página (se um país já estiver selecionado)
+    
     if (paisSelect.value) {
         carregarTiposVisto();
     } else {
         tipoVistoSelect.disabled = true;
     }
 
-    // Adicionar listener para mudança no campo de país
+    
     paisSelect.addEventListener('change', carregarTiposVisto);
 })();
 </script>

@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -117,9 +118,11 @@
             font-size: 0.9rem;
         }
     }
+
+    </style>
 {% endblock %}
 
-{% comment %}Menu lateral definido no base.html{% endcomment %}
+
 
 {% block app_header %}
 <section class="page-header">

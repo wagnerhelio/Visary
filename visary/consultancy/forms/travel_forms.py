@@ -1,6 +1,6 @@
-"""
-Formulários relacionados a viagens e destinos.
-"""
+   
+                                              
+   
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ User = get_user_model()
 
 
 class PaisDestinoForm(forms.ModelForm):
-    """Formulário para cadastro de país de destino."""
+                                                      
 
     class Meta:
         model = PaisDestino
@@ -43,7 +43,7 @@ class PaisDestinoForm(forms.ModelForm):
 
 
 class TipoVistoForm(forms.ModelForm):
-    """Formulário para cadastro de tipo de visto."""
+                                                    
 
     class Meta:
         model = TipoVisto
@@ -75,7 +75,7 @@ class TipoVistoForm(forms.ModelForm):
 
 
 class ViagemForm(forms.ModelForm):
-    """Formulário para cadastro de viagem."""
+                                             
 
     class Meta:
         model = Viagem

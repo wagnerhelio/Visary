@@ -1,6 +1,6 @@
-"""
-Views responsáveis pela autenticação de usuários de consultoria.
-"""
+   
+                                                                
+   
 
 from __future__ import annotations
 from typing import List
@@ -20,7 +20,7 @@ UserModel = get_user_model()
 
 
 def _verificar_autenticacao_previa(request):
-    """Verifica se o usuário já está autenticado e redireciona se necessário."""
+                                                                                
     if request.user.is_authenticated:
         return redirect(settings.LOGIN_REDIRECT_URL)
     if "cliente_id" in request.session:
@@ -29,7 +29,7 @@ def _verificar_autenticacao_previa(request):
 
 
 def _autenticar_consultor(identifier: str, password: str, request):
-    """Tenta autenticar como consultor/admin."""
+                                                
     consultor = (
         UsuarioConsultoria.objects.select_related("perfil")
         .filter(email__iexact=identifier, ativo=True)
@@ -39,7 +39,7 @@ def _autenticar_consultor(identifier: str, password: str, request):
     if consultor and consultor.check_password(password):
         return _sync_consultant_user(consultor)
 
-    # Tentar autenticação padrão do Django
+                                          
     user = authenticate(request, username=identifier, password=password)
 
     if user is None and "@" in identifier:
@@ -52,14 +52,14 @@ def _autenticar_consultor(identifier: str, password: str, request):
 
 
 def _processar_login_consultor(request, user, remember: bool):
-    """Processa o login do consultor/admin e redireciona."""
+                                                            
     backend = getattr(user, "backend", "django.contrib.auth.backends.ModelBackend")
     auth_login(request, user, backend=backend)
 
     if not remember:
         request.session.set_expiry(0)
     else:
-        request.session.set_expiry(1209600)  # 2 semanas
+        request.session.set_expiry(1209600)             
 
     if redirect_to := request.POST.get("next") or request.GET.get("next"):
         return redirect(redirect_to)
@@ -70,14 +70,18 @@ def _processar_login_consultor(request, user, remember: bool):
 def _normalizar_cpf(valor: str) -> str:
     digits = "".join(c for c in valor if c.isdigit())
     if len(digits) == 11:
-        return f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
-    return valor
+                                                   
+        return digits
+    return ""
 
 
 def _autenticar_cliente(identifier: str, password: str, request, remember: bool):
-    """Tenta autenticar como cliente por CPF ou e-mail."""
-    cpf_normalizado = _normalizar_cpf(identifier)
-    cliente = ClienteConsultoria.objects.filter(cpf=cpf_normalizado).first()
+                                                          
+    cpf_digits = _normalizar_cpf(identifier)
+    cliente = None
+    if cpf_digits:
+        cpf_formatado = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}"
+        cliente = ClienteConsultoria.objects.filter(cpf__in=[cpf_digits, cpf_formatado]).first()
 
     if not cliente and "@" in identifier:
         cliente = ClienteConsultoria.objects.filter(email__iexact=identifier.strip()).first()
@@ -86,10 +90,16 @@ def _autenticar_cliente(identifier: str, password: str, request, remember: bool)
         return None
 
     if not is_password_usable(cliente.senha):
-        messages.error(
-            request,
-            "Sua senha precisa ser redefinida. Entre em contato com o administrador."
-        )
+        if cliente.cliente_principal_id is not None:
+            messages.error(
+                request,
+                "Dependentes não possuem login próprio. Acesse usando a conta do cliente principal."
+            )
+        else:
+            messages.error(
+                request,
+                "Sua senha precisa ser redefinida. Entre em contato com o administrador."
+            )
         return None
 
     if cliente.check_password(password):
@@ -99,11 +109,11 @@ def _autenticar_cliente(identifier: str, password: str, request, remember: bool)
 
 
 def login_view(request):
-    """
-    Autenticação unificada que detecta automaticamente se o usuário é:
-    - Consultor/Admin (UsuarioConsultoria) -> redireciona para área administrativa
-    - Cliente (ClienteConsultoria) -> redireciona para área do cliente
-    """
+       
+                                                                      
+                                                                                  
+                                                                      
+       
     if redirect_response := _verificar_autenticacao_previa(request):
         return redirect_response
 
@@ -115,17 +125,17 @@ def login_view(request):
             password = form.cleaned_data["password"]
             remember = form.cleaned_data["remember_me"]
 
-            # 1. Tentar autenticar como CONSULTOR/ADMIN primeiro
+                                                                
             user = _autenticar_consultor(identifier, password, request)
 
             if user is not None and user.is_active:
                 return _processar_login_consultor(request, user, remember)
 
-            # 2. Se não encontrou como consultor, tentar como CLIENTE
+                                                                     
             if redirect_response := _autenticar_cliente(identifier, password, request, remember):
                 return redirect_response
 
-            # Credenciais inválidas
+                                   
             messages.error(request, "Credenciais inválidas ou usuário inativo.")
 
     context = {
@@ -136,24 +146,24 @@ def login_view(request):
 
 
 def _processar_login_cliente(request, cliente: ClienteConsultoria, remember: bool):
-    """Processa o login do cliente e configura a sessão."""
+                                                           
     request.session["cliente_id"] = cliente.pk
     request.session["cliente_nome"] = cliente.nome
     request.session["cliente_cpf"] = cliente.cpf
 
     if not remember:
-        request.session.set_expiry(0)  # Expira ao fechar o navegador
+        request.session.set_expiry(0)                                
     else:
-        request.session.set_expiry(1209600)  # 2 semanas
+        request.session.set_expiry(1209600)             
 
     messages.success(request, f"Bem-vindo, {cliente.nome}!")
     return redirect("system:cliente_dashboard")
 
 
 def _sync_consultant_user(consultor: UsuarioConsultoria):
-    """
-    Garante que exista um usuário do auth Django associado ao consultor.
-    """
+       
+                                                                        
+       
 
     defaults = {
         "email": consultor.email,

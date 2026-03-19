@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -143,6 +144,8 @@
             padding: 10px 8px;
         }
     }
+
+    </style>
 {% endblock %}
 
 {% block app_header %}
@@ -162,7 +165,7 @@
 
 {% block app_content %}
 <div class="layout-grid">
-    <!-- Informações do Cliente -->
+    
     <section class="card">
         <header>
             <h2>Informações do Cliente</h2>
@@ -238,7 +241,7 @@
         </div>
     </section>
 
-    <!-- Viagens -->
+    
     <section class="card">
         <header>
             <h2>Viagens</h2>
@@ -290,7 +293,7 @@
         {% endif %}
     </section>
 
-    <!-- Processos -->
+    
     <section class="card">
         <header>
             <h2>Processos</h2>
@@ -352,7 +355,7 @@
         {% endif %}
     </section>
 
-    <!-- Registros Financeiros -->
+    
     {% if registros_financeiros %}
     <section class="card">
         <header>

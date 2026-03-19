@@ -1,11 +1,11 @@
-"""
-Submódulos de modelos do app system.
+   
+                                    
 
-Este pacote organiza entidades em domínios específicos
-para facilitar a manutenção e leitura.
-"""
+                                                      
+                                      
+   
 
-from .permission_models import *  # noqa: F401,F403
+from .permission_models import *                   
 
 __all__ = (
     "Modulo",

@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .actions-grid {
         display: grid;
         gap: 20px;
@@ -294,9 +295,11 @@
             flex-direction: column;
         }
     }
+
+    </style>
 {% endblock %}
 
-{% comment %}Menu lateral definido no base.html{% endcomment %}
+
 
 {% block app_header %}
 <section class="page-header">
@@ -308,9 +311,9 @@
 {% endblock %}
 
 {% block app_content %}
-{# Mensagens são exibidas no template base, não precisamos exibir aqui #}
 
-{% comment %}Filtro removido da home. Padronização com Listar Usuários conforme solicitação.{% endcomment %}
+
+
 
 <section class="actions-grid">
     <article class="action-card">

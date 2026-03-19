@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -139,6 +140,8 @@
             font-size: 0.85rem;
         }
     }
+
+    </style>
 {% endblock %}
 
 {% block app_header %}
@@ -277,7 +280,7 @@
 
 <script>
 (function() {
-    // Função para atualizar estilo dos checkboxes de etapas
+    
     function atualizarEstilosEtapas() {
         const checkboxes = document.querySelectorAll('.etapas-checklist input[type="checkbox"]');
         checkboxes.forEach(checkbox => {
@@ -296,14 +299,14 @@
         });
     }
 
-    // Adicionar listeners para checkboxes de etapas
+    
     document.addEventListener('DOMContentLoaded', function() {
         const etapasChecklist = document.querySelector('.etapas-checklist');
         if (etapasChecklist) {
-            // Atualizar estilos iniciais
+            
             atualizarEstilosEtapas();
             
-            // Adicionar listeners para mudanças
+            
             etapasChecklist.addEventListener('change', function(e) {
                 if (e.target.type === 'checkbox') {
                     atualizarEstilosEtapas();
@@ -317,13 +320,13 @@
     
     if (!viagemSelect || !clienteSelect) return;
     
-    // Armazenar todas as opções de clientes inicialmente
+    
     const todasOpcoesClientes = Array.from(clienteSelect.options);
     
-    // Função para filtrar clientes baseado na viagem selecionada
+    
     function filtrarClientesPorViagem(viagemId) {
         if (!viagemId) {
-            // Se nenhuma viagem selecionada, mostrar todos os clientes
+            
             clienteSelect.innerHTML = '';
             todasOpcoesClientes.forEach(option => {
                 clienteSelect.appendChild(option.cloneNode(true));
@@ -331,11 +334,11 @@
             return;
         }
         
-        // Mostrar indicador de carregamento
+        
         clienteSelect.innerHTML = '<option value="">Carregando clientes...</option>';
         clienteSelect.disabled = true;
         
-        // Buscar clientes da viagem via API
+        
         fetch(`{% url 'system:api_clientes_viagem' %}?viagem_id=${viagemId}`)
             .then(response => {
                 if (!response.ok) {
@@ -344,11 +347,11 @@
                 return response.json();
             })
             .then(clientes => {
-                // Limpar select de clientes
+                
                 clienteSelect.innerHTML = '';
                 clienteSelect.disabled = false;
                 
-                // Verificar se há clientes
+                
                 if (!clientes || clientes.length === 0) {
                     const emptyOption = document.createElement('option');
                     emptyOption.value = '';
@@ -357,17 +360,17 @@
                     return;
                 }
                 
-                // Adicionar opção vazia
+                
                 const emptyOption = document.createElement('option');
                 emptyOption.value = '';
                 emptyOption.textContent = 'Selecione o cliente';
                 clienteSelect.appendChild(emptyOption);
                 
-                // Separar principais e dependentes
+                
                 const principais = clientes.filter(c => c.is_principal !== false);
                 const dependentes = clientes.filter(c => c.is_principal === false);
                 
-                // Adicionar clientes principais primeiro (em negrito visual)
+                
                 principais.forEach(cliente => {
                     const option = document.createElement('option');
                     option.value = cliente.id;
@@ -376,7 +379,7 @@
                     clienteSelect.appendChild(option);
                 });
                 
-                // Adicionar dependentes depois
+                
                 dependentes.forEach(cliente => {
                     const option = document.createElement('option');
                     option.value = cliente.id;
@@ -385,7 +388,7 @@
                     clienteSelect.appendChild(option);
                 });
                 
-                // Se havia um cliente pré-selecionado, tentar manter a seleção
+                
                 const clientePreSelecionado = clienteSelect.dataset.clientePreSelecionado;
                 if (clientePreSelecionado) {
                     const option = Array.from(clienteSelect.options).find(opt => opt.value === clientePreSelecionado);
@@ -393,10 +396,10 @@
                         clienteSelect.value = clientePreSelecionado;
                     }
                 } else if (principais.length === 1 && dependentes.length === 0) {
-                    // Se há apenas um cliente principal e nenhum dependente, pré-selecionar automaticamente
+                    
                     clienteSelect.value = principais[0].id;
                 } else if (principais.length > 0) {
-                    // Se há pelo menos um principal, pré-selecionar o primeiro principal
+                    
                     clienteSelect.value = principais[0].id;
                 }
             })
@@ -407,10 +410,10 @@
             });
     }
     
-    // Função para carregar etapas disponíveis da viagem
+    
     function carregarEtapasDisponiveis(viagemId) {
         if (!viagemId) {
-            // Ocultar seção de etapas se não houver viagem
+            
             const etapasSection = document.querySelector('.etapas-section');
             if (etapasSection) {
                 etapasSection.style.display = 'none';
@@ -477,7 +480,7 @@
                     label.appendChild(span);
                     etapasChecklist.appendChild(label);
                     
-                    // Adicionar listener para mudança de estado
+                    
                     checkbox.addEventListener('change', function() {
                         if (checkbox.checked) {
                             label.style.background = 'rgba(86, 244, 156, 0.15)';
@@ -490,7 +493,7 @@
                         }
                     });
                     
-                    // Adicionar hover effect
+                    
                     label.addEventListener('mouseenter', function() {
                         if (!checkbox.checked) {
                             label.style.background = 'rgba(12, 19, 35, 0.85)';
@@ -508,7 +511,7 @@
                     });
                 });
                 
-                // Chamar função de atualização de estilos após criar todas as etapas
+                
                 atualizarEstilosEtapas();
             })
             .catch(error => {
@@ -516,39 +519,39 @@
             });
     }
     
-    // Listener para mudança na seleção de viagem
+    
     viagemSelect.addEventListener('change', function() {
         filtrarClientesPorViagem(this.value);
         carregarEtapasDisponiveis(this.value);
     });
     
-    // Armazenar cliente pré-selecionado se houver
+    
     {% if cliente_pre_selecionado %}
     clienteSelect.dataset.clientePreSelecionado = '{{ form.cliente.initial|default:"" }}';
     {% endif %}
     
-    // Função para obter ID da viagem (mesmo se campo estiver disabled)
+    
     function obterViagemId() {
-        // Se campo está disabled, tentar obter do campo hidden
+        
         {% if viagem_pre_selecionada %}
         const viagemHidden = document.querySelector('input[name="viagem_hidden"]');
         if (viagemHidden && viagemHidden.value) {
             return viagemHidden.value;
         }
         {% endif %}
-        // Tentar obter da opção selecionada no select (mesmo que disabled)
+        
         const selectedOption = viagemSelect.querySelector('option:checked');
         if (selectedOption) {
             return selectedOption.value;
         }
-        // Fallback para value do select
+        
         return viagemSelect.value;
     }
     
-    // Se viagem já está pré-selecionada, filtrar clientes e carregar etapas após DOM estar pronto
+    
     const viagemId = obterViagemId();
     if (viagemId) {
-        // Aguardar um pouco para garantir que o DOM está completamente carregado
+        
         setTimeout(() => {
             filtrarClientesPorViagem(viagemId);
             carregarEtapasDisponiveis(viagemId);

@@ -1,1 +1,1 @@
-"""Tests for consultancy app."""
+pass                            

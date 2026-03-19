@@ -77,35 +77,35 @@ urlpatterns = [
     path("api/prazo-status-processo/",views.api_prazo_status_processo,name="api_prazo_status_processo",),
     path("api/clientes-viagem/",views.api_clientes_viagem,name="api_clientes_viagem",),
     path("api/status-processo/",views.api_status_processo,name="api_status_processo",),
-    # Financeiro
+                
     path("financeiro/",views.home_financeiro,name="home_financeiro",),
     path("financeiro/listar/",views.listar_financeiro,name="listar_financeiro",),
     path("financeiro/<int:pk>/dar-baixa/",views.dar_baixa_financeiro,name="dar_baixa_financeiro",),
-    # Administração
+                   
     path("administracao/",views.home_administracao,name="home_administracao",),
-    # Usuários
+              
     path("administracao/usuarios/",views.listar_usuarios,name="listar_usuarios",),
     path("administracao/usuarios/criar/",views.criar_usuario,name="criar_usuario",),
     path("administracao/usuarios/<int:pk>/editar/",views.editar_usuario,name="editar_usuario",),
     path("administracao/usuarios/<int:pk>/excluir/",views.excluir_usuario,name="excluir_usuario",),
-    # Perfis/Permissões
+                       
     path("administracao/perfis/",views.listar_perfis,name="listar_perfis",),
     path("administracao/perfis/criar/",views.criar_perfil,name="criar_perfil",),
     path("administracao/perfis/<int:pk>/editar/",views.editar_perfil,name="editar_perfil",),
     path("administracao/perfis/<int:pk>/excluir/",views.excluir_perfil,name="excluir_perfil",),
-    # Módulos
+             
     path("administracao/modulos/",views.listar_modulos,name="listar_modulos",),
     path("administracao/modulos/criar/",views.criar_modulo,name="criar_modulo",),
     path("administracao/modulos/<int:pk>/editar/",views.editar_modulo,name="editar_modulo",),
     path("administracao/modulos/<int:pk>/excluir/",views.excluir_modulo,name="excluir_modulo",),
-    # APIs auxiliares
+                     
     path("api/cliente-info/", views.api_cliente_info, name="api_cliente_info"),
     path("perguntas/<int:pk>/editar/",views.editar_pergunta,name="editar_pergunta",),
     path("perguntas/<int:pk>/excluir/",views.excluir_pergunta,name="excluir_pergunta",),
     path("perguntas/<int:pergunta_id>/opcoes/criar/",views.criar_opcao_selecao,name="criar_opcao_selecao",),
     path("opcoes/<int:pk>/editar/",views.editar_opcao_selecao,name="editar_opcao_selecao",),
     path("opcoes/<int:pk>/excluir/",views.excluir_opcao_selecao,name="excluir_opcao_selecao",),
-    # Área do Cliente
+                     
     path("cliente/logout/",views.cliente_logout_view,name="cliente_logout",),
     path("cliente/dashboard/",views.cliente_dashboard,name="cliente_dashboard",),
     path("cliente/viagem/<int:viagem_id>/formulario/",views.cliente_visualizar_formulario,name="cliente_visualizar_formulario",),

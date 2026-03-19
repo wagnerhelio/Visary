@@ -1,6 +1,6 @@
-"""
-Modelos relacionados a processos de visto.
-"""
+   
+                                          
+   
 
 from django.conf import settings
 from django.db import models
@@ -9,7 +9,7 @@ from system.models import UsuarioConsultoria
 
 
 class StatusProcesso(models.Model):
-    """Status que um processo pode ter."""
+                                          
 
     tipo_visto = models.ForeignKey(
         "consultancy.TipoVisto",
@@ -47,7 +47,7 @@ class StatusProcesso(models.Model):
 
 
 class Processo(models.Model):
-    """Processo de visto vinculado a uma viagem e cliente."""
+                                                             
 
     viagem = models.ForeignKey(
         "consultancy.Viagem",
@@ -88,24 +88,24 @@ class Processo(models.Model):
 
     @property
     def etapas_concluidas(self):
-        """Retorna o número de etapas concluídas."""
+                                                    
         return self.etapas.filter(concluida=True).count()
 
     @property
     def total_etapas(self):
-        """Retorna o total de etapas do processo."""
+                                                    
         return self.etapas.count()
 
     @property
     def progresso_percentual(self):
-        """Retorna o percentual de conclusão do processo."""
+                                                            
         if self.total_etapas == 0:
             return 0
         return int((self.etapas_concluidas / self.total_etapas) * 100)
 
 
 class ViagemStatusProcesso(models.Model):
-    """Vínculo entre viagem e os status disponíveis para o processo (etapas do checklist)."""
+                                                                                             
 
     viagem = models.ForeignKey(
         "consultancy.Viagem",
@@ -134,7 +134,7 @@ class ViagemStatusProcesso(models.Model):
 
 
 class EtapaProcesso(models.Model):
-    """Etapa do checklist de um processo."""
+                                            
 
     processo = models.ForeignKey(
         Processo,
@@ -180,7 +180,7 @@ class EtapaProcesso(models.Model):
         return f"{status_texto} {self.status.nome} - {self.processo}"
 
     def calcular_data_finalizacao(self):
-        """Calcula a data de finalização baseada na data de criação do cliente e o prazo."""
+                                                                                            
         if not self.prazo_dias or self.prazo_dias == 0:
             return None
         from datetime import timedelta

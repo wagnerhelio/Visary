@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .filtros-card {
         background: var(--card-bg);
         border-radius: 24px;
@@ -262,9 +263,11 @@
             padding: 10px 8px;
         }
     }
+
+    </style>
 {% endblock %}
 
-{% comment %}Menu lateral definido no base.html{% endcomment %}
+
 
 {% block app_header %}
 <section class="page-header">
@@ -433,10 +436,10 @@
                                     {% for viagem in viagens %}
                                         {% if forloop.first %}
                                             {% if forloop.last %}
-                                                {# Apenas uma viagem - usar o cliente atual #}
+                                                
                                                 <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" class="btn btn-outline btn-small">Visualizar Formulário</a>
                                             {% else %}
-                                                {# Múltiplas viagens - mostrar dropdown #}
+                                                
                                                 <div style="position: relative; display: inline-block;">
                                                     <button type="button" class="btn btn-outline btn-small" onclick="document.getElementById('viagens-dropdown-{{ item.cliente.pk }}').style.display = document.getElementById('viagens-dropdown-{{ item.cliente.pk }}').style.display === 'block' ? 'none' : 'block'">
                                                         Visualizar Formulários ▼
@@ -447,7 +450,7 @@
                                                         </a>
                                             {% endif %}
                                         {% else %}
-                                            {# Continuar populando o dropdown #}
+                                            
                                             <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" style="display: block; padding: 8px 12px; border-radius: 6px; color: var(--text-primary); text-decoration: none; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='rgba(86, 244, 156, 0.1)'" onmouseout="this.style.background='transparent'">
                                                 {{ viagem.pais_destino.nome }} - {{ viagem.data_prevista_viagem|date:"d/m/Y" }}
                                             </a>

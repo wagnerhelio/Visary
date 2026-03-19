@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -64,6 +65,8 @@
         box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
         background: rgba(12, 19, 35, 0.85);
     }
+
+    </style>
 {% endblock %}
 
 {% block app_header %}
@@ -131,7 +134,7 @@
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 8px;">
-                <a href="{% url 'system:listar_etapas_cadastro' %}" class="btn btn-outline">Cancelar</a>
+                <a href="{% url 'system:listar_etapas_cadastro' %}" class="btn btn-cancel">Cancelar</a>
                 <button type="submit" class="btn btn-primary">Criar Etapa</button>
             </div>
         </form>

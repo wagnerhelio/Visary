@@ -1,6 +1,6 @@
-"""
-Formulários relacionados a parceiros.
-"""
+   
+                                     
+   
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -9,7 +9,7 @@ from consultancy.models import Partner
 
 
 class PartnerForm(forms.ModelForm):
-    """Formulário para cadastro e edição de parceiros."""
+                                                         
 
     confirmar_senha = forms.CharField(
         label="Confirmar Senha",
@@ -84,8 +84,8 @@ class PartnerForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         
-        # Apenas nome_responsavel, email e senha são obrigatórios
-        # Tornar todos os outros campos opcionais
+                                                                 
+                                                 
         self.fields["nome_empresa"].required = False
         self.fields["cpf"].required = False
         self.fields["cnpj"].required = False
@@ -97,7 +97,7 @@ class PartnerForm(forms.ModelForm):
         self.fields["confirmar_senha"].required = False
 
         if self.instance.pk:
-            # Ao editar, senha não é obrigatória
+                                                
             self.fields["senha"].widget.attrs["placeholder"] = (
                 "Deixe em branco para manter a senha atual"
             )
@@ -112,20 +112,20 @@ class PartnerForm(forms.ModelForm):
         cpf = cleaned_data.get("cpf", "").replace(".", "").replace("-", "")
         cnpj = cleaned_data.get("cnpj", "").replace(".", "").replace("/", "").replace("-", "")
 
-        # Validar senha
+                       
         if self.instance.pk:
-            # Edição: senha só é obrigatória se for fornecida
+                                                             
             if senha or confirmar_senha:
                 if senha != confirmar_senha:
                     raise ValidationError({"confirmar_senha": "As senhas não coincidem."})
         else:
-            # Criação: senha é obrigatória
+                                          
             if not senha:
                 raise ValidationError({"senha": "A senha é obrigatória."})
             if senha != confirmar_senha:
                 raise ValidationError({"confirmar_senha": "As senhas não coincidem."})
 
-        # CPF e CNPJ são opcionais, não há necessidade de validação
+                                                                   
 
         return cleaned_data
 
@@ -136,10 +136,10 @@ class PartnerForm(forms.ModelForm):
         if senha:
             partner.set_password(senha)
         elif not partner.pk:
-            # Se estiver criando e não forneceu senha, gerar uma senha padrão
-            partner.set_password("parceiro123")  # Senha padrão, deve ser alterada
+                                                                             
+            partner.set_password("parceiro123")                                   
         elif partner.pk and not senha:
-            # Se estiver editando e não forneceu senha, manter a senha atual
+                                                                            
             partner_original = Partner.objects.get(pk=partner.pk)
             partner.senha = partner_original.senha
 

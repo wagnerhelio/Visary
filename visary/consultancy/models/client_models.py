@@ -1,6 +1,6 @@
-"""
-Modelos relacionados aos clientes da consultoria.
-"""
+   
+                                                 
+   
 
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
@@ -10,9 +10,9 @@ from system.models import UsuarioConsultoria
 
 
 class ClienteConsultoria(models.Model):
-    """
-    Entidade que representa um cliente atendido pela consultoria.
-    """
+       
+                                                                 
+       
 
     assessor_responsavel = models.ForeignKey(
         UsuarioConsultoria,
@@ -95,7 +95,7 @@ class ClienteConsultoria(models.Model):
         default=False,
         help_text="Dados do passaporte preenchidos",
     )
-    # Campos de Passaporte
+                          
     TIPO_PASSAPORTE_CHOICES = [
         ("comum", "Passaporte Comum/Regular"),
         ("diplomatico", "Passaporte Diplomático"),
@@ -162,28 +162,28 @@ class ClienteConsultoria(models.Model):
         self.senha = make_password(raw_password)
 
     def check_password(self, raw_password: str) -> bool:
-        """Verifica se a senha fornecida corresponde à senha do cliente."""
+                                                                           
         from django.contrib.auth.hashers import check_password
         return check_password(raw_password, self.senha)
 
     @property
     def is_principal(self) -> bool:
-        """Retorna True se este cliente é principal (não tem cliente_principal)."""
+                                                                                   
         return self.cliente_principal is None
 
     @property
     def is_dependente(self) -> bool:
-        """Retorna True se este cliente é dependente."""
+                                                        
         return self.cliente_principal is not None
 
     @property
     def total_dependentes(self) -> int:
-        """Retorna o número de dependentes vinculados."""
+                                                         
         return self.dependentes.count()
 
     @property
     def progresso_etapas(self) -> int:
-        """Retorna o percentual de conclusão das etapas."""
+                                                           
         etapas = [
             self.etapa_dados_pessoais,
             self.etapa_endereco,

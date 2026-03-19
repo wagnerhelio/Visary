@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -262,6 +263,8 @@
             flex-direction: column;
         }
     }
+
+    </style>
 {% endblock %}
 
 {% block app_header %}
@@ -275,7 +278,7 @@
 
 {% block app_content %}
 
-{# Logs no console do navegador (não exibidos na tela) #}
+
 <div id="debug-logs-json" data-logs="{{ debug_logs_json|default:'[]' }}" style="display:none" aria-hidden="true"></div>
 <script>
 (function() {
@@ -322,6 +325,15 @@
         </header>
         {% if etapa_atual.campo_booleano == 'etapa_membros' and cliente and form_dependente %}
         <div id="senha-cliente-principal-data" data-tem-senha="{{ cliente.senha|yesno:'true,false' }}" style="display:none" aria-hidden="true"></div>
+        <div id="endereco-cliente-principal-data"
+             data-cep="{{ cliente.cep|default:'' }}"
+             data-logradouro="{{ cliente.logradouro|default:'' }}"
+             data-numero="{{ cliente.numero|default:'' }}"
+             data-complemento="{{ cliente.complemento|default:'' }}"
+             data-bairro="{{ cliente.bairro|default:'' }}"
+             data-cidade="{{ cliente.cidade|default:'' }}"
+             data-uf="{{ cliente.uf|default:'' }}"
+             style="display:none" aria-hidden="true"></div>
         <div style="margin-bottom: 32px; padding: 24px; background: rgba(86, 244, 156, 0.1); border: 1px solid rgba(86, 244, 156, 0.3); border-radius: 12px;">
             <h3 style="margin: 0 0 16px 0; font-size: 1.2rem; color: rgba(86, 244, 156, 0.95);">Adicionar Membros (Dependentes)</h3>
 
@@ -385,10 +397,10 @@
                     <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
                             <input type="checkbox" id="usar-dados-cliente-principal" name="usar_dados_cliente_principal" {% if usar_dados_post == 'on' or usar_dados_editando %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
-                            <span style="color: var(--text-primary); font-weight: 500;">Usar a mesma senha do titular</span>
+                            <span style="color: var(--text-primary); font-weight: 500;">Usar a mesma conta do principal</span>
                         </label>
                         <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
-                            O dependente usará a mesma senha do cliente principal para acessar o sistema.
+                            O dependente usará a mesma conta do cliente principal para acessar seus cadastros.
                         </p>
                     </div>
                     {% endif %}
@@ -397,7 +409,28 @@
 
 
                     {% for etapa_dep in etapas_dependente %}
-                        <div class="{% if not forloop.first %}cadastro-margin-top-24{% endif %}">
+                        <div class="{% if not forloop.first %}cadastro-margin-top-24{% endif %}{% if etapa_dep.campo_booleano == 'etapa_endereco' or etapa_dep.nome == 'Endereço' %} etapa-dependente-endereco{% endif %}">
+                            {% if cliente %}
+                                {% if etapa_dep.campo_booleano == 'etapa_endereco' or etapa_dep.nome == 'Endereço' %}
+                                    <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
+                                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                            <input type="checkbox"
+                                                   id="usar-dados-endereco-cliente-principal"
+                                                   name="usar_dados_endereco_cliente_principal"
+                                                   {% if request.POST.usar_dados_endereco_cliente_principal|default:"" == 'on' or dependente_editando_dados.usar_dados_endereco_cliente_principal|default:False %}checked{% endif %}
+                                                   style="width: 18px; height: 18px; cursor: pointer;">
+                                            <span style="color: var(--text-primary); font-weight: 500;">Usar o mesmo endereço do titular</span>
+                                        </label>
+                                        <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
+                                            O dependente usará o mesmo endereço do cliente principal.
+                                        </p>
+                                    </div>
+                                    <div class="resumo-endereco-titular-dependente" style="display:none; margin: -10px 0 18px 0; padding: 14px; background: rgba(86, 244, 156, 0.08); border: 1px solid rgba(86, 244, 156, 0.25); border-radius: 10px;">
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: rgba(245, 245, 245, 0.9); margin-bottom: 6px;">Resumo do endereço</div>
+                                        <div class="resumo-endereco-titular-text" style="font-size: 0.9rem; color: var(--text-secondary);"></div>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
                             <h5 style="margin: 0 0 16px 0; font-size: 0.95rem; color: rgba(86, 244, 156, 0.9); font-weight: 600;">
                                 {{ etapa_dep.nome }}
                             </h5>
@@ -474,6 +507,7 @@
                                                     {% endwith %}
                                                 </div>
                                             {% elif campo_etapa.nome_campo == 'confirmar_senha' %}
+                                                
                                             {% elif campo_etapa.nome_campo == 'tipo_passaporte_outro' %}
                                                 <div id="div-tipo-passaporte-outro-dependente" style="display: none;">
                                                     <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
@@ -510,7 +544,7 @@
                         <button type="submit" class="btn btn-primary">
                             {% if editando_dependente %}Salvar Alterações{% else %}Adicionar Dependente{% endif %}
                         </button>
-                        <button type="button" id="btn-cancelar-dependente" class="btn btn-outline">
+                        <button type="button" id="btn-cancelar-dependente" class="btn btn-cancel">
                             Cancelar Membro
                         </button>
                     </div>
@@ -550,33 +584,256 @@
                             el.remove();
                         });
                     }
-                    const checkbox = document.getElementById('usar-dados-cliente-principal');
-                    if (checkbox) checkbox.checked = false;
+                    document.querySelectorAll('#usar-dados-cliente-principal').forEach(function(checkbox) {
+                        checkbox.checked = false;
+                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                    const checkboxEndereco = document.getElementById('usar-dados-endereco-cliente-principal');
+                    if (checkboxEndereco) {
+                        checkboxEndereco.checked = false;
+                        checkboxEndereco.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
                 });
             }
 
-            var checkboxUsarDados = document.getElementById('usar-dados-cliente-principal');
-            if (checkboxUsarDados) {
-                var senhaField = document.querySelector('#senha-dependente-container input[name="senha"]');
-                var confirmarSenhaField = document.querySelector('#senha-dependente-container input[name="confirmar_senha"]');
-                var senhaContainer = document.getElementById('senha-dependente-container');
+            
+            
+            const checkboxUsarDadosList = document.querySelectorAll('#usar-dados-cliente-principal');
 
-                function toggleUsarDadosCliente() {
-                    const usarDados = checkboxUsarDados.checked;
+            function toggleUsarDadosCliente(checkbox) {
+                const usarDados = checkbox.checked;
+                const root = checkbox.closest('form#form-dependente') || checkbox.closest('form');
+                if (!root) return;
 
-                    if (usarDados) {
-                        if (senhaContainer) senhaContainer.style.display = 'none';
-                        if (senhaField) { senhaField.required = false; senhaField.value = ''; }
-                        if (confirmarSenhaField) { confirmarSenhaField.required = false; confirmarSenhaField.value = ''; }
+                const emailContainer = root.querySelector('#email-dependente-container');
+                const senhaContainer = root.querySelector('#senha-dependente-container');
+                const emailField = emailContainer ? emailContainer.querySelector('input[name="email"]') : null;
+                const senhaField = senhaContainer ? senhaContainer.querySelector('input[name="senha"]') : null;
+                const confirmarSenhaField = senhaContainer ? senhaContainer.querySelector('input[name="confirmar_senha"]') : null;
+
+                if (emailContainer) emailContainer.style.display = usarDados ? 'none' : '';
+                if (senhaContainer) senhaContainer.style.display = usarDados ? 'none' : '';
+
+                if (emailField) {
+                    emailField.disabled = usarDados;
+                    if (usarDados) emailField.value = '';
+                }
+
+                if (senhaField) {
+                    senhaField.disabled = usarDados;
+                    senhaField.required = !usarDados;
+                    if (usarDados) senhaField.value = '';
+                }
+
+                if (confirmarSenhaField) {
+                    confirmarSenhaField.disabled = usarDados;
+                    confirmarSenhaField.required = !usarDados;
+                    if (usarDados) confirmarSenhaField.value = '';
+                }
+            }
+
+            checkboxUsarDadosList.forEach(function(cb) {
+                cb.addEventListener('change', function() {
+                    toggleUsarDadosCliente(cb);
+                });
+                toggleUsarDadosCliente(cb);
+            });
+
+            const checkboxUsarEndereco = document.getElementById('usar-dados-endereco-cliente-principal');
+            if (checkboxUsarEndereco) {
+                const enderecoData = document.getElementById('endereco-cliente-principal-data');
+
+                function normalizeCep(valor) {
+                    const digits = String(valor || '').replace(/\D/g, '');
+                    if (digits.length === 8) return digits.substring(0, 5) + '-' + digits.substring(5, 8);
+                    return String(valor || '');
+                }
+
+                function setInputReadOnly(input, readOnly) {
+                    if (!input) return;
+                    input.readOnly = !!readOnly;
+                    if (readOnly) input.setAttribute('readonly', 'readonly');
+                    else input.removeAttribute('readonly');
+                }
+
+                function toggleUsarEnderecoCliente() {
+                    const formDependente = document.getElementById('form-dependente');
+                    if (!formDependente || !enderecoData) return;
+
+                    const cepInput = formDependente.querySelector('[name="cep"]');
+                    const logradouroInput = formDependente.querySelector('[name="logradouro"]');
+                    const numeroInput = formDependente.querySelector('[name="numero"]');
+                    const complementoInput = formDependente.querySelector('[name="complemento"]');
+                    const bairroInput = formDependente.querySelector('[name="bairro"]');
+                    const cidadeInput = formDependente.querySelector('[name="cidade"]');
+                    const ufInput = formDependente.querySelector('[name="uf"]');
+                    const btnBuscarCep = formDependente.querySelector('.btn-buscar-cep-dependente');
+
+                    if (checkboxUsarEndereco.checked) {
+                        const cep = normalizeCep(enderecoData.dataset.cep);
+                        const logradouro = enderecoData.dataset.logradouro || '';
+                        const numero = enderecoData.dataset.numero || '';
+                        const complemento = enderecoData.dataset.complemento || '';
+                        const bairro = enderecoData.dataset.bairro || '';
+                        const cidade = enderecoData.dataset.cidade || '';
+                        const uf = enderecoData.dataset.uf || '';
+
+                        cepInput && (cepInput.value = cep);
+                        logradouroInput && (logradouroInput.value = logradouro);
+                        numeroInput && (numeroInput.value = numero);
+                        complementoInput && (complementoInput.value = complemento);
+                        bairroInput && (bairroInput.value = bairro);
+                        cidadeInput && (cidadeInput.value = cidade);
+                        ufInput && (ufInput.value = uf);
+
+                        setInputReadOnly(cepInput, true);
+                        setInputReadOnly(logradouroInput, true);
+                        setInputReadOnly(numeroInput, true);
+                        setInputReadOnly(complementoInput, true);
+                        setInputReadOnly(bairroInput, true);
+                        setInputReadOnly(cidadeInput, true);
+                        setInputReadOnly(ufInput, true);
+
+                        if (btnBuscarCep) btnBuscarCep.disabled = true;
+
+                        
+                        [cepInput, logradouroInput, numeroInput, complementoInput, bairroInput, cidadeInput, ufInput]
+                            .filter(Boolean)
+                            .forEach(function(el) {
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                            });
+
+                        
+                        const resumoEls = document.querySelectorAll('.resumo-endereco-titular-dependente');
+                        const resumoTextEls = document.querySelectorAll('.resumo-endereco-titular-text');
+                        const enderecoResumo = [
+                            logradouro ? logradouro : '',
+                            numero ? `, ${numero}` : '',
+                            complemento ? ` - ${complemento}` : ''
+                        ].join('');
+                        const complementoResumo = [bairro ? bairro : '', cidade ? cidade : '', uf ? uf : ''].filter(Boolean).join(' - ');
+                        const resumoTexto = [enderecoResumo, complementoResumo, cep ? cep : ''].filter(Boolean).join(' | ');
+
+                        resumoTextEls.forEach(function(el) { el.textContent = resumoTexto; });
+                        resumoEls.forEach(function(el) { el.style.display = ''; });
+
+                        
+                        
+                        
+                        
+                        const stageBlocks = formDependente.querySelectorAll('.etapa-dependente-endereco');
+                        const checkboxDiv = checkboxUsarEndereco.closest('div');
+                        stageBlocks.forEach(function(block) {
+                            const summaryDiv = block.querySelector('.resumo-endereco-titular-dependente');
+                            block.querySelectorAll('*').forEach(function(el) {
+                                if (summaryDiv && summaryDiv.contains(el)) return;
+                                if (checkboxDiv && checkboxDiv.contains(el)) return;
+                                if (typeof el.dataset.prevDisplay === 'undefined') {
+                                    el.dataset.prevDisplay = el.style.display;
+                                }
+                                el.style.display = 'none';
+                            });
+                        });
+
+                        
+                        
+                        const containers = new Set();
+                        function getContainerForInput(input) {
+                            if (!input) return null;
+                            const id = input.getAttribute('id');
+                            if (id) {
+                                const label = formDependente.querySelector(`label[for="${id}"]`);
+                                if (label) return label.closest('div');
+                            }
+                            return input.closest('div');
+                        }
+
+                        
+                        if (btnBuscarCep) {
+                            containers.add(btnBuscarCep.closest('.grid-inline') || btnBuscarCep.parentElement || btnBuscarCep);
+                        }
+
+                        [cepInput, logradouroInput, numeroInput, complementoInput, bairroInput, cidadeInput, ufInput]
+                            .filter(Boolean)
+                            .forEach(function(input) {
+                                const c = getContainerForInput(input);
+                                if (c) containers.add(c);
+                            });
+
+                        containers.forEach(function(container) {
+                            if (!container) return;
+                            if (typeof container.dataset.prevDisplay === 'undefined') {
+                                container.dataset.prevDisplay = container.style.display;
+                            }
+                            container.style.display = 'none';
+                        });
                     } else {
-                        if (senhaContainer) senhaContainer.style.display = '';
-                        if (senhaField) senhaField.required = true;
-                        if (confirmarSenhaField) confirmarSenhaField.required = true;
+                        [cepInput, logradouroInput, numeroInput, complementoInput, bairroInput, cidadeInput, ufInput]
+                            .filter(Boolean)
+                            .forEach(function(el) {
+                                el.value = '';
+                                setInputReadOnly(el, false);
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                            });
+
+                        if (btnBuscarCep) btnBuscarCep.disabled = false;
+
+                        
+                        const resumoEls = document.querySelectorAll('.resumo-endereco-titular-dependente');
+                        resumoEls.forEach(function(el) { el.style.display = 'none'; });
+
+                        const containers = new Set();
+                        function getContainerForInput(input) {
+                            if (!input) return null;
+                            const id = input.getAttribute('id');
+                            if (id) {
+                                const label = formDependente.querySelector(`label[for="${id}"]`);
+                                if (label) return label.closest('div');
+                            }
+                            return input.closest('div');
+                        }
+
+                        if (btnBuscarCep) {
+                            containers.add(btnBuscarCep.closest('.grid-inline') || btnBuscarCep.parentElement || btnBuscarCep);
+                        }
+
+                        [cepInput, logradouroInput, numeroInput, complementoInput, bairroInput, cidadeInput, ufInput]
+                            .filter(Boolean)
+                            .forEach(function(input) {
+                                const c = getContainerForInput(input);
+                                if (c) containers.add(c);
+                            });
+
+                        containers.forEach(function(container) {
+                            if (!container) return;
+                            if (typeof container.dataset.prevDisplay !== 'undefined') {
+                                container.style.display = container.dataset.prevDisplay || '';
+                                delete container.dataset.prevDisplay;
+                            } else {
+                                container.style.display = '';
+                            }
+                        });
+
+                    
+                    const stageBlocks = formDependente.querySelectorAll('.etapa-dependente-endereco');
+                    stageBlocks.forEach(function(block) {
+                        block.querySelectorAll('*').forEach(function(el) {
+                            if (typeof el.dataset.prevDisplay !== 'undefined') {
+                                el.style.display = el.dataset.prevDisplay || '';
+                                delete el.dataset.prevDisplay;
+                            }
+                        });
+                    });
                     }
                 }
 
-                checkboxUsarDados.addEventListener('change', toggleUsarDadosCliente);
-                if (checkboxUsarDados.checked) toggleUsarDadosCliente();
+                checkboxUsarEndereco.addEventListener('change', toggleUsarEnderecoCliente);
+                
+                
+                
+                toggleUsarEnderecoCliente();
             }
         })();
         </script>
@@ -599,6 +856,9 @@
                         });
 
                         async function buscarCepDependente() {
+                            const checkboxUsarEndereco = document.getElementById('usar-dados-endereco-cliente-principal');
+                            if (checkboxUsarEndereco && checkboxUsarEndereco.checked) return;
+
                             const cep = cepInputDependente.value.replace(/\D/g, '');
                             if (cep.length !== 8) {
                                 alert('CEP deve conter 8 dígitos.');
@@ -703,7 +963,7 @@
                 </ul>
             {% endif %}
 
-            {# Campos ocultos das outras etapas #}
+            
             {% for etapa in etapas %}
                 {% if etapa.pk != etapa_atual.pk %}
                     {% for campo_etapa in etapa.campos.all %}
@@ -726,7 +986,7 @@
                 {% endif %}
             {% endfor %}
 
-            {# Renderizar campos da etapa atual #}
+            
             {% if False %}
             <div style="margin-bottom: 32px; padding: 24px; background: rgba(86, 244, 156, 0.1); border: 1px solid rgba(86, 244, 156, 0.3); border-radius: 12px;">
                 <h3 style="margin: 0 0 16px 0; font-size: 1.2rem; color: rgba(86, 244, 156, 0.95);">Adicionar Membros (Dependentes)</h3>
@@ -791,10 +1051,10 @@
                         <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
                                 <input type="checkbox" id="usar-dados-cliente-principal" name="usar_dados_cliente_principal" {% if usar_dados_post == 'on' or usar_dados_editando %}checked{% endif %} style="width: 18px; height: 18px; cursor: pointer;">
-                                <span style="color: var(--text-primary); font-weight: 500;">Usar a mesma senha do titular</span>
+                                <span style="color: var(--text-primary); font-weight: 500;">Usar a mesma conta do principal</span>
                             </label>
                             <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
-                                O dependente usará a mesma senha do cliente principal para acessar o sistema.
+                                O dependente usará a mesma conta do cliente principal para acessar seus cadastros.
                             </p>
                         </div>
                         {% endif %}
@@ -802,7 +1062,28 @@
                         {% endwith %}
 
                         {% for etapa_dep in etapas_dependente %}
-                            <div class="{% if not forloop.first %}cadastro-margin-top-24{% endif %}">
+                            <div class="{% if not forloop.first %}cadastro-margin-top-24{% endif %}{% if etapa_dep.campo_booleano == 'etapa_endereco' or etapa_dep.nome == 'Endereço' %} etapa-dependente-endereco{% endif %}">
+                            {% if cliente %}
+                                {% if etapa_dep.campo_booleano == 'etapa_endereco' or etapa_dep.nome == 'Endereço' %}
+                                    <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
+                                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
+                                            <input type="checkbox"
+                                                   id="usar-dados-endereco-cliente-principal"
+                                                   name="usar_dados_endereco_cliente_principal"
+                                                   {% if request.POST.usar_dados_endereco_cliente_principal|default:"" == 'on' or dependente_editando_dados.usar_dados_endereco_cliente_principal|default:False %}checked{% endif %}
+                                                   style="width: 18px; height: 18px; cursor: pointer;">
+                                            <span style="color: var(--text-primary); font-weight: 500;">Usar o mesmo endereço do titular</span>
+                                        </label>
+                                        <p style="margin: 8px 0 0 26px; font-size: 0.85rem; color: var(--text-secondary);">
+                                            O dependente usará o mesmo endereço do cliente principal.
+                                        </p>
+                                    </div>
+                                    <div class="resumo-endereco-titular-dependente" style="display:none; margin: -10px 0 18px 0; padding: 14px; background: rgba(86, 244, 156, 0.08); border: 1px solid rgba(86, 244, 156, 0.25); border-radius: 10px;">
+                                        <div style="font-size: 0.9rem; font-weight: 600; color: rgba(245, 245, 245, 0.9); margin-bottom: 6px;">Resumo do endereço</div>
+                                        <div class="resumo-endereco-titular-text" style="font-size: 0.9rem; color: var(--text-secondary);"></div>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
                                 <h5 style="margin: 0 0 16px 0; font-size: 0.95rem; color: rgba(86, 244, 156, 0.9); font-weight: 600;">
                                     {{ etapa_dep.nome }}
                                 </h5>
@@ -879,6 +1160,7 @@
                                                         {% endwith %}
                                                     </div>
                                                 {% elif campo_etapa.nome_campo == 'confirmar_senha' %}
+                                                    
                                                 {% elif campo_etapa.nome_campo == 'tipo_passaporte_outro' %}
                                                     <div id="div-tipo-passaporte-outro-dependente" style="display: none;">
                                                         <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
@@ -915,7 +1197,7 @@
                             <button type="submit" class="btn btn-primary">
                                 {% if editando_dependente %}Salvar Alterações{% else %}Adicionar Dependente{% endif %}
                             </button>
-                            <button type="button" id="btn-cancelar-dependente" class="btn btn-outline">
+                            <button type="button" id="btn-cancelar-dependente" class="btn btn-cancel">
                                 Cancelar Membro
                             </button>
                         </div>
@@ -955,34 +1237,20 @@
                                 el.remove();
                             });
                         }
-                        const checkbox = document.getElementById('usar-dados-cliente-principal');
-                        if (checkbox) checkbox.checked = false;
+                        document.querySelectorAll('#usar-dados-cliente-principal').forEach(function(checkbox) {
+                            checkbox.checked = false;
+                            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        });
+
+                        const checkboxEndereco = document.getElementById('usar-dados-endereco-cliente-principal');
+                        if (checkboxEndereco) {
+                            checkboxEndereco.checked = false;
+                            checkboxEndereco.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
                     });
                 }
 
-                    var checkboxUsarDados = document.getElementById('usar-dados-cliente-principal');
-                    if (checkboxUsarDados) {
-                        var senhaField = document.querySelector('#senha-dependente-container input[name="senha"]');
-                        var confirmarSenhaField = document.querySelector('#senha-dependente-container input[name="confirmar_senha"]');
-                        var senhaContainer = document.getElementById('senha-dependente-container');
-
-                    function toggleUsarDadosCliente() {
-                        const usarDados = checkboxUsarDados.checked;
-
-                        if (usarDados) {
-                            if (senhaContainer) senhaContainer.style.display = 'none';
-                            if (senhaField) { senhaField.required = false; senhaField.value = ''; }
-                            if (confirmarSenhaField) { confirmarSenhaField.required = false; confirmarSenhaField.value = ''; }
-                        } else {
-                            if (senhaContainer) senhaContainer.style.display = '';
-                            if (senhaField) senhaField.required = true;
-                            if (confirmarSenhaField) confirmarSenhaField.required = true;
-                        }
-                    }
-
-                    checkboxUsarDados.addEventListener('change', toggleUsarDadosCliente);
-                    if (checkboxUsarDados.checked) toggleUsarDadosCliente();
-                }
+                    
             })();
             </script>
 
@@ -1004,6 +1272,9 @@
                             });
 
                             async function buscarCepDependente() {
+                            const checkboxUsarEndereco = document.getElementById('usar-dados-endereco-cliente-principal');
+                            if (checkboxUsarEndereco && checkboxUsarEndereco.checked) return;
+
                                 const cep = cepInputDependente.value.replace(/\D/g, '');
                                 if (cep.length !== 8) {
                                     alert('CEP deve conter 8 dígitos.');
@@ -1099,12 +1370,12 @@
             </script>
             {% endif %}
 
-            {# Renderizar campos da etapa atual #}
+            
             {% for campo_etapa in campos_etapa %}
                 {% if campo_etapa.nome_campo in form.fields %}
                     {% with field=form|get_form_field:campo_etapa.nome_campo %}
                         {% if field %}
-                            {# Campo CEP com botão de busca e UF #}
+                            
                             {% if campo_etapa.nome_campo == 'cep' %}
                                 <div class="grid-inline">
                                     <div>
@@ -1119,7 +1390,7 @@
                                         </div>
                                         {{ field.errors }}
                                     </div>
-                                    {# Renderizar UF junto com CEP se estiver na mesma etapa #}
+                                    
                                     {% for c in campos_etapa %}
                                         {% if c.nome_campo == 'uf' %}
                                             {% with uf_field=form|get_form_field:'uf' %}
@@ -1134,9 +1405,9 @@
                                         {% endif %}
                                     {% endfor %}
                                 </div>
-                            {# Pular campo UF se já foi renderizado com CEP #}
+                            
                             {% elif campo_etapa.nome_campo == 'uf' %}
-                                {# Só renderizar UF se CEP não estiver na mesma etapa (já foi renderizado com CEP) #}
+                                
                                 {% if not tem_cep_na_etapa %}
                                     <div>
                                         <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
@@ -1144,7 +1415,7 @@
                                         {{ field.errors }}
                                     </div>
                                 {% endif %}
-                            {# Campo Senha com Confirmar Senha #}
+                            
                             {% elif campo_etapa.nome_campo == 'senha' %}
                                 <div class="grid-inline">
                                     <div>
@@ -1162,7 +1433,7 @@
                                         {% endif %}
                                     {% endwith %}
                                 </div>
-                            {# Campos que devem aparecer em grid de 2 colunas (telefone, data_nascimento, nacionalidade) #}
+                            
                             {% elif campo_etapa.nome_campo == 'telefone' or campo_etapa.nome_campo == 'telefone_secundario' or campo_etapa.nome_campo == 'data_nascimento' or campo_etapa.nome_campo == 'nacionalidade' %}
                                 {% if forloop.counter0|divisibleby:2 or forloop.first %}
                                     <div class="grid-inline">
@@ -1175,7 +1446,7 @@
                                 {% if forloop.counter|divisibleby:2 or forloop.last %}
                                     </div>
                                 {% endif %}
-                            {# Campos de endereço que devem aparecer em grid (numero, complemento, bairro, cidade) #}
+                            
                             {% elif campo_etapa.nome_campo == 'numero' or campo_etapa.nome_campo == 'complemento' or campo_etapa.nome_campo == 'bairro' or campo_etapa.nome_campo == 'cidade' %}
                                 {% if campo_etapa.nome_campo == 'numero' %}
                                     <div class="grid-inline">
@@ -1188,9 +1459,9 @@
                                 {% if campo_etapa.nome_campo == 'complemento' or campo_etapa.nome_campo == 'cidade' %}
                                     </div>
                                 {% endif %}
-                            {# Pular campo confirmar_senha se já foi renderizado com senha #}
+                            
                             {% elif campo_etapa.nome_campo == 'confirmar_senha' %}
-                                {# Só renderizar confirmar_senha se senha não estiver na mesma etapa (já foi renderizado com senha) #}
+                                
                                 {% if not tem_senha_na_etapa %}
                                     <div>
                                         <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
@@ -1198,14 +1469,14 @@
                                         {{ field.errors }}
                                     </div>
                                 {% endif %}
-                            {# Campo tipo_passaporte_outro - escondido inicialmente, mostrado quando tipo_passaporte = "outro" #}
+                            
                             {% elif campo_etapa.nome_campo == 'tipo_passaporte_outro' %}
                                 <div id="div_tipo_passaporte_outro" style="display: none;">
                                     <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
                                     {{ field }}
                                     {{ field.errors }}
                                 </div>
-                            {# Campos de passaporte que devem aparecer em grid (data_emissao_passaporte, valido_ate_passaporte) #}
+                            
                             {% elif campo_etapa.nome_campo == 'data_emissao_passaporte' or campo_etapa.nome_campo == 'valido_ate_passaporte' %}
                                 {% if campo_etapa.nome_campo == 'data_emissao_passaporte' %}
                                     <div class="grid-inline">
@@ -1218,7 +1489,7 @@
                                 {% if campo_etapa.nome_campo == 'valido_ate_passaporte' %}
                                     </div>
                                 {% endif %}
-                            {# Campos padrão (um por linha) #}
+                            
                             {% else %}
                                 <div>
                                     <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
@@ -1232,7 +1503,7 @@
             {% endfor %}
 
             <div class="form-actions">
-                <button type="submit" name="acao" value="cancelar" class="btn btn-outline">
+                <button type="submit" name="acao" value="cancelar" class="btn btn-cancel">
                     Cancelar Cadastro
                 </button>
                 <div class="btn-group">
@@ -1267,24 +1538,24 @@
     const btnBuscarCep = document.getElementById('btn-buscar-cep');
     if (!cepInput || !btnBuscarCep) return;
 
-    // Função auxiliar para buscar campos de forma mais robusta
+    
     function getFieldById(id) {
         if (!id) return null;
-        // Tentar por ID primeiro
+        
         let field = document.getElementById(id);
         if (field) return field;
-        // Tentar sem o prefixo 'id_'
+        
         const name = id.replace(/^id_/, '');
         field = document.querySelector(`[name="${name}"]`);
         if (field) return field;
-        // Tentar buscar por qualquer atributo que contenha o nome
+        
         field = document.querySelector(`[id*="${name}"], [name*="${name}"]`);
         return field;
     }
 
-    // Campos serão buscados dinamicamente dentro da função preencherCamposEndereco
+    
 
-    // Máscara de CEP
+    
     cepInput.addEventListener('input', function(e) {
         let value = e.target.value.replace(/\D/g, '');
         if (value.length > 5) {
@@ -1293,9 +1564,9 @@
         e.target.value = value;
     });
 
-    // Função para buscar e preencher campos de endereço
+    
     function preencherCamposEndereco(data) {
-        // Buscar campos novamente para garantir que estamos pegando os corretos
+        
         const campos = {
             logradouro: getFieldById('{{ form.logradouro.id_for_label }}') || document.querySelector('[name="logradouro"]'),
             bairro: getFieldById('{{ form.bairro.id_for_label }}') || document.querySelector('[name="bairro"]'),
@@ -1303,11 +1574,11 @@
             uf: getFieldById('{{ form.uf.id_for_label }}') || document.querySelector('[name="uf"]') || document.querySelector('[id*="uf"], [name*="uf"]')
         };
 
-        // Função auxiliar para preencher campo e disparar eventos
+        
         function preencherCampo(field, value) {
             if (field && value) {
                 field.value = value;
-                // Disparar eventos para garantir que o valor seja reconhecido
+                
                 field.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
                 field.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
                 field.dispatchEvent(new Event('blur', { bubbles: true, cancelable: true }));
@@ -1316,7 +1587,7 @@
             return false;
         }
 
-        // Preencher todos os campos
+        
         const resultados = {
             logradouro: preencherCampo(campos.logradouro, data.street),
             bairro: preencherCampo(campos.bairro, data.district),
@@ -1324,11 +1595,11 @@
             uf: preencherCampo(campos.uf, (data.uf || '').toUpperCase())
         };
 
-        // Log dos resultados
+        
         console.log('Preenchimento de campos:', resultados);
         console.log('Dados recebidos:', data);
 
-        // Se algum campo não foi preenchido, tentar novamente após um delay
+        
         const camposNaoPreenchidos = Object.entries(resultados).filter(([_, preenchido]) => !preenchido);
         if (camposNaoPreenchidos.length > 0) {
             console.warn('Alguns campos não foram preenchidos:', camposNaoPreenchidos.map(([nome]) => nome));
@@ -1360,7 +1631,7 @@
         return resultados;
     }
 
-    // Função para buscar CEP
+    
     async function buscarCep() {
         const cep = cepInput.value.replace(/\D/g, '');
         if (cep.length !== 8) {
@@ -1382,7 +1653,7 @@
                 return;
             }
 
-            // Preencher todos os campos de endereço
+            
             preencherCamposEndereco(data);
 
         } catch (e) {
@@ -1402,10 +1673,10 @@
         }
     });
     
-    // Mostrar/esconder campo tipo_passaporte_outro baseado na seleção de tipo_passaporte
+    
     (function() {
         function initTipoPassaporteToggle() {
-            // Tentar encontrar o campo tipo_passaporte por ID ou name
+            
             const tipoPassaporteSelect = document.getElementById('id_tipo_passaporte') || 
                                          document.querySelector('select[name="tipo_passaporte"]');
             const tipoPassaporteOutroDiv = document.getElementById('div_tipo_passaporte_outro');
@@ -1413,7 +1684,7 @@
                                              document.querySelector('input[name="tipo_passaporte_outro"]');
             
             if (!tipoPassaporteSelect || !tipoPassaporteOutroDiv) {
-                // Se não encontrou, tentar novamente após um pequeno delay
+                
                 setTimeout(initTipoPassaporteToggle, 100);
                 return;
             }
@@ -1433,14 +1704,14 @@
                 }
             }
             
-            // Verificar estado inicial
+            
             toggleTipoPassaporteOutro();
             
-            // Adicionar listener
+            
             tipoPassaporteSelect.addEventListener('change', toggleTipoPassaporteOutro);
         }
         
-        // Inicializar quando o DOM estiver pronto
+        
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initTipoPassaporteToggle);
         } else {

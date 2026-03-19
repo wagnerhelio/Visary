@@ -1,6 +1,6 @@
-"""
-Modelos do domínio de consultoria.
-"""
+   
+                                  
+   
 
 from .client_models import ClienteConsultoria
 from .etapa_models import CampoEtapaCliente, EtapaCadastroCliente

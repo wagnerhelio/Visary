@@ -137,6 +137,21 @@ class CriarProcessoTest(TestCase):
             Processo.objects.filter(viagem=self.viagem, cliente=self.cliente).exists()
         )
 
+    def test_post_criar_processo_viagem_hidden_invalido(self):
+        url = f"{reverse('system:criar_processo')}?viagem_id={self.viagem.pk}"
+        payload = {
+                                                                                                                  
+            "viagem_hidden": "abc",
+            "cliente": self.cliente.pk,
+            "assessor_responsavel": self.consultor.pk,
+        }
+        resp = self.client.post(url, payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(
+            Processo.objects.filter(viagem=self.viagem, cliente=self.cliente).exists()
+        )
+        self.assertIn("Viagem inválida", resp.content.decode("utf-8", errors="ignore"))
+
 
 class ListagemProcessosTest(TestCase):
     @classmethod
@@ -180,6 +195,6 @@ class DetalheProcessoTest(TestCase):
         self.client.login(username=self.django_user.username, password="senha123")
 
     def test_detalhe_processo_status_200(self):
-        url = reverse("system:editar_processo", kwargs={"processo_id": self.processo.pk})
+        url = reverse("system:editar_processo", kwargs={"pk": self.processo.pk})
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)

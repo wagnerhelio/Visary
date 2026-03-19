@@ -1,6 +1,6 @@
-"""
-Views relacionadas a parceiros.
-"""
+   
+                               
+   
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -35,7 +35,7 @@ def home_partners(request):
 
 @login_required
 def criar_partner(request):
-    """Formulário para cadastrar novo parceiro."""
+                                                  
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -64,7 +64,7 @@ def criar_partner(request):
 
 @login_required
 def listar_partners(request):
-    """Lista todos os parceiros."""
+                                   
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -81,7 +81,7 @@ def listar_partners(request):
 
 @login_required
 def editar_partner(request, pk: int):
-    """Formulário para editar parceiro existente."""
+                                                    
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -91,7 +91,7 @@ def editar_partner(request, pk: int):
     partner = get_object_or_404(Partner, pk=pk)
     
     if request.method == "POST":
-        # Limpar mensagens duplicadas antes de processar
+                                                        
         _limpar_mensagens_duplicadas_sessao(request)
         
         form = PartnerForm(data=request.POST, user=request.user, instance=partner)
@@ -100,13 +100,13 @@ def editar_partner(request, pk: int):
             messages.success(request, f"Parceiro {partner_atualizado.nome_empresa or partner_atualizado.nome_responsavel} atualizado com sucesso.")
             return redirect("system:listar_partners")
         else:
-            # Exibir erros do formulário
+                                        
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"{form.fields[field].label}: {error}")
     else:
         form = PartnerForm(user=request.user, instance=partner)
-        # Preencher campos CPF e CNPJ se existirem
+                                                  
         if partner.cpf:
             form.fields["cpf"].initial = partner.cpf
         if partner.cnpj:
@@ -123,13 +123,13 @@ def editar_partner(request, pk: int):
 
 @login_required
 def visualizar_partner(request, pk: int):
-    """Visualiza todas as informações do parceiro."""
+                                                     
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
     partner = get_object_or_404(Partner, pk=pk)
     
-    # Buscar clientes vinculados a este parceiro
+                                                
     from consultancy.models import ClienteConsultoria
     clientes_vinculados = ClienteConsultoria.objects.filter(
         parceiro_indicador=partner
@@ -147,7 +147,7 @@ def visualizar_partner(request, pk: int):
 
 
 def _limpar_mensagens_duplicadas_sessao(request):
-    """Remove mensagens duplicadas da sessão."""
+                                                
     if not (stored_messages := request.session.get('_messages')):
         return
     
@@ -165,7 +165,7 @@ def _limpar_mensagens_duplicadas_sessao(request):
         request.session.pop('_messages', None)
     request.session.modified = True
     
-    # Consumir mensagens do storage também
+                                          
     from django.contrib import messages
     storage = messages.get_messages(request)
     storage.used = True
@@ -174,14 +174,14 @@ def _limpar_mensagens_duplicadas_sessao(request):
 @login_required
 @require_http_methods(["POST"])
 def excluir_partner(request, pk: int):
-    """Exclui um parceiro."""
+                             
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
     if not pode_gerenciar_todos:
         raise PermissionDenied
     
-    # Limpar mensagens duplicadas antes de adicionar nova
+                                                         
     _limpar_mensagens_duplicadas_sessao(request)
     
     partner = get_object_or_404(Partner, pk=pk)

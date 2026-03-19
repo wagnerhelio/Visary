@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .form-section {
         background: var(--card-bg);
         border-radius: 24px;
@@ -78,6 +79,8 @@
             flex-direction: column;
         }
     }
+
+    </style>
 {% endblock %}
 
 {% block app_header %}
@@ -121,7 +124,7 @@
 
         <div class="btn-group">
             <button type="submit" class="btn btn-primary">Continuar</button>
-            <a href="{% url 'system:home_formularios' %}" class="btn btn-outline">Cancelar</a>
+            <a href="{% url 'system:home_formularios' %}" class="btn btn-cancel">Cancelar</a>
         </div>
     </section>
 </form>

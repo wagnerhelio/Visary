@@ -1,6 +1,6 @@
-"""
-Views da área do cliente (dashboard e formulários).
-"""
+   
+                                                   
+   
 
 from contextlib import suppress
 from decimal import Decimal, InvalidOperation
@@ -23,7 +23,7 @@ from system.views.travel_views import _obter_formulario_por_tipo_visto, _obter_t
 
 
 def _get_cliente_from_session(request):
-    """Obtém o cliente da sessão ou retorna None."""
+                                                    
     cliente_id = request.session.get("cliente_id")
     if not cliente_id:
         return None
@@ -34,24 +34,24 @@ def _get_cliente_from_session(request):
 
 
 def _obter_formulario_cliente(viagem, cliente):
-    """Obtém o formulário do cliente baseado no tipo_visto individual."""
-    # Obter o tipo_visto individual do cliente
+                                                                         
+                                              
     tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
     
-    # Buscar formulário diretamente do banco de dados
+                                                     
     return _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=False)
 
 
 def cliente_dashboard(request):
-    """Dashboard do cliente mostrando suas viagens."""
+                                                      
     cliente = _get_cliente_from_session(request)
     if not cliente:
         messages.error(request, "Você precisa fazer login para acessar esta página.")
         return redirect("login")
 
-    # Buscar viagens do cliente principal + viagens dos membros
+                                                               
     if cliente.is_principal:
-        # Se é cliente principal, buscar suas viagens + viagens dos dependentes
+                                                                               
         dependentes = cliente.dependentes.all()
         clientes_ids = [cliente.pk] + list(dependentes.values_list('pk', flat=True))
         
@@ -63,7 +63,7 @@ def cliente_dashboard(request):
             .order_by("-data_prevista_viagem")
         )
     else:
-        # Se é dependente, mostrar apenas suas viagens
+                                                      
         viagens = (
             Viagem.objects.filter(clientes=cliente)
             .select_related("pais_destino", "tipo_visto", "assessor_responsavel")
@@ -80,7 +80,7 @@ def cliente_dashboard(request):
 
 
 def cliente_visualizar_formulario(request, viagem_id: int):
-    """Visualiza e responde o formulário vinculado à viagem."""
+                                                               
     cliente = _get_cliente_from_session(request)
     if not cliente:
         messages.error(request, "Você precisa fazer login para acessar esta página.")
@@ -90,12 +90,12 @@ def cliente_visualizar_formulario(request, viagem_id: int):
         Viagem.objects.select_related("tipo_visto__formulario"), pk=viagem_id
     )
 
-    # Verificar se o cliente está vinculado à viagem OU se é cliente principal e algum dependente está na viagem
+                                                                                                                
     cliente_na_viagem = cliente in viagem.clientes.all()
     dependente_na_viagem = False
     
     if not cliente_na_viagem and cliente.is_principal:
-        # Verificar se algum dependente está na viagem
+                                                      
         dependentes_ids = list(cliente.dependentes.values_list('pk', flat=True))
         dependente_na_viagem = viagem.clientes.filter(pk__in=dependentes_ids).exists()
     
@@ -111,22 +111,22 @@ def cliente_visualizar_formulario(request, viagem_id: int):
         )
         return redirect("system:cliente_dashboard")
 
-    # Buscar perguntas ativas ordenadas
+                                       
     perguntas = (
         formulario.perguntas.filter(ativo=True)
         .prefetch_related("opcoes")
         .order_by("ordem", "pergunta")
     )
 
-    # Buscar respostas existentes - criar lista de tuplas para template
+                                                                       
     respostas_list = RespostaFormulario.objects.filter(
         viagem=viagem, cliente=cliente
     ).select_related("resposta_selecao")
     
-    # Criar dicionário para acesso fácil no template
+                                                    
     respostas_existentes = {r.pergunta_id: r for r in respostas_list}
     
-    # Criar também uma lista de IDs para verificação rápida
+                                                           
     respostas_ids = list(respostas_existentes.keys())
 
     contexto = {
@@ -142,7 +142,7 @@ def cliente_visualizar_formulario(request, viagem_id: int):
 
 
 def _limpar_campos_resposta(resposta):
-    """Limpa todos os campos de resposta."""
+                                            
     resposta.resposta_texto = ""
     resposta.resposta_data = None
     resposta.resposta_numero = None
@@ -151,7 +151,7 @@ def _limpar_campos_resposta(resposta):
 
 
 def _atualizar_resposta_por_tipo(resposta, pergunta, valor):
-    """Atualiza a resposta de acordo com o tipo de campo da pergunta."""
+                                                                        
     _limpar_campos_resposta(resposta)
     
     if pergunta.tipo_campo == "texto":
@@ -176,7 +176,7 @@ def _atualizar_resposta_por_tipo(resposta, pergunta, valor):
 
 
 def cliente_salvar_resposta(request, viagem_id: int):
-    """Salva ou atualiza uma resposta do formulário."""
+                                                       
     cliente = _get_cliente_from_session(request)
     if not cliente:
         messages.error(request, "Você precisa fazer login para acessar esta página.")
@@ -186,7 +186,7 @@ def cliente_salvar_resposta(request, viagem_id: int):
         Viagem.objects.select_related("tipo_visto__formulario"), pk=viagem_id
     )
 
-    # Verificar se o cliente está vinculado à viagem
+                                                    
     if cliente not in viagem.clientes.all():
         raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
 
@@ -198,7 +198,7 @@ def cliente_salvar_resposta(request, viagem_id: int):
         messages.error(request, "Formulário não encontrado.")
         return redirect("system:cliente_dashboard")
 
-    # Processar todas as respostas enviadas
+                                           
     perguntas = formulario.perguntas.filter(ativo=True)
     respostas_salvas = 0
     erros = []
@@ -207,12 +207,12 @@ def cliente_salvar_resposta(request, viagem_id: int):
         campo_name = f"pergunta_{pergunta.pk}"
         valor = request.POST.get(campo_name)
 
-        # Verificar se é obrigatório
+                                    
         if pergunta.obrigatorio and not valor:
             erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
             continue
 
-        # Buscar ou criar resposta
+                                  
         resposta, _ = RespostaFormulario.objects.get_or_create(
             viagem=viagem,
             cliente=cliente,
@@ -220,7 +220,7 @@ def cliente_salvar_resposta(request, viagem_id: int):
             defaults={},
         )
 
-        # Atualizar resposta de acordo com o tipo
+                                                 
         try:
             _atualizar_resposta_por_tipo(resposta, pergunta, valor)
             resposta.save()

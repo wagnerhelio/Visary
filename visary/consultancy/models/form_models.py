@@ -1,6 +1,6 @@
-"""
-Modelos relacionados a formulários dinâmicos de visto.
-"""
+   
+                                                      
+   
 
 from django.db import models
 
@@ -8,7 +8,7 @@ from consultancy.models.travel_models import TipoVisto
 
 
 class FormularioVisto(models.Model):
-    """Formulário dinâmico vinculado a um tipo de visto."""
+                                                           
 
     tipo_visto = models.OneToOneField(
         TipoVisto,
@@ -30,7 +30,7 @@ class FormularioVisto(models.Model):
 
 
 class PerguntaFormulario(models.Model):
-    """Pergunta/campo de um formulário de visto."""
+                                                   
 
     TIPO_CAMPO_CHOICES = [
         ("texto", "Texto"),
@@ -70,7 +70,7 @@ class PerguntaFormulario(models.Model):
 
 
 class OpcaoSelecao(models.Model):
-    """Opção de seleção para perguntas do tipo 'Seleção'."""
+                                                            
 
     pergunta = models.ForeignKey(
         PerguntaFormulario,
@@ -95,7 +95,7 @@ class OpcaoSelecao(models.Model):
 
 
 class RespostaFormulario(models.Model):
-    """Resposta de um cliente a um formulário de visto."""
+                                                          
 
     viagem = models.ForeignKey(
         "consultancy.Viagem",
@@ -146,7 +146,7 @@ class RespostaFormulario(models.Model):
         return f"{self.cliente.nome} - {self.pergunta.pergunta}"
 
     def get_resposta_display(self):
-        """Retorna a resposta formatada de acordo com o tipo de campo."""
+                                                                         
         if self.pergunta.tipo_campo == "texto":
             return self.resposta_texto
         elif self.pergunta.tipo_campo == "data":

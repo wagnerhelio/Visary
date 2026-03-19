@@ -1,6 +1,6 @@
-"""
-Formulários para gerenciar etapas de cadastro de clientes.
-"""
+   
+                                                          
+   
 
 from django import forms
 
@@ -8,7 +8,7 @@ from consultancy.models import CampoEtapaCliente, EtapaCadastroCliente
 
 
 class EtapaCadastroClienteForm(forms.ModelForm):
-    """Formulário para criar/editar etapas de cadastro."""
+                                                          
 
     class Meta:
         model = EtapaCadastroCliente
@@ -42,7 +42,7 @@ class EtapaCadastroClienteForm(forms.ModelForm):
 
 
 class CampoEtapaClienteForm(forms.ModelForm):
-    """Formulário para criar/editar campos de uma etapa."""
+                                                           
 
     class Meta:
         model = CampoEtapaCliente
@@ -78,7 +78,7 @@ class CampoEtapaClienteForm(forms.ModelForm):
 
 
 class CampoEtapaClienteInlineForm(forms.ModelForm):
-    """Formulário inline para campos de etapa (sem campo etapa)."""
+                                                                   
 
     class Meta:
         model = CampoEtapaCliente

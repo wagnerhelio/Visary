@@ -1,6 +1,6 @@
-"""
-Views relacionadas a status de processos.
-"""
+   
+                                         
+   
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -15,11 +15,11 @@ from system.views.client_views import obter_consultor_usuario, usuario_pode_gere
 
 @login_required
 def listar_status_processo(request):
-    """Lista todos os status de processos."""
+                                             
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    # Apenas administradores podem gerenciar status
+                                                   
     if not pode_gerenciar_todos:
         raise PermissionDenied("Você não tem permissão para gerenciar status de processos.")
 
@@ -38,11 +38,11 @@ def listar_status_processo(request):
 
 @login_required
 def criar_status_processo(request):
-    """Formulário para cadastrar novo status de processo."""
+                                                            
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    # Apenas administradores podem criar status
+                                               
     if not pode_gerenciar_todos:
         raise PermissionDenied("Você não tem permissão para criar status de processos.")
 
@@ -66,11 +66,11 @@ def criar_status_processo(request):
 
 @login_required
 def editar_status_processo(request, pk: int):
-    """Formulário para editar status de processo existente."""
+                                                              
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    # Apenas administradores podem editar status
+                                                
     if not pode_gerenciar_todos:
         raise PermissionDenied("Você não tem permissão para editar status de processos.")
 
@@ -98,17 +98,17 @@ def editar_status_processo(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_status_processo(request, pk: int):
-    """Exclui um status de processo."""
+                                       
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    # Apenas administradores podem excluir status
+                                                 
     if not pode_gerenciar_todos:
         raise PermissionDenied("Você não tem permissão para excluir status de processos.")
 
     status = get_object_or_404(StatusProcesso, pk=pk)
 
-    # Verificar se há processos usando este status
+                                                  
     if status.processos.exists():
         messages.error(
             request,

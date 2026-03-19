@@ -77,16 +77,16 @@ class UsuarioConsultoria(models.Model):
         return self.nome
 
     def set_password(self, raw_password: str, *, commit: bool = True) -> None:
-        """
-        Atualiza o hash da senha aplicando os hashers do Django.
+           
+                                                                
 
-        Parameters
-        ----------
-        raw_password:
-            Senha em texto puro fornecida pelo usuário.
-        commit:
-            Quando True (padrão), persiste a alteração imediatamente.
-        """
+                  
+                  
+                     
+                                                       
+               
+                                                                     
+           
 
         self.senha = make_password(raw_password)
 
@@ -94,9 +94,9 @@ class UsuarioConsultoria(models.Model):
             self.save(update_fields=["senha", "atualizado_em"])
 
     def check_password(self, raw_password: str) -> bool:
-        """
-        Valida a senha informada utilizando o hash armazenado.
-        """
+           
+                                                              
+           
 
         if not self.senha:
             return False
@@ -104,7 +104,7 @@ class UsuarioConsultoria(models.Model):
         if check_password(raw_password, self.senha):
             return True
 
-        # Compatibilidade com registros antigos que possuam senha em texto puro.
+                                                                                
         if self.senha == raw_password:
             self.set_password(raw_password)
             return True

@@ -1,6 +1,6 @@
-"""
-Formulários relacionados a opções de seleção.
-"""
+   
+                                             
+   
 
 from django import forms
 
@@ -8,7 +8,7 @@ from consultancy.models import OpcaoSelecao
 
 
 class OpcaoSelecaoForm(forms.ModelForm):
-    """Formulário para criar/editar opção de seleção."""
+                                                        
 
     class Meta:
         model = OpcaoSelecao
@@ -34,7 +34,7 @@ class OpcaoSelecaoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if pergunta:
             self.instance.pergunta = pergunta
-            # Definir ordem padrão como próxima disponível
+                                                          
             if not self.instance.pk:
                 from django.db.models import Max
                 ultima_ordem = OpcaoSelecao.objects.filter(

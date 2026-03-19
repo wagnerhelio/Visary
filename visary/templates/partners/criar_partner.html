@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -139,9 +140,11 @@
             font-size: 0.9rem;
         }
     }
+
+    </style>
 {% endblock %}
 
-{% comment %}Menu lateral definido no base.html{% endcomment %}
+
 
 {% block app_header %}
 <section class="page-header">
@@ -254,7 +257,7 @@
 </section>
 
 <script>
-// Máscaras para CPF, CNPJ e Telefone
+
 (function() {
     const cpfInput = document.getElementById('{{ form.cpf.id_for_label }}');
     const cnpjInput = document.getElementById('{{ form.cnpj.id_for_label }}');

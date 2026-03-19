@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -145,6 +146,8 @@
             grid-template-columns: 1fr;
         }
     }
+
+    </style>
 {% endblock %}
 
 {% block app_header %}
@@ -247,7 +250,7 @@
 
             <div style="display: flex; gap: 12px; margin-top: 8px;">
                 <button type="submit" class="btn btn-primary">Salvar</button>
-                <a href="{% url 'system:listar_perfis' %}" class="btn btn-outline">Cancelar</a>
+                <a href="{% url 'system:listar_perfis' %}" class="btn btn-cancel">Cancelar</a>
             </div>
         </form>
     </section>

@@ -1,6 +1,6 @@
-"""
-Modelos relacionados a parceiros que indicam clientes.
-"""
+   
+                                                      
+   
 
 from django.conf import settings
 from django.db import models
@@ -9,7 +9,7 @@ from system.models import UsuarioConsultoria
 
 
 class Partner(models.Model):
-    """Parceiro que pode indicar clientes para a empresa."""
+                                                            
 
     SEGMENTO_CHOICES = [
         ("agencia_viagem", "Agência de Viagem"),
@@ -55,12 +55,12 @@ class Partner(models.Model):
         return self.nome_responsavel
 
     def set_password(self, raw_password):
-        """Define a senha do parceiro."""
+                                         
         from django.contrib.auth.hashers import make_password
         self.senha = make_password(raw_password)
 
     def check_password(self, raw_password):
-        """Verifica se a senha está correta."""
+                                               
         from django.contrib.auth.hashers import check_password
         return check_password(raw_password, self.senha)
 

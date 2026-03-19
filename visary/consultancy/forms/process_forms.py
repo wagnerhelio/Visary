@@ -1,6 +1,8 @@
-"""
-Formulários relacionados a processos de visto.
-"""
+   
+                                              
+   
+
+import logging
 
 from django import forms
 from django.contrib.auth.models import User
@@ -8,9 +10,11 @@ from django.contrib.auth.models import User
 from consultancy.models import EtapaProcesso, Processo, ViagemStatusProcesso
 from system.models import UsuarioConsultoria
 
+logger = logging.getLogger(__name__)
+
 
 class ProcessoForm(forms.ModelForm):
-    """Formulário para cadastro de processo."""
+                                               
 
     class Meta:
         model = Processo
@@ -44,16 +48,16 @@ class ProcessoForm(forms.ModelForm):
         self._user = user
         self._viagem_id = viagem_id
         
-        # Configurar campo de etapas se viagem_id fornecido ou se viagem foi selecionada no POST
+                                                                                                
         viagem_id_para_etapas = viagem_id
         if not viagem_id_para_etapas and self.data:
-            # Tentar obter viagem_id do POST
+                                            
             viagem_id_post = self.data.get('viagem') or self.data.get('viagem_hidden')
             if viagem_id_post:
                 try:
                     viagem_id_para_etapas = int(viagem_id_post)
                 except (ValueError, TypeError):
-                    pass
+                    logger.warning("viagem_hidden/viagem inválido em ProcessoForm.__init__: %r", viagem_id_post)
         
         if viagem_id_para_etapas:
             from consultancy.models import ViagemStatusProcesso
@@ -65,36 +69,36 @@ class ProcessoForm(forms.ModelForm):
             choices = [(vs.status.pk, vs.status.nome) for vs in status_vinculados]
             self.fields['etapas_selecionadas'].choices = choices
             self.fields['etapas_selecionadas'].widget = forms.CheckboxSelectMultiple()
-            # Por padrão, selecionar todas as etapas (apenas em GET, não em POST)
+                                                                                 
             if not self.instance.pk and not self.data:
                 self.fields['etapas_selecionadas'].initial = [str(pk) for pk, _ in choices]
         else:
             self.fields['etapas_selecionadas'].widget = forms.HiddenInput()
             self.fields['etapas_selecionadas'].choices = []
 
-        # Filtrar viagens ativas
+                                
         from consultancy.models import Viagem, ClienteConsultoria
 
         viagens_queryset = Viagem.objects.select_related(
             "pais_destino", "tipo_visto"
         ).order_by("-data_prevista_viagem")
         
-        # Se cliente_id fornecido, filtrar apenas viagens onde cliente está vinculado
+                                                                                     
         if cliente_id:
             try:
                 cliente = ClienteConsultoria.objects.get(pk=cliente_id)
-                # Viagens onde cliente está diretamente OU é dependente de cliente principal na viagem
+                                                                                                      
                 viagens_queryset = viagens_queryset.filter(
                     clientes=cliente
                 ).distinct()
             except ClienteConsultoria.DoesNotExist:
-                pass
+                logger.warning("ClienteConsultoria não encontrado em ProcessoForm.__init__: cliente_id=%r", cliente_id)
         
         self.fields["viagem"].queryset = viagens_queryset
         
-        # Personalizar exibição das viagens no select
+                                                     
         def label_from_instance_viagem(obj):
-            """Formata a exibição da viagem: País - Tipo de Visto - Data da Viagem"""
+                                                                                     
             pais = obj.pais_destino.nome if obj.pais_destino else "N/A"
             tipo_visto = obj.tipo_visto.nome if obj.tipo_visto else "N/A"
             data_viagem = obj.data_prevista_viagem.strftime('%d/%m/%Y') if obj.data_prevista_viagem else "N/A"
@@ -102,15 +106,15 @@ class ProcessoForm(forms.ModelForm):
         
         self.fields["viagem"].label_from_instance = label_from_instance_viagem
 
-        # Filtrar clientes ativos
+                                 
         clientes_queryset = ClienteConsultoria.objects.all().order_by("nome")
         
-        # Se viagem_id fornecido, filtrar apenas clientes vinculados à viagem
+                                                                             
         viagem_obj = None
         if viagem_id:
             try:
                 viagem_obj = Viagem.objects.get(pk=viagem_id)
-                # Clientes diretamente na viagem
+                                                
                 clientes_na_viagem = viagem_obj.clientes.all()
                 
                 clientes_ids = set(clientes_na_viagem.values_list('pk', flat=True))
@@ -129,28 +133,28 @@ class ProcessoForm(forms.ModelForm):
                     pk__in=clientes_ids
                 ).distinct()
             except Viagem.DoesNotExist:
-                pass
+                logger.warning("Viagem não encontrada em ProcessoForm.__init__: viagem_id=%r", viagem_id)
         
         self.fields["cliente"].queryset = clientes_queryset
         
-        # Definir valores iniciais se parâmetros fornecidos
+                                                           
         if cliente_id and not self.instance.pk:
             try:
                 self.fields["cliente"].initial = int(cliente_id)
             except (ValueError, TypeError):
-                pass
+                logger.warning("Falha ao converter cliente_id=%r em ProcessoForm.__init__", cliente_id)
         elif viagem_obj and not self.instance.pk and not cliente_id:
-            # Se viagem_id fornecido mas não cliente_id, verificar se há apenas um cliente
-            # Usar o queryset já filtrado para contar
+                                                                                          
+                                                     
             clientes_list = list(clientes_queryset)
             if len(clientes_list) == 1:
-                # Se há apenas um cliente, pré-selecionar e desabilitar
+                                                                       
                 cliente_unico = clientes_list[0]
                 if cliente_unico:
                     self.fields["cliente"].initial = cliente_unico.pk
                     self.fields["cliente"].widget.attrs['disabled'] = True
                     self.fields["cliente"].widget.attrs['style'] = 'opacity: 0.6; cursor: not-allowed;'
-                    # Adicionar campo hidden para garantir que o valor seja enviado no POST
+                                                                                           
                     from django import forms as django_forms
                     self.fields['cliente_hidden'] = django_forms.IntegerField(
                         widget=django_forms.HiddenInput(),
@@ -162,10 +166,10 @@ class ProcessoForm(forms.ModelForm):
             try:
                 viagem_id_int = int(viagem_id)
                 self.fields["viagem"].initial = viagem_id_int
-                # Quando viagem_id é fornecido, tornar o campo disabled pois já está vinculado
+                                                                                              
                 self.fields["viagem"].widget.attrs['disabled'] = True
                 self.fields["viagem"].widget.attrs['style'] = 'opacity: 0.6; cursor: not-allowed;'
-                # Adicionar campo hidden para garantir que o valor seja enviado no POST
+                                                                                       
                 from django import forms as django_forms
                 self.fields['viagem_hidden'] = django_forms.IntegerField(
                     widget=django_forms.HiddenInput(),
@@ -173,14 +177,14 @@ class ProcessoForm(forms.ModelForm):
                     required=False
                 )
             except (ValueError, TypeError):
-                pass
+                logger.warning("Falha ao converter viagem_id=%r em ProcessoForm.__init__", viagem_id)
 
-        # Filtrar assessores ativos
+                                   
         self.fields["assessor_responsavel"].queryset = (
             UsuarioConsultoria.objects.filter(ativo=True).order_by("nome").select_related("perfil")
         )
 
-        # Se não for admin, definir assessor responsável como o usuário logado
+                                                                              
         if user is not None and not user.is_superuser and not user.is_staff:
             if consultor := (
                 UsuarioConsultoria.objects.filter(email__iexact=user.email, ativo=True)
@@ -190,49 +194,53 @@ class ProcessoForm(forms.ModelForm):
                 self.fields["assessor_responsavel"].initial = consultor.pk
 
     def full_clean(self):
-        """Sobrescreve full_clean para processar campos hidden antes da validação."""
-        # Processar campos hidden antes de chamar super().full_clean()
+                                                                                     
+                                                                      
         if self.data and hasattr(self, 'fields'):
-            # Processar viagem_hidden
+                                     
             if "viagem_hidden" in self.fields and self.data.get("viagem_hidden"):
                 try:
                     viagem_id = int(self.data.get("viagem_hidden"))
                     if "viagem" in self.fields and not self.data.get("viagem"):
-                        # Se viagem não foi enviada mas viagem_hidden foi, usar o hidden
+                                                                                        
                         self.data = self.data.copy()
                         self.data["viagem"] = str(viagem_id)
                 except (ValueError, TypeError):
+                                                                                    
                     pass
             
-            # Processar cliente_hidden
+                                      
             if "cliente_hidden" in self.fields and self.data.get("cliente_hidden"):
                 try:
                     cliente_id = int(self.data.get("cliente_hidden"))
                     if "cliente" in self.fields and not self.data.get("cliente"):
-                        # Se cliente não foi enviado mas cliente_hidden foi, usar o hidden
+                                                                                          
                         self.data = self.data.copy()
                         self.data["cliente"] = str(cliente_id)
                 except (ValueError, TypeError):
+                                                                                     
                     pass
         
         super().full_clean()
     
     def clean(self):
         cleaned_data = super().clean()
-        # Se viagem estiver disabled, usar o campo hidden ou o valor do POST
+                                                                            
         if not cleaned_data.get("viagem"):
             viagem_id = None
-            # Tentar obter do campo hidden primeiro
+                                                   
             if "viagem_hidden" in self.fields:
+                hidden_val = self.data.get("viagem_hidden")
                 viagem_id = cleaned_data.get("viagem_hidden")
-                if not viagem_id and self.fields.get("viagem_hidden"):
-                    viagem_id = self.fields.get("viagem_hidden").initial
-            # Se não encontrou no hidden, tentar obter diretamente do POST
-            if not viagem_id and self.data.get("viagem_hidden"):
-                try:
-                    viagem_id = int(self.data.get("viagem_hidden"))
-                except (ValueError, TypeError):
-                    pass
+
+                                                                               
+                                                                                   
+                if not viagem_id:
+                    if hidden_val not in (None, ""):
+                        self.add_error("viagem", "Viagem inválida.")
+                        viagem_id = None
+                    elif self.fields.get("viagem_hidden"):
+                        viagem_id = self.fields.get("viagem_hidden").initial
             
             if viagem_id:
                 from consultancy.models import Viagem
@@ -240,22 +248,24 @@ class ProcessoForm(forms.ModelForm):
                     viagem = Viagem.objects.get(pk=viagem_id)
                     cleaned_data["viagem"] = viagem
                 except (Viagem.DoesNotExist, ValueError, TypeError, AttributeError):
-                    pass
+                    self.add_error("viagem", "Viagem inválida.")
         
-        # Se cliente estiver disabled, usar o campo hidden ou o valor do POST
+                                                                             
         if not cleaned_data.get("cliente"):
             cliente_id = None
-            # Tentar obter do campo hidden primeiro
+                                                   
             if "cliente_hidden" in self.fields:
+                hidden_val = self.data.get("cliente_hidden")
                 cliente_id = cleaned_data.get("cliente_hidden")
-                if not cliente_id and self.fields.get("cliente_hidden"):
-                    cliente_id = self.fields.get("cliente_hidden").initial
-            # Se não encontrou no hidden, tentar obter diretamente do POST
-            if not cliente_id and self.data.get("cliente_hidden"):
-                try:
-                    cliente_id = int(self.data.get("cliente_hidden"))
-                except (ValueError, TypeError):
-                    pass
+
+                                                                               
+                                                      
+                if not cliente_id:
+                    if hidden_val not in (None, ""):
+                        self.add_error("cliente", "Cliente inválido.")
+                        cliente_id = None
+                    elif self.fields.get("cliente_hidden"):
+                        cliente_id = self.fields.get("cliente_hidden").initial
             
             if cliente_id:
                 from consultancy.models import ClienteConsultoria
@@ -263,39 +273,39 @@ class ProcessoForm(forms.ModelForm):
                     cliente = ClienteConsultoria.objects.get(pk=cliente_id)
                     cleaned_data["cliente"] = cliente
                 except (ClienteConsultoria.DoesNotExist, ValueError, TypeError, AttributeError):
-                    pass
+                    self.add_error("cliente", "Cliente inválido.")
         
         viagem = cleaned_data.get("viagem")
         cliente = cleaned_data.get("cliente")
 
         if viagem and cliente:
-            # Buscar todos os clientes diretamente na viagem
+                                                            
             clientes_na_viagem = viagem.clientes.all()
             cliente_na_viagem = cliente in clientes_na_viagem
             
-            # Verificar se o cliente compartilha email com algum cliente na viagem
+                                                                                  
             cliente_com_mesmo_email_na_viagem = False
             if not cliente_na_viagem and cliente.email:
-                # Buscar emails dos clientes que estão na viagem
+                                                                
                 emails_na_viagem = set(clientes_na_viagem.values_list('email', flat=True))
                 emails_na_viagem = {email for email in emails_na_viagem if email}
                 
-                # Verificar se o cliente compartilha email com algum cliente na viagem
+                                                                                      
                 if cliente.email in emails_na_viagem:
                     cliente_com_mesmo_email_na_viagem = True
             
-            # Verificar se o cliente é dependente de outro cliente que está na viagem
+                                                                                     
             cliente_principal_na_viagem = False
             if cliente.cliente_principal:
                 cliente_principal_na_viagem = cliente.cliente_principal in viagem.clientes.all()
             
-            # Verificar se algum dependente do cliente está na viagem (caso o cliente seja principal)
+                                                                                                     
             dependente_na_viagem = False
             if cliente.is_principal:
                 dependentes_na_viagem = viagem.clientes.filter(cliente_principal=cliente).exists()
                 dependente_na_viagem = dependentes_na_viagem
             
-            # Cliente deve estar na viagem OU compartilhar email com cliente na viagem OU ser membro de um grupo familiar vinculado
+                                                                                                                                   
             cliente_valido = cliente_na_viagem or cliente_com_mesmo_email_na_viagem or cliente_principal_na_viagem or dependente_na_viagem
             
             if not cliente_valido:
@@ -305,7 +315,7 @@ class ProcessoForm(forms.ModelForm):
                     "Por favor, vincule o cliente à viagem antes de criar o processo."
                 )
 
-            # Verificar se já existe processo para esta viagem e cliente
+                                                                        
             processos_existentes = (
                 Processo.objects.filter(viagem=viagem, cliente=cliente).exclude(
                     pk=self.instance.pk
@@ -329,17 +339,17 @@ class ProcessoForm(forms.ModelForm):
 
         if commit:
             processo.save()
-            # Criar etapas automaticamente baseadas nos status vinculados à viagem
+                                                                                  
             self._criar_etapas(processo)
 
         return processo
 
     def _criar_etapas(self, processo: Processo) -> None:
-        """Cria as etapas do processo baseadas nas etapas selecionadas no formulário."""
+                                                                                        
         etapas_selecionadas = self.cleaned_data.get('etapas_selecionadas', [])
         
         if not etapas_selecionadas:
-            # Se nenhuma etapa selecionada, criar todas por padrão (comportamento anterior)
+                                                                                           
             status_vinculados = ViagemStatusProcesso.objects.filter(
                 viagem=processo.viagem,
                 ativo=True
@@ -358,7 +368,7 @@ class ProcessoForm(forms.ModelForm):
                     }
                 )
         else:
-            # Criar apenas as etapas selecionadas
+                                                 
             from consultancy.models import StatusProcesso
             status_ids = [int(sid) for sid in etapas_selecionadas]
             status_selecionados = StatusProcesso.objects.filter(pk__in=status_ids)
@@ -377,7 +387,7 @@ class ProcessoForm(forms.ModelForm):
 
 
 class EtapaProcessoForm(forms.ModelForm):
-    """Formulário para editar uma etapa do processo."""
+                                                       
 
     class Meta:
         model = EtapaProcesso

@@ -1,6 +1,6 @@
-"""
-Formulários relacionados a formulários dinâmicos de visto.
-"""
+   
+                                                          
+   
 
 from django import forms
 from django.db.models import Max, Q
@@ -9,7 +9,7 @@ from consultancy.models import FormularioVisto, PerguntaFormulario, TipoVisto
 
 
 class FormularioVistoForm(forms.ModelForm):
-    """Formulário para criar/editar formulário de visto."""
+                                                           
 
     class Meta:
         model = FormularioVisto
@@ -21,19 +21,19 @@ class FormularioVistoForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filtrar apenas tipos de visto que ainda não têm formulário
+                                                                    
         if self.instance.pk:
-            # Ao editar, permitir o tipo de visto atual
+                                                       
             self.fields["tipo_visto"].queryset = TipoVisto.objects.filter(
                 Q(pk=self.instance.tipo_visto_id) | Q(formulario__isnull=True)
             )
         else:
-            # Ao criar, apenas tipos sem formulário
+                                                   
             self.fields["tipo_visto"].queryset = TipoVisto.objects.filter(formulario__isnull=True)
 
 
 class PerguntaFormularioForm(forms.ModelForm):
-    """Formulário para criar/editar pergunta de formulário."""
+                                                              
 
     class Meta:
         model = PerguntaFormulario
@@ -61,7 +61,7 @@ class PerguntaFormularioForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if formulario:
             self.instance.formulario = formulario
-            # Definir ordem padrão como próxima disponível
+                                                          
             if not self.instance.pk:
                 ultima_ordem = PerguntaFormulario.objects.filter(
                     formulario=formulario

@@ -1,6 +1,6 @@
-"""
-Views relacionadas à área de administração.
-"""
+   
+                                           
+   
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -15,14 +15,14 @@ from system.views.client_views import obter_consultor_usuario, usuario_pode_gere
 
 @login_required
 def home_administracao(request):
-    """Página inicial da área de administração."""
+                                                  
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
     if not pode_gerenciar_todos:
         raise PermissionDenied
 
-    # Estatísticas
+                  
     total_usuarios = UsuarioConsultoria.objects.count()
     total_perfis = Perfil.objects.count()
     total_modulos = Modulo.objects.count()
@@ -39,11 +39,11 @@ def home_administracao(request):
     return render(request, "admin/home_administracao.html", contexto)
 
 
-# ========== GERENCIAR USUÁRIOS ==========
+                                          
 
 @login_required
 def listar_usuarios(request):
-    """Lista todos os usuários."""
+                                  
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -52,7 +52,7 @@ def listar_usuarios(request):
 
     usuarios = UsuarioConsultoria.objects.select_related("perfil").order_by("nome")
 
-    # Filtros
+             
     nome_filter = request.GET.get("nome", "")
     email_filter = request.GET.get("email", "")
     perfil_filter = request.GET.get("perfil", "")
@@ -90,7 +90,7 @@ def listar_usuarios(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def criar_usuario(request):
-    """Cria um novo usuário."""
+                               
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -118,7 +118,7 @@ def criar_usuario(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def editar_usuario(request, pk: int):
-    """Edita um usuário existente."""
+                                     
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -149,7 +149,7 @@ def editar_usuario(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_usuario(request, pk: int):
-    """Exclui um usuário."""
+                            
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -164,11 +164,11 @@ def excluir_usuario(request, pk: int):
     return redirect("system:listar_usuarios")
 
 
-# ========== GERENCIAR PERFIS/PERMISSÕES ==========
+                                                   
 
 @login_required
 def listar_perfis(request):
-    """Lista todos os perfis/permissões."""
+                                           
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -177,7 +177,7 @@ def listar_perfis(request):
 
     perfis = Perfil.objects.prefetch_related("modulos", "usuarios").order_by("nome")
 
-    # Filtros
+             
     nome_filter = request.GET.get("nome", "")
     ativo_filter = request.GET.get("ativo", "")
 
@@ -202,7 +202,7 @@ def listar_perfis(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def criar_perfil(request):
-    """Cria um novo perfil/permissão."""
+                                        
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -230,7 +230,7 @@ def criar_perfil(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def editar_perfil(request, pk: int):
-    """Edita um perfil/permissão existente."""
+                                              
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -261,7 +261,7 @@ def editar_perfil(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_perfil(request, pk: int):
-    """Exclui um perfil/permissão."""
+                                     
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -271,7 +271,7 @@ def excluir_perfil(request, pk: int):
     perfil = get_object_or_404(Perfil, pk=pk)
     nome_perfil = perfil.nome
 
-    # Verificar se há usuários usando este perfil
+                                                 
     if perfil.usuarios.exists():
         messages.error(
             request,
@@ -284,11 +284,11 @@ def excluir_perfil(request, pk: int):
     return redirect("system:listar_perfis")
 
 
-# ========== GERENCIAR MÓDULOS ==========
+                                         
 
 @login_required
 def listar_modulos(request):
-    """Lista todos os módulos."""
+                                 
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -297,7 +297,7 @@ def listar_modulos(request):
 
     modulos = Modulo.objects.prefetch_related("perfis").order_by("ordem", "nome")
 
-    # Filtros
+             
     nome_filter = request.GET.get("nome", "")
     ativo_filter = request.GET.get("ativo", "")
 
@@ -322,7 +322,7 @@ def listar_modulos(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def criar_modulo(request):
-    """Cria um novo módulo."""
+                              
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -350,7 +350,7 @@ def criar_modulo(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def editar_modulo(request, pk: int):
-    """Edita um módulo existente."""
+                                    
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -381,7 +381,7 @@ def editar_modulo(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_modulo(request, pk: int):
-    """Exclui um módulo."""
+                           
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -391,7 +391,7 @@ def excluir_modulo(request, pk: int):
     modulo = get_object_or_404(Modulo, pk=pk)
     nome_modulo = modulo.nome
 
-    # Verificar se há perfis usando este módulo
+                                               
     if modulo.perfis.exists():
         messages.error(
             request,

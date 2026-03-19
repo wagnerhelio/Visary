@@ -1,6 +1,6 @@
-"""
-Modelos relacionados a viagens e destinos.
-"""
+   
+                                          
+   
 
 from django.conf import settings
 from django.db import models
@@ -9,7 +9,7 @@ from system.models import UsuarioConsultoria
 
 
 class PaisDestino(models.Model):
-    """País de destino para viagens."""
+                                       
 
     nome = models.CharField("Nome do país", max_length=100, unique=True)
     codigo_iso = models.CharField("Código ISO", max_length=3, blank=True)
@@ -33,7 +33,7 @@ class PaisDestino(models.Model):
 
 
 class TipoVisto(models.Model):
-    """Tipo de visto vinculado a um país de destino."""
+                                                       
 
     pais_destino = models.ForeignKey(
         PaisDestino,
@@ -64,7 +64,7 @@ class TipoVisto(models.Model):
 
 
 class Viagem(models.Model):
-    """Viagem organizada pela consultoria."""
+                                             
 
     assessor_responsavel = models.ForeignKey(
         UsuarioConsultoria,
@@ -119,7 +119,7 @@ class Viagem(models.Model):
 
 
 class ClienteViagem(models.Model):
-    """Modelo intermediário para relacionar cliente, viagem e tipo de visto individual."""
+                                                                                          
     
     viagem = models.ForeignKey(
         Viagem,

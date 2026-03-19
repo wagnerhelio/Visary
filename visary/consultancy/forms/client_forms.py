@@ -1,6 +1,6 @@
-"""
-Formulário para cadastro de clientes da consultoria.
-"""
+   
+                                                    
+   
 
 from __future__ import annotations
 
@@ -187,10 +187,10 @@ class ClienteConsultoriaForm(forms.ModelForm):
         }
 
     def __init__(self, *args, user: Optional[User] = None, cliente_principal=None, usar_dados_principal: bool = False, **kwargs) -> None:
-        # Capturar initial antes de chamar super() para verificar se assessor_responsavel já está definido
+                                                                                                          
         initial_dict = kwargs.get('initial', {}) if 'initial' in kwargs else {}
         initial_assessor = initial_dict.get('assessor_responsavel') if initial_dict else None
-        # Converter para int se necessário e garantir que não seja vazio/None
+                                                                             
         if initial_assessor:
             try:
                 initial_assessor = int(initial_assessor) if isinstance(initial_assessor, str) else initial_assessor
@@ -202,9 +202,9 @@ class ClienteConsultoriaForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self._user = user
         self.cliente_principal = cliente_principal
-        self.usar_dados_principal = usar_dados_principal  # Flag para usar dados do cliente principal
+        self.usar_dados_principal = usar_dados_principal                                             
         
-        # Se estiver usando dados do cliente principal, tornar senha opcional ANTES de qualquer outra configuração
+                                                                                                                  
         if usar_dados_principal:
             if 'senha' in self.fields:
                 self.fields['senha'].required = False
@@ -219,12 +219,12 @@ class ClienteConsultoriaForm(forms.ModelForm):
             .select_related("perfil")
         )
         
-        # Campo de parceiro opcional
+                                    
         self.fields["parceiro_indicador"].queryset = Partner.objects.filter(ativo=True).order_by("nome_empresa", "nome_responsavel")
         self.fields["parceiro_indicador"].required = False
         self.fields["parceiro_indicador"].empty_label = "Nenhum parceiro"
         
-        # Configurar campo tipo_passaporte
+                                          
         self.fields["tipo_passaporte"].required = False
         self.fields["tipo_passaporte"].choices = [
             ("", "Selecione o tipo de passaporte"),
@@ -237,14 +237,14 @@ class ClienteConsultoriaForm(forms.ModelForm):
 
         self.fields["email"].required = False
 
-        # Pré-preenche assessor responsável se o usuário for um UsuarioConsultoria
-        # (funciona tanto para assessores quanto para administradores)
-        # MAS só se não houver um valor já definido em initial (ex: dados temporários ou cliente principal)
-        if user is not None and not self.instance.pk:  # Só pré-preenche em criação, não em edição
-            # Verificar se o campo já tem um initial definido (pode ter vindo do initial passado ou do super().__init__)
+                                                                                  
+                                                                      
+                                                                                                           
+        if user is not None and not self.instance.pk:                                             
+                                                                                                                        
             campo_initial = self.fields["assessor_responsavel"].initial
             
-            # Se já há um valor definido em initial (ex: do cliente principal ou dados temporários), não sobrescrever
+                                                                                                                     
             if not initial_assessor and not campo_initial:
                 consultor = (
                     UsuarioConsultoria.objects.filter(email__iexact=user.email, ativo=True)
@@ -252,17 +252,17 @@ class ClienteConsultoriaForm(forms.ModelForm):
                     .first()
                 )
                 if consultor:
-                    # Não definir se estiver criando dependente (cliente_principal não é None)
-                    # Nesse caso, o assessor deve vir do cliente principal
+                                                                                              
+                                                                          
                     if cliente_principal is None:
                         self.fields["assessor_responsavel"].initial = consultor.pk
-            # Se há um initial_assessor passado, garantir que está aplicado
+                                                                           
             elif initial_assessor:
                 self.fields["assessor_responsavel"].initial = initial_assessor
     
     def full_clean(self):
-        """Sobrescreve full_clean para garantir que senha seja opcional quando usar_dados_principal."""
-        # Se estiver usando dados do cliente principal, garantir que campos de senha são opcionais
+                                                                                                       
+                                                                                                  
         if self.usar_dados_principal:
             if 'senha' in self.fields:
                 self.fields['senha'].required = False
@@ -271,14 +271,14 @@ class ClienteConsultoriaForm(forms.ModelForm):
         super().full_clean()
 
     def clean_confirmar_senha(self):
-        # Se estiver usando dados do cliente principal, não validar - retornar vazio
+                                                                                    
         if self.usar_dados_principal:
             return ""
         
         senha = self.cleaned_data.get("senha", "")
         confirmar = self.cleaned_data.get("confirmar_senha", "")
 
-        # Se ambos estão vazios e é edição, não validar
+                                                       
         if not senha and not confirmar and self.instance.pk:
             return confirmar
 
@@ -288,12 +288,12 @@ class ClienteConsultoriaForm(forms.ModelForm):
         return confirmar
 
     def clean_senha(self):
-        # Se estiver usando dados do cliente principal, não validar - retornar vazio
+                                                                                    
         if self.usar_dados_principal:
             return ""
         
         senha = self.cleaned_data.get("senha", "")
-        # Se for um novo cliente (sem pk), a senha é obrigatória
+                                                                
         if not senha and not self.instance.pk:
             raise forms.ValidationError("A senha é obrigatória para novos clientes.")
         return senha
@@ -319,15 +319,19 @@ class ClienteConsultoriaForm(forms.ModelForm):
         if _calcular_digito(digits[:10]) != int(digits[10]):
             raise forms.ValidationError("CPF inválido.")
 
+                                                                
+        digits_only = digits
         cpf_formatado = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
 
-        queryset = ClienteConsultoria.objects.filter(cpf=cpf_formatado)
+                                                                        
+                                                        
+        queryset = ClienteConsultoria.objects.filter(cpf__in=[digits_only, cpf_formatado])
         if self.instance.pk:
             queryset = queryset.exclude(pk=self.instance.pk)
         if queryset.exists():
             raise forms.ValidationError("Este CPF já está cadastrado.")
 
-        return cpf_formatado
+        return digits_only
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
@@ -350,7 +354,7 @@ class ClienteConsultoriaForm(forms.ModelForm):
         tipo_passaporte = self.cleaned_data.get("tipo_passaporte")
         tipo_passaporte_outro = self.cleaned_data.get("tipo_passaporte_outro")
         
-        # Se tipo_passaporte for "outro", tipo_passaporte_outro é obrigatório
+                                                                             
         if tipo_passaporte == "outro" and not tipo_passaporte_outro:
             raise forms.ValidationError("Especifique o tipo de passaporte quando selecionar 'Outro'.")
         
@@ -359,18 +363,18 @@ class ClienteConsultoriaForm(forms.ModelForm):
     def save(self, commit: bool = True) -> ClienteConsultoria:
         cliente = super().save(commit=False)
         
-        # Só atualizar senha se foi fornecida (não vazia)
+                                                         
         if senha := self.cleaned_data.get("senha"):
-            # Sempre fazer hash da senha
+                                        
             cliente.set_password(senha)
-        # Se estiver editando e senha vazia, manter a senha atual
+                                                                 
         elif cliente.pk:
-            # Manter a senha atual do banco (já está em hash)
+                                                             
             with contextlib.suppress(ClienteConsultoria.DoesNotExist):
                 cliente_atual = ClienteConsultoria.objects.get(pk=cliente.pk)
                 cliente.senha = cliente_atual.senha
-        # Se for novo cliente e não tem senha, isso é um erro
-        # Mas deixamos o Django validar isso no modelo
+                                                             
+                                                      
 
         if self._user and not cliente.criado_por_id:
             cliente.criado_por = self._user

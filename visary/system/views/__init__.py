@@ -1,6 +1,6 @@
-"""
-Camada de views organizada por domínio do app system.
-"""
+   
+                                                     
+   
 
 from .admin_views import (
     criar_modulo,

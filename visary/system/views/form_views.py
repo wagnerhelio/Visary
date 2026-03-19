@@ -1,6 +1,6 @@
-"""
-Views relacionadas a formulários dinâmicos de visto.
-"""
+   
+                                                    
+   
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -27,11 +27,11 @@ def home_formularios(request):
         raise PermissionDenied
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    # Buscar clientes vinculados ao usuário (para administradores retorna todos, para assessores retorna apenas os vinculados)
+                                                                                                                              
     clientes_usuario = listar_clientes(request.user)
     clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
     
-    # Buscar viagens dos clientes do usuário
+                                            
     viagens = Viagem.objects.filter(
         clientes__pk__in=clientes_ids
     ).select_related(
@@ -40,9 +40,9 @@ def home_formularios(request):
         "tipo_visto__formulario",
     ).prefetch_related("clientes").distinct().order_by("-data_prevista_viagem")
     
-    # Função auxiliar para obter tipo_visto do cliente
+                                                      
     def _obter_tipo_visto_cliente(viagem, cliente):
-        """Obtém o tipo de visto individual do cliente na viagem, ou o tipo de visto da viagem como fallback."""
+                                                                                                                
         with suppress(ClienteViagem.DoesNotExist):
             cliente_viagem = ClienteViagem.objects.select_related('tipo_visto__formulario').get(
                 viagem=viagem, cliente=cliente
@@ -51,9 +51,9 @@ def home_formularios(request):
                 return cliente_viagem.tipo_visto
         return viagem.tipo_visto
     
-    # Função auxiliar para obter formulário por tipo_visto
+                                                          
     def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
-        """Obtém o formulário de um tipo de visto diretamente do banco de dados."""
+                                                                                   
         if not tipo_visto or not hasattr(tipo_visto, 'pk') or not tipo_visto.pk:
             return None
         try:
@@ -68,34 +68,34 @@ def home_formularios(request):
         except FormularioVisto.DoesNotExist:
             return None
     
-    # Preparar informações dos formulários
+                                          
     formularios_respostas = []
     total_clientes_com_formulario = 0
     
-    for viagem in viagens[:10]:  # Limitar a 10 mais recentes
-        # Buscar clientes da viagem vinculados ao usuário
+    for viagem in viagens[:10]:                              
+                                                         
         clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids)
         
         if not clientes_viagem.exists():
             continue
         
-        # Agrupar clientes por formulário (cada cliente pode ter um tipo_visto diferente)
+                                                                                         
         clientes_por_formulario = {}
         
         for cliente in clientes_viagem:
-            # Obter o tipo_visto individual do cliente
+                                                      
             tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
             
             if not tipo_visto_cliente:
                 continue
             
-            # Buscar formulário diretamente do banco de dados
+                                                             
             formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=True)
             
             if not formulario:
                 continue
             
-            # Usar chave única: viagem_id + formulario_id
+                                                         
             chave = f"{viagem.pk}_{formulario.pk}"
             
             if chave not in clientes_por_formulario:
@@ -105,7 +105,7 @@ def home_formularios(request):
                     "clientes": [],
                 }
             
-            # Calcular informações do formulário para este cliente
+                                                                  
             total_perguntas = formulario.perguntas.filter(ativo=True).count()
             total_respostas = RespostaFormulario.objects.filter(
                 viagem=viagem,
@@ -121,7 +121,7 @@ def home_formularios(request):
             })
             total_clientes_com_formulario += 1
         
-        # Adicionar ao resultado (todos os formulários disponíveis)
+                                                                   
         formularios_respostas.extend(clientes_por_formulario.values())
     
     contexto = {
@@ -136,17 +136,17 @@ def home_formularios(request):
 
 @login_required
 def listar_formularios(request):
-    """Lista todos os formulários dos clientes (preenchidos e não preenchidos)."""
+                                                                                  
     from consultancy.models import ClienteConsultoria, ClienteViagem, RespostaFormulario
     from contextlib import suppress
     
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    # Listar TODOS os formulários, independente de assessor
+                                                           
     clientes_ids = list(ClienteConsultoria.objects.values_list("pk", flat=True))
     
-    # Buscar todas as viagens
+                             
     viagens = Viagem.objects.filter(
         clientes__pk__in=clientes_ids
     ).select_related(
@@ -155,9 +155,9 @@ def listar_formularios(request):
         "tipo_visto__formulario",
     ).prefetch_related("clientes").distinct().order_by("-data_prevista_viagem")
     
-    # Função auxiliar para obter tipo_visto do cliente
+                                                      
     def _obter_tipo_visto_cliente(viagem, cliente):
-        """Obtém o tipo de visto individual do cliente na viagem, ou o tipo de visto da viagem como fallback."""
+                                                                                                                
         with suppress(ClienteViagem.DoesNotExist):
             cliente_viagem = ClienteViagem.objects.select_related('tipo_visto__formulario').get(
                 viagem=viagem, cliente=cliente
@@ -166,9 +166,9 @@ def listar_formularios(request):
                 return cliente_viagem.tipo_visto
         return viagem.tipo_visto
     
-    # Função auxiliar para obter formulário por tipo_visto
+                                                          
     def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
-        """Obtém o formulário de um tipo de visto diretamente do banco de dados."""
+                                                                                   
         if not tipo_visto or not hasattr(tipo_visto, 'pk') or not tipo_visto.pk:
             return None
         try:
@@ -183,33 +183,33 @@ def listar_formularios(request):
         except FormularioVisto.DoesNotExist:
             return None
     
-    # Preparar informações dos formulários
+                                          
     formularios_respostas = []
     
     for viagem in viagens:
-        # Buscar clientes da viagem vinculados ao usuário
+                                                         
         clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids)
         
         if not clientes_viagem.exists():
             continue
         
-        # Agrupar clientes por formulário (cada cliente pode ter um tipo_visto diferente)
+                                                                                         
         clientes_por_formulario = {}
         
         for cliente in clientes_viagem:
-            # Obter o tipo_visto individual do cliente
+                                                      
             tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
             
             if not tipo_visto_cliente:
                 continue
             
-            # Buscar formulário diretamente do banco de dados
+                                                             
             formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=True)
             
             if not formulario:
                 continue
             
-            # Usar chave única: viagem_id + formulario_id
+                                                         
             chave = f"{viagem.pk}_{formulario.pk}"
             
             if chave not in clientes_por_formulario:
@@ -219,7 +219,7 @@ def listar_formularios(request):
                     "clientes": [],
                 }
             
-            # Calcular informações do formulário para este cliente
+                                                                  
             total_perguntas = formulario.perguntas.filter(ativo=True).count()
             total_respostas = RespostaFormulario.objects.filter(
                 viagem=viagem,
@@ -234,7 +234,7 @@ def listar_formularios(request):
                 "completo": total_respostas == total_perguntas if total_perguntas > 0 else False,
             })
         
-        # Adicionar ao resultado
+                                
         formularios_respostas.extend(clientes_por_formulario.values())
     
     contexto = {
@@ -270,7 +270,7 @@ def home_tipos_formulario(request):
 
 @login_required
 def criar_formulario(request):
-    """Formulário para criar novo formulário de visto."""
+                                                         
     consultor = obter_consultor_usuario(request.user)
 
     if request.method == "POST":
@@ -296,7 +296,7 @@ def criar_formulario(request):
 
 @login_required
 def listar_tipos_formulario(request):
-    """Lista todos os tipos de formulário de visto."""
+                                                      
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -318,7 +318,7 @@ def listar_tipos_formulario(request):
 
 @login_required
 def editar_formulario(request, pk: int):
-    """Editar formulário e gerenciar perguntas."""
+                                                  
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -356,7 +356,7 @@ def editar_formulario(request, pk: int):
 
 @login_required
 def excluir_formulario(request, pk: int):
-    """Exclui um formulário de visto."""
+                                        
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -373,7 +373,7 @@ def excluir_formulario(request, pk: int):
 
 @login_required
 def criar_pergunta(request, formulario_id: int):
-    """Criar nova pergunta em um formulário."""
+                                               
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -403,7 +403,7 @@ def criar_pergunta(request, formulario_id: int):
 
 @login_required
 def editar_pergunta(request, pk: int):
-    """Editar pergunta existente."""
+                                    
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -440,7 +440,7 @@ def editar_pergunta(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_pergunta(request, pk: int):
-    """Exclui uma pergunta."""
+                              
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -458,7 +458,7 @@ def excluir_pergunta(request, pk: int):
 
 @login_required
 def criar_opcao_selecao(request, pergunta_id: int):
-    """Criar nova opção de seleção para uma pergunta."""
+                                                        
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -469,7 +469,7 @@ def criar_opcao_selecao(request, pergunta_id: int):
         PerguntaFormulario.objects.select_related("formulario"), pk=pergunta_id
     )
     
-    # Verificar se a pergunta é do tipo seleção
+                                               
     if pergunta.tipo_campo != "selecao":
         messages.error(request, "Apenas perguntas do tipo 'Seleção' podem ter opções.")
         return redirect("system:editar_pergunta", pk=pergunta.pk)
@@ -496,21 +496,21 @@ def criar_opcao_selecao(request, pergunta_id: int):
 
 @login_required
 def selecionar_viagem_cliente_formulario(request):
-    """Seleciona uma viagem e cliente para criar/preencher formulário."""
+                                                                         
     from consultancy.models import ClienteConsultoria
     
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
-    # Se for admin, buscar todos os clientes
+                                            
     if pode_gerenciar_todos:
         clientes_ids = list(ClienteConsultoria.objects.values_list("pk", flat=True))
     else:
-        # Buscar apenas clientes vinculados ao usuário
+                                                      
         clientes_usuario = listar_clientes(request.user)
         clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
     
-    # Buscar viagens dos clientes do usuário que têm formulário
+                                                               
     viagens = Viagem.objects.filter(
         clientes__pk__in=clientes_ids,
         tipo_visto__formulario__isnull=False,
@@ -521,7 +521,7 @@ def selecionar_viagem_cliente_formulario(request):
         "tipo_visto__formulario",
     ).prefetch_related("clientes").distinct().order_by("-data_prevista_viagem")
     
-    # Processar POST - redirecionar para editar formulário
+                                                          
     if request.method == "POST":
         viagem_id = request.POST.get("viagem_id")
         cliente_id = request.POST.get("cliente_id")
@@ -534,7 +534,7 @@ def selecionar_viagem_cliente_formulario(request):
             viagem = Viagem.objects.get(pk=viagem_id)
             cliente = ClienteConsultoria.objects.get(pk=cliente_id)
             
-            # Verificar permissão
+                                 
             if not pode_gerenciar_todos and int(cliente_id) not in clientes_ids:
                 raise PermissionDenied("Você não tem permissão para acessar este cliente.")
             
@@ -542,13 +542,13 @@ def selecionar_viagem_cliente_formulario(request):
                 messages.error(request, "Este cliente não está vinculado a esta viagem.")
                 return redirect("system:selecionar_viagem_cliente_formulario")
             
-            # Redirecionar para editar formulário
+                                                 
             return redirect("system:editar_formulario_cliente", viagem_id=viagem_id, cliente_id=cliente_id)
         except (Viagem.DoesNotExist, ClienteConsultoria.DoesNotExist, ValueError):
             messages.error(request, "Viagem ou cliente não encontrado.")
             return redirect("system:selecionar_viagem_cliente_formulario")
     
-    # Preparar dados para o template
+                                    
     viagens_com_clientes = []
     for viagem in viagens:
         clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids).select_related("cliente_principal")
@@ -569,7 +569,7 @@ def selecionar_viagem_cliente_formulario(request):
 
 @login_required
 def editar_opcao_selecao(request, pk: int):
-    """Editar opção de seleção existente."""
+                                            
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -605,7 +605,7 @@ def editar_opcao_selecao(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_opcao_selecao(request, pk: int):
-    """Exclui uma opção de seleção."""
+                                      
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 

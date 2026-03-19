@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .table-wrapper {
         overflow-x: auto;
         overflow-y: auto;
@@ -174,6 +175,8 @@
             grid-template-columns: 1fr;
         }
     }
+
+    </style>
 {% endblock %}
 
 {% block app_header %}

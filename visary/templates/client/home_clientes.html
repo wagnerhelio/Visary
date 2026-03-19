@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .actions-grid {
         display: grid;
         gap: 20px;
@@ -352,7 +353,7 @@
         border-left: 2px solid rgba(255, 193, 7, 0.25);
     }
 
-    /* ── MOBILE CARD LAYOUT ────────────────────────────── */
+    
     .cliente-card {
         display: none;
     }
@@ -462,6 +463,8 @@
             grid-template-columns: 1fr;
         }
     }
+
+    </style>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -585,7 +588,7 @@
 </section>
 {% endif %}
 
-{# Meus Processos #}
+
 {% if processos %}
 <section class="clientes-list-card processos-card" style="margin-top: 32px;">
     <header>
@@ -634,7 +637,7 @@
             </tbody>
         </table>
     </div>
-    {# Mobile: cards de processo #}
+    
     <div class="processos-mobile" style="display: none;">
         {% for proc in processos %}
         <div class="cliente-card">
@@ -675,7 +678,7 @@
             <p>Clientes vinculados ao seu usuário</p>
         </header>
 
-        {# ── DESKTOP TABLE ─────────────────────────────────── #}
+        
         <div class="table-wrapper">
             <table class="clientes-table clientes-table-desktop">
                 <thead>
@@ -781,7 +784,7 @@
             </table>
         </div>
 
-        {# ── MOBILE CARDS ──────────────────────────────────── #}
+        
         <div class="clientes-mobile-list">
             {% for item in clientes_com_status %}
             <div class="cliente-card {% if item.cliente.is_dependente %}is-dependente{% endif %}">

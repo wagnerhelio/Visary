@@ -1,6 +1,6 @@
-"""
-Views para gerenciar etapas de cadastro de clientes.
-"""
+   
+                                                    
+   
 
 from typing import Optional
 
@@ -24,14 +24,14 @@ from system.views.client_views import obter_consultor_usuario, usuario_pode_gere
 
 @login_required
 def listar_etapas_cadastro(request):
-    """Lista todas as etapas de cadastro configuradas."""
+                                                         
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
     
     if not pode_gerenciar:
         raise PermissionDenied("Você não tem permissão para gerenciar etapas.")
     
-    # Buscar todas as etapas, incluindo inativas, com campos ordenados
+                                                                      
     etapas_queryset = EtapaCadastroCliente.objects.all().prefetch_related(
         models.Prefetch(
             "campos",
@@ -39,7 +39,7 @@ def listar_etapas_cadastro(request):
         )
     ).order_by("ordem", "nome")
     
-    # Forçar avaliação do QuerySet para garantir que os dados sejam passados corretamente
+                                                                                         
     etapas = list(etapas_queryset)
     
     contexto = {
@@ -53,7 +53,7 @@ def listar_etapas_cadastro(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def criar_etapa_cadastro(request):
-    """Cria uma nova etapa de cadastro."""
+                                          
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -66,7 +66,7 @@ def criar_etapa_cadastro(request):
             etapa = form.save()
             messages.success(request, f"Etapa '{etapa.nome}' criada com sucesso.")
             return redirect("system:editar_etapa_cadastro", pk=etapa.pk)
-        # Mostrar erros específicos de cada campo
+                                                 
         for field, errors in form.errors.items():
             for error in errors:
                 messages.error(request, f"Campo '{form.fields[field].label}': {error}")
@@ -82,7 +82,7 @@ def criar_etapa_cadastro(request):
 
 
 def _obter_campos_disponiveis(campos_ja_vinculados: set) -> list:
-    """Obtém lista de campos disponíveis do formulário ClienteConsultoria."""
+                                                                             
     temp_form = ClienteConsultoriaForm()
     campos_modelo = [
         "assessor_responsavel",
@@ -118,7 +118,7 @@ def _obter_campos_disponiveis(campos_ja_vinculados: set) -> list:
 
 
 def _adicionar_campo_etapa(request, etapa, campos, campos_disponiveis) -> Optional[HttpResponseRedirect]:
-    """Processa a adição de um campo à etapa."""
+                                                
     nome_campo = request.POST.get("nome_campo")
     nomes_disponiveis = {c["nome"] for c in campos_disponiveis}
     
@@ -143,7 +143,7 @@ def _adicionar_campo_etapa(request, etapa, campos, campos_disponiveis) -> Option
 
 
 def _processar_atualizacao_etapa(request, form, etapa) -> Optional[HttpResponseRedirect]:
-    """Processa a atualização da etapa e retorna redirect se válido."""
+                                                                       
     if not form.is_valid():
         for field, errors in form.errors.items():
             field_label = form.fields[field].label if field in form.fields else field
@@ -158,7 +158,7 @@ def _processar_atualizacao_etapa(request, form, etapa) -> Optional[HttpResponseR
 
 @require_http_methods(["GET", "POST"])
 def editar_etapa_cadastro(request, pk: int):
-    """Edita uma etapa de cadastro existente."""
+                                                
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -181,7 +181,7 @@ def editar_etapa_cadastro(request, pk: int):
     else:
         form = EtapaCadastroClienteForm(instance=etapa)
     
-    # Recarregar campos após possíveis alterações
+                                                 
     campos = CampoEtapaCliente.objects.filter(etapa=etapa).order_by("ordem", "nome_campo")
     
     contexto = {
@@ -198,7 +198,7 @@ def editar_etapa_cadastro(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_etapa_cadastro(request, pk: int):
-    """Exclui uma etapa de cadastro."""
+                                       
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -215,7 +215,7 @@ def excluir_etapa_cadastro(request, pk: int):
 @login_required
 @require_http_methods(["GET", "POST"])
 def criar_campo_etapa(request, etapa_id: int):
-    """Cria um novo campo para uma etapa."""
+                                            
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -232,7 +232,7 @@ def criar_campo_etapa(request, etapa_id: int):
             campo.save()
             messages.success(request, f"Campo '{campo.nome_campo}' adicionado à etapa '{etapa.nome}'.")
             return redirect("system:listar_etapas_cadastro")
-        # Mostrar erros específicos de cada campo
+                                                 
         for field, errors in form.errors.items():
             for error in errors:
                 field_label = form.fields[field].label if field in form.fields else field
@@ -252,7 +252,7 @@ def criar_campo_etapa(request, etapa_id: int):
 @login_required
 @require_http_methods(["GET", "POST"])
 def editar_campo_etapa(request, pk: int):
-    """Edita um campo de etapa existente."""
+                                            
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -267,7 +267,7 @@ def editar_campo_etapa(request, pk: int):
             form.save()
             messages.success(request, f"Campo '{campo.nome_campo}' atualizado com sucesso.")
             return redirect("system:listar_etapas_cadastro")
-        # Mostrar erros específicos de cada campo
+                                                 
         for field, errors in form.errors.items():
             for error in errors:
                 field_label = form.fields[field].label if field in form.fields else field
@@ -288,7 +288,7 @@ def editar_campo_etapa(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_campo_etapa(request, pk: int):
-    """Exclui um campo de etapa."""
+                                   
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
     

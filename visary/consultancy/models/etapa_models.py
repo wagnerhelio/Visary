@@ -1,12 +1,12 @@
-"""
-Modelos para gerenciar etapas configuráveis do cadastro de clientes.
-"""
+   
+                                                                    
+   
 
 from django.db import models
 
 
 class EtapaCadastroCliente(models.Model):
-    """Etapa configurável do cadastro de cliente."""
+                                                    
 
     nome = models.CharField("Nome da Etapa", max_length=100)
     descricao = models.TextField("Descrição", blank=True)
@@ -35,7 +35,7 @@ class EtapaCadastroCliente(models.Model):
 
 
 class CampoEtapaCliente(models.Model):
-    """Campo configurável vinculado a uma etapa do cadastro."""
+                                                               
 
     TIPO_CAMPO_CHOICES = [
         ("texto", "Texto"),

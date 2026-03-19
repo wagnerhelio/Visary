@@ -6,6 +6,7 @@
 {% block base_styles %}
     {{ block.super }}
 
+    <style>
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -154,9 +155,11 @@
             font-size: 0.9rem;
         }
     }
+
+    </style>
 {% endblock %}
 
-{% comment %}Menu lateral definido no base.html{% endcomment %}
+
 
 {% block app_header %}
 <section class="page-header">
@@ -413,22 +416,22 @@
     const btnBuscarCep = document.getElementById('btn-buscar-cep');
     if (!cepInput || !btnBuscarCep) return;
 
-    // Função auxiliar para buscar campos de forma mais robusta
+    
     function getFieldById(id) {
         if (!id) return null;
-        // Tentar por ID primeiro
+        
         let field = document.getElementById(id);
         if (field) return field;
-        // Tentar sem o prefixo 'id_'
+        
         const name = id.replace(/^id_/, '');
         field = document.querySelector(`[name="${name}"]`);
         if (field) return field;
-        // Tentar buscar por qualquer atributo que contenha o nome
+        
         field = document.querySelector(`[id*="${name}"], [name*="${name}"]`);
         return field;
     }
 
-    // Buscar campos de forma dinâmica
+    
     const logradouroField = getFieldById('{{ form.logradouro.id_for_label }}') || 
                             document.querySelector('[name="logradouro"]');
     const bairroField = getFieldById('{{ form.bairro.id_for_label }}') || 
@@ -436,19 +439,19 @@
     const cidadeField = getFieldById('{{ form.cidade.id_for_label }}') || 
                         document.querySelector('[name="cidade"]');
     
-    // Buscar UF de forma mais robusta - pode estar renderizado com ID diferente
+    
     let ufField = getFieldById('{{ form.uf.id_for_label }}');
     if (!ufField) {
         ufField = document.querySelector('[name="uf"]');
     }
     if (!ufField) {
-        // Tentar buscar por qualquer campo que contenha 'uf' no ID ou name
+        
         ufField = document.querySelector('[id*="uf"], [name*="uf"]');
     }
     const numeroField = document.getElementById('{{ form.numero.id_for_label }}');
     const complementoField = document.getElementById('{{ form.complemento.id_for_label }}');
 
-    // Máscara de CEP
+    
     cepInput.addEventListener('input', function(e) {
         let value = e.target.value.replace(/\D/g, '');
         if (value.length > 5) {
@@ -457,9 +460,9 @@
         e.target.value = value;
     });
 
-    // Função para buscar e preencher campos de endereço
+    
     function preencherCamposEndereco(data) {
-        // Buscar campos novamente para garantir que estamos pegando os corretos
+        
         const campos = {
             logradouro: getFieldById('{{ form.logradouro.id_for_label }}') || document.querySelector('[name="logradouro"]'),
             bairro: getFieldById('{{ form.bairro.id_for_label }}') || document.querySelector('[name="bairro"]'),
@@ -467,11 +470,11 @@
             uf: getFieldById('{{ form.uf.id_for_label }}') || document.querySelector('[name="uf"]') || document.querySelector('[id*="uf"], [name*="uf"]')
         };
 
-        // Função auxiliar para preencher campo e disparar eventos
+        
         function preencherCampo(field, value) {
             if (field && value) {
                 field.value = value;
-                // Disparar eventos para garantir que o valor seja reconhecido
+                
                 field.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
                 field.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
                 field.dispatchEvent(new Event('blur', { bubbles: true, cancelable: true }));
@@ -480,7 +483,7 @@
             return false;
         }
 
-        // Preencher todos os campos
+        
         const resultados = {
             logradouro: preencherCampo(campos.logradouro, data.street),
             bairro: preencherCampo(campos.bairro, data.district),
@@ -488,11 +491,11 @@
             uf: preencherCampo(campos.uf, (data.uf || '').toUpperCase())
         };
 
-        // Log dos resultados
+        
         console.log('Preenchimento de campos:', resultados);
         console.log('Dados recebidos:', data);
 
-        // Se algum campo não foi preenchido, tentar novamente após um delay
+        
         const camposNaoPreenchidos = Object.entries(resultados).filter(([_, preenchido]) => !preenchido);
         if (camposNaoPreenchidos.length > 0) {
             console.warn('Alguns campos não foram preenchidos:', camposNaoPreenchidos.map(([nome]) => nome));
@@ -524,7 +527,7 @@
         return resultados;
     }
 
-    // Função para buscar CEP
+    
     async function buscarCep() {
         const cep = cepInput.value.replace(/\D/g, '');
         if (cep.length !== 8) {
@@ -546,7 +549,7 @@
                 return;
             }
 
-            // Preencher todos os campos de endereço
+            
             preencherCamposEndereco(data);
 
         } catch (e) {
@@ -558,10 +561,10 @@
         }
     }
 
-    // Buscar CEP ao clicar no botão
+    
     btnBuscarCep.addEventListener('click', buscarCep);
 
-    // Buscar CEP ao pressionar Enter no campo CEP
+    
     cepInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -569,7 +572,7 @@
         }
     });
     
-    // Mostrar/esconder campo tipo_passaporte_outro baseado na seleção de tipo_passaporte
+    
     (function() {
         const tipoPassaporteSelect = document.getElementById('{{ form.tipo_passaporte.id_for_label }}');
         const tipoPassaporteOutroField = document.getElementById('{{ form.tipo_passaporte_outro.id_for_label }}');
@@ -592,10 +595,10 @@
             }
         }
         
-        // Verificar estado inicial
+        
         toggleTipoPassaporteOutro();
         
-        // Adicionar listener
+        
         tipoPassaporteSelect.addEventListener('change', toggleTipoPassaporteOutro);
     })();
 })();

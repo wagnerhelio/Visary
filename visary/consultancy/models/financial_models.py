@@ -1,6 +1,6 @@
-"""
-Modelos relacionados a finanças.
-"""
+   
+                                
+   
 
 from django.conf import settings
 from django.db import models
@@ -10,7 +10,7 @@ from system.models import UsuarioConsultoria
 
 
 class StatusFinanceiro(models.TextChoices):
-    """Status possíveis para um registro financeiro."""
+                                                       
 
     PENDENTE = "pendente", "Pendente"
     PAGO = "pago", "Pago"
@@ -18,7 +18,7 @@ class StatusFinanceiro(models.TextChoices):
 
 
 class Financeiro(models.Model):
-    """Registro financeiro vinculado a uma viagem."""
+                                                     
 
     viagem = models.ForeignKey(
         Viagem,
@@ -78,25 +78,25 @@ class Financeiro(models.Model):
         return f"{cliente_nome} - {self.valor} - {self.get_status_display()}"
 
 
-# Propaga pagamento do cliente principal para seus dependentes
+                                                              
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
 @receiver(post_save, sender=Financeiro)
 def propagate_payment_to_dependents(sender, instance: Financeiro, created: bool, **kwargs):
-    """Quando o pagamento de um cliente principal é registrado como pago,
-    sinaliza os dependentes vinculados para o mesmo status, se existirem.
+                                                                         
+                                                                         
 
-    Regras:
-    - Aplica apenas quando o registro já existe (não é criação) e o
-      status é 'pago'.
-    - Se o cliente associado for principal, percorre seus dependentes e,
-      para cada um, atualiza o Financeiro correspondente (mesma viagem)
-      para o status Pago, se já existir.
-    - Não cria novos registros de financeiro para dependentes que não possuam
-      um registro existente; isso fica a critério de implementação futura.
-    """
+           
+                                                                   
+                      
+                                                                        
+                                                                       
+                                        
+                                                                             
+                                                                          
+       
     if created:
         return
     if instance.status != StatusFinanceiro.PAGO:
@@ -105,7 +105,7 @@ def propagate_payment_to_dependents(sender, instance: Financeiro, created: bool,
     principal = instance.cliente
     if principal is None:
         return
-    # Só propaga se for cliente principal
+                                         
     if not principal.is_principal:
         return
 

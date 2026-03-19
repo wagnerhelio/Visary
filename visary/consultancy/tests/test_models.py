@@ -22,13 +22,13 @@ from system.models import UsuarioConsultoria
 class ConsultancyModelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        # Create security/domain objects required by models
-        from system.models import Perfil, Modulo  # type: ignore
+                                                           
+        from system.models import Perfil, Modulo                
         from django.utils.text import slugify
         mod = Modulo.objects.create(nome="Test Modulo", slug=slugify("Test Modulo"))
         perfil = Perfil.objects.create(nome="Administrador", descricao="test", ativo=True)
 
-        # Create a user to act as assessor/creator
+                                                  
         cls.user = UsuarioConsultoria.objects.create(
             nome="Administrador Teste",
             email="admin@example.com",
@@ -38,7 +38,7 @@ class ConsultancyModelTests(TestCase):
         cls.user.set_password("adminpass")
         cls.user.save()
 
-        # Related data for travels and clients
+                                              
         cls.pais = PaisDestino.objects.create(nome="Brasil", codigo_iso="BRA")
         cls.tipo = TipoVisto.objects.create(pais_destino=cls.pais, nome="Turismo")
 
@@ -68,17 +68,17 @@ class ConsultancyModelTests(TestCase):
         )
 
     def test_cliente_crud_and_relations(self):
-        # Read
+              
         c = ClienteConsultoria.objects.get(pk=self.__class__.principal.pk)
         self.assertEqual(c.nome, "Cliente Principal")
 
-        # Update
+                
         c.email = "principal_updated@example.com"
         c.save()
         c_refresh = ClienteConsultoria.objects.get(pk=c.pk)
         self.assertEqual(c_refresh.email, "principal_updated@example.com")
 
-        # Delete and ensure cascade safety (not deleting related objects here)
+                                                                              
         dep_pk = self.__class__.dependente.pk
         self.__class__.dependente.delete()
         self.assertFalse(ClienteConsultoria.objects.filter(pk=dep_pk).exists())
@@ -107,7 +107,7 @@ class ConsultancyModelTests(TestCase):
         self.assertEqual(partner.email, "parceiro2@example.com")
 
     def test_pais_destino_and_tipo_visto_uniqueness(self):
-        # Unique together on TipoVisto (pais_destino, nome)
+                                                           
         with self.assertRaises(IntegrityError):
             TipoVisto.objects.create(pais_destino=self.__class__.pais, nome=self.__class__.tipo.nome)
 

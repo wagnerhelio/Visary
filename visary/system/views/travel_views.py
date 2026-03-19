@@ -1,6 +1,6 @@
-"""
-Views relacionadas a viagens e destinos.
-"""
+   
+                                        
+   
 
 from contextlib import suppress
 from datetime import datetime
@@ -25,35 +25,8 @@ from system.models import UsuarioConsultoria
 from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos, usuario_tem_acesso_modulo
 
 
-def _filtrar_mensagens_viagem_sessao(stored_messages):
-    """Filtra mensagens da sessão, mantendo apenas uma ocorrência de 'Viagem cadastrada com sucesso'."""
-    seen_viagem_messages = set()
-    viagem_message_added = False  # Flag para garantir apenas uma mensagem de viagem
-    filtered_messages = []
-    seen_all_messages = set()  # Para evitar duplicatas de outras mensagens também
-    
-    for msg in stored_messages:
-        message_text = str(msg.get('message', '')) if isinstance(msg, dict) else str(msg)
-        
-        if "Viagem cadastrada com sucesso" in message_text:
-            # Manter apenas a primeira ocorrência da mensagem de viagem
-            if not viagem_message_added:
-                viagem_message_added = True
-                filtered_messages.append(msg)
-                seen_viagem_messages.add(message_text)
-        elif message_text not in seen_all_messages:
-            # Evitar duplicatas de outras mensagens também
-            seen_all_messages.add(message_text)
-            filtered_messages.append(msg)
-    
-    return filtered_messages
-
-
-# Função removida - não é mais necessária com a simplificação
-
-
 def _limpar_flags_viagens_cadastradas(request):
-    """Limpa flags antigas de viagens cadastradas da sessão."""
+                                                               
     if request.method == "GET":
         keys_to_clean = [key for key in request.session.keys() if key.startswith('viagem_cadastrada_')]
         for key in keys_to_clean:
@@ -62,7 +35,7 @@ def _limpar_flags_viagens_cadastradas(request):
 
 
 def _obter_viagens_com_formularios_nao_preenchidos(viagens):
-    """Obtém lista de viagens com formulários não preenchidos."""
+                                                                 
     viagens_com_formulario = []
     for viagem in viagens:
         if formulario := _obter_formulario_por_tipo_visto(viagem.tipo_visto, apenas_ativo=True):
@@ -82,7 +55,7 @@ def _obter_viagens_com_formularios_nao_preenchidos(viagens):
 
 
 def _filtrar_mensagens_para_template(request):
-    """Filtra mensagens removendo duplicatas de 'Viagem cadastrada' para o template."""
+                                                                                       
     storage = messages.get_messages(request)
     filtered_messages = []
     viagem_message_shown = False
@@ -90,13 +63,13 @@ def _filtrar_mensagens_para_template(request):
     
     for message in storage:
         message_text = str(message)
-        # Manter apenas a primeira mensagem de viagem
+                                                     
         if "Viagem cadastrada" in message_text:
             if not viagem_message_shown:
                 viagem_message_shown = True
                 filtered_messages.append(message)
         elif message_text not in seen_texts:
-            # Evitar duplicatas de outras mensagens
+                                                   
             seen_texts.add(message_text)
             filtered_messages.append(message)
     
@@ -105,17 +78,17 @@ def _filtrar_mensagens_para_template(request):
 
 @login_required
 def home_viagens(request):
-    """Página inicial de viagens com opções de navegação."""
+                                                            
     _limpar_flags_viagens_cadastradas(request)
     
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
-    # Buscar clientes vinculados ao usuário (para administradores retorna todos, para assessores retorna apenas os vinculados)
+                                                                                                                              
     clientes_usuario = listar_clientes(request.user)
     clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
     
-    # Buscar viagens apenas dos clientes vinculados ao usuário
+                                                              
     viagens = Viagem.objects.filter(
         clientes__pk__in=clientes_ids
     ).select_related(
@@ -124,20 +97,20 @@ def home_viagens(request):
         "assessor_responsavel",
     ).prefetch_related("clientes").distinct().order_by("-data_prevista_viagem")
     
-    # Aplicar filtros
+                     
     filtros_aplicados = {}
     viagens = _aplicar_filtros_viagens(viagens, request, filtros_aplicados)
     
-    # Limitar a 10 viagens mais recentes (após aplicar filtros)
+                                                               
     viagens_limitadas = viagens[:10]
     
-    # Obter viagens com formulários não preenchidos (apenas dos clientes do usuário)
+                                                                                    
     viagens_com_formulario = _obter_viagens_com_formularios_nao_preenchidos(viagens_limitadas)
     
-    # Filtrar mensagens para o template
+                                       
     mensagens_filtradas = _filtrar_mensagens_para_template(request)
     
-    # Buscar opções para os filtros (apenas clientes do usuário)
+                                                                
     paises = PaisDestino.objects.filter(ativo=True).order_by("nome")
     tipos_visto = TipoVisto.objects.filter(ativo=True).select_related("pais_destino").order_by("pais_destino__nome", "nome")
 
@@ -200,7 +173,7 @@ def home_tipos_visto(request):
 
 @login_required
 def criar_pais_destino(request):
-    """Formulário para cadastrar novo país de destino."""
+                                                         
     consultor = obter_consultor_usuario(request.user)
 
     if request.method == "POST":
@@ -225,7 +198,7 @@ def criar_pais_destino(request):
 
 @login_required
 def criar_tipo_visto(request):
-    """Formulário para cadastrar novo tipo de visto."""
+                                                       
     consultor = obter_consultor_usuario(request.user)
 
     if request.method == "POST":
@@ -249,16 +222,16 @@ def criar_tipo_visto(request):
 
 
 def _processar_tipos_visto_individuals(viagem, clientes_selecionados, membros_viagem_separada_ids, request):
-    """Processa tipos de visto individuais para cada membro da viagem.
-    Retorna lista de IDs de membros que devem ter viagem separada (tipos de visto diferentes)."""
+                                                                      
+                                                                                                 
     membros_com_visto_diferente = []
     
     for cliente in clientes_selecionados:
         if cliente.pk in membros_viagem_separada_ids:
             continue
         
-        tipo_visto_cliente = viagem.tipo_visto  # Padrão: tipo de visto da viagem
-        # Verificar tanto tipo_visto_dependente quanto tipo_visto_cliente
+        tipo_visto_cliente = viagem.tipo_visto                                   
+                                                                         
         if tipo_visto_id := (
             request.POST.get(f"tipo_visto_dependente_{cliente.pk}") or
             request.POST.get(f"tipo_visto_cliente_{cliente.pk}")
@@ -267,12 +240,12 @@ def _processar_tipos_visto_individuals(viagem, clientes_selecionados, membros_vi
                 if tipo_visto_obj := TipoVisto.objects.filter(pk=int(tipo_visto_id)).first():
                     tipo_visto_cliente = tipo_visto_obj
         
-        # Se o tipo de visto do cliente for diferente do tipo de visto da viagem principal,
-        # adicionar à lista de membros que devem ter viagem separada
+                                                                                           
+                                                                    
         if tipo_visto_cliente.pk != viagem.tipo_visto.pk:
             membros_com_visto_diferente.append(cliente.pk)
         else:
-            # Apenas criar ClienteViagem se o tipo de visto for o mesmo
+                                                                       
             ClienteViagem.objects.update_or_create(
                 viagem=viagem,
                 cliente=cliente,
@@ -283,13 +256,13 @@ def _processar_tipos_visto_individuals(viagem, clientes_selecionados, membros_vi
 
 
 def _processar_viagens_separadas(viagem, membros_viagem_separada_ids, request):
-    """Processa criação de viagens separadas para membros. Retorna lista de viagens criadas."""
+                                                                                               
     if not membros_viagem_separada_ids:
         return []
     
     viagens_criadas = []
     
-    # Remover membros com viagem separada da viagem principal
+                                                             
     ClienteViagem.objects.filter(viagem=viagem, cliente_id__in=membros_viagem_separada_ids).delete()
     viagem.clientes.remove(*membros_viagem_separada_ids)
     
@@ -297,13 +270,13 @@ def _processar_viagens_separadas(viagem, membros_viagem_separada_ids, request):
         with suppress(ValueError, TypeError):
             cliente_membro = ClienteConsultoria.objects.get(pk=cliente_id)
             
-            # Buscar dados específicos do dependente
+                                                    
             pais_destino_id = request.POST.get(f"pais_destino_dependente_{cliente_id}")
             tipo_visto_id = request.POST.get(f"tipo_visto_dependente_{cliente_id}")
             data_viagem = request.POST.get(f"data_viagem_dependente_{cliente_id}")
             data_retorno = request.POST.get(f"data_retorno_dependente_{cliente_id}")
             
-            # Usar dados do dependente ou da viagem principal como fallback
+                                                                           
             pais_destino = viagem.pais_destino
             if pais_destino_id:
                 with suppress(ValueError, TypeError):
@@ -334,7 +307,7 @@ def _processar_viagens_separadas(viagem, membros_viagem_separada_ids, request):
                 tipo_visto=tipo_visto,
                 data_prevista_viagem=data_prevista_viagem,
                 data_prevista_retorno=data_prevista_retorno,
-                valor_assessoria=Decimal('0.00'),  # Zerar valor para dependentes
+                valor_assessoria=Decimal('0.00'),                                
                 observacoes=f"Viagem separada para {cliente_membro.nome} (membro de {viagem})",
                 criado_por=viagem.criado_por,
             )
@@ -349,7 +322,7 @@ def _processar_viagens_separadas(viagem, membros_viagem_separada_ids, request):
 
 
 def _organizar_membros_viagem(clientes_ids_list):
-    """Organiza membros da viagem: principal primeiro, depois dependentes."""
+                                                                             
     clientes_objs = ClienteConsultoria.objects.filter(
         pk__in=clientes_ids_list
     ).select_related('cliente_principal', 'assessor_responsavel').order_by('nome')
@@ -382,31 +355,31 @@ def _organizar_membros_viagem(clientes_ids_list):
 
 
 def _limpar_flags_cadastro_cliente(request):
-    """Limpa flags de finalização de cadastro e mensagens duplicadas."""
-    # Limpar flags de finalização
+                                                                        
+                                 
     keys_to_remove = [key for key in request.session.keys() if key.startswith('cadastro_finalizado_')]
     for key in keys_to_remove:
         request.session.pop(key, None)
     
-    # Remover TODAS as mensagens de cadastro finalizado diretamente da sessão
-    # Manipular diretamente a chave '_messages' na sessão
+                                                                             
+                                                         
     if not (stored_messages := request.session.get('_messages')):
         request.session.modified = True
         return
     
-    # Filtrar mensagens removendo TODAS que contenham "Cadastro finalizado com sucesso"
+                                                                                       
     filtered_messages = []
     seen_message_texts = set()
     
     for msg in stored_messages:
-        # A mensagem é um dict com estrutura: {'message': '...', 'level': ..., 'tags': ...}
+                                                                                           
         if isinstance(msg, dict):
             message_text = str(msg.get('message', ''))
         else:
-            # Se não for dict, converter para string
+                                                    
             message_text = str(msg)
         
-        # Remover TODAS as mensagens de cadastro finalizado (verificar várias variações)
+                                                                                        
         message_lower = message_text.lower()
         if any(phrase in message_lower for phrase in [
             "cadastro finalizado com sucesso",
@@ -415,12 +388,12 @@ def _limpar_flags_cadastro_cliente(request):
         ]):
             continue
         
-        # Manter outras mensagens, evitando duplicatas
+                                                      
         if message_text not in seen_message_texts:
             seen_message_texts.add(message_text)
             filtered_messages.append(msg)
     
-    # Atualizar a sessão com as mensagens filtradas
+                                                   
     if filtered_messages:
         request.session['_messages'] = filtered_messages
     else:
@@ -430,8 +403,8 @@ def _limpar_flags_cadastro_cliente(request):
 
 
 def _limpar_mensagens_cadastro_finalizado_storage(request):
-    """Limpa mensagens de cadastro finalizado usando o storage do Django."""
-    # Primeiro, manipular diretamente a sessão para remover mensagens
+                                                                            
+                                                                     
     if stored_messages := request.session.get('_messages'):
         filtered_session_messages = []
         for msg in stored_messages:
@@ -440,7 +413,7 @@ def _limpar_mensagens_cadastro_finalizado_storage(request):
             else:
                 message_text = str(msg)
             message_lower = message_text.lower()
-            # Remover TODAS as mensagens de cadastro finalizado
+                                                               
             phrases_to_remove = [
                 "cadastro finalizado com sucesso",
                 "cadastro finalizado",
@@ -455,7 +428,7 @@ def _limpar_mensagens_cadastro_finalizado_storage(request):
             request.session.pop('_messages', None)
         request.session.modified = True
     
-    # Depois, usar o storage do Django para garantir limpeza completa
+                                                                     
     storage = messages.get_messages(request)
     filtered_messages_list = []
     seen_texts = set()
@@ -463,28 +436,28 @@ def _limpar_mensagens_cadastro_finalizado_storage(request):
     for message in storage:
         message_text = str(message)
         message_lower = message_text.lower()
-        # Pular todas as mensagens de cadastro finalizado
+                                                         
         if any(phrase in message_lower for phrase in [
             "cadastro finalizado com sucesso",
             "cadastro finalizado",
             "cliente 'teste_principal'"
         ]):
             continue
-        # Manter outras mensagens, evitando duplicatas
+                                                      
         if message_text not in seen_texts:
             seen_texts.add(message_text)
             filtered_messages_list.append(message)
     
-    # Marcar todas as mensagens como consumidas
+                                               
     storage.used = True
     
-    # Re-adicionar apenas as mensagens filtradas
+                                                
     for message in filtered_messages_list:
         messages.add_message(request, message.level, message.message, extra_tags=message.extra_tags)
 
 
 def _preparar_formulario_com_clientes(request, form, clientes_ids_str):
-    """Prepara o formulário com clientes pré-selecionados."""
+                                                             
     if not clientes_ids_str:
         return form
     
@@ -498,41 +471,22 @@ def _preparar_formulario_com_clientes(request, form, clientes_ids_str):
 
 
 def _obter_clientes_e_membros_viagem(request):
-    """Obtém clientes pré-selecionados e membros da viagem."""
+                                                              
     if request.method == "GET" and (clientes_ids := request.GET.get("clientes", "")):
         return _preparar_clientes_pre_selecionados(clientes_ids)
     return [], []
 
 
-def _limpar_mensagens_viagem_sessao(request):
-    """Remove mensagens de viagem cadastrada da sessão."""
-    if stored_messages := request.session.get('_messages'):
-        filtered = [
-            msg for msg in stored_messages 
-            if "viagens cadastradas" not in str(msg.get('message', '') if isinstance(msg, dict) else msg).lower()
-            and "viagem cadastrada" not in str(msg.get('message', '') if isinstance(msg, dict) else msg).lower()
-        ]
-        if filtered:
-            request.session['_messages'] = filtered
-        else:
-            request.session.pop('_messages', None)
-        request.session.modified = True
-    
-    # Consumir mensagens do storage também
-    storage = messages.get_messages(request)
-    storage.used = True
-
-
 def _processar_post_criar_viagem(request, form):
-    """Processa o POST do formulário de criação de viagem."""
+                                                             
     if not form.is_valid():
         messages.error(request, "Não foi possível cadastrar a viagem. Verifique os campos.")
         return None
     
-    # Obter ação do formulário
+                              
     acao = request.POST.get("acao", "salvar")
     
-    # Limpar todas as flags de viagem cadastrada
+                                                
     keys_to_remove = [key for key in request.session.keys() if key.startswith('viagem_cadastrada_')]
     for key in keys_to_remove:
         request.session.pop(key, None)
@@ -540,15 +494,15 @@ def _processar_post_criar_viagem(request, form):
     
     viagem = form.save()
     
-    # Processar tipos de visto individuais e identificar membros com tipos de visto diferentes
-    # (que devem ter viagem separada automaticamente)
+                                                                                              
+                                                     
     clientes_selecionados = form.cleaned_data.get("clientes", [])
     membros_com_visto_diferente = _processar_tipos_visto_individuals(viagem, clientes_selecionados, [], request)
     
-    # Processar viagens separadas AUTOMATICAMENTE para membros com tipos de visto diferentes
+                                                                                            
     viagens_separadas = _processar_viagens_separadas(viagem, membros_com_visto_diferente, request)
     
-    # SIMPLIFICADO: Remover TODAS as mensagens de viagem da sessão antes de adicionar
+                                                                                     
     if stored_messages := request.session.get('_messages'):
         filtered = [msg for msg in stored_messages if "Viagem cadastrada" not in str(msg.get('message', '') if isinstance(msg, dict) else msg)]
         request.session['_messages'] = filtered or None
@@ -556,23 +510,23 @@ def _processar_post_criar_viagem(request, form):
             request.session.pop('_messages', None)
         request.session.modified = True
     
-    # Consumir todas as mensagens do storage do Django (sem re-adicionar)
+                                                                         
     storage = messages.get_messages(request)
     storage.used = True
     
-    # Contar total de viagens criadas (principal + separadas)
+                                                             
     total_viagens = 1 + len(viagens_separadas) if viagens_separadas else 1
     
-    # Se ação for criar processo, não adicionar mensagem (será exibida na tela de processo se necessário)
-    # e redirecionar para criar processo com viagem pré-selecionada
+                                                                                                         
+                                                                   
     if acao == "salvar_e_criar_processo":
-        # Não adicionar mensagem de sucesso, apenas redirecionar
-        # Coletar todas as viagens relacionadas (principal + separadas)
+                                                                
+                                                                       
         todas_viagens_ids = [viagem.pk]
         if viagens_separadas:
             todas_viagens_ids.extend([v.pk for v in viagens_separadas])
         
-        # Buscar todos os clientes em todas as viagens (principal + separadas)
+                                                                              
         todos_clientes_ids = set(viagem.clientes.all().values_list('pk', flat=True))
         for viagem_sep in viagens_separadas:
             todos_clientes_ids.update(viagem_sep.clientes.all().values_list('pk', flat=True))
@@ -589,10 +543,10 @@ def _processar_post_criar_viagem(request, form):
                         ClienteConsultoria.objects.filter(cliente_principal_id=cliente_obj.cliente_principal_id).values_list('pk', flat=True)
                     )
         
-        # Se há apenas um cliente em todas as viagens, pré-selecionar
+                                                                     
         if len(todos_clientes_ids) == 1:
             cliente_id = list(todos_clientes_ids)[0]
-            # Encontrar qual viagem este cliente está
+                                                     
             cliente_obj = ClienteConsultoria.objects.get(pk=cliente_id)
             viagem_cliente = None
             if cliente_obj in viagem.clientes.all():
@@ -606,11 +560,11 @@ def _processar_post_criar_viagem(request, form):
             if viagem_cliente:
                 return redirect(f"{reverse('system:criar_processo')}?cliente_id={cliente_id}&viagem_id={viagem_cliente.pk}")
         
-        # Se houver múltiplos clientes, redirecionar apenas com viagem principal
-        # O sistema criará processos para todos automaticamente
+                                                                                
+                                                               
         return redirect(f"{reverse('system:criar_processo')}?viagem_id={viagem.pk}")
     
-    # Adicionar APENAS UMA mensagem (apenas se não for criar processo)
+                                                                      
     if total_viagens > 1:
         messages.success(request, f"{total_viagens} viagens cadastradas com sucesso.")
     else:
@@ -620,7 +574,7 @@ def _processar_post_criar_viagem(request, form):
 
 
 def _preparar_clientes_pre_selecionados(clientes_ids_str):
-    """Prepara lista de IDs de clientes e organiza membros da viagem."""
+                                                                        
     clientes_ids_list = []
     with suppress(ValueError, TypeError):
         clientes_ids_list = [int(id.strip()) for id in clientes_ids_str.split(",") if id.strip()]
@@ -633,7 +587,7 @@ def _preparar_clientes_pre_selecionados(clientes_ids_str):
 
 
 def _preparar_contexto_criar_viagem(form, consultor, clientes_pre_selecionados, membros_viagem):
-    """Prepara o contexto para o template de criar viagem."""
+                                                             
     tipos_visto_disponiveis = TipoVisto.objects.filter(ativo=True).select_related("pais_destino").order_by("pais_destino__nome", "nome")
     
     return {
@@ -647,10 +601,10 @@ def _preparar_contexto_criar_viagem(form, consultor, clientes_pre_selecionados, 
 
 @login_required
 def criar_viagem(request):
-    """Formulário para cadastrar nova viagem."""
+                                                
     consultor = obter_consultor_usuario(request.user)
     
-    # Limpar mensagens de cadastro finalizado se vier de redirect de cadastro de cliente
+                                                                                        
     if request.method == "GET" and request.GET.get("clientes"):
         _limpar_flags_cadastro_cliente(request)
         request.session.save()
@@ -666,16 +620,16 @@ def criar_viagem(request):
         if clientes_ids := request.GET.get("clientes", ""):
             form = _preparar_formulario_com_clientes(request, form, clientes_ids)
 
-    # Obter clientes pré-selecionados e membros da viagem
+                                                         
     clientes_pre_selecionados, membros_viagem = _obter_clientes_e_membros_viagem(request)
     
-    # Limpeza final antes de renderizar - SEMPRE limpar se vier de cadastro de cliente
-    # Executar múltiplas vezes para garantir remoção completa
+                                                                                      
+                                                             
     if request.method == "GET" and request.GET.get("clientes"):
-        for _ in range(3):  # Executar 3 vezes para garantir
+        for _ in range(3):                                  
             _limpar_flags_cadastro_cliente(request)
             _limpar_mensagens_cadastro_finalizado_storage(request)
-            # Limpeza adicional: garantir que não há mensagens na sessão
+                                                                        
             if stored_messages := request.session.get('_messages'):
                 phrases_to_remove = ["cadastro finalizado com sucesso", "cadastro finalizado", "cliente 'teste_principal'"]
                 filtered = [
@@ -696,7 +650,7 @@ def criar_viagem(request):
 
 @login_required
 def listar_paises_destino(request):
-    """Lista todos os países de destino."""
+                                           
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -712,7 +666,7 @@ def listar_paises_destino(request):
 
 
 def _limpar_mensagens_duplicadas_sessao(request):
-    """Remove mensagens duplicadas da sessão."""
+                                                
     if not (stored_messages := request.session.get('_messages')):
         return
     
@@ -730,14 +684,14 @@ def _limpar_mensagens_duplicadas_sessao(request):
         request.session.pop('_messages', None)
     request.session.modified = True
     
-    # Consumir mensagens do storage também
+                                          
     storage = messages.get_messages(request)
     storage.used = True
 
 
 @login_required
 def editar_pais_destino(request, pk: int):
-    """Formulário para editar país de destino existente."""
+                                                           
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -747,7 +701,7 @@ def editar_pais_destino(request, pk: int):
     pais = get_object_or_404(PaisDestino, pk=pk)
     
     if request.method == "POST":
-        # Limpar mensagens duplicadas antes de processar
+                                                        
         _limpar_mensagens_duplicadas_sessao(request)
         
         form = PaisDestinoForm(data=request.POST, instance=pais)
@@ -756,7 +710,7 @@ def editar_pais_destino(request, pk: int):
             messages.success(request, f"País {pais_atualizado.nome} atualizado com sucesso.")
             return redirect("system:listar_paises_destino")
         else:
-            # Exibir erros do formulário
+                                        
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"{form.fields[field].label}: {error}")
@@ -774,7 +728,7 @@ def editar_pais_destino(request, pk: int):
 
 @login_required
 def visualizar_pais_destino(request, pk: int):
-    """Visualiza todas as informações do país de destino."""
+                                                            
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -783,12 +737,12 @@ def visualizar_pais_destino(request, pk: int):
         pk=pk
     )
     
-    # Buscar tipos de visto vinculados
+                                      
     tipos_visto = TipoVisto.objects.filter(
         pais_destino=pais
     ).select_related("pais_destino").prefetch_related("formulario").order_by("nome")
     
-    # Buscar viagens vinculadas
+                               
     viagens = Viagem.objects.filter(
         pais_destino=pais
     ).select_related(
@@ -813,7 +767,7 @@ def visualizar_pais_destino(request, pk: int):
 
 @login_required
 def verificar_exclusao_pais_destino(request, pk: int):
-    """Verifica se o país pode ser excluído e lista registros vinculados."""
+                                                                            
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -822,7 +776,7 @@ def verificar_exclusao_pais_destino(request, pk: int):
     
     pais = get_object_or_404(PaisDestino, pk=pk)
     
-    # Buscar registros vinculados
+                                 
     viagens = Viagem.objects.filter(pais_destino=pais).select_related(
         "tipo_visto",
         "assessor_responsavel"
@@ -832,7 +786,7 @@ def verificar_exclusao_pais_destino(request, pk: int):
         "pais_destino"
     ).order_by("nome")
     
-    # Contar ClienteViagem vinculados através das viagens
+                                                         
     from consultancy.models import ClienteViagem
     clientes_viagem = ClienteViagem.objects.filter(
         viagem__pais_destino=pais
@@ -857,19 +811,19 @@ def verificar_exclusao_pais_destino(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_pais_destino(request, pk: int):
-    """Exclui um país de destino."""
+                                    
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
     if not pode_gerenciar_todos:
         raise PermissionDenied
     
-    # Limpar mensagens duplicadas antes de adicionar nova
+                                                         
     _limpar_mensagens_duplicadas_sessao(request)
     
     pais = get_object_or_404(PaisDestino, pk=pk)
     
-    # Verificar se há viagens vinculadas
+                                        
     viagens = Viagem.objects.filter(pais_destino=pais)
     if viagens.exists():
         messages.error(
@@ -888,7 +842,7 @@ def excluir_pais_destino(request, pk: int):
 
 @login_required
 def listar_tipos_visto(request):
-    """Lista todos os tipos de visto."""
+                                        
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -905,7 +859,7 @@ def listar_tipos_visto(request):
 
 @login_required
 def visualizar_tipo_visto(request, pk: int):
-    """Visualiza todas as informações do tipo de visto."""
+                                                          
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -917,7 +871,7 @@ def visualizar_tipo_visto(request, pk: int):
         pk=pk
     )
     
-    # Buscar formulário vinculado (se existir)
+                                              
     from consultancy.models import FormularioVisto
     formulario = None
     try:
@@ -925,9 +879,9 @@ def visualizar_tipo_visto(request, pk: int):
             "perguntas"
         ).get(tipo_visto=tipo_visto)
     except FormularioVisto.DoesNotExist:
-        pass
+        messages.info(request, "Nenhum formulário disponível para este tipo de visto.")
     
-    # Buscar viagens vinculadas
+                               
     viagens = Viagem.objects.filter(
         tipo_visto=tipo_visto
     ).select_related(
@@ -951,7 +905,7 @@ def visualizar_tipo_visto(request, pk: int):
 
 @login_required
 def editar_tipo_visto(request, pk: int):
-    """Formulário para editar tipo de visto existente."""
+                                                         
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -969,7 +923,7 @@ def editar_tipo_visto(request, pk: int):
         messages.error(request, "Não foi possível atualizar o tipo de visto. Verifique os campos.")
     else:
         form = TipoVistoForm(instance=tipo_visto)
-        # Garantir que o campo tipo_visto seja preenchido com o valor atual
+                                                                           
         if tipo_visto.pais_destino:
             form.fields["pais_destino"].initial = tipo_visto.pais_destino.pk
     
@@ -985,7 +939,7 @@ def editar_tipo_visto(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_tipo_visto(request, pk: int):
-    """Exclui um tipo de visto."""
+                                  
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -1000,41 +954,27 @@ def excluir_tipo_visto(request, pk: int):
     return redirect("system:listar_tipos_visto")
 
 
-def _obter_queryset_viagens(consultor, pode_gerenciar_todos):
-    """Retorna queryset base de viagens com relacionamentos otimizados."""
-    queryset = Viagem.objects.select_related(
-        "pais_destino",
-        "tipo_visto__formulario",
-        "assessor_responsavel",
-    ).prefetch_related("clientes", "clientes__parceiro_indicador")
-    
-    if not pode_gerenciar_todos and consultor:
-        queryset = queryset.filter(assessor_responsavel_id=consultor.pk)
-    
-    return queryset.order_by("-data_prevista_viagem")
-
-
 def _aplicar_filtros_viagens(viagens, request, filtros_aplicados):
-    """Aplica filtros do request.GET ao queryset de viagens."""
-    # Filtro por assessor responsável
+                                                               
+                                     
     if assessor_id := request.GET.get("assessor"):
         with suppress(ValueError, TypeError):
             viagens = viagens.filter(assessor_responsavel_id=int(assessor_id))
             filtros_aplicados["assessor"] = int(assessor_id)
     
-    # Filtro por país de destino
+                                
     if pais_id := request.GET.get("pais"):
         with suppress(ValueError, TypeError):
             viagens = viagens.filter(pais_destino_id=int(pais_id))
             filtros_aplicados["pais"] = int(pais_id)
     
-    # Filtro por tipo de visto
+                              
     if tipo_visto_id := request.GET.get("tipo_visto"):
         with suppress(ValueError, TypeError):
             viagens = viagens.filter(tipo_visto_id=int(tipo_visto_id))
             filtros_aplicados["tipo_visto"] = int(tipo_visto_id)
     
-    # Filtro por data prevista da viagem (range)
+                                                
     if data_viagem_inicio := request.GET.get("data_viagem_inicio"):
         with suppress(ValueError, TypeError):
             data_inicio = datetime.strptime(data_viagem_inicio, "%Y-%m-%d").date()
@@ -1046,7 +986,7 @@ def _aplicar_filtros_viagens(viagens, request, filtros_aplicados):
             viagens = viagens.filter(data_prevista_viagem__lte=data_fim)
             filtros_aplicados["data_viagem_fim"] = data_viagem_fim
     
-    # Filtro por data prevista de retorno (range)
+                                                 
     if data_retorno_inicio := request.GET.get("data_retorno_inicio"):
         with suppress(ValueError, TypeError):
             data_inicio = datetime.strptime(data_retorno_inicio, "%Y-%m-%d").date()
@@ -1058,7 +998,7 @@ def _aplicar_filtros_viagens(viagens, request, filtros_aplicados):
             viagens = viagens.filter(data_prevista_retorno__lte=data_fim)
             filtros_aplicados["data_retorno_fim"] = data_retorno_fim
     
-    # Filtro por valor assessoria (range)
+                                         
     if valor_min := request.GET.get("valor_min"):
         with suppress(ValueError, TypeError):
             viagens = viagens.filter(valor_assessoria__gte=float(valor_min))
@@ -1068,19 +1008,19 @@ def _aplicar_filtros_viagens(viagens, request, filtros_aplicados):
             viagens = viagens.filter(valor_assessoria__lte=float(valor_max))
             filtros_aplicados["valor_max"] = valor_max
     
-    # Filtro por cliente vinculado
+                                  
     if cliente_id := request.GET.get("cliente"):
         with suppress(ValueError, TypeError):
             viagens = viagens.filter(clientes__id=int(cliente_id)).distinct()
             filtros_aplicados["cliente"] = int(cliente_id)
     
-    # Filtro por parceiro vinculado (através dos clientes)
+                                                          
     if parceiro_id := request.GET.get("parceiro"):
         with suppress(ValueError, TypeError):
             viagens = viagens.filter(clientes__parceiro_indicador_id=int(parceiro_id)).distinct()
             filtros_aplicados["parceiro"] = int(parceiro_id)
     
-    # Filtro por data de criação (range)
+                                        
     if data_criacao_inicio := request.GET.get("data_criacao_inicio"):
         with suppress(ValueError, TypeError):
             data_inicio = datetime.strptime(data_criacao_inicio, "%Y-%m-%d").date()
@@ -1096,10 +1036,10 @@ def _aplicar_filtros_viagens(viagens, request, filtros_aplicados):
 
 
 def _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor):
-    """Prepara informações sobre formulários e permissões para cada viagem."""
+                                                                              
     viagens_com_info = []
     for viagem in viagens:
-        # Buscar formulário diretamente do banco de dados
+                                                         
         formulario = _obter_formulario_por_tipo_visto(viagem.tipo_visto, apenas_ativo=True)
         tem_formulario = formulario is not None
         total_clientes = viagem.clientes.count()
@@ -1110,7 +1050,7 @@ def _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor):
                 viagem=viagem
             ).values_list("cliente_id", flat=True).distinct().count()
         
-        # Contar processos existentes para esta viagem
+                                                      
         total_processos = Processo.objects.filter(viagem=viagem).count()
         clientes_sem_processo = total_clientes - total_processos if total_clientes > 0 else 0
         
@@ -1133,7 +1073,7 @@ def _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor):
 
 
 def _processar_respostas_formulario(request, viagem, cliente, perguntas):
-    """Processa e salva todas as respostas do formulário."""
+                                                            
     respostas_salvas = 0
     erros = []
     
@@ -1174,30 +1114,30 @@ def _processar_respostas_formulario(request, viagem, cliente, perguntas):
 
 
 def _obter_tipo_visto_cliente(viagem, cliente):
-    """Obtém o tipo de visto individual do cliente na viagem, ou o tipo de visto da viagem como fallback."""
+                                                                                                            
     with suppress(ClienteViagem.DoesNotExist):
         cliente_viagem = ClienteViagem.objects.select_related('tipo_visto__formulario').get(
             viagem=viagem, cliente=cliente
         )
-        # Se o cliente tem um tipo_visto individual, usar ele
+                                                             
         if cliente_viagem.tipo_visto:
             return cliente_viagem.tipo_visto
     
-    # Fallback: usar o tipo_visto da viagem principal
+                                                     
     return viagem.tipo_visto
 
 
 def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
-    """
-    Obtém o formulário de um tipo de visto diretamente do banco de dados.
+       
+                                                                         
     
-    Args:
-        tipo_visto: Instância de TipoVisto
-        apenas_ativo: Se True, retorna apenas formulários ativos
+         
+                                          
+                                                                
     
-    Returns:
-        FormularioVisto ou None
-    """
+            
+                               
+       
     if not tipo_visto or not hasattr(tipo_visto, 'pk') or not tipo_visto.pk:
         return None
     
@@ -1216,14 +1156,14 @@ def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
 
 
 def _obter_dados_formulario(viagem, cliente):
-    """Obtém perguntas e respostas existentes do formulário usando o tipo_visto individual do cliente."""
-    # Obter o tipo_visto correto (individual ou da viagem)
+                                                                                                         
+                                                          
     tipo_visto = _obter_tipo_visto_cliente(viagem, cliente)
     
     if not tipo_visto:
         return None, None, None
     
-    # Buscar formulário diretamente do banco de dados
+                                                     
     formulario = _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True)
     
     if not formulario:
@@ -1245,15 +1185,15 @@ def _obter_dados_formulario(viagem, cliente):
 
 
 def _atualizar_resposta_formulario(resposta, pergunta, valor):
-    """Atualiza os campos de resposta de acordo com o tipo de campo da pergunta."""
-    # Limpar todos os campos primeiro
+                                                                                   
+                                     
     resposta.resposta_texto = ""
     resposta.resposta_data = None
     resposta.resposta_numero = None
     resposta.resposta_booleano = None
     resposta.resposta_selecao = None
     
-    # Preencher o campo apropriado baseado no tipo
+                                                  
     if pergunta.tipo_campo == "texto":
         resposta.resposta_texto = valor or ""
     elif pergunta.tipo_campo == "data":
@@ -1269,25 +1209,25 @@ def _atualizar_resposta_formulario(resposta, pergunta, valor):
 
 @login_required
 def listar_viagens(request):
-    """Lista todas as viagens com filtros."""
+                                             
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
-    # Listar TODAS as viagens, independente de assessor
+                                                       
     viagens = Viagem.objects.select_related(
         "pais_destino",
         "tipo_visto__formulario",
         "assessor_responsavel",
     ).prefetch_related("clientes", "clientes__parceiro_indicador").order_by("-data_prevista_viagem")
     
-    # Aplicar filtros
+                     
     filtros_aplicados = {}
     viagens = _aplicar_filtros_viagens(viagens, request, filtros_aplicados)
     
-    # Preparar informações das viagens
+                                      
     viagens_com_info = _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor)
     
-    # Buscar opções para os filtros
+                                   
     assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
     paises = PaisDestino.objects.filter(ativo=True).order_by("nome")
     tipos_visto = TipoVisto.objects.filter(ativo=True).select_related("pais_destino").order_by("pais_destino__nome", "nome")
@@ -1312,7 +1252,7 @@ def listar_viagens(request):
 
 @login_required
 def visualizar_viagem(request, pk: int):
-    """Visualiza todas as informações da viagem, incluindo clientes e processos."""
+                                                                                   
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -1326,13 +1266,13 @@ def visualizar_viagem(request, pk: int):
         pk=pk
     )
     
-    # Qualquer usuário autenticado pode visualizar viagens
-    # Apenas restringir edição/exclusão baseado em permissões
+                                                          
+                                                             
     
-    # Buscar clientes vinculados (ordenar: principais primeiro, depois dependentes)
+                                                                                   
     clientes = viagem.clientes.all().select_related("cliente_principal", "assessor_responsavel").order_by("cliente_principal", "nome")
     
-    # Buscar processos vinculados
+                                 
     processos = Processo.objects.filter(
         viagem=viagem
     ).select_related(
@@ -1340,7 +1280,7 @@ def visualizar_viagem(request, pk: int):
         "assessor_responsavel",
     ).prefetch_related("etapas", "etapas__status").order_by("-criado_em")
     
-    # Preparar informações dos clientes (formulários)
+                                                     
     clientes_com_info = []
     for cliente in clientes:
         tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
@@ -1371,7 +1311,7 @@ def visualizar_viagem(request, pk: int):
             "completo": tem_resposta and total_respostas == total_perguntas if total_perguntas > 0 else False,
         })
     
-    # Buscar registros financeiros da viagem
+                                            
     registros_financeiros = Financeiro.objects.filter(
         viagem=viagem
     ).select_related(
@@ -1396,7 +1336,7 @@ def visualizar_viagem(request, pk: int):
 
 @login_required
 def editar_viagem(request, pk: int):
-    """Formulário para editar viagem existente."""
+                                                  
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -1405,7 +1345,7 @@ def editar_viagem(request, pk: int):
         pk=pk
     )
     
-    # Verificar se o usuário tem permissão: admin pode editar todas, assessor apenas as suas
+                                                                                            
     if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para editar esta viagem.")
     
@@ -1431,7 +1371,7 @@ def editar_viagem(request, pk: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_viagem(request, pk: int):
-    """Exclui uma viagem."""
+                            
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -1440,7 +1380,7 @@ def excluir_viagem(request, pk: int):
         pk=pk
     )
     
-    # Verificar se o usuário tem permissão: admin pode excluir todas, assessor apenas as suas
+                                                                                             
     if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel_id != consultor.pk):
         raise PermissionDenied("Você não tem permissão para excluir esta viagem.")
     
@@ -1455,7 +1395,7 @@ def excluir_viagem(request, pk: int):
 @login_required
 @require_GET
 def api_tipos_visto(request):
-    """API para buscar tipos de visto por país via AJAX."""
+                                                           
     pais_id = request.GET.get("pais", "").strip()
 
     if not pais_id:
@@ -1474,7 +1414,7 @@ def api_tipos_visto(request):
 
 @login_required
 def listar_formularios_viagem(request, viagem_id: int):
-    """Lista os formulários dos clientes de uma viagem específica."""
+                                                                     
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -1483,16 +1423,16 @@ def listar_formularios_viagem(request, viagem_id: int):
         pk=viagem_id
     )
     
-    # Qualquer usuário autenticado pode listar formulários de uma viagem
-    # Apenas restringir edição/exclusão baseado em permissões
+                                                                        
+                                                             
     
-    # Buscar clientes e verificar status dos formulários (usando tipo_visto individual de cada cliente)
+                                                                                                       
     clientes_com_info = []
     for cliente in viagem.clientes.all():
-        # Obter o tipo_visto individual do cliente
+                                                  
         tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
         
-        # Buscar formulário diretamente do banco de dados
+                                                         
         formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=False)
         
         tem_resposta = False
@@ -1532,7 +1472,7 @@ def listar_formularios_viagem(request, viagem_id: int):
 
 @login_required
 def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
-    """Permite editar o formulário de um cliente específico de uma viagem."""
+                                                                             
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -1571,7 +1511,7 @@ def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
             )
             return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
     
-    # Obter o tipo_visto individual do cliente para exibir no contexto
+                                                                      
     tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
     
     contexto = {
@@ -1591,7 +1531,7 @@ def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
 
 @login_required
 def visualizar_formulario_cliente(request, viagem_id: int, cliente_id: int):
-    """Visualiza o formulário de um cliente específico de uma viagem (somente leitura)."""
+                                                                                          
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -1600,8 +1540,8 @@ def visualizar_formulario_cliente(request, viagem_id: int, cliente_id: int):
         pk=viagem_id
     )
     
-    # Qualquer usuário autenticado pode visualizar formulários
-    # Apenas restringir edição/exclusão baseado em permissões
+                                                              
+                                                             
     
     cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)
     
@@ -1617,7 +1557,7 @@ def visualizar_formulario_cliente(request, viagem_id: int, cliente_id: int):
         )
         return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
     
-    # Obter o tipo_visto individual do cliente para exibir no contexto
+                                                                      
     tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
     
     contexto = {
@@ -1638,7 +1578,7 @@ def visualizar_formulario_cliente(request, viagem_id: int, cliente_id: int):
 @login_required
 @require_http_methods(["POST"])
 def excluir_respostas_formulario(request, viagem_id: int, cliente_id: int):
-    """Exclui todas as respostas de um formulário de um cliente específico."""
+                                                                              
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -1647,18 +1587,18 @@ def excluir_respostas_formulario(request, viagem_id: int, cliente_id: int):
         pk=viagem_id
     )
     
-    # Verificar se o usuário tem permissão: apenas administradores podem excluir
+                                                                                
     if not pode_gerenciar_todos:
         raise PermissionDenied("Apenas administradores podem excluir respostas de formulários.")
     
     from consultancy.models import ClienteConsultoria
     cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)
     
-    # Verificar se o cliente está vinculado à viagem
+                                                    
     if cliente not in viagem.clientes.all():
         raise PermissionDenied("Este cliente não está vinculado a esta viagem.")
     
-    # Excluir todas as respostas do cliente para esta viagem
+                                                            
     respostas_deletadas = RespostaFormulario.objects.filter(
         viagem=viagem,
         cliente=cliente

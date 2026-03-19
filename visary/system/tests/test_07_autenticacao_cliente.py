@@ -186,4 +186,5 @@ class ClienteDependenteLoginTest(TestCase):
             "password": self.senha_dependente,
             "remember_me": False,
         })
+        self.assertIn("cliente_id", self.client.session)
         self.assertEqual(self.client.session["cliente_id"], self.dependente.pk)

@@ -1,6 +1,7 @@
 import datetime
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.urls import reverse
 
 from consultancy.models import (
     ClienteConsultoria,
@@ -157,6 +158,25 @@ class FluxoCompletoClienteSimplesSemMembroTest(TestCase):
         atualizado = Financeiro.objects.get(pk=self.financeiro.pk)
         self.assertEqual(atualizado.status, StatusFinanceiro.PAGO)
 
+    def test_editar_processo_prazo_dias_invalido_mostra_erro(self):
+        self.client.login(username=self.django_user.username, password="senha123")
+        url = reverse("system:editar_processo", kwargs={"pk": self.processo.pk})
+
+        etapa_pk = self.etapa1.pk
+        payload = {
+            "salvar_etapa": etapa_pk,
+            f"etapa_{etapa_pk}_prazo": "abc",
+        }
+        resp = self.client.post(url, payload, follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+        self.etapa1.refresh_from_db()
+        self.assertEqual(self.etapa1.prazo_dias, 0)
+        self.assertIn(
+            "Prazo (dias) inválido",
+            resp.content.decode("utf-8", errors="ignore"),
+        )
+
 
 class FluxoCompletoClienteComMembrosTest(TestCase):
     @classmethod
@@ -251,5 +271,9 @@ class FluxoCompletoClienteComMembrosTest(TestCase):
 
     def test_excluir_principal_remove_dependente(self):
         dep_pk = self.dep1.pk
+                                                                                   
+                                               
+        Financeiro.objects.filter(cliente=self.principal).delete()
+        Financeiro.objects.filter(cliente=self.dep1).delete()
         self.principal.delete()
         self.assertFalse(ClienteConsultoria.objects.filter(pk=dep_pk).exists())

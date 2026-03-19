@@ -1,6 +1,6 @@
-"""
-Views relacionadas a finanças.
-"""
+   
+                              
+   
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -16,24 +16,24 @@ from system.views.client_views import obter_consultor_usuario, usuario_pode_gere
 
 @login_required
 def home_financeiro(request):
-    """Página inicial de financeiro com estatísticas."""
+                                                        
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
     if not pode_gerenciar_todos:
         raise PermissionDenied
 
-    # Estatísticas
+                  
     total_registros = Financeiro.objects.count()
     total_pendente = Financeiro.objects.filter(status="pendente").count()
     total_pago = Financeiro.objects.filter(status="pago").count()
     
-    # Valor total
+                 
     valor_total = Financeiro.objects.aggregate(Sum("valor"))["valor__sum"] or 0
     valor_pago = Financeiro.objects.filter(status="pago").aggregate(Sum("valor"))["valor__sum"] or 0
     valor_pendente = Financeiro.objects.filter(status="pendente").aggregate(Sum("valor"))["valor__sum"] or 0
 
-    # Últimos registros
+                       
     ultimos_registros = Financeiro.objects.select_related(
         "viagem",
         "cliente",
@@ -57,7 +57,7 @@ def home_financeiro(request):
 
 @login_required
 def listar_financeiro(request):
-    """Lista todos os registros financeiros com filtros."""
+                                                           
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
@@ -71,7 +71,7 @@ def listar_financeiro(request):
         "assessor_responsavel",
     ).order_by("-criado_em")
 
-    # Filtros
+             
     cliente_filter = request.GET.get("cliente", "")
     assessor_filter = request.GET.get("assessor", "")
     status_filter = request.GET.get("status", "")
@@ -117,7 +117,7 @@ def listar_financeiro(request):
 @login_required
 @require_http_methods(["GET", "POST"])
 def dar_baixa_financeiro(request, pk: int):
-    """Dar baixa no pagamento de um registro financeiro."""
+                                                           
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
