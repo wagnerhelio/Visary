@@ -1361,12 +1361,7 @@ def listar_viagens(request):
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
                                                        
-    clientes_usuario = listar_clientes(request.user)
-    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
-
-    viagens = Viagem.objects.filter(
-        clientes__pk__in=clientes_ids
-    ).select_related(
+    viagens = Viagem.objects.select_related(
         "pais_destino",
         "tipo_visto__formulario",
         "assessor_responsavel",
@@ -1384,7 +1379,7 @@ def listar_viagens(request):
     assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
     paises = PaisDestino.objects.filter(ativo=True).order_by("nome")
     tipos_visto = TipoVisto.objects.filter(ativo=True).select_related("pais_destino").order_by("pais_destino__nome", "nome")
-    clientes = clientes_usuario.order_by("nome")
+    clientes = ClienteConsultoria.objects.order_by("nome")
     parceiros = Partner.objects.filter(ativo=True).order_by("nome_empresa", "nome_responsavel")
     
     contexto = {

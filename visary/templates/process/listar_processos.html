@@ -407,7 +407,7 @@
             </thead>
             <tbody>
             {% for processo in processos %}
-                <tr {% if processo.cliente.is_dependente %}class="row-dependente"{% endif %}>
+                <tr class="{% if processo.cliente.is_dependente %}row-dependente{% else %}row-principal{% endif %}">
                     <td>
                         <div class="nome-cell">
                             <span class="nome-cell__name">{{ processo.cliente.nome }}</span>

@@ -439,10 +439,14 @@
                     <td>
                         {% with clientes=item.viagem.clientes.all %}
                             {% if clientes and clientes.count > 1 %}
-                                <div class="membros-cell">
+                                <div class="family-stack">
                                     {% for cliente in clientes %}
                                         {% if not cliente.is_principal %}
-                                            <span class="badge badge-dependente">{{ cliente.nome }}</span>
+                                            <div class="family-member family-member--dependente">
+                                                <span class="family-member__name">{{ cliente.nome }}</span>
+                                                <span class="badge badge-dependente">Dependente</span>
+                                                <span class="family-member__sub">de {{ cliente.cliente_principal.nome|default:"-" }}</span>
+                                            </div>
                                         {% endif %}
                                     {% endfor %}
                                 </div>

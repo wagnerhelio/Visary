@@ -42,6 +42,17 @@ def _filtro_formulario_cliente_ok(cliente_info, viagem, filtros):
     return True
 
 
+def _ordenar_clientes_por_grupo_familiar(clientes):
+    return sorted(
+        clientes,
+        key=lambda cliente: (
+            cliente.cliente_principal_id or cliente.pk,
+            1 if cliente.cliente_principal_id else 0,
+            cliente.pk,
+        ),
+    )
+
+
 def _aplicar_filtros_formularios_respostas(formularios_respostas, filtros):
     filtrados = []
     for item in formularios_respostas:
@@ -155,11 +166,7 @@ def home_formularios(request):
         
         clientes_por_formulario = {}
         
-        principais = [c for c in clientes_viagem if not c.cliente_principal_id]
-        dependentes = [c for c in clientes_viagem if c.cliente_principal_id]
-        principais.sort(key=lambda c: c.pk)
-        dependentes.sort(key=lambda d: d.pk)
-        clientes_ordenados = principais + dependentes
+        clientes_ordenados = _ordenar_clientes_por_grupo_familiar(clientes_viagem)
         
         for cliente in clientes_ordenados:
             tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
@@ -263,13 +270,7 @@ def listar_formularios(request):
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-    clientes_usuario = listar_clientes(request.user)
-    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
-    
-                             
-    viagens = Viagem.objects.filter(
-        clientes__pk__in=clientes_ids
-    ).select_related(
+    viagens = Viagem.objects.select_related(
         "pais_destino",
         "tipo_visto",
         "tipo_visto__formulario",
@@ -308,18 +309,14 @@ def listar_formularios(request):
     
     for viagem in viagens:
                                                           
-        clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids)
+        clientes_viagem = viagem.clientes.all()
         
         if not clientes_viagem.exists():
             continue
         
         clientes_por_formulario = {}
         
-        principais = [c for c in clientes_viagem if not c.cliente_principal_id]
-        dependentes = [c for c in clientes_viagem if c.cliente_principal_id]
-        principais.sort(key=lambda c: c.pk)
-        dependentes.sort(key=lambda d: d.pk)
-        clientes_ordenados = principais + dependentes
+        clientes_ordenados = _ordenar_clientes_por_grupo_familiar(clientes_viagem)
         
         for cliente in clientes_ordenados:
             tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)

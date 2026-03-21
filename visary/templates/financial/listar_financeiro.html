@@ -328,7 +328,7 @@
             </thead>
             <tbody>
             {% for registro in registros %}
-                <tr {% if registro.cliente and registro.cliente.is_dependente %}class="row-dependente"{% endif %}>
+                <tr class="{% if registro.cliente and registro.cliente.is_dependente %}row-dependente{% else %}row-principal{% endif %}">
                     <td>
                         {% if registro.cliente %}
                             <div class="nome-cell">

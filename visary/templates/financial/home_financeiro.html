@@ -312,7 +312,7 @@
         <p>Registros financeiros mais recentes</p>
     </header>
     {% for registro in ultimos_registros %}
-    <div class="registro-item{% if registro.cliente and registro.cliente.is_dependente %} row-dependente{% endif %}">
+    <div class="registro-item {% if registro.cliente and registro.cliente.is_dependente %}row-dependente{% else %}row-principal{% endif %}">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <div>
                 {% if registro.cliente %}

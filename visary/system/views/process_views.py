@@ -54,6 +54,18 @@ def _aplicar_filtros_processos(processos, request, incluir_assessor=True):
     return processos, filtros
 
 
+def _ordenar_processos_por_grupo_familiar(processos):
+    return sorted(
+        processos,
+        key=lambda processo: (
+            processo.cliente.cliente_principal_id or processo.cliente_id,
+            1 if processo.cliente.cliente_principal_id else 0,
+            processo.cliente_id,
+            processo.pk,
+        ),
+    )
+
+
 @login_required
 def home_processos(request):
                                                               
@@ -78,11 +90,7 @@ def home_processos(request):
 
     processos, filtros_aplicados = _aplicar_filtros_processos(processos, request, incluir_assessor=False)
     
-    processos_principais = [p for p in processos if not p.cliente.cliente_principal_id]
-    processos_dependentes = [p for p in processos if p.cliente.cliente_principal_id]
-    processos_principais.sort(key=lambda p: p.pk)
-    processos_dependentes.sort(key=lambda p: p.pk)
-    processos_ordenados = processos_principais + processos_dependentes
+    processos_ordenados = _ordenar_processos_por_grupo_familiar(processos)
     
     processos_limitados = processos_ordenados[:10]
     total_processos_concluidos = sum(1 for processo in processos_ordenados if processo.progresso_percentual >= 100)
@@ -819,12 +827,7 @@ def listar_processos(request):
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
                                                           
-    clientes_usuario = listar_clientes(request.user)
-    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
-
-    processos = Processo.objects.filter(
-        cliente__pk__in=clientes_ids
-    ).select_related(
+    processos = Processo.objects.select_related(
         "viagem",
         "viagem__pais_destino",
         "viagem__tipo_visto",
@@ -834,16 +837,12 @@ def listar_processos(request):
 
     processos, filtros_aplicados = _aplicar_filtros_processos(processos, request, incluir_assessor=True)
 
-    processos_principais = [p for p in processos if not p.cliente.cliente_principal_id]
-    processos_dependentes = [p for p in processos if p.cliente.cliente_principal_id]
-    processos_principais.sort(key=lambda p: p.pk)
-    processos_dependentes.sort(key=lambda p: p.pk)
-    processos_ordenados = processos_principais + processos_dependentes
+    processos_ordenados = _ordenar_processos_por_grupo_familiar(processos)
     total_processos_concluidos = sum(1 for processo in processos_ordenados if processo.progresso_percentual >= 100)
     total_processos_pendentes = sum(1 for processo in processos_ordenados if processo.progresso_percentual < 100)
 
     assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
-    clientes = clientes_usuario.order_by("nome")
+    clientes = ClienteConsultoria.objects.order_by("nome")
 
     contexto = {
         "processos": processos_ordenados,

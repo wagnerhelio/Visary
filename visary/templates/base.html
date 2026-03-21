@@ -425,6 +425,134 @@
             box-shadow: 0 0 0 3px rgba(86, 244, 156, 0.1);
         }
 
+        tr.row-principal td:first-child {
+            border-left: 0 !important;
+            padding-left: 12px !important;
+        }
+
+        tr.row-dependente td:first-child {
+            border-left: 2px solid rgba(255, 193, 7, 0.45) !important;
+            padding-left: 18px !important;
+        }
+
+        tr.row-dependente td:first-child .nome-cell,
+        .registro-item.row-dependente .nome-cell {
+            padding: 6px 10px;
+            border-radius: 10px;
+            background: linear-gradient(90deg, rgba(255, 193, 7, 0.16), rgba(255, 193, 7, 0.06));
+        }
+
+        tr.row-dependente td:first-child .nome-cell__name,
+        .registro-item.row-dependente .nome-cell__name {
+            display: inline-block;
+            position: relative;
+            padding-left: 14px;
+        }
+
+        tr.row-dependente td:first-child .nome-cell__name::before,
+        .registro-item.row-dependente .nome-cell__name::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 9px;
+            height: 8px;
+            border-left: 1px solid rgba(255, 193, 7, 0.9);
+            border-bottom: 1px solid rgba(255, 193, 7, 0.9);
+            transform: translateY(-60%);
+            border-bottom-left-radius: 6px;
+        }
+
+        tr.row-dependente td:first-child .nome-cell__sub,
+        .registro-item.row-dependente .nome-cell__sub {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        tr.row-dependente td:first-child .nome-cell__sub::before,
+        .registro-item.row-dependente .nome-cell__sub::before {
+            content: "";
+            width: 10px;
+            height: 1px;
+            background: rgba(255, 193, 7, 0.9);
+            border-radius: 999px;
+            flex-shrink: 0;
+        }
+
+        .registro-item.row-principal {
+            border-left: 0 !important;
+            padding-left: 0 !important;
+        }
+
+        .registro-item.row-dependente {
+            border-left: 2px solid rgba(255, 193, 7, 0.45) !important;
+            padding-left: 14px !important;
+        }
+
+        .family-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 190px;
+        }
+
+        .family-member {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .family-member__name {
+            font-weight: 500;
+            color: rgba(245, 245, 245, 0.92);
+            line-height: 1.25;
+        }
+
+        .family-member--dependente {
+            border-left: 2px solid rgba(255, 193, 7, 0.45);
+            padding: 4px 8px 4px 12px;
+            border-radius: 8px;
+            background: linear-gradient(90deg, rgba(255, 193, 7, 0.16), rgba(255, 193, 7, 0.06));
+        }
+
+        .family-member--dependente .family-member__name {
+            position: relative;
+            padding-left: 12px;
+        }
+
+        .family-member--dependente .family-member__name::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 8px;
+            height: 7px;
+            border-left: 1px solid rgba(255, 193, 7, 0.9);
+            border-bottom: 1px solid rgba(255, 193, 7, 0.9);
+            transform: translateY(-62%);
+            border-bottom-left-radius: 5px;
+        }
+
+        .family-member__sub {
+            font-size: 0.68rem;
+            color: rgba(245, 245, 245, 0.56);
+            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .family-member__sub::before {
+            content: "";
+            width: 10px;
+            height: 1px;
+            background: rgba(255, 193, 7, 0.9);
+            border-radius: 999px;
+            flex-shrink: 0;
+        }
+
         
         @media (min-width: 1120px) {
             .app-sidebar {
@@ -534,6 +662,23 @@
             {% block unauthenticated_body %}{% endblock %}
         {% endif %}
     {% endblock %}
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const familyRows = document.querySelectorAll('tr[data-principal-pk]');
+
+            familyRows.forEach((row) => {
+                const principalPk = (row.dataset.principalPk || '').trim();
+                if (principalPk) {
+                    row.classList.add('row-dependente');
+                    row.classList.remove('row-principal');
+                    return;
+                }
+                row.classList.add('row-principal');
+                row.classList.remove('row-dependente');
+            });
+        });
+    </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {

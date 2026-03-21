@@ -384,7 +384,7 @@
             </thead>
             <tbody>
                 {% for item in formularios_pendentes %}
-                <tr{% if item.cliente_info.cliente.cliente_principal_id %} class="row-dependente"{% endif %}>
+                <tr class="{% if item.cliente_info.cliente.cliente_principal_id %}row-dependente{% else %}row-principal{% endif %}">
                     <td>
                         <div class="nome-cell">
                             <span class="nome-cell__name">{{ item.cliente_info.cliente.nome }}</span>
@@ -442,7 +442,7 @@
             </thead>
             <tbody>
                 {% for item in formularios_preenchidos %}
-                <tr{% if item.cliente_info.cliente.cliente_principal_id %} class="row-dependente"{% endif %}>
+                <tr class="{% if item.cliente_info.cliente.cliente_principal_id %}row-dependente{% else %}row-principal{% endif %}">
                     <td>
                         <div class="nome-cell">
                             <span class="nome-cell__name">{{ item.cliente_info.cliente.nome }}</span>

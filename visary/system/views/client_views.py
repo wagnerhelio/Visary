@@ -31,6 +31,7 @@ from system.models import (
     Viagem,
 )
 from system.models.financial_models import Financeiro, StatusFinanceiro
+from system.services.legacy_markers import extract_legacy_meta, strip_legacy_meta, upsert_legacy_meta
 from system.services.cep import buscar_endereco_por_cep
 from system.models import UsuarioConsultoria
 
@@ -217,6 +218,17 @@ def _obter_status_formulario_cliente(cliente: ClienteConsultoria) -> dict:
     }
 
 
+def _legacy_meta_from_cliente(cliente: ClienteConsultoria) -> dict:
+    meta = extract_legacy_meta(cliente.observacoes)
+    if not meta.get("imported"):
+        return {"imported": False, "status": "", "issues": []}
+    return {
+        "imported": True,
+        "status": meta.get("status", "ok"),
+        "issues": meta.get("issues", []),
+    }
+
+
 def listar_clientes(user: User) -> QuerySet[ClienteConsultoria]:
        
                                                                  
@@ -236,6 +248,7 @@ def listar_clientes(user: User) -> QuerySet[ClienteConsultoria]:
         return queryset
 
     consultor = obter_consultor_usuario(user)
+
     if not consultor:
         return queryset.none()
 
@@ -250,6 +263,18 @@ def listar_clientes(user: User) -> QuerySet[ClienteConsultoria]:
                                                                          
         Q(cliente_principal__assessor_responsavel_id=consultor_id)
     ).distinct()
+
+
+def listar_clientes_com_escopo_total(user: User) -> QuerySet[ClienteConsultoria]:
+    queryset = ClienteConsultoria.objects.select_related(
+        "assessor_responsavel",
+        "criado_por",
+        "assessor_responsavel__perfil",
+        "cliente_principal",
+        "cliente_principal__assessor_responsavel",
+        "parceiro_indicador",
+    ).order_by("-criado_em")
+    return queryset
 
 
 def usuario_pode_gerenciar_todos(user: User, consultor: UsuarioConsultoria | None) -> bool:
@@ -367,6 +392,7 @@ def home_clientes(request):
     def _build_item(cliente):
         status_financeiro = _obter_status_financeiro_cliente(cliente)
         status_formulario = _obter_status_formulario_cliente(cliente)
+        legacy_meta = _legacy_meta_from_cliente(cliente)
         return {
             "cliente": cliente,
             "status_financeiro": status_financeiro,
@@ -375,6 +401,7 @@ def home_clientes(request):
             "total_respostas": status_formulario["total_respostas"],
             "completo": status_formulario["completo"],
             "pode_editar": usuario_pode_editar_cliente(request.user, consultor, cliente),
+            "legacy_meta": legacy_meta,
         }
 
     clientes_ordenados = _ordenar_clientes_por_grupo_familiar(meus_clientes)
@@ -419,14 +446,7 @@ def listar_clientes_view(request):
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
                                                         
-    clientes = ClienteConsultoria.objects.select_related(
-        "assessor_responsavel",
-        "criado_por",
-        "assessor_responsavel__perfil",
-        "cliente_principal",
-        "cliente_principal__assessor_responsavel",
-        "parceiro_indicador",
-    ).prefetch_related("dependentes", "viagens").order_by("-criado_em")
+    clientes = listar_clientes_com_escopo_total(request.user).prefetch_related("dependentes", "viagens")
     
                                                     
     clientes, filtros = _aplicar_filtros_clientes(clientes, request, incluir_assessor=True)
@@ -434,6 +454,7 @@ def listar_clientes_view(request):
     def _build_item(cliente):
         status_financeiro = _obter_status_financeiro_cliente(cliente)
         status_formulario = _obter_status_formulario_cliente(cliente)
+        legacy_meta = _legacy_meta_from_cliente(cliente)
         return {
             "cliente": cliente,
             "status_financeiro": status_financeiro,
@@ -442,6 +463,7 @@ def listar_clientes_view(request):
             "total_respostas": status_formulario["total_respostas"],
             "completo": status_formulario["completo"],
             "pode_editar": usuario_pode_editar_cliente(request.user, consultor, cliente),
+            "legacy_meta": legacy_meta,
         }
 
     clientes_ordenados = _ordenar_clientes_por_grupo_familiar(clientes)
@@ -2522,6 +2544,8 @@ def visualizar_cliente(request, pk: int):
         "processos": processos,
         "registros_financeiros": registros_financeiros,
         "status_financeiro": status_financeiro,
+        "observacoes_limpa": strip_legacy_meta(cliente.observacoes),
+        "legacy_meta": _legacy_meta_from_cliente(cliente),
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": usuario_pode_gerenciar_todos(request.user, consultor),
         "pode_editar": pode_visualizar,
@@ -2552,13 +2576,20 @@ def editar_cliente_view(request, pk: int):
         raise PermissionDenied
 
     if request.method == "POST":
+        legacy_meta = extract_legacy_meta(cliente.observacoes)
         form = ClienteConsultoriaForm(data=request.POST, user=request.user, instance=cliente)
         form.fields["senha"].required = False
         form.fields["confirmar_senha"].required = False
         
         if form.is_valid():
-                                                                         
+                                                                          
             cliente_atualizado = form.save()
+            if legacy_meta.get("imported"):
+                cliente_atualizado.observacoes = upsert_legacy_meta(
+                    cliente_atualizado.observacoes,
+                    legacy_meta,
+                )
+                cliente_atualizado.save(update_fields=["observacoes", "atualizado_em"])
             messages.success(request, f"{cliente_atualizado.nome} atualizado com sucesso.")
             return redirect("system:listar_clientes_view")
         messages.error(request, "Não foi possível atualizar o cliente. Verifique os campos.")
@@ -2572,10 +2603,13 @@ def editar_cliente_view(request, pk: int):
                                             
         if cliente.parceiro_indicador:
             form.fields["parceiro_indicador"].initial = cliente.parceiro_indicador.pk
+        if "observacoes" in form.fields:
+            form.fields["observacoes"].initial = strip_legacy_meta(cliente.observacoes)
 
     contexto = {
         "form": form,
         "cliente": cliente,
+        "legacy_meta": _legacy_meta_from_cliente(cliente),
         "perfil_usuario": consultor.perfil.nome if consultor else None,
     }
 

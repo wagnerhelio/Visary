@@ -293,7 +293,7 @@
             </thead>
             <tbody>
                 {% for cliente_info in item.clientes %}
-                <tr{% if cliente_info.cliente.is_dependente %} class="row-dependente"{% endif %}>
+                <tr class="{% if cliente_info.cliente.is_dependente %}row-dependente{% else %}row-principal{% endif %}">
                     <td>
                         <strong>{{ cliente_info.cliente.nome }}</strong>
                         {% if cliente_info.cliente.is_dependente %}

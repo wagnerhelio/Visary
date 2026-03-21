@@ -419,7 +419,7 @@
             </thead>
             <tbody>
             {% for item in clientes_com_status %}
-                <tr {% if item.cliente.is_dependente %}class="row-dependente"{% endif %}>
+                <tr class="{% if item.cliente.is_dependente %}row-dependente{% else %}row-principal{% endif %}">
                     <td>
                         <div class="nome-cell">
                             <span class="nome-cell__name">{{ item.cliente.nome }}</span>
@@ -430,6 +430,13 @@
                                 {% endif %}
                             {% else %}
                                 <span class="badge badge-principal">Principal</span>
+                            {% endif %}
+                            {% if item.legacy_meta.imported %}
+                                {% if item.legacy_meta.status == "problem" %}
+                                    <span class="badge badge-cancelado">Legado com pendencia</span>
+                                {% else %}
+                                    <span class="badge badge-completo">Importado legado</span>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </td>

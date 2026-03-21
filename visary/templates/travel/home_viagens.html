@@ -350,16 +350,25 @@
                     <td>
                         {% with clientes=viagem.clientes.all %}
                             {% if clientes %}
-                                {% for cliente in clientes %}
-                                    {% if cliente.is_principal %}
-                                        <span class="badge badge-principal">{{ cliente.nome }}</span>
-                                    {% endif %}
-                                {% endfor %}
-                                {% with count=viagem.clientes.count %}
-                                    {% if count > 1 %}
-                                        <span class="badge badge-dependente">+{{ count|add:"-1" }} dep</span>
-                                    {% endif %}
-                                {% endwith %}
+                                <div class="family-stack">
+                                    {% for cliente in clientes %}
+                                        {% if cliente.is_principal %}
+                                            <div class="family-member family-member--principal">
+                                                <span class="family-member__name">{{ cliente.nome }}</span>
+                                                <span class="badge badge-principal">Principal</span>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% for cliente in clientes %}
+                                        {% if cliente.is_dependente %}
+                                            <div class="family-member family-member--dependente">
+                                                <span class="family-member__name">{{ cliente.nome }}</span>
+                                                <span class="badge badge-dependente">Dependente</span>
+                                                <span class="family-member__sub">de {{ cliente.cliente_principal.nome|default:"-" }}</span>
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
                             {% else %}
                                 <span style="color:rgba(245,245,245,0.35);">—</span>
                             {% endif %}

@@ -369,6 +369,13 @@
                             {% else %}
                                 <span class="badge badge-principal">Principal</span>
                             {% endif %}
+                            {% if item.legacy_meta.imported %}
+                                {% if item.legacy_meta.status == "problem" %}
+                                    <span class="badge badge-cancelado">Legado com pendencia</span>
+                                {% else %}
+                                    <span class="badge badge-completo">Importado legado</span>
+                                {% endif %}
+                            {% endif %}
                         </div>
                     </td>
                     <td>
