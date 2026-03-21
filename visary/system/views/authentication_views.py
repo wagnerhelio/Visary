@@ -12,7 +12,7 @@ from django.contrib.auth.hashers import is_password_usable
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from consultancy.models import ClienteConsultoria
+from system.models import ClienteConsultoria
 from system.forms.authentication_forms import ConsultancyAuthenticationForm
 from system.models import UsuarioConsultoria
 
@@ -89,17 +89,18 @@ def _autenticar_cliente(identifier: str, password: str, request, remember: bool)
     if not cliente:
         return None
 
+    if cliente.cliente_principal_id is not None:
+        messages.error(
+            request,
+            "Dependentes não possuem login próprio. Acesse usando a conta do cliente principal.",
+        )
+        return None
+
     if not is_password_usable(cliente.senha):
-        if cliente.cliente_principal_id is not None:
-            messages.error(
-                request,
-                "Dependentes não possuem login próprio. Acesse usando a conta do cliente principal."
-            )
-        else:
-            messages.error(
-                request,
-                "Sua senha precisa ser redefinida. Entre em contato com o administrador."
-            )
+        messages.error(
+            request,
+            "Sua senha precisa ser redefinida. Entre em contato com o administrador.",
+        )
         return None
 
     if cliente.check_password(password):

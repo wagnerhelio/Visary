@@ -176,7 +176,7 @@
         {% csrf_token %}
 
         {% for pergunta in perguntas %}
-            <div class="form-group">
+            <div class="form-group" data-ordem="{{ pergunta.ordem }}" data-regra='{{ pergunta.regra_exibicao|default_if_none:"" }}'>
                 <label for="pergunta_{{ pergunta.pk }}">
                     {{ pergunta.pergunta }}
                     {% if pergunta.obrigatorio %}
@@ -327,5 +327,64 @@
         <button type="submit" class="btn-submit">💾 {% if pode_gerenciar_todos %}Salvar{% else %}Atualizar{% endif %} Formulário</button>
     </form>
 </div>
+
+<script>
+(function() {
+    var ordemParaPk = {};
+    document.querySelectorAll('.form-group[data-ordem]').forEach(function(el) {
+        var match = el.querySelector('[id^="pergunta_"]');
+        if (match) {
+            var pk = match.id.replace('pergunta_', '');
+            ordemParaPk[parseInt(el.dataset.ordem)] = pk;
+        }
+    });
+
+    function atualizarVisibilidade() {
+        var estado = {};
+        Object.keys(ordemParaPk).forEach(function(ordem) {
+            var pk = ordemParaPk[ordem];
+            var radios = document.querySelectorAll('input[name="pergunta_' + pk + '"]');
+            var select = document.querySelector('select[name="pergunta_' + pk + '"]');
+            var textInput = document.querySelector('input[type="text"][name="pergunta_' + pk + '"]');
+            if (radios.length > 0) {
+                var checked = document.querySelector('input[name="pergunta_' + pk + '"]:checked');
+                estado[parseInt(ordem)] = checked ? checked.value : null;
+            } else if (select && select.value) {
+                var selectedText = select.options[select.selectedIndex].text;
+                estado[parseInt(ordem)] = selectedText;
+            } else if (textInput && textInput.value) {
+                estado[parseInt(ordem)] = textInput.value;
+            }
+        });
+
+        document.querySelectorAll('.form-group[data-regra]').forEach(function(el) {
+            var regraStr = el.dataset.regra;
+            if (!regraStr) return;
+            try { var regra = JSON.parse(regraStr); } catch(e) { return; }
+            if (regra.tipo !== 'mostrar_se') return;
+            var triggerOrdem = parseInt(regra.pergunta_ordem);
+            var valoresEsperados = Array.isArray(regra.valor) ? regra.valor : [regra.valor];
+            var triggerValue = estado[triggerOrdem];
+            var visivel = valoresEsperados.indexOf(triggerValue) !== -1;
+            el.style.display = visivel ? '' : 'none';
+            var inputs = el.querySelectorAll('input, select, textarea');
+            inputs.forEach(function(input) {
+                if (!visivel) {
+                    input.removeAttribute('required');
+                } else if (el.dataset.obrigatorio === 'true') {
+                    input.setAttribute('required', 'required');
+                }
+            });
+        });
+    }
+
+    document.querySelectorAll('input, select').forEach(function(el) {
+        el.addEventListener('change', atualizarVisibilidade);
+        el.addEventListener('input', atualizarVisibilidade);
+    });
+
+    atualizarVisibilidade();
+})();
+</script>
 {% endblock %}
 

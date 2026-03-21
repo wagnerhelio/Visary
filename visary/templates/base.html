@@ -44,7 +44,7 @@
             overflow-x: hidden;
         }
 
-        /* ===== SIDEBAR ===== */
+        
         .app-sidebar {
             position: fixed;
             top: 0;
@@ -191,7 +191,7 @@
             overflow: hidden;
         }
 
-        /* ===== MAIN CONTENT ===== */
+        
         .app-main {
             min-height: 100vh;
             overflow-x: hidden;
@@ -214,7 +214,7 @@
             margin-bottom: 24px;
         }
 
-        /* ===== PAGE HEADER ===== */
+        
         .page-header {
             margin-bottom: 32px;
         }
@@ -237,7 +237,7 @@
             flex-wrap: wrap;
         }
 
-        /* ===== CARDS ===== */
+        
         .card {
             background: var(--card-bg);
             border-radius: var(--radius-lg);
@@ -256,7 +256,7 @@
             margin: 0;
         }
 
-        /* ===== BUTTONS ===== */
+        
         .btn {
             display: inline-flex;
             align-items: center;
@@ -293,6 +293,18 @@
             background: rgba(86, 244, 156, 0.2);
         }
 
+        .btn-cancel {
+            background: rgba(244, 67, 54, 0.08);
+            border: 1px solid rgba(244, 67, 54, 0.25);
+            color: rgba(244, 67, 54, 0.95);
+        }
+
+        .btn-cancel:hover {
+            background: rgba(244, 67, 54, 0.16);
+            border-color: rgba(244, 67, 54, 0.35);
+            transform: translateY(-2px);
+        }
+
         .btn-danger {
             background: rgba(244, 67, 54, 0.15);
             border: 1px solid rgba(244, 67, 54, 0.4);
@@ -310,7 +322,7 @@
             font-size: 0.85rem;
         }
 
-        /* ===== TABLES ===== */
+        
         .table-wrapper {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
@@ -348,7 +360,7 @@
             border-radius: 12px;
         }
 
-        /* ===== MESSAGES ===== */
+        
         .messages {
             list-style: none;
             padding: 0;
@@ -371,7 +383,7 @@
             border: 1px solid rgba(255, 104, 104, 0.5);
         }
 
-        /* ===== FORMS ===== */
+        
         form {
             display: flex;
             flex-direction: column;
@@ -413,7 +425,7 @@
             box-shadow: 0 0 0 3px rgba(86, 244, 156, 0.1);
         }
 
-        /* ===== DESKTOP ===== */
+        
         @media (min-width: 1120px) {
             .app-sidebar {
                 transform: translateX(0);
@@ -444,14 +456,14 @@
             }
         }
 
-        /* ===== TABLET ===== */
+        
         @media (max-width: 1119px) {
             .app-main {
                 padding: 20px;
             }
         }
 
-        /* ===== MOBILE ===== */
+        
         @media (max-width: 768px) {
             .app-main {
                 padding: 16px;
@@ -523,54 +535,52 @@
         {% endif %}
     {% endblock %}
 
-    {% block extra_scripts %}
-        {% if request.user.is_authenticated or request.session.cliente_id %}
-            <script>
-                (function() {
-                    const body = document.body;
-                    const sidebar = document.querySelector('[data-app-sidebar]');
-                    const toggle = document.querySelector('[data-sidebar-toggle]');
-                    const backdrop = document.querySelector('[data-sidebar-backdrop]');
-
-                    if (!sidebar || !toggle) return;
-
-                    const openSidebar = () => {
-                        body.classList.add('sidebar-open');
-                        toggle.setAttribute('aria-expanded', 'true');
-                    };
-
-                    const closeSidebar = () => {
-                        body.classList.remove('sidebar-open');
-                        toggle.setAttribute('aria-expanded', 'false');
-                    };
-
-                    toggle.addEventListener('click', () => {
-                        body.classList.contains('sidebar-open') ? closeSidebar() : openSidebar();
-                    });
-
-                    if (backdrop) {
-                        backdrop.addEventListener('click', closeSidebar);
-                    }
-
-                    sidebar.addEventListener('click', (e) => {
-                        if (e.target.closest('[data-close-sidebar]')) {
-                            closeSidebar();
-                        }
-                    });
-
-                    window.addEventListener('keydown', (e) => {
-                        if (e.key === 'Escape') closeSidebar();
-                    });
-                })();
-            </script>
-        {% endif %}
-    {% endblock %}
-    
-    {# Script para prevenir erros de extensões do navegador (gerenciadores de senhas) #}
     <script>
-        // Captura erros silenciosamente de extensões do navegador que tentam acessar propriedades undefined
+        document.addEventListener('DOMContentLoaded', function() {
+            const body = document.body;
+            const sidebar = document.querySelector('[data-app-sidebar]');
+            const toggle = document.querySelector('[data-sidebar-toggle]');
+            const backdrop = document.querySelector('[data-sidebar-backdrop]');
+
+            if (!sidebar || !toggle) return;
+
+            const openSidebar = () => {
+                body.classList.add('sidebar-open');
+                toggle.setAttribute('aria-expanded', 'true');
+            };
+
+            const closeSidebar = () => {
+                body.classList.remove('sidebar-open');
+                toggle.setAttribute('aria-expanded', 'false');
+            };
+
+            toggle.addEventListener('click', () => {
+                body.classList.contains('sidebar-open') ? closeSidebar() : openSidebar();
+            });
+
+            if (backdrop) {
+                backdrop.addEventListener('click', closeSidebar);
+            }
+
+            sidebar.addEventListener('click', (e) => {
+                if (e.target.closest('[data-close-sidebar]')) {
+                    closeSidebar();
+                }
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeSidebar();
+            });
+        });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+    
+    
+    <script>
+        
         window.addEventListener('error', function(e) {
-            // Ignora erros relacionados a content_script.js (extensões do navegador)
+            
             const filename = e.filename || e.source || '';
             const message = e.message || '';
             if (filename.includes('content_script.js') || 
@@ -583,7 +593,7 @@
             }
         }, true);
         
-        // Previne erros de Promise rejeitadas por extensões
+        
         window.addEventListener('unhandledrejection', function(e) {
             const errorMessage = e.reason?.message || e.reason?.stack || e.reason?.toString() || '';
             if (errorMessage.includes('content_script.js') || 
@@ -596,7 +606,7 @@
             }
         }, true);
 
-        // Previne erros de TypeError relacionados a extensões
+        
         const originalConsoleError = console.error;
         console.error = function(...args) {
             const message = args.join(' ');
@@ -604,7 +614,7 @@
                 message.includes('extension://') || 
                 message.includes('Cannot read properties of undefined') ||
                 message.includes("reading 'control'")) {
-                return; // Ignora erros de extensões
+                return; 
             }
             originalConsoleError.apply(console, args);
         };

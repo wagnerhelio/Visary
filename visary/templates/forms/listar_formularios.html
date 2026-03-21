@@ -90,6 +90,23 @@
         border: 1px solid rgba(255, 193, 7, 0.4);
     }
 
+    .badge-principal {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-dependente {
+        background: rgba(255, 193, 7, 0.2);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .row-dependente td:first-child {
+        padding-left: 20px;
+        border-left: 2px solid rgba(255, 193, 7, 0.25);
+    }
+
     .viagem-section {
         margin-bottom: 32px;
     }
@@ -118,6 +135,82 @@
         color: var(--text-secondary);
     }
 
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .filtros-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .filtros-grid select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+    }
+
+    .filtros-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .kpi-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin-bottom: 24px;
+    }
+
+    .kpi-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.22);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .kpi-card span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.35rem;
+        color: var(--accent);
+    }
+
+    .filtros-actions .btn {
+        width: auto;
+    }
+
+    @media (max-width: 768px) {
+        .filtros-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filtros-actions .btn {
+            width: 100%;
+        }
+    }
+
     </style>
 {% endblock %}
 
@@ -134,7 +227,52 @@
 {% endblock %}
 
 {% block app_content %}
- 
+<section class="filtros-card">
+    <form method="get" class="filtros-grid">
+        <select name="cliente">
+            <option value="">Cliente</option>
+            {% for cliente in clientes_filtro %}
+                <option value="{{ cliente.pk }}" {% if filtros_aplicados.cliente == cliente.pk|stringformat:"s" %}selected{% endif %}>{{ cliente.nome }}</option>
+            {% endfor %}
+        </select>
+        <select name="pais">
+            <option value="">País</option>
+            {% for pais in paises_filtro %}
+                <option value="{{ pais.pk }}" {% if filtros_aplicados.pais == pais.pk|stringformat:"s" %}selected{% endif %}>{{ pais.nome }}</option>
+            {% endfor %}
+        </select>
+        <select name="tipo_visto">
+            <option value="">Tipo de visto</option>
+            {% for tipo in tipos_visto_filtro %}
+                <option value="{{ tipo.pk }}" {% if filtros_aplicados.tipo_visto == tipo.pk|stringformat:"s" %}selected{% endif %}>{{ tipo.nome }}</option>
+            {% endfor %}
+        </select>
+        <select name="status">
+            <option value="">Status</option>
+            <option value="pendente" {% if filtros_aplicados.status == "pendente" %}selected{% endif %}>Pendente</option>
+            <option value="completo" {% if filtros_aplicados.status == "completo" %}selected{% endif %}>Completo</option>
+        </select>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:listar_formularios' %}" class="btn btn-outline">Limpar</a>
+        </div>
+    </form>
+</section>
+
+<section class="kpi-grid">
+    <article class="kpi-card">
+        <span>Total de formulários</span>
+        <strong>{{ total_formularios_kpi }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Pendentes</span>
+        <strong>{{ total_pendentes_kpi }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Completos</span>
+        <strong>{{ total_completos_kpi }}</strong>
+    </article>
+</section>
 
 {% if formularios_respostas %}
 {% for item in formularios_respostas %}
@@ -155,13 +293,16 @@
             </thead>
             <tbody>
                 {% for cliente_info in item.clientes %}
-                <tr>
+                <tr{% if cliente_info.cliente.is_dependente %} class="row-dependente"{% endif %}>
                     <td>
                         <strong>{{ cliente_info.cliente.nome }}</strong>
                         {% if cliente_info.cliente.is_dependente %}
-                            <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
-                                Dependente de {{ cliente_info.cliente.cliente_principal.nome|default:"-" }}
+                            <span class="badge badge-dependente" style="font-size: 0.72rem; padding: 1px 8px; margin-left: 4px;">Dependente</span>
+                            <div style="font-size: 0.72rem; color: rgba(245, 245, 245, 0.5); margin-top: 2px;">
+                                de {{ cliente_info.cliente.cliente_principal.nome|default:"-" }}
                             </div>
+                        {% else %}
+                            <span class="badge badge-principal" style="font-size: 0.72rem; padding: 1px 8px; margin-left: 4px;">Principal</span>
                         {% endif %}
                     </td>
                     <td>

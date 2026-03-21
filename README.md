@@ -142,22 +142,11 @@ O **Visary** é uma plataforma completa para empresas de consultoria de vistos g
 ```
 Visary/
 ├── visary/                    # Aplicação principal
-│   ├── consultancy/          # App de consultoria (domínio principal)
-│   │   ├── models/          # Modelos de dados
-│   │   │   ├── client_models.py
-│   │   │   ├── travel_models.py
-│   │   │   ├── process_models.py
-│   │   │   ├── form_models.py
-│   │   │   ├── partners_models.py
-│   │   │   ├── financial_models.py
-│   │   │   └── etapa_models.py
-│   │   ├── forms/           # Formulários Django
-│   │   ├── services/        # Serviços (ex: busca CEP)
-│   │   └── migrations/      # Migrações do banco
-│   ├── system/              # App de sistema (usuários, permissões)
+│   ├── system/              # App único do sistema (domínio + autenticação + permissões)
 │   │   ├── models/         # Modelos de permissão
 │   │   ├── views/          # Views do sistema
 │   │   ├── forms/          # Formulários de sistema
+│   │   ├── services/       # Serviços (ex: busca CEP, OCR, senhas)
 │   │   ├── management/     # Comandos personalizados
 │   │   └── migrations/
 │   ├── templates/          # Templates HTML
@@ -279,7 +268,7 @@ O sistema estará disponível em: `http://localhost:8000`
 
 ## 📊 Modelos e Estrutura de Dados
 
-### Consultancy App
+### Sistema App Único
 
 #### ClienteConsultoria
 - Informações pessoais, contato, endereço
@@ -316,8 +305,6 @@ O sistema estará disponível em: `http://localhost:8000`
 - Registros financeiros por viagem
 - Cliente opcional
 - Status: Pendente, Pago, Cancelado
-
-### System App
 
 #### Modulo
 - Módulos funcionais do sistema
@@ -444,7 +431,7 @@ O sistema utiliza múltiplas fontes para busca de CEP com fallback automático:
 3. pycep-correios (biblioteca)
 4. brazilcep (biblioteca)
 
-Implementado em: `consultancy/services/cep.py`
+Implementado em: `system/services/cep.py`
 
 ### Formulários Dinâmicos
 

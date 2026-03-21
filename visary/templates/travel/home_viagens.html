@@ -1,513 +1,380 @@
 {% extends "base.html" %}
-{% load static tz %}
+{% load static %}
 
-{% block title %}Visary | Viagens{% endblock %}
+{% block title %}Visary | Minhas Viagens{% endblock %}
 
 {% block base_styles %}
     {{ block.super }}
-
     <style>
-    .actions-grid {
+    .home-acoes {
         display: grid;
-        gap: 20px;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        margin-top: 32px;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        margin-bottom: 24px;
     }
 
-    .action-card {
+    .home-card {
         background: var(--card-bg);
-        border-radius: 24px;
+        border-radius: 20px;
         border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 32px;
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 20px;
         display: flex;
-        flex-direction: column;
         align-items: center;
-        text-align: center;
         gap: 16px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none;
     }
 
-    .action-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 32px 64px rgba(5, 8, 17, 0.6);
+    .home-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(5, 8, 17, 0.5);
     }
 
-    .action-card__icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 16px;
+    .home-card__icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
         background: linear-gradient(135deg, var(--accent), var(--accent-strong));
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2rem;
+        font-size: 1.4rem;
         color: #081423;
+        flex-shrink: 0;
     }
 
-    .action-card h3 {
+    .home-card__content h3 {
         margin: 0;
-        font-size: 1.3rem;
+        font-size: 0.95rem;
         color: var(--text-primary);
     }
 
-    .action-card p {
-        margin: 0;
+    .home-card__content p {
+        margin: 2px 0 0 0;
+        font-size: 0.78rem;
         color: var(--text-secondary);
-        font-size: 0.9rem;
     }
 
-    .action-card .btn {
-        margin-top: auto;
+    .home-grid {
+        display: grid;
+        gap: 24px;
     }
 
-    .stats-card {
-        background: var(--card-bg);
-        border-radius: 24px;
-        border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 32px;
-        text-align: center;
-    }
-
-    .stats-card span {
-        display: block;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        margin-bottom: 8px;
-    }
-
-    .stats-card strong {
-        display: block;
-        font-size: 2.5rem;
-        color: var(--accent);
-        font-weight: 700;
-    }
-
-    .viagens-list {
-        margin-top: 32px;
-    }
-
-    .viagens-list-card {
-        background: var(--card-bg);
-        border-radius: 24px;
-        border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 24px;
-    }
-
-    .viagens-list-card header {
+    .kpi-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         margin-bottom: 20px;
     }
 
-    .viagens-list-card h2 {
+    .kpi-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.22);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .kpi-card span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.35rem;
+        color: var(--accent);
+    }
+
+    .kpi-card--mini strong {
+        font-size: 1rem;
+        line-height: 1.3;
+    }
+
+    .home-section {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 24px;
+    }
+
+    .home-section__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .home-section__header h2 {
         margin: 0;
-        font-size: 1.4rem;
+        font-size: 1.05rem;
         color: var(--text-primary);
     }
 
-    .viagens-list-card p {
-        margin: 8px 0 0 0;
+    .home-section__header p {
+        margin: 3px 0 0 0;
+        font-size: 0.78rem;
         color: var(--text-secondary);
-        font-size: 0.9rem;
     }
 
-    .viagens-table {
+    .home-section__actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mini-table {
         width: 100%;
         border-collapse: collapse;
     }
 
-    .viagens-table th {
+    .mini-table th {
         text-align: left;
-        padding: 12px 0;
+        padding: 8px 10px;
         border-bottom: 1px solid var(--border-soft);
-        font-size: 0.78rem;
-        letter-spacing: 0.08em;
+        font-size: 0.7rem;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: rgba(245, 245, 245, 0.6);
+        color: rgba(245, 245, 245, 0.5);
+        white-space: nowrap;
     }
 
-    .viagens-table td {
-        padding: 14px 0;
+    .mini-table td {
+        padding: 10px 10px;
         border-bottom: 1px solid var(--border-soft);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         color: rgba(245, 245, 245, 0.88);
+        vertical-align: middle;
     }
 
-    .viagens-table tr:last-child td {
+    .mini-table tr:last-child td {
         border-bottom: none;
     }
 
     .badge {
         display: inline-block;
-        padding: 2px 10px;
-        border-radius: 10px;
-        font-size: 0.75rem;
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 0.7rem;
         font-weight: 600;
         white-space: nowrap;
     }
 
-    .badge-principal {
-        background: rgba(86, 244, 156, 0.18);
-        color: rgba(86, 244, 156, 0.95);
-        border: 1px solid rgba(86, 244, 156, 0.4);
+    .badge-principal { background: rgba(86, 244, 156, 0.18); color: rgba(86, 244, 156, 0.95); }
+    .badge-dependente { background: rgba(255, 193, 7, 0.18); color: rgba(255, 193, 7, 0.95); }
+
+    tr.row-dependente td:first-child {
+        padding-left: 16px;
+        border-left: 2px solid rgba(255, 193, 7, 0.25);
     }
 
-    .badge-dependente {
-        background: rgba(255, 193, 7, 0.18);
-        color: rgba(255, 193, 7, 0.95);
-        border: 1px solid rgba(255, 193, 7, 0.4);
-    }
-
-    .nome-cell {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .nome-cell__name {
-        font-weight: 500;
-        color: rgba(245, 245, 245, 0.92);
-        line-height: 1.3;
-    }
-
-    .membros-cell {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-
-    .viagens-table .empty-state {
-        padding: 24px;
-        text-align: center;
-        color: var(--text-secondary);
-        border: 1px dashed rgba(86, 244, 156, 0.35);
-        border-radius: 12px;
-    }
-
-    .viagens-table .empty-state a {
-        color: var(--accent);
-        text-decoration: underline;
-    }
-
-    @media (max-width: 768px) {
-        .actions-grid {
-            grid-template-columns: 1fr;
-            gap: 16px;
-        }
-
-        .action-card {
-            padding: 24px;
-        }
-
-        .stats-card {
-            padding: 24px;
-        }
-    }
-
-    .btn-small {
-        padding: 6px 12px;
-        font-size: 0.85rem;
-    }
-
-    .btn-primary.btn-small {
-        background: linear-gradient(135deg, rgba(86, 244, 156, 0.9), rgba(86, 244, 156, 0.7));
-        color: #0c1323;
-        border: none;
-    }
-
-    .btn-primary.btn-small:hover {
-        background: linear-gradient(135deg, rgba(86, 244, 156, 1), rgba(86, 244, 156, 0.9));
-    }
+    .btn-small { padding: 5px 10px; font-size: 0.8rem; }
 
     .filtros-card {
         background: var(--card-bg);
-        border-radius: 24px;
+        border-radius: 20px;
         border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 24px;
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 20px;
         margin-bottom: 24px;
-    }
-
-    .filtros-card header {
-        margin-bottom: 20px;
-    }
-
-    .filtros-card h2 {
-        margin: 0;
-        font-size: 1.2rem;
-        color: var(--text-primary);
-    }
-
-    .filtros-form {
-        display: grid;
-        gap: 16px;
     }
 
     .filtros-grid {
         display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
 
-    .filtros-form label {
-        display: block;
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: rgba(245, 245, 245, 0.8);
-        margin-bottom: 6px;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-    }
-
-    .filtros-form input,
-    .filtros-form select {
+    .filtros-grid select {
         width: 100%;
         padding: 10px 12px;
         border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(12, 19, 35, 0.72);
         color: #f5f5f5;
-        font-size: 0.9rem;
-        transition: border 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .filtros-form input:focus,
-    .filtros-form select:focus {
-        outline: none;
-        border-color: rgba(86, 244, 156, 0.65);
-        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
-        background: rgba(12, 19, 35, 0.85);
     }
 
     .filtros-actions {
+        grid-column: 1 / -1;
         display: flex;
         gap: 12px;
-        margin-top: 8px;
     }
 
-    @media (max-width: 768px) {
-        .filtros-grid {
-            grid-template-columns: 1fr;
-        }
+    .filtros-actions .btn { width: auto; }
 
-        .filtros-actions {
-            flex-direction: column;
-        }
+    @media (max-width: 480px) {
+        .home-acoes { grid-template-columns: 1fr; }
+        .home-section__header { flex-direction: column; align-items: flex-start; }
+        .filtros-actions { flex-direction: column; }
+        .filtros-actions .btn { width: 100%; }
     }
-
     </style>
 {% endblock %}
 
-
-
 {% block app_header %}
 <section class="page-header">
-    <div class="page-header__titles">
-        <h1>Viagens</h1>
-        <p>Gerencie viagens, países de destino e tipos de visto.</p>
+    <div>
+        <h1>Minhas Viagens</h1>
+        <p>Gerencie viagens dos seus clientes.</p>
     </div>
 </section>
 {% endblock %}
 
 {% block app_content %}
-
-
-
-
-<section class="actions-grid">
-    <article class="action-card">
-        <div class="action-card__icon">✈️</div>
-        <h3>Criar Viagem</h3>
-        <p>Cadastre uma nova viagem</p>
-        <a href="{% url 'system:criar_viagem' %}" class="btn btn-primary">Criar</a>
-    </article>
-
-    <article class="action-card">
-        <div class="action-card__icon">📋</div>
-        <h3>Listar Viagens</h3>
-        <p>Visualize e gerencie todas as viagens cadastradas.</p>
-        <a href="{% url 'system:listar_viagens' %}" class="btn btn-outline">Ver Todas</a>
-    </article>
+<section class="home-acoes">
+    <a href="{% url 'system:criar_viagem' %}" class="home-card">
+        <div class="home-card__icon">&#10133;</div>
+        <div class="home-card__content">
+            <h3>Criar Viagem</h3>
+            <p>Nova viagem</p>
+        </div>
+    </a>
+    <a href="{% url 'system:listar_viagens' %}" class="home-card">
+        <div class="home-card__icon">&#128196;</div>
+        <div class="home-card__content">
+            <h3>Listar Viagens</h3>
+            <p>Ver todas</p>
+        </div>
+    </a>
 </section>
 
-{% if viagens %}
-<section class="viagens-list" style="margin-top: 32px;">
-    <article class="viagens-list-card">
-        <header>
-            <h2>Minhas Viagens</h2>
-            <p>Viagens vinculadas aos seus clientes</p>
-        </header>
-        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
-        <table class="viagens-table">
+<section class="filtros-card">
+    <form method="get" class="filtros-grid">
+        <select name="pais">
+            <option value="">País</option>
+            {% for pais in paises %}
+                <option value="{{ pais.pk }}" {% if filtros_aplicados.pais == pais.pk %}selected{% endif %}>{{ pais.nome }}</option>
+            {% endfor %}
+        </select>
+        <select name="tipo_visto">
+            <option value="">Tipo de visto</option>
+            {% for tipo in tipos_visto %}
+                <option value="{{ tipo.pk }}" {% if filtros_aplicados.tipo_visto == tipo.pk %}selected{% endif %}>{{ tipo.nome }}</option>
+            {% endfor %}
+        </select>
+        <select name="cliente">
+            <option value="">Cliente</option>
+            {% for cliente in clientes %}
+                <option value="{{ cliente.pk }}" {% if filtros_aplicados.cliente == cliente.pk %}selected{% endif %}>{{ cliente.nome }}</option>
+            {% endfor %}
+        </select>
+        <select name="parceiro">
+            <option value="">Parceiro</option>
+            {% for parceiro in parceiros %}
+                <option value="{{ parceiro.pk }}" {% if filtros_aplicados.parceiro == parceiro.pk %}selected{% endif %}>
+                    {% if parceiro.nome_empresa %}{{ parceiro.nome_empresa }}{% else %}{{ parceiro.nome_responsavel }}{% endif %}
+                </option>
+            {% endfor %}
+        </select>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:home_viagens' %}" class="btn btn-outline">Limpar</a>
+        </div>
+    </form>
+</section>
+
+<div class="home-grid">
+    <section class="home-section">
+        <div class="kpi-grid">
+            <article class="kpi-card">
+                <span>Total de viagens</span>
+                <strong>{{ total_viagens_kpi }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Viagens concluídas</span>
+                <strong>{{ total_viagens_concluidas }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Viagens próximas (30 dias)</span>
+                <strong>{{ total_viagens_proximas }}</strong>
+            </article>
+        </div>
+        <div class="kpi-grid">
+            {% for item in quantidade_por_tipo_visto|slice:":4" %}
+            <article class="kpi-card kpi-card--mini">
+                <span>Tipo de visto</span>
+                <strong>{{ item.tipo_visto__nome|default:"Não informado" }}: {{ item.total }}</strong>
+            </article>
+            {% endfor %}
+            {% for item in quantidade_por_pais|slice:":4" %}
+            <article class="kpi-card kpi-card--mini">
+                <span>País de destino</span>
+                <strong>{{ item.pais_destino__nome|default:"Não informado" }}: {{ item.total }}</strong>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if viagens %}
+    <section class="home-section">
+        <div class="home-section__header">
+            <div>
+                <h2>Minhas Viagens</h2>
+                <p>{{ total_viagens }} viagem(ns)</p>
+            </div>
+            <div class="home-section__actions">
+                <a href="{% url 'system:listar_viagens' %}" class="btn btn-outline btn-small">Ver Todas</a>
+            </div>
+        </div>
+        <div class="table-wrapper">
+        <table class="mini-table">
             <thead>
                 <tr>
-                    <th>Cliente</th>
-                    <th>Membros</th>
-                    <th>País</th>
+                    <th>Pais</th>
                     <th>Tipo de Visto</th>
-                    <th>Data Viagem</th>
+                    <th>Data Ida</th>
                     <th>Data Retorno</th>
-                    <th>Valor</th>
-                    <th>Ações</th>
+                    <th>Clientes</th>
+                    <th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
                 {% for viagem in viagens %}
                 <tr>
-                    <td>
-                        {% with clientes=viagem.clientes.all %}
-                            {% if clientes %}
-                                {% for cliente in clientes %}
-                                    {% if cliente.is_principal %}
-                                        <div class="nome-cell">
-                                            <span class="nome-cell__name">{{ cliente.nome }}</span>
-                                            <span class="badge badge-principal">Principal</span>
-                                        </div>
-                                    {% endif %}
-                                {% empty %}
-                                    <span style="color: rgba(245, 245, 245, 0.5);">-</span>
-                                {% endfor %}
-                            {% else %}
-                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
-                            {% endif %}
-                        {% endwith %}
-                    </td>
-                    <td>
-                        {% with clientes=viagem.clientes.all %}
-                            {% if clientes and clientes.count > 1 %}
-                                <div class="membros-cell">
-                                    {% for cliente in clientes %}
-                                        {% if not cliente.is_principal %}
-                                            <span class="badge badge-dependente">{{ cliente.nome }}</span>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
-                            {% endif %}
-                        {% endwith %}
-                    </td>
                     <td>{{ viagem.pais_destino.nome }}</td>
                     <td>{{ viagem.tipo_visto.nome }}</td>
                     <td>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
                     <td>{{ viagem.data_prevista_retorno|date:"d/m/Y" }}</td>
-                    <td>R$ {{ viagem.valor_assessoria|floatformat:2 }}</td>
                     <td>
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <a href="{% url 'system:visualizar_viagem' viagem.pk %}" class="btn btn-primary btn-small">Visualizar</a>
-                            {% if pode_gerenciar_todos or consultor and viagem.assessor_responsavel.pk == consultor.pk %}
-                                <a href="{% url 'system:editar_viagem' viagem.pk %}" class="btn btn-outline btn-small">Editar</a>
-                                {% if pode_gerenciar_todos %}
-                                    <form method="post" action="{% url 'system:excluir_viagem' viagem.pk %}" onsubmit="return confirm('Deseja realmente excluir esta viagem?');" style="margin: 0;">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-danger btn-small">Excluir</button>
-                                    </form>
-                                {% endif %}
-                            {% endif %}
-                            {% if viagem.tipo_visto.formulario and viagem.clientes.count > 0 %}
-                                <a href="{% url 'system:listar_formularios_viagem' viagem.pk %}" class="btn btn-outline btn-small">Formulários</a>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        </div>
-    </article>
-</section>
-{% else %}
-<section class="viagens-list" style="margin-top: 32px;">
-    <article class="viagens-list-card">
-        <header>
-            <h2>Minhas Viagens</h2>
-            <p>Viagens vinculadas aos seus clientes</p>
-        </header>
-        <div class="empty-state">
-        {% if filtros_aplicados.pais or filtros_aplicados.tipo_visto or filtros_aplicados.cliente %}
-                Nenhuma viagem encontrada com os filtros aplicados. <a href="{% url 'system:home_viagens' %}">Limpar filtros</a>.
-            {% else %}
-                Nenhuma viagem cadastrada até o momento. <a href="{% url 'system:criar_viagem' %}">Cadastre a primeira viagem</a>.
-            {% endif %}
-        </div>
-    </article>
-</section>
-{% endif %}
-
-{% if viagens_formularios_nao_preenchidos %}
-<section class="viagens-list" style="margin-top: 32px;">
-    <article class="viagens-list-card">
-        <header>
-            <h2>Formulários não preenchidos</h2>
-            <p>Viagens com formulários pendentes de preenchimento</p>
-        </header>
-        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
-        <table class="viagens-table">
-            <thead>
-                <tr>
-                    <th>Cliente</th>
-                    <th>Membros</th>
-                    <th>País</th>
-                    <th>Tipo de Visto</th>
-                    <th>Data Viagem</th>
-                    <th>Clientes sem resposta</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in viagens_formularios_nao_preenchidos %}
-                <tr>
-                    <td>
-                        {% with clientes=item.viagem.clientes.all %}
+                        {% with clientes=viagem.clientes.all %}
                             {% if clientes %}
                                 {% for cliente in clientes %}
                                     {% if cliente.is_principal %}
-                                        <div class="nome-cell">
-                                            <span class="nome-cell__name">{{ cliente.nome }}</span>
-                                            <span class="badge badge-principal">Principal</span>
-                                        </div>
+                                        <span class="badge badge-principal">{{ cliente.nome }}</span>
                                     {% endif %}
-                                {% empty %}
-                                    <span style="color: rgba(245, 245, 245, 0.5);">-</span>
                                 {% endfor %}
+                                {% with count=viagem.clientes.count %}
+                                    {% if count > 1 %}
+                                        <span class="badge badge-dependente">+{{ count|add:"-1" }} dep</span>
+                                    {% endif %}
+                                {% endwith %}
                             {% else %}
-                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                                <span style="color:rgba(245,245,245,0.35);">—</span>
                             {% endif %}
                         {% endwith %}
                     </td>
                     <td>
-                        {% with clientes=item.viagem.clientes.all %}
-                            {% if clientes and clientes.count > 1 %}
-                                <div class="membros-cell">
-                                    {% for cliente in clientes %}
-                                        {% if not cliente.is_principal %}
-                                            <span class="badge badge-dependente">{{ cliente.nome }}</span>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
-                            {% endif %}
-                        {% endwith %}
-                    </td>
-                    <td>{{ item.viagem.pais_destino.nome }}</td>
-                    <td>{{ item.viagem.tipo_visto.nome }}</td>
-                    <td>{{ item.viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
-                    <td>
-                        <span style="color: rgba(255, 104, 104, 0.9); font-weight: 600;">
-                            {{ item.clientes_sem_resposta }} de {{ item.total_clientes }}
-                        </span>
-                    </td>
-                    <td>
-                        <a href="{% url 'system:listar_formularios_viagem' item.viagem.pk %}" class="btn btn-primary btn-small">Ver Formulários</a>
+                        <a href="{% url 'system:visualizar_viagem' viagem.pk %}" class="btn btn-outline btn-small">Ver</a>
+                        <a href="{% url 'system:listar_formularios_viagem' viagem.pk %}" class="btn btn-outline btn-small">Formularios</a>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         </div>
-    </article>
-</section>
-{% endif %}
+    </section>
+    {% endif %}
+</div>
 {% endblock %}

@@ -9,9 +9,38 @@ from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
-from consultancy.forms import DarBaixaFinanceiroForm
-from consultancy.models import Financeiro
+from system.forms import DarBaixaFinanceiroForm
+from system.models import Financeiro
 from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos
+
+
+def _aplicar_filtros_financeiro(registros, request):
+    filtros = {
+        "cliente": request.GET.get("cliente", "").strip(),
+        "assessor": request.GET.get("assessor", "").strip(),
+        "status": request.GET.get("status", "").strip(),
+        "data_inicio": request.GET.get("data_inicio", "").strip(),
+        "data_fim": request.GET.get("data_fim", "").strip(),
+    }
+
+    if filtros["cliente"]:
+        registros = registros.filter(
+            Q(cliente__nome__icontains=filtros["cliente"]) |
+            Q(cliente__email__icontains=filtros["cliente"])
+        )
+    if filtros["assessor"]:
+        registros = registros.filter(
+            Q(assessor_responsavel__nome__icontains=filtros["assessor"]) |
+            Q(assessor_responsavel__email__icontains=filtros["assessor"])
+        )
+    if filtros["status"]:
+        registros = registros.filter(status=filtros["status"])
+    if filtros["data_inicio"]:
+        registros = registros.filter(criado_em__date__gte=filtros["data_inicio"])
+    if filtros["data_fim"]:
+        registros = registros.filter(criado_em__date__lte=filtros["data_fim"])
+
+    return registros, filtros
 
 
 @login_required
@@ -24,22 +53,25 @@ def home_financeiro(request):
         raise PermissionDenied
 
                   
-    total_registros = Financeiro.objects.count()
-    total_pendente = Financeiro.objects.filter(status="pendente").count()
-    total_pago = Financeiro.objects.filter(status="pago").count()
-    
-                 
-    valor_total = Financeiro.objects.aggregate(Sum("valor"))["valor__sum"] or 0
-    valor_pago = Financeiro.objects.filter(status="pago").aggregate(Sum("valor"))["valor__sum"] or 0
-    valor_pendente = Financeiro.objects.filter(status="pendente").aggregate(Sum("valor"))["valor__sum"] or 0
-
-                       
-    ultimos_registros = Financeiro.objects.select_related(
+    registros = Financeiro.objects.select_related(
         "viagem",
         "cliente",
         "cliente__cliente_principal",
         "assessor_responsavel",
-    ).order_by("-criado_em")[:10]
+    ).order_by("-criado_em")
+    registros, filtros = _aplicar_filtros_financeiro(registros, request)
+
+    total_registros = registros.count()
+    total_pendente = registros.filter(status="pendente").count()
+    total_pago = registros.filter(status="pago").count()
+    
+                 
+    valor_total = registros.aggregate(Sum("valor"))["valor__sum"] or 0
+    valor_pago = registros.filter(status="pago").aggregate(Sum("valor"))["valor__sum"] or 0
+    valor_pendente = registros.filter(status="pendente").aggregate(Sum("valor"))["valor__sum"] or 0
+
+                       
+    ultimos_registros = registros[:10]
 
     contexto = {
         "total_registros": total_registros,
@@ -50,6 +82,7 @@ def home_financeiro(request):
         "valor_pendente": valor_pendente,
         "ultimos_registros": ultimos_registros,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "filtros": filtros,
     }
 
     return render(request, "financial/home_financeiro.html", contexto)
@@ -70,45 +103,12 @@ def listar_financeiro(request):
         "cliente__cliente_principal",
         "assessor_responsavel",
     ).order_by("-criado_em")
-
-             
-    cliente_filter = request.GET.get("cliente", "")
-    assessor_filter = request.GET.get("assessor", "")
-    status_filter = request.GET.get("status", "")
-    data_inicio = request.GET.get("data_inicio", "")
-    data_fim = request.GET.get("data_fim", "")
-
-    if cliente_filter:
-        registros = registros.filter(
-            Q(cliente__nome__icontains=cliente_filter) |
-            Q(cliente__email__icontains=cliente_filter)
-        )
-
-    if assessor_filter:
-        registros = registros.filter(
-            Q(assessor_responsavel__nome__icontains=assessor_filter) |
-            Q(assessor_responsavel__email__icontains=assessor_filter)
-        )
-
-    if status_filter:
-        registros = registros.filter(status=status_filter)
-
-    if data_inicio:
-        registros = registros.filter(criado_em__date__gte=data_inicio)
-
-    if data_fim:
-        registros = registros.filter(criado_em__date__lte=data_fim)
+    registros, filtros = _aplicar_filtros_financeiro(registros, request)
 
     contexto = {
         "registros": registros,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "filtros": {
-            "cliente": cliente_filter,
-            "assessor": assessor_filter,
-            "status": status_filter,
-            "data_inicio": data_inicio,
-            "data_fim": data_fim,
-        },
+        "filtros": filtros,
     }
 
     return render(request, "financial/listar_financeiro.html", contexto)

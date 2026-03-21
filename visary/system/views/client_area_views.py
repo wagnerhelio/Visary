@@ -2,7 +2,6 @@
                                                    
    
 
-from contextlib import suppress
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
@@ -10,16 +9,13 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.dateparse import parse_date
 
-from consultancy.models import (
+from system.models import (
     ClienteConsultoria,
-    ClienteViagem,
-    FormularioVisto,
     OpcaoSelecao,
-    PerguntaFormulario,
     RespostaFormulario,
     Viagem,
 )
-from system.views.travel_views import _obter_formulario_por_tipo_visto, _obter_tipo_visto_cliente
+from system.views.travel_views import _build_pergunta_estado, _obter_formulario_por_tipo_visto, _obter_tipo_visto_cliente, _pergunta_e_visivel
 
 
 def _get_cliente_from_session(request):
@@ -200,15 +196,19 @@ def cliente_salvar_resposta(request, viagem_id: int):
 
                                            
     perguntas = formulario.perguntas.filter(ativo=True)
+    respostas_existentes = {
+        r.pergunta_id: r for r in RespostaFormulario.objects.filter(viagem=viagem, cliente=cliente).select_related("resposta_selecao")
+    }
     respostas_salvas = 0
     erros = []
+    estado = _build_pergunta_estado(perguntas, request.POST, respostas_existentes)
 
     for pergunta in perguntas:
         campo_name = f"pergunta_{pergunta.pk}"
         valor = request.POST.get(campo_name)
 
-                                    
-        if pergunta.obrigatorio and not valor:
+        
+        if pergunta.obrigatorio and not valor and _pergunta_e_visivel(pergunta, estado):
             erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
             continue
 

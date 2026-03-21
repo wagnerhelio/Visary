@@ -5,12 +5,43 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
-from consultancy.forms import PartnerForm
-from consultancy.models import Partner
+from system.forms import PartnerForm
+from system.models import Partner
 from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos, usuario_tem_acesso_modulo
+
+
+def _aplicar_filtros_partners(partners, request):
+    filtros = {
+        "busca": request.GET.get("busca", "").strip(),
+        "segmento": request.GET.get("segmento", "").strip(),
+        "status": request.GET.get("status", "").strip(),
+        "estado": request.GET.get("estado", "").strip(),
+        "cidade": request.GET.get("cidade", "").strip(),
+    }
+
+    if filtros["busca"]:
+        termo = filtros["busca"]
+        partners = partners.filter(
+            Q(nome_responsavel__icontains=termo)
+            | Q(nome_empresa__icontains=termo)
+            | Q(email__icontains=termo)
+        )
+    if filtros["segmento"]:
+        partners = partners.filter(segmento=filtros["segmento"])
+    if filtros["status"] == "ativo":
+        partners = partners.filter(ativo=True)
+    elif filtros["status"] == "inativo":
+        partners = partners.filter(ativo=False)
+    if filtros["estado"]:
+        partners = partners.filter(estado__icontains=filtros["estado"])
+    if filtros["cidade"]:
+        partners = partners.filter(cidade__icontains=filtros["cidade"])
+
+    return partners, filtros
 
 
 @login_required
@@ -20,14 +51,17 @@ def home_partners(request):
         raise PermissionDenied
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
-    partners = Partner.objects.all().order_by("nome_empresa", "nome_responsavel")[:10]
-    total_partners = Partner.objects.count()
+    partners = Partner.objects.all().order_by("nome_empresa", "nome_responsavel")
+    partners, filtros_aplicados = _aplicar_filtros_partners(partners, request)
+    total_partners = partners.count()
     
     contexto = {
-        "partners": partners,
+        "partners": partners[:10],
         "total_partners": total_partners,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "filtros_aplicados": filtros_aplicados,
+        "segmentos": Partner.SEGMENTO_CHOICES,
     }
     
     return render(request, "partners/home_partners.html", contexto)
@@ -69,11 +103,14 @@ def listar_partners(request):
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
     partners = Partner.objects.all().order_by("nome_empresa", "nome_responsavel")
+    partners, filtros_aplicados = _aplicar_filtros_partners(partners, request)
     
     contexto = {
         "partners": partners,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "filtros_aplicados": filtros_aplicados,
+        "segmentos": Partner.SEGMENTO_CHOICES,
     }
     
     return render(request, "partners/listar_partners.html", contexto)
@@ -130,7 +167,7 @@ def visualizar_partner(request, pk: int):
     partner = get_object_or_404(Partner, pk=pk)
     
                                                 
-    from consultancy.models import ClienteConsultoria
+    from system.models import ClienteConsultoria
     clientes_vinculados = ClienteConsultoria.objects.filter(
         parceiro_indicador=partner
     ).select_related("assessor_responsavel", "cliente_principal").order_by("nome")

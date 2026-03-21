@@ -3,12 +3,12 @@
    
 
 from contextlib import suppress
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -18,11 +18,11 @@ from decimal import Decimal, InvalidOperation
 
 from django.utils.dateparse import parse_date
 
-from consultancy.forms import PaisDestinoForm, TipoVistoForm, ViagemForm
-from consultancy.models import ClienteConsultoria, ClienteViagem, FormularioVisto, OpcaoSelecao, Partner, PaisDestino, Processo, RespostaFormulario, TipoVisto, Viagem
-from consultancy.models.financial_models import Financeiro
+from system.forms import PaisDestinoForm, TipoVistoForm, ViagemForm
+from system.models import ClienteConsultoria, ClienteViagem, FormularioVisto, OpcaoSelecao, Partner, PaisDestino, Processo, RespostaFormulario, TipoVisto, Viagem
+from system.models.financial_models import Financeiro
 from system.models import UsuarioConsultoria
-from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos, usuario_tem_acesso_modulo
+from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
 
 
 def _limpar_flags_viagens_cadastradas(request):
@@ -96,16 +96,17 @@ def home_viagens(request):
         "tipo_visto__formulario",
         "assessor_responsavel",
     ).prefetch_related("clientes").distinct().order_by("-data_prevista_viagem")
+
+    filtros_aplicados = {}
+    viagens = _aplicar_filtros_viagens(viagens, request, filtros_aplicados, incluir_assessor=False)
     
                      
-    filtros_aplicados = {}
-    viagens = _aplicar_filtros_viagens(viagens, request, filtros_aplicados)
-    
-                                                               
+                                                                  
     viagens_limitadas = viagens[:10]
     
                                                                                     
     viagens_com_formulario = _obter_viagens_com_formularios_nao_preenchidos(viagens_limitadas)
+    kpis = _montar_kpis_viagens(viagens)
     
                                        
     mensagens_filtradas = _filtrar_mensagens_para_template(request)
@@ -120,12 +121,15 @@ def home_viagens(request):
         "viagens_formularios_nao_preenchidos": viagens_com_formulario,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "mensagens_filtradas": mensagens_filtradas,
-        "filtros_aplicados": filtros_aplicados,
         "pode_gerenciar_todos": pode_gerenciar_todos,
         "consultor": consultor,
+        "assessores": UsuarioConsultoria.objects.filter(ativo=True).order_by("nome"),
         "paises": paises,
         "tipos_visto": tipos_visto,
         "clientes": clientes_usuario.order_by("nome"),
+        "filtros_aplicados": filtros_aplicados,
+        "parceiros": Partner.objects.filter(ativo=True).order_by("nome_empresa", "nome_responsavel"),
+        **kpis,
     }
 
     return render(request, "travel/home_viagens.html", contexto)
@@ -134,18 +138,20 @@ def home_viagens(request):
 @login_required
 def home_paises_destino(request):
     consultor = obter_consultor_usuario(request.user)
-    if not usuario_tem_acesso_modulo(request.user, consultor, "Paises de Destino"):
+    if not usuario_pode_gerenciar_todos(request.user, consultor):
         raise PermissionDenied
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+    pode_gerenciar_todos = True
     
-    paises = PaisDestino.objects.all().order_by("nome")[:10]
-    total_paises = PaisDestino.objects.count()
+    paises = PaisDestino.objects.all().order_by("nome")
+    paises, filtros_aplicados = _aplicar_filtros_paises_destino(paises, request)
+    total_paises = paises.count()
     
     contexto = {
-        "paises": paises,
+        "paises": paises[:10],
         "total_paises": total_paises,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "perfil_usuario": consultor.perfil.nome if consultor else "Administrador",
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "filtros_aplicados": filtros_aplicados,
     }
     
     return render(request, "travel/home_paises_destino.html", contexto)
@@ -154,21 +160,63 @@ def home_paises_destino(request):
 @login_required
 def home_tipos_visto(request):
     consultor = obter_consultor_usuario(request.user)
-    if not usuario_tem_acesso_modulo(request.user, consultor, "Tipos de Visto"):
+    if not usuario_pode_gerenciar_todos(request.user, consultor):
         raise PermissionDenied
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+    pode_gerenciar_todos = True
     
-    tipos_visto = TipoVisto.objects.select_related("pais_destino").order_by("pais_destino__nome", "nome")[:10]
-    total_tipos = TipoVisto.objects.count()
+    tipos_visto = TipoVisto.objects.select_related("pais_destino").order_by("pais_destino__nome", "nome")
+    tipos_visto, filtros_aplicados = _aplicar_filtros_tipos_visto(tipos_visto, request)
+    total_tipos = tipos_visto.count()
     
     contexto = {
-        "tipos_visto": tipos_visto,
+        "tipos_visto": tipos_visto[:10],
         "total_tipos": total_tipos,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "perfil_usuario": consultor.perfil.nome if consultor else "Administrador",
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "filtros_aplicados": filtros_aplicados,
+        "paises": PaisDestino.objects.filter(ativo=True).order_by("nome"),
     }
     
     return render(request, "travel/home_tipos_visto.html", contexto)
+
+
+def _aplicar_filtros_paises_destino(paises, request):
+    filtros = {
+        "busca": request.GET.get("busca", "").strip(),
+        "status": request.GET.get("status", "").strip(),
+        "codigo_iso": request.GET.get("codigo_iso", "").strip(),
+    }
+
+    if filtros["busca"]:
+        paises = paises.filter(nome__icontains=filtros["busca"])
+    if filtros["status"] == "ativo":
+        paises = paises.filter(ativo=True)
+    elif filtros["status"] == "inativo":
+        paises = paises.filter(ativo=False)
+    if filtros["codigo_iso"]:
+        paises = paises.filter(codigo_iso__icontains=filtros["codigo_iso"])
+
+    return paises, filtros
+
+
+def _aplicar_filtros_tipos_visto(tipos_visto, request):
+    filtros = {
+        "busca": request.GET.get("busca", "").strip(),
+        "pais": request.GET.get("pais", "").strip(),
+        "status": request.GET.get("status", "").strip(),
+    }
+
+    if filtros["busca"]:
+        tipos_visto = tipos_visto.filter(nome__icontains=filtros["busca"])
+    if filtros["pais"]:
+        with suppress(ValueError, TypeError):
+            tipos_visto = tipos_visto.filter(pais_destino_id=int(filtros["pais"]))
+    if filtros["status"] == "ativo":
+        tipos_visto = tipos_visto.filter(ativo=True)
+    elif filtros["status"] == "inativo":
+        tipos_visto = tipos_visto.filter(ativo=False)
+
+    return tipos_visto, filtros
 
 
 @login_required
@@ -655,11 +703,13 @@ def listar_paises_destino(request):
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
     paises = PaisDestino.objects.all().order_by("nome")
+    paises, filtros_aplicados = _aplicar_filtros_paises_destino(paises, request)
     
     contexto = {
         "paises": paises,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "filtros_aplicados": filtros_aplicados,
     }
     
     return render(request, "travel/listar_paises_destino.html", contexto)
@@ -787,7 +837,7 @@ def verificar_exclusao_pais_destino(request, pk: int):
     ).order_by("nome")
     
                                                          
-    from consultancy.models import ClienteViagem
+    from system.models import ClienteViagem
     clientes_viagem = ClienteViagem.objects.filter(
         viagem__pais_destino=pais
     ).select_related("cliente", "viagem", "tipo_visto").order_by("-viagem__data_prevista_viagem")
@@ -847,11 +897,14 @@ def listar_tipos_visto(request):
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
     tipos_visto = TipoVisto.objects.select_related("pais_destino").order_by("pais_destino__nome", "nome")
+    tipos_visto, filtros_aplicados = _aplicar_filtros_tipos_visto(tipos_visto, request)
     
     contexto = {
         "tipos_visto": tipos_visto,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "filtros_aplicados": filtros_aplicados,
+        "paises": PaisDestino.objects.filter(ativo=True).order_by("nome"),
     }
     
     return render(request, "travel/listar_tipos_visto.html", contexto)
@@ -872,7 +925,7 @@ def visualizar_tipo_visto(request, pk: int):
     )
     
                                               
-    from consultancy.models import FormularioVisto
+    from system.models import FormularioVisto
     formulario = None
     try:
         formulario = FormularioVisto.objects.select_related("tipo_visto").prefetch_related(
@@ -954,10 +1007,10 @@ def excluir_tipo_visto(request, pk: int):
     return redirect("system:listar_tipos_visto")
 
 
-def _aplicar_filtros_viagens(viagens, request, filtros_aplicados):
+def _aplicar_filtros_viagens(viagens, request, filtros_aplicados, incluir_assessor=True):
                                                                
                                      
-    if assessor_id := request.GET.get("assessor"):
+    if incluir_assessor and (assessor_id := request.GET.get("assessor")):
         with suppress(ValueError, TypeError):
             viagens = viagens.filter(assessor_responsavel_id=int(assessor_id))
             filtros_aplicados["assessor"] = int(assessor_id)
@@ -1035,6 +1088,35 @@ def _aplicar_filtros_viagens(viagens, request, filtros_aplicados):
     return viagens
 
 
+def _montar_kpis_viagens(viagens):
+    viagens_ids = list(viagens.values_list("pk", flat=True).distinct())
+    base = Viagem.objects.filter(pk__in=viagens_ids)
+    hoje = date.today()
+    proximidade_fim = hoje + timedelta(days=30)
+
+    total_viagens = base.count()
+    total_viagens_concluidas = base.filter(data_prevista_retorno__lt=hoje).count()
+    total_viagens_proximas = base.filter(
+        data_prevista_viagem__gte=hoje,
+        data_prevista_viagem__lte=proximidade_fim,
+    ).count()
+
+    qtd_por_tipo_visto = list(
+        base.values("tipo_visto__nome").annotate(total=Count("pk")).order_by("-total", "tipo_visto__nome")
+    )
+    qtd_por_pais = list(
+        base.values("pais_destino__nome").annotate(total=Count("pk")).order_by("-total", "pais_destino__nome")
+    )
+
+    return {
+        "total_viagens_kpi": total_viagens,
+        "total_viagens_concluidas": total_viagens_concluidas,
+        "total_viagens_proximas": total_viagens_proximas,
+        "quantidade_por_tipo_visto": qtd_por_tipo_visto,
+        "quantidade_por_pais": qtd_por_pais,
+    }
+
+
 def _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor):
                                                                               
     viagens_com_info = []
@@ -1072,14 +1154,79 @@ def _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor):
     return viagens_com_info
 
 
-def _processar_respostas_formulario(request, viagem, cliente, perguntas):
-                                                            
+def _build_pergunta_estado(perguntas, post_dict, respostas_existentes):
+    estado = {}
+    for p in perguntas:
+        if p.tipo_campo == "booleano":
+            val = post_dict.get(f"pergunta_{p.pk}", "")
+            if val == "sim":
+                estado[p.ordem] = "sim"
+            elif val == "nao":
+                estado[p.ordem] = "nao"
+            elif p.pk in respostas_existentes:
+                r = respostas_existentes[p.pk]
+                if r.resposta_booleano is True:
+                    estado[p.ordem] = "sim"
+                elif r.resposta_booleano is False:
+                    estado[p.ordem] = "nao"
+        elif p.tipo_campo == "selecao":
+            val = post_dict.get(f"pergunta_{p.pk}", "")
+            if val:
+                try:
+                    opcao_id = int(val)
+                    opcao = OpcaoSelecao.objects.filter(pk=opcao_id, pergunta=p).first()
+                    estado[p.ordem] = opcao.texto if opcao else val
+                except ValueError:
+                    estado[p.ordem] = val
+            elif p.pk in respostas_existentes:
+                r = respostas_existentes[p.pk]
+                if r.resposta_selecao_id:
+                    estado[p.ordem] = r.resposta_selecao.texto
+        elif p.tipo_campo == "numero":
+            val = post_dict.get(f"pergunta_{p.pk}", "")
+            estado[p.ordem] = val
+        elif p.tipo_campo == "data":
+            val = post_dict.get(f"pergunta_{p.pk}", "")
+            estado[p.ordem] = val
+        else:
+            val = post_dict.get(f"pergunta_{p.pk}", "")
+            if not val and p.pk in respostas_existentes:
+                val = respostas_existentes[p.pk].resposta_texto or ""
+            estado[p.ordem] = val
+    return estado
+
+
+def _pergunta_e_visivel(pergunta, estado):
+    regra = pergunta.regra_exibicao
+    if not regra:
+        return True
+    tipo = regra.get("tipo")
+    if tipo != "mostrar_se":
+        return True
+    pergunta_ordem = regra.get("pergunta_ordem")
+    valores_esperados = regra.get("valor")
+    if pergunta_ordem is None or valores_esperados is None:
+        return True
+    if isinstance(valores_esperados, list):
+        return estado.get(pergunta_ordem) in valores_esperados
+    return estado.get(pergunta_ordem) == valores_esperados
+
+
+def _processar_respostas_formulario(request, viagem, cliente, perguntas, respostas_existentes=None):
+                                                                 
     respostas_salvas = 0
     erros = []
+    respostas_existentes = respostas_existentes or {}
+    estado = _build_pergunta_estado(perguntas, request.POST, respostas_existentes)
     
     for pergunta in perguntas:
         campo_name = f"pergunta_{pergunta.pk}"
         valor = request.POST.get(campo_name)
+        
+        if pergunta.obrigatorio and not valor and _pergunta_e_visivel(pergunta, estado):
+            erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
+            continue
+
         
         if pergunta.obrigatorio and not valor:
             erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
@@ -1214,7 +1361,12 @@ def listar_viagens(request):
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
                                                        
-    viagens = Viagem.objects.select_related(
+    clientes_usuario = listar_clientes(request.user)
+    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
+
+    viagens = Viagem.objects.filter(
+        clientes__pk__in=clientes_ids
+    ).select_related(
         "pais_destino",
         "tipo_visto__formulario",
         "assessor_responsavel",
@@ -1223,6 +1375,7 @@ def listar_viagens(request):
                      
     filtros_aplicados = {}
     viagens = _aplicar_filtros_viagens(viagens, request, filtros_aplicados)
+    kpis = _montar_kpis_viagens(viagens)
     
                                       
     viagens_com_info = _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor)
@@ -1231,7 +1384,7 @@ def listar_viagens(request):
     assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
     paises = PaisDestino.objects.filter(ativo=True).order_by("nome")
     tipos_visto = TipoVisto.objects.filter(ativo=True).select_related("pais_destino").order_by("pais_destino__nome", "nome")
-    clientes = ClienteConsultoria.objects.all().order_by("nome")
+    clientes = clientes_usuario.order_by("nome")
     parceiros = Partner.objects.filter(ativo=True).order_by("nome_empresa", "nome_responsavel")
     
     contexto = {
@@ -1245,6 +1398,7 @@ def listar_viagens(request):
         "clientes": clientes,
         "parceiros": parceiros,
         "filtros_aplicados": filtros_aplicados,
+        **kpis,
     }
     
     return render(request, "travel/listar_viagens.html", contexto)
@@ -1499,7 +1653,7 @@ def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
         return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
     
     if request.method == "POST":
-        respostas_salvas, erros = _processar_respostas_formulario(request, viagem, cliente, perguntas)
+        respostas_salvas, erros = _processar_respostas_formulario(request, viagem, cliente, perguntas, respostas_existentes)
         
         if erros:
             for erro in erros:
@@ -1591,7 +1745,7 @@ def excluir_respostas_formulario(request, viagem_id: int, cliente_id: int):
     if not pode_gerenciar_todos:
         raise PermissionDenied("Apenas administradores podem excluir respostas de formulários.")
     
-    from consultancy.models import ClienteConsultoria
+    from system.models import ClienteConsultoria
     cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)
     
                                                     

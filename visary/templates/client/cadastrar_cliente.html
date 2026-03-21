@@ -390,6 +390,16 @@
                     <h4 style="margin: 0 0 16px 0; font-size: 1rem; color: var(--text-primary);">
                         {% if editando_dependente %}Editar Dependente{% else %}Novo Dependente{% endif %}
                     </h4>
+                    <div style="margin-bottom: 18px; padding: 14px; border: 1px dashed rgba(86, 244, 156, 0.35); border-radius: 12px; background: rgba(86, 244, 156, 0.06);">
+                        <label for="passport-document-input-dependente" style="margin-bottom: 8px;">Extrair dados do passaporte do membro</label>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <input id="passport-document-input-dependente" type="file" accept=".pdf,.jpg,.jpeg,.png" style="max-width: 100%;">
+                            <button type="button" id="btn-extrair-passaporte-dependente" class="btn btn-outline">Extrair e aplicar</button>
+                        </div>
+                        <p id="passport-extract-status-dependente" style="margin: 10px 0 0 0; font-size: 0.88rem; color: rgba(245, 245, 245, 0.75);">
+                            Preenche automaticamente os campos do membro antes de salvar.
+                        </p>
+                    </div>
 
                     {% with usar_dados_post=request.POST.usar_dados_cliente_principal|default:"" %}
                     {% with usar_dados_editando=dependente_editando_dados.usar_dados_cliente_principal|default:False %}
@@ -1370,7 +1380,17 @@
             </script>
             {% endif %}
 
-            
+            <div style="margin-bottom: 18px; padding: 14px; border: 1px dashed rgba(86, 244, 156, 0.35); border-radius: 12px; background: rgba(86, 244, 156, 0.06);">
+                <label for="passport-document-input-cliente" style="margin-bottom: 8px;">Extrair dados do passaporte (preenchimento automatico)</label>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <input id="passport-document-input-cliente" type="file" accept=".pdf,.jpg,.jpeg,.png" style="max-width: 100%;">
+                    <button type="button" id="btn-extrair-passaporte-cliente" class="btn btn-outline">Extrair e aplicar</button>
+                </div>
+                <p id="passport-extract-status-cliente" style="margin: 10px 0 0 0; font-size: 0.88rem; color: rgba(245, 245, 245, 0.75);">
+                    Funciona desde o inicio do cadastro. Os campos extraidos sao reaproveitados nas proximas etapas.
+                </p>
+            </div>
+
             {% for campo_etapa in campos_etapa %}
                 {% if campo_etapa.nome_campo in form.fields %}
                     {% with field=form|get_form_field:campo_etapa.nome_campo %}
@@ -1471,7 +1491,7 @@
                                 {% endif %}
                             
                             {% elif campo_etapa.nome_campo == 'tipo_passaporte_outro' %}
-                                <div id="div_tipo_passaporte_outro" style="display: none;">
+                                <div id="div_tipo_passaporte_outro"{% if campo_etapa.regra_exibicao %} data-regra='{{ campo_etapa.regra_exibicao|escapejs }}'{% endif %} style="display: none;">
                                     <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
                                     {{ field }}
                                     {{ field.errors }}
@@ -1491,7 +1511,7 @@
                                 {% endif %}
                             
                             {% else %}
-                                <div>
+                                <div{% if campo_etapa.regra_exibicao %} data-regra='{{ campo_etapa.regra_exibicao|escapejs }}'{% endif %}>
                                     <label for="{{ field.id_for_label }}">{{ field.label }}{% if campo_etapa.obrigatorio %} *{% endif %}</label>
                                     {{ field }}
                                     {{ field.errors }}
@@ -1526,6 +1546,56 @@
                     {% endif %}
                 </div>
             </div>
+
+<script>
+(function() {
+    function initWizardRegraExibicao() {
+        var formEl = document.querySelector('form[action*="cadastrar"]') || document.querySelector('form:not([action])');
+        if (!formEl) return;
+
+        function getFieldValue(nomeCampo) {
+            var sel = formEl.querySelector('select[name="' + nomeCampo + '"]');
+            if (sel) return sel.options[sel.selectedIndex].text;
+            var inp = formEl.querySelector('input[name="' + nomeCampo + '"]:checked');
+            if (inp) return inp.value;
+            var textInp = formEl.querySelector('input[name="' + nomeCampo + '"]');
+            if (textInp) return textInp.value;
+            return '';
+        }
+
+        function avaliarVisibilidade() {
+            formEl.querySelectorAll('[data-regra]').forEach(function(el) {
+                try {
+                    var regra = JSON.parse(el.getAttribute('data-regra'));
+                    if (regra.tipo !== 'mostrar_se' || !regra.campo_trigger) return;
+                    var valorTrigger = getFieldValue(regra.campo_trigger);
+                    var valoresEsperados = Array.isArray(regra.valor) ? regra.valor : [regra.valor];
+                    var visivel = valoresEsperados.indexOf(valorTrigger) !== -1;
+                    el.style.display = visivel ? '' : 'none';
+                    el.querySelectorAll('input, select, textarea').forEach(function(input) {
+                        if (!visivel) {
+                            input.removeAttribute('required');
+                        }
+                    });
+                } catch (e) {}
+            });
+        }
+
+        formEl.querySelectorAll('input, select').forEach(function(el) {
+            el.addEventListener('change', avaliarVisibilidade);
+            el.addEventListener('input', avaliarVisibilidade);
+        });
+
+        avaliarVisibilidade();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initWizardRegraExibicao);
+    } else {
+        initWizardRegraExibicao();
+    }
+})();
+</script>
         </form>
     </article>
 </section>
@@ -1722,4 +1792,123 @@
 </script>
     {% endif %}
 {% endfor %}
+
+<script>
+(function() {
+    function bindPassportExtractor(config) {
+        const fileInput = document.getElementById(config.fileInputId);
+        const extractButton = document.getElementById(config.buttonId);
+        const statusEl = document.getElementById(config.statusId);
+        const formEl = document.querySelector(config.formSelector);
+
+        if (!fileInput || !extractButton || !statusEl || !formEl) return;
+
+        function setStatus(message, isError) {
+            statusEl.textContent = message;
+            statusEl.style.color = isError ? 'rgba(255, 104, 104, 0.95)' : 'rgba(245, 245, 245, 0.78)';
+        }
+
+        function fillField(name, value) {
+            const field = formEl.querySelector(`[name="${name}"]`);
+            if (!field || !value) return false;
+            field.value = value;
+            field.dispatchEvent(new Event('input', { bubbles: true }));
+            field.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+        }
+
+        async function extractPassport() {
+            if (!fileInput.files || fileInput.files.length === 0) {
+                setStatus('Selecione um arquivo de passaporte antes de extrair.', true);
+                return;
+            }
+
+            const csrfField = formEl.querySelector('[name="csrfmiddlewaretoken"]');
+            if (!csrfField) {
+                setStatus('Falha de seguranca (CSRF). Recarregue a pagina.', true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('documento', fileInput.files[0]);
+            formData.append('target', config.target);
+            formData.append('persist_in_session', config.persistInSession ? 'true' : 'false');
+
+            extractButton.disabled = true;
+            extractButton.textContent = 'Extraindo...';
+            setStatus('Processando documento...', false);
+
+            try {
+                const response = await fetch('{% url "system:api_extrair_passaporte" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfField.value },
+                    body: formData
+                });
+
+                let payload = null;
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    payload = await response.json();
+                } else {
+                    const text = await response.text();
+                    payload = { success: false, error: text || 'Resposta invalida do servidor.' };
+                }
+
+                if (!response.ok || !payload || !payload.success) {
+                    const errorMessage = (payload && payload.error)
+                        ? payload.error
+                        : `Nao foi possivel extrair os dados (HTTP ${response.status}).`;
+                    setStatus(errorMessage, true);
+                    return;
+                }
+
+                const fields = payload.fields || {};
+                const filled = [];
+                Object.keys(fields).forEach(function(fieldName) {
+                    if (fillField(fieldName, fields[fieldName])) {
+                        filled.push(fieldName);
+                    }
+                });
+
+                const warningSuffix = (payload.warnings && payload.warnings.length)
+                    ? ` Avisos: ${payload.warnings.join(', ')}`
+                    : '';
+                if (!filled.length) {
+                    setStatus(`Extracao concluida sem campos visiveis nesta etapa.${warningSuffix}`, true);
+                    return;
+                }
+
+                setStatus(`Dados preenchidos: ${filled.join(', ')}.${warningSuffix} Revise antes de salvar.`, false);
+            } catch (error) {
+                setStatus('Erro ao extrair os dados do passaporte. Tente novamente.', true);
+                console.error(error);
+            } finally {
+                extractButton.disabled = false;
+                extractButton.textContent = 'Extrair e aplicar';
+                fileInput.value = '';
+            }
+        }
+
+        extractButton.addEventListener('click', extractPassport);
+    }
+
+    bindPassportExtractor({
+        fileInputId: 'passport-document-input-cliente',
+        buttonId: 'btn-extrair-passaporte-cliente',
+        statusId: 'passport-extract-status-cliente',
+        formSelector: '.form-card form[method="post"]:not(#form-dependente)',
+        target: 'cliente',
+        persistInSession: true,
+    });
+
+    bindPassportExtractor({
+        fileInputId: 'passport-document-input-dependente',
+        buttonId: 'btn-extrair-passaporte-dependente',
+        statusId: 'passport-extract-status-dependente',
+        formSelector: '#form-dependente',
+        target: 'dependente',
+        persistInSession: false,
+    });
+})();
+</script>
 {% endblock %}

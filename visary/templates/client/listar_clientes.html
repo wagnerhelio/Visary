@@ -3,6 +3,8 @@
 
 {% block title %}Visary | Listar Clientes{% endblock %}
 
+{% block body_class %}clientes-listagem-page listagem-page{% endblock %}
+
 {% block base_styles %}
     {{ block.super }}
 
@@ -73,27 +75,78 @@
         margin-top: 8px;
     }
 
-    .table-wrapper {
-        -webkit-overflow-scrolling: touch;
-        overflow-x: auto;
-        overflow-y: auto;
+    .kpi-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin-bottom: 24px;
+    }
+
+    .kpi-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.22);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .kpi-card span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.35rem;
+        color: var(--accent);
     }
 
     .card {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 280px);
-        max-height: calc(100vh - 280px);
-        min-height: 400px;
-        overflow: hidden;
+        overflow-x: auto;
     }
 
     .card .table-wrapper {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow-y: auto;
         overflow-x: auto;
-        max-height: 100%;
+        overflow-y: auto;
+        max-height: min(68vh, 720px);
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
+    @media (min-width: 1120px) {
+        body.clientes-listagem-page {
+            overflow: hidden;
+        }
+
+        body.clientes-listagem-page .app-main {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.clientes-listagem-page .page-header,
+        body.clientes-listagem-page .filtros-card,
+        body.clientes-listagem-page .kpi-grid {
+            flex-shrink: 0;
+        }
+
+        body.clientes-listagem-page .card {
+            flex: 1;
+            min-height: 0;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.clientes-listagem-page .card .table-wrapper {
+            flex: 1;
+            min-height: 0;
+            max-height: none;
+        }
     }
 
     thead th {
@@ -240,10 +293,8 @@
     }
 
     @media (max-width: 768px) {
-        .card {
-            height: calc(100vh - 250px);
-            max-height: calc(100vh - 250px);
-            min-height: 300px;
+        .card .table-wrapper {
+            max-height: 62vh;
         }
 
         .filtros-grid {
@@ -305,10 +356,6 @@
                 </select>
             </div>
             <div>
-                <label for="email">E-mail</label>
-                <input type="email" id="email" name="email" value="{{ filtros.email }}" placeholder="E-mail do cliente">
-            </div>
-            <div>
                 <label for="status_financeiro">Status Financeiro</label>
                 <select id="status_financeiro" name="status_financeiro">
                     <option value="">Todos os status</option>
@@ -324,6 +371,33 @@
             <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline">Limpar Filtros</a>
         </div>
     </form>
+</section>
+
+<section class="kpi-grid">
+    <article class="kpi-card">
+        <span>Total de clientes</span>
+        <strong>{{ total_clientes }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Total de dependentes</span>
+        <strong>{{ total_dependentes }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Financeiro pendente</span>
+        <strong>{{ total_financeiro_pendente }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Financeiro pago</span>
+        <strong>{{ total_financeiro_pago }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Financeiro cancelado</span>
+        <strong>{{ total_financeiro_cancelado }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Sem registros financeiros</span>
+        <strong>{{ total_financeiro_sem_registros }}</strong>
+    </article>
 </section>
 
 <section class="card">
@@ -478,7 +552,7 @@
             {% empty %}
                 <tr>
                     <td colspan="10" class="empty-state">
-                        {% if filtros.nome or filtros.assessor or filtros.email or filtros.status_financeiro %}
+                        {% if filtros.nome or filtros.assessor or filtros.status_financeiro %}
                             Nenhum cliente encontrado com os filtros aplicados. <a href="{% url 'system:listar_clientes_view' %}">Limpar filtros</a>.
                         {% else %}
                             Nenhum cliente cadastrado até o momento. <a href="{% url 'system:cadastrar_cliente' %}">Cadastre o primeiro cliente</a>.

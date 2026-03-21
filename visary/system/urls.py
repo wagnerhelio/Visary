@@ -4,7 +4,6 @@ from system import views
 app_name = "system"
 
 urlpatterns = [
-    path("colaboradores/",views.gerenciar_colaboradores,name="gerenciar_colaboradores", ),
     path("clientes/",views.home_clientes,name="home_clientes",),
     path("clientes/cadastrar/",views.cadastrar_cliente_view,name="cadastrar_cliente",),
     path("clientes/listar/",views.listar_clientes_view,name="listar_clientes_view",),
@@ -23,6 +22,7 @@ urlpatterns = [
     path("clientes/<int:pk>/dependentes/adicionar/",views.adicionar_dependente,name="adicionar_dependente",),
     path("clientes/<int:pk>/dependentes/<int:dependente_id>/remover/",views.remover_dependente,name="remover_dependente",),
     path("api/buscar-cep/",views.api_buscar_cep,name="api_buscar_cep",),
+    path("api/extrair-passaporte/",views.api_extrair_passaporte,name="api_extrair_passaporte",),
     path("partners/",views.home_partners,name="home_partners",),
     path("partners/criar/",views.criar_partner,name="criar_partner",),
     path("partners/listar/",views.listar_partners,name="listar_partners",),

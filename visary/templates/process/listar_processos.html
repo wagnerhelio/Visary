@@ -3,31 +3,55 @@
 
 {% block title %}Visary | Listar Processos{% endblock %}
 
+{% block body_class %}listagem-page{% endblock %}
+
 {% block base_styles %}
     {{ block.super }}
 
     <style>
-    .table-wrapper {
-        overflow-x: auto;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
     .card {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 280px);
-        max-height: calc(100vh - 280px);
-        min-height: 400px;
-        overflow: hidden;
+        overflow-x: auto;
     }
 
     .card .table-wrapper {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow-y: auto;
         overflow-x: auto;
-        max-height: 100%;
+        overflow-y: auto;
+        max-height: min(68vh, 720px);
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
+    @media (min-width: 1120px) {
+        body.listagem-page {
+            overflow: hidden;
+        }
+
+        body.listagem-page .app-main {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.listagem-page .page-header,
+        body.listagem-page .filtros-card,
+        body.listagem-page .kpi-grid {
+            flex-shrink: 0;
+        }
+
+        body.listagem-page .card:last-of-type {
+            flex: 1;
+            min-height: 0;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.listagem-page .card:last-of-type .table-wrapper {
+            flex: 1;
+            min-height: 0;
+            max-height: none;
+        }
     }
 
     thead th {
@@ -243,6 +267,35 @@
         margin-top: 8px;
     }
 
+    .kpi-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin-bottom: 24px;
+    }
+
+    .kpi-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.22);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .kpi-card span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.35rem;
+        color: var(--accent);
+    }
+
     @media (max-width: 768px) {
         .card {
             height: calc(100vh - 250px);
@@ -304,7 +357,7 @@
                 <select id="assessor" name="assessor">
                     <option value="">Todos</option>
                     {% for assessor in assessores %}
-                        <option value="{{ assessor.nome }}" {% if filtros_aplicados.assessor == assessor.nome %}selected{% endif %}>
+                        <option value="{{ assessor.pk }}" {% if filtros_aplicados.assessor == assessor.pk|stringformat:"s" %}selected{% endif %}>
                             {{ assessor.nome }}
                         </option>
                     {% endfor %}
@@ -316,6 +369,21 @@
             <a href="{% url 'system:listar_processos' %}" class="btn btn-outline">Limpar Filtros</a>
         </div>
     </form>
+</section>
+
+<section class="kpi-grid">
+    <article class="kpi-card">
+        <span>Total de processos</span>
+        <strong>{{ total_processos }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Concluídos</span>
+        <strong>{{ total_processos_concluidos }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Pendentes</span>
+        <strong>{{ total_processos_pendentes }}</strong>
+    </article>
 </section>
 
 <section class="card">

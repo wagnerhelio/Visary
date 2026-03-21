@@ -3,31 +3,55 @@
 
 {% block title %}Visary | Listar Financeiro{% endblock %}
 
+{% block body_class %}listagem-page{% endblock %}
+
 {% block base_styles %}
     {{ block.super }}
 
     <style>
-    .table-wrapper {
-        overflow-x: auto;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
     .card {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 380px);
-        max-height: calc(100vh - 380px);
-        min-height: 400px;
-        overflow: hidden;
+        overflow-x: auto;
     }
 
     .card .table-wrapper {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow-y: auto;
         overflow-x: auto;
-        max-height: 100%;
+        overflow-y: auto;
+        max-height: min(68vh, 720px);
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
+    @media (min-width: 1120px) {
+        body.listagem-page {
+            overflow: hidden;
+        }
+
+        body.listagem-page .app-main {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.listagem-page .page-header,
+        body.listagem-page .filtros-card,
+        body.listagem-page .kpi-grid {
+            flex-shrink: 0;
+        }
+
+        body.listagem-page .card:last-of-type {
+            flex: 1;
+            min-height: 0;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.listagem-page .card:last-of-type .table-wrapper {
+            flex: 1;
+            min-height: 0;
+            max-height: none;
+        }
     }
 
     thead th {
@@ -184,6 +208,18 @@
         gap: 8px;
     }
 
+    .filter-group-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .filter-group-actions .btn {
+        width: auto;
+    }
+
     .filter-group label {
         font-size: 0.85rem;
         color: var(--text-secondary);
@@ -212,6 +248,15 @@
 
         .filters-grid {
             grid-template-columns: 1fr;
+        }
+
+        .filter-group-actions {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filter-group-actions .btn {
+            width: 100%;
         }
     }
 
@@ -259,8 +304,9 @@
                 <label for="data_fim">Data Fim</label>
                 <input type="date" id="data_fim" name="data_fim" value="{{ filtros.data_fim }}">
             </div>
-            <div class="filter-group">
+            <div class="filter-group-actions">
                 <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a href="{% url 'system:listar_financeiro' %}" class="btn btn-outline">Limpar</a>
             </div>
         </div>
     </form>

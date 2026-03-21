@@ -12,13 +12,12 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
-from consultancy.forms import (
-    CampoEtapaClienteForm,
+from system.forms import (
     CampoEtapaClienteInlineForm,
     ClienteConsultoriaForm,
     EtapaCadastroClienteForm,
 )
-from consultancy.models import CampoEtapaCliente, EtapaCadastroCliente
+from system.models import CampoEtapaCliente, EtapaCadastroCliente
 from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos
 
 

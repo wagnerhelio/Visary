@@ -1,225 +1,135 @@
 {% extends "base.html" %}
-{% load static tz %}
+{% load static %}
 
-{% block title %}Visary | Clientes{% endblock %}
+{% block title %}Visary | Meus Clientes{% endblock %}
 
 {% block base_styles %}
     {{ block.super }}
-
     <style>
-    .actions-grid {
+    .home-acoes {
         display: grid;
-        gap: 20px;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        margin-top: 32px;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        margin-bottom: 24px;
     }
 
-    .action-card {
+    .home-card {
         background: var(--card-bg);
-        border-radius: 24px;
+        border-radius: 20px;
         border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 32px;
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 20px;
         display: flex;
-        flex-direction: column;
         align-items: center;
-        text-align: center;
         gap: 16px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none;
     }
 
-    .action-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 32px 64px rgba(5, 8, 17, 0.6);
+    .home-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(5, 8, 17, 0.5);
     }
 
-    .action-card__icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 16px;
+    .home-card__icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
         background: linear-gradient(135deg, var(--accent), var(--accent-strong));
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2rem;
-        color: #081423;
-    }
-
-    .action-card h3 {
-        margin: 0;
-        font-size: 1.3rem;
-        color: var(--text-primary);
-    }
-
-    .action-card p {
-        margin: 0;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-    }
-
-    .action-card .btn {
-        margin-top: auto;
-    }
-
-    .stats-card {
-        background: var(--card-bg);
-        border-radius: 24px;
-        border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 32px;
-        text-align: center;
-    }
-
-    .stats-card span {
-        display: block;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        margin-bottom: 8px;
-    }
-
-    .stats-card strong {
-        display: block;
-        font-size: 2.5rem;
-        color: var(--accent);
-        font-weight: 700;
-    }
-
-    .clientes-list {
-        margin-top: 32px;
-    }
-
-    .clientes-list-card {
-        background: var(--card-bg);
-        border-radius: 24px;
-        border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 24px;
-    }
-
-    .clientes-list-card header {
-        margin-bottom: 20px;
-    }
-
-    .clientes-list-card h2 {
-        margin: 0;
         font-size: 1.4rem;
+        color: #081423;
+        flex-shrink: 0;
+    }
+
+    .home-card__icon.admin {
+        background: linear-gradient(135deg, #ffc107, #ff9800);
+    }
+
+    .home-card__content h3 {
+        margin: 0;
+        font-size: 0.95rem;
         color: var(--text-primary);
     }
 
-    .clientes-list-card p {
-        margin: 8px 0 0 0;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-    }
-
-    .clientes-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .clientes-table th {
-        text-align: left;
-        padding: 12px 0;
-        border-bottom: 1px solid var(--border-soft);
+    .home-card__content p {
+        margin: 2px 0 0 0;
         font-size: 0.78rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(245, 245, 245, 0.6);
-    }
-
-    .clientes-table td {
-        padding: 14px 0;
-        border-bottom: 1px solid var(--border-soft);
-        font-size: 0.9rem;
-        color: rgba(245, 245, 245, 0.88);
-    }
-
-    .clientes-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    .clientes-table .btn-small {
-        padding: 6px 12px;
-        font-size: 0.85rem;
-    }
-
-    .clientes-table .empty-state {
-        padding: 24px;
-        text-align: center;
         color: var(--text-secondary);
-        border: 1px dashed rgba(86, 244, 156, 0.35);
-        border-radius: 12px;
     }
 
-    .clientes-table .empty-state a {
-        color: var(--accent);
-        text-decoration: underline;
+    .home-grid {
+        display: grid;
+        gap: 24px;
     }
 
-    .filtros-card {
-        background: var(--card-bg);
-        border-radius: 24px;
-        border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 24px;
-        margin-bottom: 24px;
-    }
-
-    .filtros-card header {
+    .kpi-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         margin-bottom: 20px;
     }
 
-    .filtros-card h2 {
+    .kpi-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.22);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .kpi-card span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.35rem;
+        color: var(--accent);
+    }
+
+    .home-section {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 24px;
+    }
+
+    .home-section.hidden-by-filter {
+        display: none;
+    }
+
+    .home-section__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .home-section__header h2 {
         margin: 0;
-        font-size: 1.2rem;
+        font-size: 1.05rem;
         color: var(--text-primary);
     }
 
-    .filtros-form {
-        display: grid;
-        gap: 16px;
-    }
-
-    .filtros-grid {
-        display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    }
-
-    .filtros-form label {
-        display: block;
+    .home-section__header p {
+        margin: 3px 0 0 0;
         font-size: 0.78rem;
-        font-weight: 600;
-        color: rgba(245, 245, 245, 0.8);
-        margin-bottom: 6px;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
+        color: var(--text-secondary);
     }
 
-    .filtros-form input,
-    .filtros-form select {
-        width: 100%;
-        padding: 10px 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(12, 19, 35, 0.72);
-        color: #f5f5f5;
-        font-size: 0.9rem;
-        transition: border 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .filtros-form input:focus,
-    .filtros-form select:focus {
-        outline: none;
-        border-color: rgba(86, 244, 156, 0.65);
-        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
-        background: rgba(12, 19, 35, 0.85);
-    }
-
-    .filtros-actions {
+    .home-section__actions {
         display: flex;
-        gap: 12px;
-        margin-top: 8px;
+        gap: 8px;
     }
 
     .table-wrapper {
@@ -228,662 +138,286 @@
         -webkit-overflow-scrolling: touch;
     }
 
-    .clientes-table td,
-    .clientes-table th {
-        padding: 14px 10px;
-        vertical-align: middle;
+    .mini-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .mini-table th {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.7rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(245, 245, 245, 0.5);
         white-space: nowrap;
     }
 
-    .clientes-table td:first-child,
-    .clientes-table th:first-child {
-        white-space: normal;
-        min-width: 160px;
+    .mini-table td {
+        padding: 10px 10px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.85rem;
+        color: rgba(245, 245, 245, 0.88);
+        vertical-align: middle;
+    }
+
+    .mini-table tr:last-child td {
+        border-bottom: none;
     }
 
     .badge {
         display: inline-block;
-        padding: 2px 10px;
-        border-radius: 10px;
-        font-size: 0.75rem;
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 0.7rem;
         font-weight: 600;
         white-space: nowrap;
     }
 
-    .badge-principal {
-        background: rgba(86, 244, 156, 0.18);
-        color: rgba(86, 244, 156, 0.95);
-        border: 1px solid rgba(86, 244, 156, 0.4);
-    }
+    .badge-principal { background: rgba(86, 244, 156, 0.18); color: rgba(86, 244, 156, 0.95); }
+    .badge-dependente { background: rgba(255, 193, 7, 0.18); color: rgba(255, 193, 7, 0.95); }
+    .badge-pago { background: rgba(86, 244, 156, 0.18); color: rgba(86, 244, 156, 0.95); }
+    .badge-pendente { background: rgba(255, 193, 7, 0.18); color: rgba(255, 193, 7, 0.95); }
+    .badge-cancelado { background: rgba(244, 67, 54, 0.18); color: rgba(244, 67, 54, 0.95); }
+    .badge-sem { background: rgba(158, 158, 158, 0.18); color: rgba(158, 158, 158, 0.95); }
+    .badge-completo { background: rgba(86, 244, 156, 0.18); color: rgba(86, 244, 156, 0.95); }
+    .badge-parcial { background: rgba(255, 193, 7, 0.18); color: rgba(255, 193, 7, 0.95); }
+    .badge-nao-preenchido { background: rgba(244, 67, 54, 0.18); color: rgba(244, 67, 54, 0.95); }
 
-    .badge-dependente {
-        background: rgba(255, 193, 7, 0.18);
-        color: rgba(255, 193, 7, 0.95);
-        border: 1px solid rgba(255, 193, 7, 0.4);
-    }
-
-    .badge-pago {
-        background: rgba(86, 244, 156, 0.18);
-        color: rgba(86, 244, 156, 0.95);
-        border: 1px solid rgba(86, 244, 156, 0.4);
-    }
-
-    .badge-pendente {
-        background: rgba(255, 193, 7, 0.18);
-        color: rgba(255, 193, 7, 0.95);
-        border: 1px solid rgba(255, 193, 7, 0.4);
-    }
-
-    .badge-cancelado {
-        background: rgba(244, 67, 54, 0.18);
-        color: rgba(244, 67, 54, 0.95);
-        border: 1px solid rgba(244, 67, 54, 0.4);
-    }
-
-    .badge-sem {
-        background: rgba(158, 158, 158, 0.18);
-        color: rgba(158, 158, 158, 0.95);
-        border: 1px solid rgba(158, 158, 158, 0.4);
-    }
-
-    .badge-completo {
-        background: rgba(86, 244, 156, 0.18);
-        color: rgba(86, 244, 156, 0.95);
-        border: 1px solid rgba(86, 244, 156, 0.4);
-    }
-
-    .badge-parcial {
-        background: rgba(255, 193, 7, 0.18);
-        color: rgba(255, 193, 7, 0.95);
-        border: 1px solid rgba(255, 193, 7, 0.4);
-    }
-
-    .badge-nao-preenchido {
-        background: rgba(244, 67, 54, 0.18);
-        color: rgba(244, 67, 54, 0.95);
-        border: 1px solid rgba(244, 67, 54, 0.4);
+    tr.row-dependente td:first-child {
+        padding-left: 16px;
+        border-left: 2px solid rgba(255, 193, 7, 0.25);
     }
 
     .nome-cell {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
     }
 
     .nome-cell__name {
         font-weight: 500;
         color: rgba(245, 245, 245, 0.92);
-        line-height: 1.3;
+        font-size: 0.88rem;
     }
 
     .nome-cell__sub {
-        font-size: 0.75rem;
+        font-size: 0.68rem;
         color: rgba(245, 245, 245, 0.5);
-        line-height: 1.2;
     }
 
-    .acoes-cell {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .progresso-bar {
-        width: 140px;
-        height: 7px;
-        background: #2b2f3a;
-        border-radius: 6px;
-        overflow: hidden;
-    }
-
-    .progresso-bar__fill {
-        height: 100%;
-        background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%);
-    }
-
-    .progresso-label {
-        font-size: 0.75rem;
-        color: #b9c6e7;
-        margin-top: 2px;
-    }
-
-    .row-dependente td:first-child {
-        padding-left: 24px;
-        border-left: 2px solid rgba(255, 193, 7, 0.25);
-    }
-
-    
-    .cliente-card {
+    tr.hidden-by-filter {
         display: none;
     }
 
-    @media (max-width: 900px) {
-        .actions-grid {
-            grid-template-columns: 1fr;
-            gap: 16px;
-        }
-
-        .action-card {
-            padding: 24px;
-        }
-
-        .stats-card {
-            padding: 24px;
-        }
-
-        .filtros-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .filtros-actions {
-            flex-direction: column;
-        }
-
-        .clientes-table-desktop {
-            display: none;
-        }
-
-        .cliente-card {
-            display: block;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border-soft);
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 12px;
-        }
-
-        .cliente-card.is-dependente {
-            border-left: 3px solid rgba(255, 193, 7, 0.5);
-            margin-left: 16px;
-        }
-
-        .cliente-card__header {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 10px;
-        }
-
-        .cliente-card__name {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: rgba(245, 245, 245, 0.95);
-            line-height: 1.3;
-        }
-
-        .cliente-card__sub {
-            font-size: 0.75rem;
-            color: rgba(245, 245, 245, 0.5);
-            margin-top: 2px;
-        }
-
-        .cliente-card__badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 10px;
-        }
-
-        .cliente-card__info {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px 12px;
-            font-size: 0.82rem;
-            color: rgba(245, 245, 245, 0.65);
-            margin-bottom: 12px;
-        }
-
-        .cliente-card__info span {
-            display: block;
-            color: rgba(245, 245, 245, 0.88);
-        }
-
-        .cliente-card__acoes {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-
-        .processos-table-desktop th:nth-child(3),
-        .processos-table-desktop th:nth-child(5),
-        .processos-table-desktop td:nth-child(3),
-        .processos-table-desktop td:nth-child(5) {
-            display: none;
-        }
-
-        .progresso-bar {
-            width: 100px;
-        }
+    .btn-small {
+        padding: 5px 10px;
+        font-size: 0.8rem;
     }
+
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+
+    .filtros-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+
+    .filtros-grid input,
+    .filtros-grid select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+    }
+
+    .filtros-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 12px;
+    }
+
+    .filtros-actions .btn { width: auto; }
 
     @media (max-width: 480px) {
-        .cliente-card__info {
-            grid-template-columns: 1fr;
-        }
+        .home-acoes { grid-template-columns: 1fr; }
+        .home-section__header { flex-direction: column; align-items: flex-start; }
+        .filtros-actions { flex-direction: column; }
+        .filtros-actions .btn { width: 100%; }
     }
-
     </style>
-{% endblock %}
-
-{% block extra_scripts %}
-<style>
-    .clientes-mobile-list { display: none; }
-    .dropdown-item {
-        display: block;
-        padding: 8px 12px;
-        border-radius: 6px;
-        color: var(--text-primary);
-        text-decoration: none;
-        font-size: 0.85rem;
-        transition: background 0.15s;
-    }
-    .dropdown-item:hover { background: rgba(86, 244, 156, 0.1); }
-
-    @media (max-width: 900px) {
-        .clientes-table-desktop { display: none !important; }
-        .clientes-mobile-list { display: block; }
-        .processos-table-desktop { display: none !important; }
-        .processos-mobile { display: block !important; }
-    }
-</style>
-<script>
-(function () {
-    document.addEventListener('click', function (e) {
-        const toggle = e.target.closest('.dropdown-toggle');
-        if (toggle) {
-            e.stopPropagation();
-            const id = toggle.dataset.dropdown;
-            const menu = document.getElementById(id);
-            if (!menu) return;
-            const isOpen = menu.style.display === 'block';
-            document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
-            menu.style.display = isOpen ? 'none' : 'block';
-            return;
-        }
-        document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
-    });
-}());
-</script>
 {% endblock %}
 
 {% block app_header %}
 <section class="page-header">
-    <div class="page-header__titles">
-        <h1>Clientes</h1>
-        <p>Gerencie o cadastro e acompanhe os clientes ativos da consultoria.</p>
+    <div>
+        <h1>Meus Clientes</h1>
+        <p>Gerencie seus clientes vinculados.</p>
     </div>
 </section>
 {% endblock %}
 
 {% block app_content %}
-<section class="actions-grid">
-    <article class="action-card">
-        <div class="action-card__icon">➕</div>
-        <h3>Cadastrar Cliente</h3>
-        <p>Adicione um novo cliente ao sistema</p>
-        <a href="{% url 'system:cadastrar_cliente' %}" class="btn btn-primary">Cadastrar</a>
-    </article>
-
-    <article class="action-card">
-        <div class="action-card__icon">📋</div>
-        <h3>Listar Clientes</h3>
-        <p>Visualize e gerencie todos os clientes cadastrados</p>
-        <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline">Listar</a>
-    </article>
-
-    {% if perfil_usuario == 'Administrador' %}
-    <article class="action-card">
-        <div class="action-card__icon">⚙️</div>
-        <h3>Configurar Etapas</h3>
-        <p>Configure as etapas e campos do cadastro de clientes</p>
-        <a href="{% url 'system:listar_etapas_cadastro' %}" class="btn btn-outline">Gerenciar Etapas</a>
-    </article>
+<section class="home-acoes">
+    <a href="{% url 'system:cadastrar_cliente' %}" class="home-card">
+        <div class="home-card__icon">&#10133;</div>
+        <div class="home-card__content">
+            <h3>Cadastrar Cliente</h3>
+            <p>Novo cliente</p>
+        </div>
+    </a>
+    <a href="{% url 'system:listar_clientes_view' %}" class="home-card">
+        <div class="home-card__icon">&#128196;</div>
+        <div class="home-card__content">
+            <h3>Listar Clientes</h3>
+            <p>Ver todos</p>
+        </div>
+    </a>
+    {% if pode_excluir_clientes %}
+    <a href="{% url 'system:listar_etapas_cadastro' %}" class="home-card" style="border-color: rgba(255,193,7,0.25);">
+        <div class="home-card__icon admin">&#9881;</div>
+        <div class="home-card__content">
+            <h3>Configurar Etapas</h3>
+            <p>Etapas do cadastro</p>
+        </div>
+    </a>
     {% endif %}
 </section>
 
-{% if not pode_excluir_clientes %}
 <section class="filtros-card">
-    <header>
-        <h2>Filtros</h2>
-    </header>
-    <form method="get" class="filtros-form">
-        <div class="filtros-grid">
-            <div>
-                <label for="nome">Nome</label>
-                <input type="text" id="nome" name="nome" value="{{ filtros.nome }}" placeholder="Nome do cliente">
-            </div>
-            <div>
-                <label for="assessor">Assessor</label>
-                <select id="assessor" name="assessor">
-                    <option value="">Todos os assessores</option>
-                    {% for assessor in assessores %}
-                        <option value="{{ assessor.pk }}" {% if filtros.assessor == assessor.pk|stringformat:"s" %}selected{% endif %}>
-                            {{ assessor.nome }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="email">E-mail</label>
-                <input type="email" id="email" name="email" value="{{ filtros.email }}" placeholder="E-mail do cliente">
-            </div>
-            <div>
-                <label for="status_financeiro">Status Financeiro</label>
-                <select id="status_financeiro" name="status_financeiro">
-                    <option value="">Todos os status</option>
-                    <option value="pendente" {% if filtros.status_financeiro == "pendente" %}selected{% endif %}>Pendente</option>
-                    <option value="pago" {% if filtros.status_financeiro == "pago" %}selected{% endif %}>Pago</option>
-                    <option value="cancelado" {% if filtros.status_financeiro == "cancelado" %}selected{% endif %}>Cancelado</option>
-                    <option value="sem_registros" {% if filtros.status_financeiro == "sem_registros" %}selected{% endif %}>Sem registros</option>
-                </select>
-            </div>
-        </div>
+    <form method="get" class="filtros-grid">
+        <input type="text" name="nome" value="{{ filtros.nome }}" placeholder="Nome do cliente">
         <div class="filtros-actions">
             <button type="submit" class="btn btn-primary">Filtrar</button>
-            <a href="{% url 'system:home_clientes' %}" class="btn btn-outline">Limpar Filtros</a>
+            <a href="{% url 'system:home_clientes' %}" class="btn btn-outline">Limpar</a>
         </div>
     </form>
 </section>
-{% endif %}
 
+<div class="home-grid">
+    <section class="home-section">
+        <div class="kpi-grid">
+            <article class="kpi-card">
+                <span>Total de clientes</span>
+                <strong>{{ total_clientes }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Total de dependentes</span>
+                <strong>{{ total_dependentes }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Financeiro pendente</span>
+                <strong>{{ total_financeiro_pendente }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Financeiro pago</span>
+                <strong>{{ total_financeiro_pago }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Financeiro cancelado</span>
+                <strong>{{ total_financeiro_cancelado }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Sem registros financeiros</span>
+                <strong>{{ total_financeiro_sem_registros }}</strong>
+            </article>
+        </div>
+    </section>
 
-{% if processos %}
-<section class="clientes-list-card processos-card" style="margin-top: 32px;">
-    <header>
-        <h2>Meus Processos</h2>
-        <p>Processos vinculados aos seus clientes</p>
-    </header>
-    <div class="table-wrapper">
-        <table class="clientes-table processos-table-desktop">
+    {% if clientes_com_status %}
+    <section class="home-section" id="sec-clientes">
+        <div class="home-section__header">
+            <div>
+                <h2>Meus Clientes</h2>
+                <p>{{ clientes_com_status|length }} cliente(s)</p>
+            </div>
+            <div class="home-section__actions">
+                <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline btn-small">Ver Todos</a>
+            </div>
+        </div>
+        <div class="table-wrapper">
+        <table class="mini-table">
             <thead>
                 <tr>
                     <th>Cliente</th>
-                    <th>Viagem</th>
-                    <th>País</th>
-                    <th>Progresso</th>
-                    <th>Assessor</th>
-                    <th>Ações</th>
+                    <th>Financeiro</th>
+                    <th>Formulario</th>
+                    <th>Parceiro</th>
+                    <th>Telefone</th>
+                    <th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
-                {% for proc in processos %}
-                <tr>
-                    <td>{{ proc.cliente_nome }}</td>
-                    <td>{{ proc.viagem_str }}</td>
-                    <td>{{ proc.pais_destino }}</td>
+                {% for item in clientes_com_status %}
+                <tr data-cliente="{{ item.cliente.pk }}" data-principal-pk="{% if item.cliente.cliente_principal_id %}{{ item.cliente.cliente_principal_id }}{% endif %}">
                     <td>
-                        <div class="progresso-bar">
-                            <div class="progresso-bar__fill" style="width: {{ proc.progresso }}%;"></div>
-                        </div>
-                        <span class="progresso-label">{{ proc.progresso }}%</span>
-                    </td>
-                    <td>{{ proc.assessor }}</td>
-                    <td>
-                        <div class="acoes-cell">
-                            <a href="{% url 'system:visualizar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Visualizar</a>
-                            {% if proc.pode_editar %}
-                                <a href="{% url 'system:editar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Editar</a>
-                                <form method="post" action="{% url 'system:excluir_processo' proc.processo_pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="display: inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-danger btn-small">Excluir</button>
-                                </form>
+                        <div class="nome-cell">
+                            <span class="nome-cell__name">{{ item.cliente.nome }}</span>
+                            {% if item.cliente.is_dependente %}
+                                <span class="badge badge-dependente">Dependente</span>
+                                <span class="nome-cell__sub">de {{ item.cliente.cliente_principal.nome|default:"-" }}</span>
+                            {% else %}
+                                <span class="badge badge-principal">Principal</span>
                             {% endif %}
                         </div>
+                    </td>
+                    <td>
+                        {% if item.status_financeiro == "Pendente" %}
+                            <span class="badge badge-pendente">Pendente</span>
+                        {% elif item.status_financeiro == "Pago" %}
+                            <span class="badge badge-pago">Pago</span>
+                        {% elif item.status_financeiro == "Cancelado" %}
+                            <span class="badge badge-cancelado">Cancelado</span>
+                        {% else %}
+                            <span class="badge badge-sem">Sem registros</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.status_formulario == "Completo" %}
+                            <span class="badge badge-completo">&#10003; Completo</span>
+                        {% elif item.status_formulario == "Parcial" %}
+                            <span class="badge badge-parcial">Parcial</span>
+                            {% if item.total_perguntas > 0 %}
+                                <div class="nome-cell__sub">{{ item.total_respostas }}/{{ item.total_perguntas }}</div>
+                            {% endif %}
+                        {% elif item.status_formulario == "Nao preenchido" %}
+                            <span class="badge badge-nao-preenchido">Nao preenchido</span>
+                        {% else %}
+                            <span class="badge badge-sem">Sem formulario</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.cliente.parceiro_indicador %}
+                            <span style="font-size:0.82rem;">{{ item.cliente.parceiro_indicador }}</span>
+                        {% else %}
+                            <span style="color:rgba(245,245,245,0.35);">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.cliente.telefone }}</td>
+                    <td>
+                        {% if item.cliente.is_principal %}
+                            <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small">Viagem</a>
+                        {% endif %}
+                        <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Ver</a>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-    </div>
-    
-    <div class="processos-mobile" style="display: none;">
-        {% for proc in processos %}
-        <div class="cliente-card">
-            <div class="cliente-card__header">
-                <div>
-                    <div class="cliente-card__name">{{ proc.cliente_nome }}</div>
-                    <div class="cliente-card__sub">{{ proc.viagem_str }}</div>
-                </div>
-                <div class="acoes-cell">
-                    <a href="{% url 'system:visualizar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Visualizar</a>
-                    {% if proc.pode_editar %}
-                        <a href="{% url 'system:editar_processo' proc.processo_pk %}" class="btn btn-outline btn-small">Editar</a>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="cliente-card__info">
-                Progresso
-                <span>
-                    <div class="progresso-bar" style="width:100%; max-width:180px;">
-                        <div class="progresso-bar__fill" style="width: {{ proc.progresso }}%;"></div>
-                    </div>
-                    <span class="progresso-label">{{ proc.progresso }}%</span>
-                </span>
-                Assessor
-                <span>{{ proc.assessor }}</span>
-            </div>
         </div>
-        {% endfor %}
-    </div>
-</section>
-{% endif %}
+    </section>
+    {% endif %}
 
-{% if clientes_com_status %}
-<section class="clientes-list" style="margin-top: 32px;">
-    <article class="clientes-list-card">
-        <header>
-            <h2>Meus Clientes</h2>
-            <p>Clientes vinculados ao seu usuário</p>
-        </header>
 
-        
-        <div class="table-wrapper">
-            <table class="clientes-table clientes-table-desktop">
-                <thead>
-                    <tr>
-                        <th>Nome</th>
-                        <th>Financeiro</th>
-                        <th>Formulário</th>
-                        <th>Parceiro</th>
-                        <th>Telefone</th>
-                        <th>E-mail</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in clientes_com_status %}
-                    <tr {% if item.cliente.is_dependente %}class="row-dependente"{% endif %}>
-                        <td>
-                            <div class="nome-cell">
-                                <span class="nome-cell__name">{{ item.cliente.nome }}</span>
-                                {% if item.cliente.is_dependente %}
-                                    <span class="badge badge-dependente">Dependente</span>
-                                    {% if item.cliente.cliente_principal %}
-                                        <span class="nome-cell__sub">de {{ item.cliente.cliente_principal.nome }}</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="badge badge-principal">Principal</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td>
-                            {% if item.status_financeiro == "Pendente" %}
-                                <span class="badge badge-pendente">Pendente</span>
-                            {% elif item.status_financeiro == "Pago" %}
-                                <span class="badge badge-pago">Pago</span>
-                            {% elif item.status_financeiro == "Cancelado" %}
-                                <span class="badge badge-cancelado">Cancelado</span>
-                            {% else %}
-                                <span class="badge badge-sem">Sem registros</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if item.status_formulario == "Completo" %}
-                                <span class="badge badge-completo">✓ Completo</span>
-                                {% if item.total_perguntas > 0 %}
-                                    <div class="nome-cell__sub" style="margin-top:4px;">{{ item.total_respostas }}/{{ item.total_perguntas }}</div>
-                                {% endif %}
-                            {% elif item.status_formulario == "Parcial" %}
-                                <span class="badge badge-parcial">Parcial</span>
-                                {% if item.total_perguntas > 0 %}
-                                    <div class="nome-cell__sub" style="margin-top:4px;">{{ item.total_respostas }}/{{ item.total_perguntas }}</div>
-                                {% endif %}
-                            {% elif item.status_formulario == "Não preenchido" %}
-                                <span class="badge badge-nao-preenchido">Não preenchido</span>
-                            {% else %}
-                                <span class="badge badge-sem">Sem formulário</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if item.cliente.parceiro_indicador %}
-                                <span style="font-size:0.82rem;">{{ item.cliente.parceiro_indicador }}</span>
-                            {% else %}
-                                <span style="color:rgba(245,245,245,0.4);">—</span>
-                            {% endif %}
-                        </td>
-                        <td style="white-space:nowrap;">{{ item.cliente.telefone }}</td>
-                        <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ item.cliente.email|default:"—" }}</td>
-                        <td>
-                            <div class="acoes-cell">
-                                {% if item.cliente.is_principal %}
-                                    {% with deps=item.cliente.dependentes.all %}
-                                        {% if deps %}
-                                            <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}{% for d in deps %},{{ d.pk }}{% endfor %}" class="btn btn-primary btn-small">Criar Viagem</a>
-                                        {% else %}
-                                            <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small">Criar Viagem</a>
-                                        {% endif %}
-                                    {% endwith %}
-                                {% endif %}
-                                {% with viagens=item.cliente.viagens.all %}
-                                    {% if viagens %}
-                                        {% if viagens|length == 1 %}
-                                            {% for v in viagens %}<a href="{% url 'system:visualizar_formulario_cliente' v.pk item.cliente.pk %}" class="btn btn-outline btn-small">Formulário</a>{% endfor %}
-                                        {% else %}
-                                            <div style="position:relative;display:inline-block;">
-                                                <button type="button" class="btn btn-outline btn-small dropdown-toggle" data-dropdown="drop-{{ item.cliente.pk }}">Formulários ▼</button>
-                                                <div id="drop-{{ item.cliente.pk }}" class="dropdown-menu" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--card-bg);border:1px solid var(--border-soft);border-radius:8px;padding:8px;min-width:200px;z-index:1000;box-shadow:0 8px 16px rgba(0,0,0,0.3);">
-                                                    {% for v in viagens %}
-                                                        <a href="{% url 'system:visualizar_formulario_cliente' v.pk item.cliente.pk %}" class="dropdown-item">{{ v.pais_destino.nome }} — {{ v.data_prevista_viagem|date:"d/m/Y" }}</a>
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
-                                        {% endif %}
-                                    {% endif %}
-                                {% endwith %}
-                                <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
-                                {% if item.pode_editar %}
-                                    <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        
-        <div class="clientes-mobile-list">
-            {% for item in clientes_com_status %}
-            <div class="cliente-card {% if item.cliente.is_dependente %}is-dependente{% endif %}">
-                <div class="cliente-card__header">
-                    <div>
-                        <div class="cliente-card__name">{{ item.cliente.nome }}</div>
-                        {% if item.cliente.is_dependente and item.cliente.cliente_principal %}
-                            <div class="cliente-card__sub">Dependente de {{ item.cliente.cliente_principal.nome }}</div>
-                        {% endif %}
-                    </div>
-                    {% if item.cliente.is_dependente %}
-                        <span class="badge badge-dependente">Dependente</span>
-                    {% else %}
-                        <span class="badge badge-principal">Principal</span>
-                    {% endif %}
-                </div>
-                <div class="cliente-card__badges">
-                    {% if item.status_financeiro == "Pendente" %}
-                        <span class="badge badge-pendente">Pendente</span>
-                    {% elif item.status_financeiro == "Pago" %}
-                        <span class="badge badge-pago">Pago</span>
-                    {% elif item.status_financeiro == "Cancelado" %}
-                        <span class="badge badge-cancelado">Cancelado</span>
-                    {% else %}
-                        <span class="badge badge-sem">Sem financeiro</span>
-                    {% endif %}
-                    {% if item.status_formulario == "Completo" %}
-                        <span class="badge badge-completo">✓ Completo {% if item.total_perguntas > 0 %}({{ item.total_respostas }}/{{ item.total_perguntas }}){% endif %}</span>
-                    {% elif item.status_formulario == "Parcial" %}
-                        <span class="badge badge-parcial">Parcial {% if item.total_perguntas > 0 %}({{ item.total_respostas }}/{{ item.total_perguntas }}){% endif %}</span>
-                    {% elif item.status_formulario == "Não preenchido" %}
-                        <span class="badge badge-nao-preenchido">Não preenchido</span>
-                    {% else %}
-                        <span class="badge badge-sem">Sem formulário</span>
-                    {% endif %}
-                </div>
-                <div class="cliente-card__info">
-                    Telefone <span>{{ item.cliente.telefone }}</span>
-                    {% if item.cliente.email %}E-mail <span>{{ item.cliente.email }}</span>{% endif %}
-                    {% if item.cliente.parceiro_indicador %}Parceiro <span>{{ item.cliente.parceiro_indicador }}</span>{% endif %}
-                </div>
-                <div class="cliente-card__acoes">
-                    {% if item.cliente.is_principal %}
-                        {% with deps=item.cliente.dependentes.all %}
-                            {% if deps %}
-                                <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}{% for d in deps %},{{ d.pk }}{% endfor %}" class="btn btn-primary btn-small">Criar Viagem</a>
-                            {% else %}
-                                <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small">Criar Viagem</a>
-                            {% endif %}
-                        {% endwith %}
-                    {% endif %}
-                    {% with viagens=item.cliente.viagens.all %}
-                        {% if viagens %}
-                            {% if viagens|length == 1 %}
-                                {% for v in viagens %}<a href="{% url 'system:visualizar_formulario_cliente' v.pk item.cliente.pk %}" class="btn btn-outline btn-small">Formulário</a>{% endfor %}
-                            {% else %}
-                                <div style="position:relative;display:inline-block;">
-                                    <button type="button" class="btn btn-outline btn-small dropdown-toggle" data-dropdown="dropm-{{ item.cliente.pk }}">Formulários ▼</button>
-                                    <div id="dropm-{{ item.cliente.pk }}" class="dropdown-menu" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--card-bg);border:1px solid var(--border-soft);border-radius:8px;padding:8px;min-width:200px;z-index:1000;box-shadow:0 8px 16px rgba(0,0,0,0.3);">
-                                        {% for v in viagens %}
-                                            <a href="{% url 'system:visualizar_formulario_cliente' v.pk item.cliente.pk %}" class="dropdown-item">{{ v.pais_destino.nome }} — {{ v.data_prevista_viagem|date:"d/m/Y" }}</a>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                            {% endif %}
-                        {% endif %}
-                    {% endwith %}
-                    <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
-                    {% if item.pode_editar %}
-                        <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
-                    {% endif %}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-
-        {% if total_clientes > 10 %}
-        <div style="margin-top:20px;text-align:center;">
-            <a href="{% url 'system:listar_clientes_view' %}" class="btn btn-outline">Ver todos os clientes</a>
-        </div>
-        {% endif %}
-    </article>
-</section>
-{% else %}
-<section class="clientes-list" style="margin-top: 32px;">
-    <article class="clientes-list-card">
-        <header>
-            <h2>Meus Clientes</h2>
-            <p>Clientes vinculados ao seu usuário</p>
-        </header>
-        <div class="empty-state">
-            {% if filtros.nome or filtros.telefone or filtros.email or filtros.nacionalidade or filtros.data_nascimento or filtros.data_cadastro_inicio or filtros.data_cadastro_fim or filtros.status_financeiro %}
-                Nenhum cliente encontrado com os filtros aplicados. <a href="{% url 'system:home_clientes' %}">Limpar filtros</a>.
-            {% else %}
-                Nenhum cliente cadastrado até o momento. <a href="{% url 'system:cadastrar_cliente' %}">Cadastre o primeiro cliente</a>.
-            {% endif %}
-        </div>
-    </article>
-</section>
-{% endif %}
+</div>
 {% endblock %}
-

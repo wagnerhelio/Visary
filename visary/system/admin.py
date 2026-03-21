@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from system.models import Modulo, Perfil, UsuarioConsultoria
+from system.models import ClienteConsultoria, Modulo, Perfil, UsuarioConsultoria
 
 
 @admin.register(Modulo)
@@ -35,4 +35,18 @@ class UsuarioConsultoriaAdmin(admin.ModelAdmin):
     search_fields = ("nome", "email")
     autocomplete_fields = ("perfil",)
     ordering = ("nome",)
+    readonly_fields = ("criado_em", "atualizado_em")
+
+
+@admin.register(ClienteConsultoria)
+class ClienteConsultoriaAdmin(admin.ModelAdmin):
+    list_display = (
+        "nome",
+        "email",
+        "assessor_responsavel",
+        "telefone",
+        "criado_em",
+    )
+    search_fields = ("nome", "email", "telefone")
+    list_filter = ("assessor_responsavel", "criado_em")
     readonly_fields = ("criado_em", "atualizado_em")

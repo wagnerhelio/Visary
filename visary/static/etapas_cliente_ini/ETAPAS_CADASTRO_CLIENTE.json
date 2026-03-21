@@ -8,11 +8,11 @@
     "campos": [
       {"nome_campo": "assessor_responsavel", "tipo_campo": "selecao", "ordem": 1, "obrigatorio": true, "ativo": true},
       {"nome_campo": "nome", "tipo_campo": "texto", "ordem": 2, "obrigatorio": true, "ativo": true},
-      {"nome_campo": "data_nascimento", "tipo_campo": "data", "ordem": 3, "obrigatorio": true, "ativo": true},
-      {"nome_campo": "nacionalidade", "tipo_campo": "texto", "ordem": 4, "obrigatorio": true, "ativo": true},
-      {"nome_campo": "telefone", "tipo_campo": "texto", "ordem": 5, "obrigatorio": true, "ativo": true},
-      {"nome_campo": "telefone_secundario", "tipo_campo": "texto", "ordem": 6, "obrigatorio": false, "ativo": true},
-      {"nome_campo": "cpf", "tipo_campo": "texto", "ordem": 7, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "cpf", "tipo_campo": "texto", "ordem": 3, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "data_nascimento", "tipo_campo": "data", "ordem": 4, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "nacionalidade", "tipo_campo": "texto", "ordem": 5, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "telefone", "tipo_campo": "texto", "ordem": 6, "obrigatorio": true, "ativo": true},
+      {"nome_campo": "telefone_secundario", "tipo_campo": "texto", "ordem": 7, "obrigatorio": false, "ativo": true},
       {"nome_campo": "email", "tipo_campo": "texto", "ordem": 8, "obrigatorio": false, "ativo": true},
       {"nome_campo": "senha", "tipo_campo": "texto", "ordem": 9, "obrigatorio": true, "ativo": true},
       {"nome_campo": "confirmar_senha", "tipo_campo": "texto", "ordem": 10, "obrigatorio": true, "ativo": true},
@@ -43,7 +43,7 @@
     "campo_booleano": "etapa_passaporte",
     "campos": [
       {"nome_campo": "tipo_passaporte", "tipo_campo": "selecao", "ordem": 1, "obrigatorio": true, "ativo": true},
-      {"nome_campo": "tipo_passaporte_outro", "tipo_campo": "texto", "ordem": 2, "obrigatorio": false, "ativo": true},
+      {"nome_campo": "tipo_passaporte_outro", "tipo_campo": "texto", "ordem": 2, "obrigatorio": false, "ativo": true, "regra_exibicao": {"tipo": "mostrar_se", "campo_trigger": "tipo_passaporte", "valor": "outro"}},
       {"nome_campo": "numero_passaporte", "tipo_campo": "texto", "ordem": 3, "obrigatorio": true, "ativo": true},
       {"nome_campo": "pais_emissor_passaporte", "tipo_campo": "texto", "ordem": 4, "obrigatorio": true, "ativo": true},
       {"nome_campo": "data_emissao_passaporte", "tipo_campo": "data", "ordem": 5, "obrigatorio": true, "ativo": true},
@@ -64,4 +64,3 @@
     ]
   }
 ]
-

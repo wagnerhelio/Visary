@@ -45,6 +45,12 @@ Antes de alterar qualquer arquivo:
    - criação/atualização via formulários dinâmicos baseados em `EtapaCadastroCliente`/`CampoEtapaCliente` e `FormularioVisto`/`PerguntaFormulario`;
    - autenticação dual (consultor via `auth.User` sincronizado + cliente via sessão/CPF);
    - validação/consulta de CEP via serviço multi-fonte (resiliência e mensagens de erro claras);
+   - importação de dados legados por seed de produção (`criar_seeds_prod`) com extração total e carga total no banco de teste;
+   - consistência semântica de tipo de visto no import legado (normalização de acentos/hífens/pontuação para evitar duplicidade lógica);
+   - consistência de formulários modularizados do sistema atual com as definições estáticas em `visary/static/forms_ini`;
+   - segurança operacional do `cleanup.py` (apenas limpeza de artefatos locais, sem mutar código-fonte e sem matar processos Python indiscriminadamente);
+   - separação explícita entre credenciais SSH e MySQL (login SSH não implica usuário/senha do MySQL);
+   - execução dentro do ambiente virtual do projeto (`.venv`) para evitar dependências instaladas no Python global;
 4. apresente um plano curto e objetivo antes de implementar.
 
 ### Fase 2 — Implementação limpa e aderente ao domínio
@@ -70,11 +76,15 @@ Antes de considerar a entrega pronta:
 1. valide impacto de modelagem (unique constraints/relations) e migrações, se aplicável;
 2. verifique risco de N+1 em listagens e dashboards (use `select_related()`/`prefetch_related()` conforme necessário);
 3. confirme consistência de regras em templates versus backend (templates não decidem permissão, apenas exibem);
-4. cubra a mudança com testes de unidade e, quando fizer sentido, testes de integração (o projeto já possui bases em `visary/system/tests` e `visary/consultancy/tests`);
+4. cubra a mudança com testes de unidade e, quando fizer sentido, testes de integração (o projeto já possui bases em `visary/system/tests`);
 5. verifique erros de integridade em:
    - arquivos: diagnostics/lints nos arquivos alterados e quebras de import/estilo que afetem execução;
    - console: ausência de stack traces/erros de runtime nos logs do servidor e, quando houver mudança no frontend, ausência de erros no console do navegador (JS) após carregar a página afetada;
 6. confirme que signals existentes não foram quebrados ou produzem efeitos colaterais indesejados após a mudança.
+7. em tarefas com dependências Python, valide explicitamente:
+   - `sys.executable` apontando para `.venv`;
+   - pacotes críticos instalados no `.venv`;
+   - ausência de instalação indevida no Python global quando o agente tiver instalado pacotes durante a execução.
 
 ### Fase 4 — Evolução da spec
 
@@ -128,6 +138,16 @@ Frase de encerramento obrigatória quando houver nova descoberta relevante:
 ### 3.7 Integrações e CEP
 - Consulta de CEP usa serviço multi-fonte com fallback sequencial (ViaCEP, BrasilAPI, pycep-correios, brazilcep).
 - Falhas na consulta devem resultar em UX previsível: mensagem clara e não travar o fluxo sem orientação.
+
+### 3.8 Migração legada (seed de produção)
+- A migração para ambiente de teste deve usar fluxo único de carga total (`cleanup -> migrate -> criar_superuser_admin -> criar_seeds_prod`).
+- É proibido introduzir sincronização incremental/periódica quando o objetivo for apenas espelhar produção no teste.
+- O `cleanup.py` deve ser operacionalmente seguro: remover apenas `__pycache__`, migrations locais e `db.sqlite3`; é proibido strip de comentários/docstrings e finalização massiva de processos Python.
+- Credencial SSH e credencial MySQL devem ser tratadas como entidades distintas; nunca assumir equivalência por nome.
+- Antes de concluir implementação, validar conexão MySQL real com as variáveis `LEGACY_DB_*` e registrar erros de autenticação no retorno.
+- Instalação de drivers (`mysql-connector-python`/`pymysql`) deve ocorrer no `.venv`; se instalado fora dele por engano, remover do Python global e registrar no retorno.
+- O mapeamento legado -> `TipoVisto` deve usar chave semântica normalizada (acentos/hífens/pontuação) para não criar duplicidade de catálogo e quebrar vínculo com formulários.
+- A revalidação final deve incluir checagem estrita de formulários: cobertura de `FormularioVisto` para tipos efetivamente usados e completude mínima de perguntas conforme `static/forms_ini`.
 
 ---
 
@@ -202,6 +222,7 @@ TDD obrigatório (test-first):
 - Quebrar signals existentes ou criar efeitos colaterais não auditáveis.
 - Ignorar o fallback do serviço de CEP e deixar o fluxo travar sem orientação.
 - Testar concorrência só em SQLite e assumir que produção está coberta.
+- Executar `cleanup.py` destrutivo que altere código-fonte (ex.: remover comentários/docstrings) ou finalize processos Python sem escopo explícito.
 
 ---
 

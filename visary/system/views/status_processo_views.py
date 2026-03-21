@@ -8,8 +8,8 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
-from consultancy.forms import StatusProcessoForm
-from consultancy.models import StatusProcesso
+from system.forms import StatusProcessoForm
+from system.models import StatusProcesso
 from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos
 
 

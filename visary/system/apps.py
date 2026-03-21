@@ -9,6 +9,8 @@ from django.db import transaction
 from django.db.models import Model
 from django.db.models.signals import post_migrate
 
+from .domain_bootstrap import ensure_initial_domain_data, register_domain_signals
+
 def _get_models() -> Tuple[Model, Model, Model]:
     Modulo = django_apps.get_model("system", "Modulo")
     Perfil = django_apps.get_model("system", "Perfil")
@@ -223,4 +225,6 @@ class SystemConfig(AppConfig):
             return
 
         post_migrate.connect(ensure_initial_system_data, sender=self)
+        post_migrate.connect(ensure_initial_domain_data, sender=self)
+        register_domain_signals()
         self._preload_registered = True

@@ -2,6 +2,7 @@
                                         
    
 
+import logging
 from contextlib import suppress
 from datetime import timedelta
 
@@ -9,15 +10,14 @@ from django.contrib import messages
 from django.utils.dateparse import parse_date
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q, Count
-from django.db import models
+from django.db.models import Q
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods
 
-from consultancy.forms import ProcessoForm
-from consultancy.models import (
+from system.forms import ProcessoForm
+from system.models import (
     ClienteConsultoria,
     EtapaProcesso,
     Processo,
@@ -27,6 +27,31 @@ from consultancy.models import (
 )
 from system.models import UsuarioConsultoria
 from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
+
+
+logger = logging.getLogger(__name__)
+
+
+def _aplicar_filtros_processos(processos, request, incluir_assessor=True):
+    filtros = {
+        "cliente": request.GET.get("cliente", "").strip(),
+        "viagem": request.GET.get("viagem", "").strip(),
+    }
+    if incluir_assessor:
+        filtros["assessor"] = request.GET.get("assessor", "").strip()
+
+    if filtros["cliente"]:
+        processos = processos.filter(cliente__nome__icontains=filtros["cliente"])
+    if filtros["viagem"]:
+        processos = processos.filter(
+            Q(viagem__pais_destino__nome__icontains=filtros["viagem"])
+            | Q(viagem__tipo_visto__nome__icontains=filtros["viagem"])
+        )
+    if incluir_assessor and filtros.get("assessor"):
+        with suppress(ValueError, TypeError):
+            processos = processos.filter(assessor_responsavel_id=int(filtros["assessor"]))
+
+    return processos, filtros
 
 
 @login_required
@@ -49,42 +74,31 @@ def home_processos(request):
         "viagem__tipo_visto",
         "cliente",
         "assessor_responsavel",
-    ).prefetch_related("etapas", "etapas__status").distinct().order_by("-criado_em")
+    ).prefetch_related("etapas", "etapas__status").distinct()
+
+    processos, filtros_aplicados = _aplicar_filtros_processos(processos, request, incluir_assessor=False)
     
-                     
-    filtro_cliente = request.GET.get("cliente", "").strip()
-    filtro_viagem = request.GET.get("viagem", "").strip()
-    filtro_assessor = request.GET.get("assessor", "").strip()
+    processos_principais = [p for p in processos if not p.cliente.cliente_principal_id]
+    processos_dependentes = [p for p in processos if p.cliente.cliente_principal_id]
+    processos_principais.sort(key=lambda p: p.pk)
+    processos_dependentes.sort(key=lambda p: p.pk)
+    processos_ordenados = processos_principais + processos_dependentes
     
-    if filtro_cliente:
-        processos = processos.filter(cliente__nome__icontains=filtro_cliente)
-    if filtro_viagem:
-        processos = processos.filter(
-            Q(viagem__pais_destino__nome__icontains=filtro_viagem) |
-            Q(viagem__tipo_visto__nome__icontains=filtro_viagem)
-        )
-    if filtro_assessor:
-        processos = processos.filter(assessor_responsavel__nome__icontains=filtro_assessor)
-    
-                                                                 
-    processos_limitados = processos[:10]
+    processos_limitados = processos_ordenados[:10]
+    total_processos_concluidos = sum(1 for processo in processos_ordenados if processo.progresso_percentual >= 100)
+    total_processos_pendentes = sum(1 for processo in processos_ordenados if processo.progresso_percentual < 100)
     
                                    
-    assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
-
     contexto = {
         "processos": processos_limitados,
         "total_processos": processos.count(),
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
         "consultor": consultor,
-        "filtros_aplicados": {
-            "cliente": filtro_cliente,
-            "viagem": filtro_viagem,
-            "assessor": filtro_assessor,
-        },
         "clientes": clientes_usuario.order_by("nome"),
-        "assessores": assessores,
+        "filtros_aplicados": filtros_aplicados,
+        "total_processos_concluidos": total_processos_concluidos,
+        "total_processos_pendentes": total_processos_pendentes,
     }
 
     return render(request, "process/home_processos.html", contexto)
@@ -178,23 +192,15 @@ def _atualizar_etapas_processo(processo: Processo, request, etapa_id: int | None
             etapa.refresh_from_db()
             etapas_atualizadas = 1
         except EtapaProcesso.DoesNotExist:
-            import logging
-            logger = logging.getLogger(__name__)
             logger.warning(f"Etapa {etapa_id} não encontrada no processo {processo.pk}")
             return 0
         except Exception as e:
-                                    
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"Erro ao atualizar etapa {etapa_id}: {e}", exc_info=True)
             return 0
     else:
                                    
         etapas_no_processo = list(processo.etapas.all())
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        print(f"[DEBUG] Processando {len(etapas_no_processo)} etapa(s) do processo {processo.pk}", flush=True)
+        logger.debug("Processando %s etapa(s) do processo %s", len(etapas_no_processo), processo.pk)
         
         for etapa in etapas_no_processo:
             etapa_id_str = str(etapa.pk)
@@ -261,16 +267,17 @@ def _atualizar_etapas_processo(processo: Processo, request, etapa_id: int | None
                     etapa.save(update_fields=["concluida", "prazo_dias", "data_conclusao", "observacoes", "atualizado_em"])
                     etapa.refresh_from_db()
                     etapas_atualizadas += 1
-                    print(
-                        f"  [DEBUG] Etapa {etapa_id_str} ({etapa.status.nome}): salva - Concluída: {concluida}, Prazo: {etapa.prazo_dias}, Data: {etapa.data_conclusao}",
-                        flush=True,
+                    logger.debug(
+                        "Etapa %s (%s) salva - concluida=%s prazo=%s data=%s",
+                        etapa_id_str,
+                        etapa.status.nome,
+                        concluida,
+                        etapa.prazo_dias,
+                        etapa.data_conclusao,
                     )
                 except Exception as e:
-                    print(f"  [DEBUG] Erro ao salvar etapa {etapa_id_str}: {e}", flush=True)
                     logger.error(f"Erro ao salvar etapa {etapa_id_str}: {e}", exc_info=True)
-            else:
-                print(f"  ⏭️  Etapa {etapa_id_str} ({etapa.status.nome}): sem mudanças, não salva", flush=True)
-    
+
     return etapas_atualizadas
 
 
@@ -607,18 +614,7 @@ def editar_processo(request, pk: int):
         raise PermissionDenied("Você não tem permissão para editar este processo.")
 
     if request.method == "POST":
-                                                  
-        import logging
-        logger = logging.getLogger(__name__)
-        print(f"\n{'='*80}", flush=True)
-        print(f"[DEBUG] POST - Processo {processo.pk}", flush=True)
-        print(f"   POST keys: {list(request.POST.keys())}", flush=True)
-        print(f"   'salvar_tudo' in POST: {'salvar_tudo' in request.POST}", flush=True)
-        print(f"   'salvar_etapa' in POST: {'salvar_etapa' in request.POST}", flush=True)
-        print(f"   'alterar_assessor' in POST: {'alterar_assessor' in request.POST}", flush=True)
-        if 'salvar_tudo' in request.POST:
-            print(f"   Valor de salvar_tudo: {request.POST.get('salvar_tudo')}", flush=True)
-        print(f"{'='*80}\n", flush=True)
+        logger.debug("POST editar_processo %s com campos: %s", processo.pk, list(request.POST.keys()))
         
                                                             
         if "alterar_assessor" in request.POST:
@@ -651,42 +647,23 @@ def editar_processo(request, pk: int):
             except (ValueError, TypeError) as e:
                 messages.error(request, f"Erro ao processar a solicitação: {str(e)}")
             except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.error(f"Erro ao salvar etapa: {e}", exc_info=True)
                 messages.error(request, f"Erro ao salvar a etapa: {str(e)}")
             return redirect("system:editar_processo", pk=processo.pk)
         
                                 
         if "salvar_tudo" in request.POST:
-            import logging
-            logger = logging.getLogger(__name__)
-            
             try:
-                                            
                 post_keys = [k for k in request.POST.keys() if k.startswith('etapa_')]
-                print(f"\n{'='*80}", flush=True)
-                print("[DEBUG] SALVANDO TODAS AS ETAPAS", flush=True)
-                print(f"   Processo ID: {processo.pk}", flush=True)
-                print(f"   Total de campos no POST: {len(post_keys)}", flush=True)
-                print(f"   Campos: {post_keys[:30]}", flush=True)
-                print(f"{'='*80}\n", flush=True)
-                
                 logger.info(f"Salvando todas as etapas. POST com {len(post_keys)} campos de etapa.")
-                
                 etapas_atualizadas = _atualizar_etapas_processo(processo, request)
-                
-                print(f"\n{'='*80}", flush=True)
-                print(f"[DEBUG] RESULTADO: {etapas_atualizadas} etapa(s) atualizada(s)", flush=True)
-                print(f"{'='*80}\n", flush=True)
-                
+
                 if etapas_atualizadas > 0:
                     messages.success(request, f"{etapas_atualizadas} etapa(s) atualizada(s) com sucesso.")
                 else:
                     messages.warning(request, "Nenhuma etapa foi atualizada. Verifique se há etapas no processo e se os dados foram preenchidos.")
             except Exception as e:
                 logger.error(f"Erro ao salvar todas as etapas: {e}", exc_info=True)
-                print(f"\n[DEBUG] ERRO ao salvar todas as etapas: {e}", flush=True)
                 messages.error(request, f"Erro ao salvar as etapas: {str(e)}")
             return redirect("system:editar_processo", pk=processo.pk)
 
@@ -837,51 +814,48 @@ def adicionar_etapa_processo(request, processo_pk: int, status_pk: int):
 
 @login_required
 def listar_processos(request):
-                                   
+                                    
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-                                                         
-    processos = Processo.objects.select_related(
+                                                          
+    clientes_usuario = listar_clientes(request.user)
+    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
+
+    processos = Processo.objects.filter(
+        cliente__pk__in=clientes_ids
+    ).select_related(
         "viagem",
         "viagem__pais_destino",
         "viagem__tipo_visto",
         "cliente",
         "assessor_responsavel",
-    ).prefetch_related("etapas", "etapas__status").order_by("-criado_em")
+    ).prefetch_related("etapas", "etapas__status").distinct()
 
-                                   
-    filtro_cliente = request.GET.get("cliente", "").strip()
-    filtro_viagem = request.GET.get("viagem", "").strip()
-    filtro_assessor = request.GET.get("assessor", "").strip()
+    processos, filtros_aplicados = _aplicar_filtros_processos(processos, request, incluir_assessor=True)
 
-    if filtro_cliente:
-        processos = processos.filter(cliente__nome__icontains=filtro_cliente)
-    if filtro_viagem:
-        processos = processos.filter(
-            Q(viagem__pais_destino__nome__icontains=filtro_viagem) |
-            Q(viagem__tipo_visto__nome__icontains=filtro_viagem)
-        )
-    if filtro_assessor:
-        processos = processos.filter(assessor_responsavel__nome__icontains=filtro_assessor)
+    processos_principais = [p for p in processos if not p.cliente.cliente_principal_id]
+    processos_dependentes = [p for p in processos if p.cliente.cliente_principal_id]
+    processos_principais.sort(key=lambda p: p.pk)
+    processos_dependentes.sort(key=lambda p: p.pk)
+    processos_ordenados = processos_principais + processos_dependentes
+    total_processos_concluidos = sum(1 for processo in processos_ordenados if processo.progresso_percentual >= 100)
+    total_processos_pendentes = sum(1 for processo in processos_ordenados if processo.progresso_percentual < 100)
 
-                                   
     assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
-                                              
-    clientes = ClienteConsultoria.objects.all().order_by("nome")
+    clientes = clientes_usuario.order_by("nome")
 
     contexto = {
-        "processos": processos,
+        "processos": processos_ordenados,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
         "consultor": consultor,
-        "filtros_aplicados": {
-            "cliente": filtro_cliente,
-            "viagem": filtro_viagem,
-            "assessor": filtro_assessor,
-        },
+        "filtros_aplicados": filtros_aplicados,
         "clientes": clientes,
         "assessores": assessores,
+        "total_processos": len(processos_ordenados),
+        "total_processos_concluidos": total_processos_concluidos,
+        "total_processos_pendentes": total_processos_pendentes,
     }
 
     return render(request, "process/listar_processos.html", contexto)

@@ -184,7 +184,7 @@
 </div>
 <div class="formulario-card">
     {% for pergunta in perguntas %}
-        <div class="form-group">
+        <div class="form-group" data-ordem="{{ pergunta.ordem }}" data-regra='{{ pergunta.regra_exibicao|default_if_none:"" }}'>
             <label>
                 {{ pergunta.pergunta }}
                 {% if pergunta.obrigatorio %}
@@ -345,6 +345,47 @@
         
         document.body.removeChild(textarea);
     }
+
+    (function() {
+        function normalizarResposta(valor) {
+            if (valor === 'Sim') return 'sim';
+            if (valor === 'Não') return 'nao';
+            return valor;
+        }
+
+        function avaliarVisibilidade() {
+            var estado = {};
+            document.querySelectorAll('.form-group[data-ordem]').forEach(function(el) {
+                var ordem = parseInt(el.dataset.ordem);
+                var respostaEl = el.querySelector('[id^="resposta_"]');
+                if (respostaEl) {
+                    var dataValor = respostaEl.getAttribute('data-valor');
+                    if (dataValor !== null && dataValor !== '' && dataValor !== 'undefined') {
+                        estado[ordem] = normalizarResposta(dataValor);
+                    } else {
+                        var texto = respostaEl.innerText.trim();
+                        if (texto && texto !== 'Não respondido' && texto !== '-') {
+                            estado[ordem] = normalizarResposta(texto);
+                        }
+                    }
+                }
+            });
+
+            document.querySelectorAll('.form-group[data-regra]').forEach(function(el) {
+                var regraStr = el.dataset.regra;
+                if (!regraStr) return;
+                try { var regra = JSON.parse(regraStr); } catch(e) { return; }
+                if (regra.tipo !== 'mostrar_se') return;
+                var triggerOrdem = parseInt(regra.pergunta_ordem);
+                var valoresEsperados = Array.isArray(regra.valor) ? regra.valor : [regra.valor];
+                var triggerValue = estado[triggerOrdem];
+                var visivel = valoresEsperados.indexOf(triggerValue) !== -1;
+                el.style.display = visivel ? '' : 'none';
+            });
+        }
+
+        avaliarVisibilidade();
+    })();
 </script>
 {% endblock %}
 

@@ -3,6 +3,8 @@
 
 {% block title %}Visary | Listar Viagens{% endblock %}
 
+{% block body_class %}listagem-page{% endblock %}
+
 {% block base_styles %}
     {{ block.super }}
 
@@ -73,27 +75,83 @@
         margin-top: 8px;
     }
 
-    .table-wrapper {
-        overflow-x: auto;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+    .kpi-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin-bottom: 24px;
+    }
+
+    .kpi-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.22);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .kpi-card span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.15rem;
+        color: var(--accent);
+    }
+
+    .kpi-card--mini strong {
+        font-size: 1rem;
+        line-height: 1.3;
     }
 
     .card {
-        display: flex;
-        flex-direction: column;
-        height: calc(100vh - 280px);
-        max-height: calc(100vh - 280px);
-        min-height: 400px;
-        overflow: hidden;
+        overflow-x: auto;
     }
 
     .card .table-wrapper {
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow-y: auto;
         overflow-x: auto;
-        max-height: 100%;
+        overflow-y: auto;
+        max-height: min(68vh, 720px);
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
+    @media (min-width: 1120px) {
+        body.listagem-page {
+            overflow: hidden;
+        }
+
+        body.listagem-page .app-main {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.listagem-page .page-header,
+        body.listagem-page .filtros-card,
+        body.listagem-page .kpi-grid {
+            flex-shrink: 0;
+        }
+
+        body.listagem-page .card:last-of-type {
+            flex: 1;
+            min-height: 0;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.listagem-page .card:last-of-type .table-wrapper {
+            flex: 1;
+            min-height: 0;
+            max-height: none;
+        }
     }
 
     thead th {
@@ -208,12 +266,6 @@
     }
 
     @media (max-width: 768px) {
-        .card {
-            height: calc(100vh - 250px);
-            max-height: calc(100vh - 250px);
-            min-height: 300px;
-        }
-
         .filtros-grid {
             grid-template-columns: 1fr;
         }
@@ -316,6 +368,33 @@
             <a href="{% url 'system:listar_viagens' %}" class="btn btn-outline">Limpar Filtros</a>
         </div>
     </form>
+</section>
+
+<section class="kpi-grid">
+    <article class="kpi-card">
+        <span>Total de viagens</span>
+        <strong>{{ total_viagens_kpi }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Viagens concluídas</span>
+        <strong>{{ total_viagens_concluidas }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Viagens próximas (30 dias)</span>
+        <strong>{{ total_viagens_proximas }}</strong>
+    </article>
+    {% for item in quantidade_por_tipo_visto|slice:":4" %}
+    <article class="kpi-card kpi-card--mini">
+        <span>Tipo de visto</span>
+        <strong>{{ item.tipo_visto__nome|default:"Não informado" }}: {{ item.total }}</strong>
+    </article>
+    {% endfor %}
+    {% for item in quantidade_por_pais|slice:":4" %}
+    <article class="kpi-card kpi-card--mini">
+        <span>País de destino</span>
+        <strong>{{ item.pais_destino__nome|default:"Não informado" }}: {{ item.total }}</strong>
+    </article>
+    {% endfor %}
 </section>
 
 <section class="card">

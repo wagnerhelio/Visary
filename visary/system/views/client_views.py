@@ -14,13 +14,13 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import models, transaction
 from django.db.models import Count, Q, QuerySet
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods
 
-from consultancy.forms import ClienteConsultoriaForm
-from consultancy.models import (
+from system.forms import ClienteConsultoriaForm
+from system.models import (
     CampoEtapaCliente,
     ClienteConsultoria,
     ClienteViagem,
@@ -30,8 +30,9 @@ from consultancy.models import (
     RespostaFormulario,
     Viagem,
 )
-from consultancy.models.financial_models import Financeiro, StatusFinanceiro
-from consultancy.services.cep import buscar_endereco_por_cep
+from system.models.financial_models import Financeiro, StatusFinanceiro
+from system.services.cep import buscar_endereco_por_cep
+from system.services.passport_ocr import extract_passport_fields_from_document
 from system.models import UsuarioConsultoria
 
 User = get_user_model()
@@ -44,11 +45,21 @@ class DependentesNaoValidosError(Exception):
     pass                                                                                      
 
 
+def _ordenar_clientes_por_grupo_familiar(clientes):
+    return sorted(
+        clientes,
+        key=lambda cliente: (
+            cliente.cliente_principal_id or cliente.pk,
+            1 if cliente.cliente_principal_id else 0,
+            cliente.pk,
+        ),
+    )
+
+
 def _aplicar_filtros_clientes(clientes, request, incluir_assessor=False):
                                                                                                    
     filtros = {
         "nome": request.GET.get("nome", "").strip(),
-        "email": request.GET.get("email", "").strip(),
         "status_financeiro": request.GET.get("status_financeiro", "").strip(),
     }
     
@@ -60,8 +71,6 @@ def _aplicar_filtros_clientes(clientes, request, incluir_assessor=False):
     if incluir_assessor and filtros.get("assessor"):
         with suppress(ValueError, TypeError):
             clientes = clientes.filter(assessor_responsavel_id=int(filtros["assessor"]))
-    if filtros["email"]:
-        clientes = clientes.filter(email__icontains=filtros["email"])
     if filtros["status_financeiro"]:
         if filtros["status_financeiro"] == "pendente":
             clientes = clientes.filter(registros_financeiros__status=StatusFinanceiro.PENDENTE).distinct()
@@ -245,15 +254,28 @@ def listar_clientes(user: User) -> QuerySet[ClienteConsultoria]:
 
 
 def usuario_pode_gerenciar_todos(user: User, consultor: UsuarioConsultoria | None) -> bool:
+    if not consultor:
+        return bool(user.is_superuser or user.is_staff)
+
+    perfil = consultor.perfil
+    is_admin_profile = (perfil.nome or "").strip().lower() == "administrador"
+    has_full_crud = (
+        perfil.pode_criar
+        and perfil.pode_visualizar
+        and perfil.pode_atualizar
+        and perfil.pode_excluir
+    )
+
     return (
         user.is_superuser
         or user.is_staff
-        or (consultor and consultor.perfil.nome.lower() == "administrador")
+        or is_admin_profile
+        or has_full_crud
     )
 
 
 def usuario_tem_acesso_modulo(user: User, consultor: UsuarioConsultoria | None, nome_modulo: str) -> bool:
-    if user.is_superuser or user.is_staff:
+    if usuario_pode_gerenciar_todos(user, consultor):
         return True
     if not consultor:
         return False
@@ -329,8 +351,6 @@ def home_clientes(request):
         "parceiro_indicador",
     ).prefetch_related("dependentes", "viagens").order_by("-criado_em")
 
-    _, filtros = _aplicar_filtros_clientes(base_qs, request, incluir_assessor=True)
-
     if pode_gerenciar_todos:
         meus_clientes = listar_clientes(request.user)
     elif consultor:
@@ -341,7 +361,9 @@ def home_clientes(request):
     else:
         meus_clientes = base_qs.none()
 
-    meus_clientes, _ = _aplicar_filtros_clientes(meus_clientes, request, incluir_assessor=True)
+    filtros = {"nome": request.GET.get("nome", "").strip()}
+    if filtros["nome"]:
+        meus_clientes = meus_clientes.filter(nome__icontains=filtros["nome"])
 
     def _build_item(cliente):
         status_financeiro = _obter_status_financeiro_cliente(cliente)
@@ -356,44 +378,38 @@ def home_clientes(request):
             "pode_editar": usuario_pode_editar_cliente(request.user, consultor, cliente),
         }
 
-    principais = [c for c in meus_clientes if not c.cliente_principal_id]
-    dependentes = [c for c in meus_clientes if c.cliente_principal_id]
-    principais.sort(key=lambda c: c.pk)
-    dependentes.sort(key=lambda c: c.pk)
-
-    clientes_com_status = []
-    for principal in principais:
-        clientes_com_status.append(_build_item(principal))
-        for dep in dependentes:
-            if dep.cliente_principal_id == principal.pk:
-                clientes_com_status.append(_build_item(dep))
-
-    processos_display = []
-    for c in meus_clientes:
-        for proc in Processo.objects.filter(cliente=c).select_related(
-            "viagem", "viagem__pais_destino", "viagem__tipo_visto", "assessor_responsavel"
-        ).prefetch_related("etapas", "etapas__status"):
-            processos_display.append({
-                "cliente_pk": c.pk,
-                "processo_pk": proc.pk,
-                "cliente_nome": c.nome,
-                "viagem_str": str(proc.viagem),
-                "pais_destino": proc.viagem.pais_destino.nome if proc.viagem and proc.viagem.pais_destino else "",
-                "progresso": proc.progresso_percentual,
-                "assessor": proc.assessor_responsavel.nome if proc.assessor_responsavel else "",
-                "pode_editar": pode_gerenciar_todos,
-            })
+    clientes_ordenados = _ordenar_clientes_por_grupo_familiar(meus_clientes)
+    clientes_com_status = [_build_item(cliente) for cliente in clientes_ordenados]
 
     assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
 
+    total_clientes_kpi = len(clientes_com_status)
+    total_dependentes_kpi = sum(1 for item in clientes_com_status if item["cliente"].is_dependente)
+    total_financeiro_pendente_kpi = sum(
+        1 for item in clientes_com_status if item["status_financeiro"] == "Pendente"
+    )
+    total_financeiro_pago_kpi = sum(
+        1 for item in clientes_com_status if item["status_financeiro"] == "Pago"
+    )
+    total_financeiro_cancelado_kpi = sum(
+        1 for item in clientes_com_status if item["status_financeiro"] == "Cancelado"
+    )
+    total_financeiro_sem_registros_kpi = sum(
+        1 for item in clientes_com_status if item["status_financeiro"] == "Sem registros"
+    )
+
     return render(request, "client/home_clientes.html", {
-        "total_clientes": meus_clientes.count(),
+        "total_clientes": total_clientes_kpi,
+        "total_dependentes": total_dependentes_kpi,
+        "total_financeiro_pendente": total_financeiro_pendente_kpi,
+        "total_financeiro_pago": total_financeiro_pago_kpi,
+        "total_financeiro_cancelado": total_financeiro_cancelado_kpi,
+        "total_financeiro_sem_registros": total_financeiro_sem_registros_kpi,
         "clientes_com_status": clientes_com_status,
         "perfil_usuario": perfil_usuario,
         "pode_excluir_clientes": pode_gerenciar_todos,
         "filtros": filtros,
         "assessores": assessores,
-        "processos": processos_display,
     })
 
 
@@ -429,17 +445,8 @@ def listar_clientes_view(request):
             "pode_editar": usuario_pode_editar_cliente(request.user, consultor, cliente),
         }
 
-    principais = [c for c in clientes if not c.cliente_principal_id]
-    dependentes = [c for c in clientes if c.cliente_principal_id]
-    principais.sort(key=lambda c: c.pk)
-    dependentes.sort(key=lambda c: c.pk)
-
-    clientes_com_status = []
-    for principal in principais:
-        clientes_com_status.append(_build_item(principal))
-        for dep in dependentes:
-            if dep.cliente_principal_id == principal.pk:
-                clientes_com_status.append(_build_item(dep))
+    clientes_ordenados = _ordenar_clientes_por_grupo_familiar(clientes)
+    clientes_com_status = [_build_item(cliente) for cliente in clientes_ordenados]
 
     progressos = []
     for c in clientes:
@@ -449,6 +456,21 @@ def listar_clientes_view(request):
                 'processo_pk': proc.pk,
                 'progresso': proc.progresso_percentual,
             })
+
+    total_clientes_kpi = len(clientes_com_status)
+    total_dependentes_kpi = sum(1 for item in clientes_com_status if item["cliente"].is_dependente)
+    total_financeiro_pendente_kpi = sum(
+        1 for item in clientes_com_status if item["status_financeiro"] == "Pendente"
+    )
+    total_financeiro_pago_kpi = sum(
+        1 for item in clientes_com_status if item["status_financeiro"] == "Pago"
+    )
+    total_financeiro_cancelado_kpi = sum(
+        1 for item in clientes_com_status if item["status_financeiro"] == "Cancelado"
+    )
+    total_financeiro_sem_registros_kpi = sum(
+        1 for item in clientes_com_status if item["status_financeiro"] == "Sem registros"
+    )
     
     return render(request, "client/listar_clientes.html", {
         "clientes_com_status": clientes_com_status,
@@ -457,6 +479,12 @@ def listar_clientes_view(request):
         "pode_excluir_clientes": pode_gerenciar_todos,
         "filtros": filtros,
         "progressos": progressos,
+        "total_clientes": total_clientes_kpi,
+        "total_dependentes": total_dependentes_kpi,
+        "total_financeiro_pendente": total_financeiro_pendente_kpi,
+        "total_financeiro_pago": total_financeiro_pago_kpi,
+        "total_financeiro_cancelado": total_financeiro_cancelado_kpi,
+        "total_financeiro_sem_registros": total_financeiro_sem_registros_kpi,
     })
 
 
@@ -2592,6 +2620,75 @@ def api_dados_cliente(request):
         return JsonResponse(response_data)
     except ClienteConsultoria.DoesNotExist:
         return JsonResponse({"error": "Cliente não encontrado."}, status=404)
+
+
+def _mask_passport_for_log(passport_number: str | None) -> str:
+    if not passport_number:
+        return "***"
+    cleaned = re.sub(r"\W", "", str(passport_number))
+    if len(cleaned) <= 3:
+        return "***"
+    return f"***{cleaned[-3:]}"
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_extrair_passaporte(request):
+    documento = request.FILES.get("documento")
+    if not documento:
+        return JsonResponse({"success": False, "error": "Arquivo nao informado."}, status=400)
+
+    if documento.size > 8 * 1024 * 1024:
+        return JsonResponse(
+            {"success": False, "error": "Arquivo muito grande. Envie ate 8MB."},
+            status=400,
+        )
+
+    nome_arquivo = (documento.name or "").lower()
+    extensoes_validas = (".jpg", ".jpeg", ".png", ".pdf")
+    if not nome_arquivo.endswith(extensoes_validas):
+        return JsonResponse(
+            {"success": False, "error": "Formato invalido. Use JPG, PNG ou PDF."},
+            status=400,
+        )
+
+    file_bytes = documento.read()
+    extraction = extract_passport_fields_from_document(
+        file_bytes=file_bytes,
+        filename=nome_arquivo,
+    )
+
+    if not extraction.success:
+        return JsonResponse(
+            {
+                "success": False,
+                "error": extraction.message or "Falha ao extrair dados do passaporte.",
+                "warnings": extraction.warnings,
+            },
+            status=422,
+        )
+
+    target = (request.POST.get("target") or "cliente").strip().lower()
+    persist_in_session = request.POST.get("persist_in_session") == "true"
+
+    if persist_in_session and target == "cliente":
+        dados_temporarios = _obter_dados_temporarios_sessao(request) or {}
+        dados_temporarios.update(extraction.fields)
+        _salvar_dados_temporarios_sessao(request, dados_temporarios)
+
+    logger.info(
+        "Extração de passaporte concluída sem persistência de arquivo. numero=%s warnings=%s",
+        _mask_passport_for_log(extraction.fields.get("numero_passaporte")),
+        ",".join(extraction.warnings) if extraction.warnings else "none",
+    )
+    return JsonResponse(
+        {
+            "success": True,
+            "fields": extraction.fields,
+            "warnings": extraction.warnings,
+            "message": "Dados extraidos com sucesso. Revise antes de salvar.",
+        }
+    )
 
 
 @login_required

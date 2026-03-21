@@ -24,11 +24,11 @@ from .client_area_views import (
     cliente_salvar_resposta,
     cliente_visualizar_formulario,
 )
-from .consultancy_views import gerenciar_colaboradores
 from .home_views import home
 from .client_views import (
     adicionar_dependente,
     api_buscar_cep,
+    api_extrair_passaporte,
     api_dados_cliente,
     cadastrar_cliente_view,
     cadastrar_dependente,
@@ -128,6 +128,7 @@ from .travel_views import (
 
 __all__ = (
     "api_buscar_cep",
+    "api_extrair_passaporte",
     "api_dados_cliente",
     "api_cliente_info",
     "api_prazo_status_processo",
@@ -174,7 +175,6 @@ __all__ = (
     "excluir_tipo_visto",
     "excluir_usuario",
     "excluir_viagem",
-    "gerenciar_colaboradores",
     "home",
     "home_administracao",
     "home_clientes",

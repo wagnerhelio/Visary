@@ -116,9 +116,6 @@ cython_debug/
 *.orig
 *.tmp
 
-# Arquivos específicos do projeto
-visary/consultancy/apps copy.py
-
 # Sistema Operacional
 # Windows
 Thumbs.db

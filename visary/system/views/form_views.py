@@ -2,32 +2,106 @@
                                                     
    
 
+from contextlib import suppress
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
-from consultancy.forms import (
+from system.forms import (
     FormularioVistoForm,
     OpcaoSelecaoForm,
     PerguntaFormularioForm,
 )
-from consultancy.models import FormularioVisto, OpcaoSelecao, PerguntaFormulario, Viagem
-from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos, usuario_tem_acesso_modulo
+from system.models import FormularioVisto, OpcaoSelecao, PaisDestino, PerguntaFormulario, Viagem
+from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
+
+
+def _ler_filtros_formularios(request):
+    return {
+        "cliente": request.GET.get("cliente", "").strip(),
+        "pais": request.GET.get("pais", "").strip(),
+        "tipo_visto": request.GET.get("tipo_visto", "").strip(),
+        "status": request.GET.get("status", "").strip(),
+    }
+
+
+def _filtro_formulario_cliente_ok(cliente_info, viagem, filtros):
+    if filtros["cliente"] and str(cliente_info["cliente"].pk) != filtros["cliente"]:
+        return False
+    if filtros["pais"] and str(viagem.pais_destino_id) != filtros["pais"]:
+        return False
+    if filtros["tipo_visto"] and str(cliente_info["tipo_visto"].pk) != filtros["tipo_visto"]:
+        return False
+    if filtros["status"] == "pendente" and cliente_info["completo"]:
+        return False
+    if filtros["status"] == "completo" and not cliente_info["completo"]:
+        return False
+    return True
+
+
+def _aplicar_filtros_formularios_respostas(formularios_respostas, filtros):
+    filtrados = []
+    for item in formularios_respostas:
+        clientes_filtrados = [
+            cliente_info
+            for cliente_info in item["clientes"]
+            if _filtro_formulario_cliente_ok(cliente_info, item["viagem"], filtros)
+        ]
+        if clientes_filtrados:
+            novo_item = dict(item)
+            novo_item["clientes"] = clientes_filtrados
+            filtrados.append(novo_item)
+    return filtrados
+
+
+def _opcoes_filtro_formularios(formularios_respostas):
+    clientes_map = {}
+    paises_map = {}
+    tipos_map = {}
+    for item in formularios_respostas:
+        viagem = item["viagem"]
+        paises_map.setdefault(viagem.pais_destino.pk, viagem.pais_destino)
+        for cliente_info in item["clientes"]:
+            cliente = cliente_info["cliente"]
+            tipo_visto = cliente_info["tipo_visto"]
+            clientes_map.setdefault(cliente.pk, cliente)
+            tipos_map.setdefault(tipo_visto.pk, tipo_visto)
+    return {
+        "clientes_filtro": sorted(clientes_map.values(), key=lambda c: c.nome.lower()),
+        "paises_filtro": sorted(paises_map.values(), key=lambda p: p.nome.lower()),
+        "tipos_visto_filtro": sorted(tipos_map.values(), key=lambda t: t.nome.lower()),
+    }
+
+
+def _aplicar_filtros_tipos_formulario(formularios, request):
+    filtros = {
+        "busca": request.GET.get("busca", "").strip(),
+        "pais": request.GET.get("pais", "").strip(),
+        "status": request.GET.get("status", "").strip(),
+    }
+
+    if filtros["busca"]:
+        formularios = formularios.filter(tipo_visto__nome__icontains=filtros["busca"])
+    if filtros["pais"]:
+        formularios = formularios.filter(tipo_visto__pais_destino_id=filtros["pais"])
+    if filtros["status"] == "ativo":
+        formularios = formularios.filter(ativo=True)
+    elif filtros["status"] == "inativo":
+        formularios = formularios.filter(ativo=False)
+
+    return formularios, filtros
 
 
 @login_required
 def home_formularios(request):
-    from consultancy.models import ClienteViagem, RespostaFormulario
-    from contextlib import suppress
+    from system.models import ClienteViagem, RespostaFormulario
 
     consultor = obter_consultor_usuario(request.user)
-    if not usuario_tem_acesso_modulo(request.user, consultor, "Formularios"):
-        raise PermissionDenied
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-                                                                                                                              
     clientes_usuario = listar_clientes(request.user)
     clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
     
@@ -68,22 +142,26 @@ def home_formularios(request):
         except FormularioVisto.DoesNotExist:
             return None
     
-                                          
+                                           
     formularios_respostas = []
     total_clientes_com_formulario = 0
     
     for viagem in viagens[:10]:                              
-                                                         
+                                                          
         clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids)
         
         if not clientes_viagem.exists():
             continue
         
-                                                                                         
         clientes_por_formulario = {}
         
-        for cliente in clientes_viagem:
-                                                      
+        principais = [c for c in clientes_viagem if not c.cliente_principal_id]
+        dependentes = [c for c in clientes_viagem if c.cliente_principal_id]
+        principais.sort(key=lambda c: c.pk)
+        dependentes.sort(key=lambda d: d.pk)
+        clientes_ordenados = principais + dependentes
+        
+        for cliente in clientes_ordenados:
             tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
             
             if not tipo_visto_cliente:
@@ -121,14 +199,58 @@ def home_formularios(request):
             })
             total_clientes_com_formulario += 1
         
-                                                                   
+        
         formularios_respostas.extend(clientes_por_formulario.values())
     
+    formularios_pendentes = []
+    formularios_preenchidos = []
+    for item in formularios_respostas:
+        for cli in item["clientes"]:
+            entry = {
+                "viagem": item["viagem"],
+                "cliente_info": {
+                    "cliente": cli["cliente"],
+                    "tipo_visto": cli["tipo_visto"],
+                    "total_perguntas": cli["total_perguntas"],
+                    "total_respostas": cli["total_respostas"],
+                    "completo": cli["completo"],
+                },
+            }
+            if cli["completo"]:
+                formularios_preenchidos.append(entry)
+            else:
+                formularios_pendentes.append(entry)
+
+    filtros_aplicados = _ler_filtros_formularios(request)
+    formularios_respostas = _aplicar_filtros_formularios_respostas(formularios_respostas, filtros_aplicados)
+    formularios_pendentes = [
+        item
+        for item in formularios_pendentes
+        if _filtro_formulario_cliente_ok(item["cliente_info"], item["viagem"], filtros_aplicados)
+    ]
+    formularios_preenchidos = [
+        item
+        for item in formularios_preenchidos
+        if _filtro_formulario_cliente_ok(item["cliente_info"], item["viagem"], filtros_aplicados)
+    ]
+    opcoes_filtro = _opcoes_filtro_formularios(formularios_respostas)
+
+    total_formularios_kpi = len(formularios_pendentes) + len(formularios_preenchidos)
+    total_pendentes_kpi = len(formularios_pendentes)
+    total_completos_kpi = len(formularios_preenchidos)
+
     contexto = {
         "total_formularios": total_clientes_com_formulario,
         "formularios_respostas": formularios_respostas,
+        "formularios_pendentes": formularios_pendentes,
+        "formularios_preenchidos": formularios_preenchidos,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "filtros_aplicados": filtros_aplicados,
+        **opcoes_filtro,
+        "total_formularios_kpi": total_formularios_kpi,
+        "total_pendentes_kpi": total_pendentes_kpi,
+        "total_completos_kpi": total_completos_kpi,
     }
 
     return render(request, "forms/home_formularios.html", contexto)
@@ -136,15 +258,13 @@ def home_formularios(request):
 
 @login_required
 def listar_formularios(request):
-                                                                                  
-    from consultancy.models import ClienteConsultoria, ClienteViagem, RespostaFormulario
-    from contextlib import suppress
+    from system.models import ClienteViagem, RespostaFormulario
     
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
-                                                           
-    clientes_ids = list(ClienteConsultoria.objects.values_list("pk", flat=True))
+    clientes_usuario = listar_clientes(request.user)
+    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
     
                              
     viagens = Viagem.objects.filter(
@@ -183,21 +303,25 @@ def listar_formularios(request):
         except FormularioVisto.DoesNotExist:
             return None
     
-                                          
+                                           
     formularios_respostas = []
     
     for viagem in viagens:
-                                                         
+                                                          
         clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids)
         
         if not clientes_viagem.exists():
             continue
         
-                                                                                         
         clientes_por_formulario = {}
         
-        for cliente in clientes_viagem:
-                                                      
+        principais = [c for c in clientes_viagem if not c.cliente_principal_id]
+        dependentes = [c for c in clientes_viagem if c.cliente_principal_id]
+        principais.sort(key=lambda c: c.pk)
+        dependentes.sort(key=lambda d: d.pk)
+        clientes_ordenados = principais + dependentes
+        
+        for cliente in clientes_ordenados:
             tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
             
             if not tipo_visto_cliente:
@@ -236,11 +360,28 @@ def listar_formularios(request):
         
                                 
         formularios_respostas.extend(clientes_por_formulario.values())
+
+    filtros_aplicados = _ler_filtros_formularios(request)
+    formularios_respostas = _aplicar_filtros_formularios_respostas(formularios_respostas, filtros_aplicados)
+    opcoes_filtro = _opcoes_filtro_formularios(formularios_respostas)
+    total_formularios_kpi = sum(len(item["clientes"]) for item in formularios_respostas)
+    total_pendentes_kpi = sum(
+        1
+        for item in formularios_respostas
+        for cliente in item["clientes"]
+        if not cliente["completo"]
+    )
+    total_completos_kpi = total_formularios_kpi - total_pendentes_kpi
     
     contexto = {
         "formularios_respostas": formularios_respostas,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "filtros_aplicados": filtros_aplicados,
+        **opcoes_filtro,
+        "total_formularios_kpi": total_formularios_kpi,
+        "total_pendentes_kpi": total_pendentes_kpi,
+        "total_completos_kpi": total_completos_kpi,
     }
 
     return render(request, "forms/listar_formularios.html", contexto)
@@ -249,20 +390,23 @@ def listar_formularios(request):
 @login_required
 def home_tipos_formulario(request):
     consultor = obter_consultor_usuario(request.user)
-    if not usuario_tem_acesso_modulo(request.user, consultor, "Tipos de Formulario de Visto"):
+    if not usuario_pode_gerenciar_todos(request.user, consultor):
         raise PermissionDenied
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+    pode_gerenciar_todos = True
 
-    formularios = FormularioVisto.objects.select_related("tipo_visto").all().order_by(
+    formularios = FormularioVisto.objects.select_related("tipo_visto", "tipo_visto__pais_destino").all().order_by(
         "tipo_visto__nome"
-    )[:10]
-    total_formularios = FormularioVisto.objects.count()
+    )
+    formularios, filtros_aplicados = _aplicar_filtros_tipos_formulario(formularios, request)
+    total_formularios = formularios.count()
 
     contexto = {
-        "formularios": formularios,
+        "formularios": formularios[:10],
         "total_formularios": total_formularios,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "perfil_usuario": consultor.perfil.nome if consultor else "Administrador",
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "filtros_aplicados": filtros_aplicados,
+        "paises": PaisDestino.objects.filter(ativo=True).order_by("nome"),
     }
 
     return render(request, "forms/home_tipos_formulario.html", contexto)
@@ -301,16 +445,19 @@ def listar_tipos_formulario(request):
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
 
     formularios = (
-        FormularioVisto.objects.select_related("tipo_visto")
+        FormularioVisto.objects.select_related("tipo_visto", "tipo_visto__pais_destino")
         .prefetch_related("perguntas")
         .all()
         .order_by("tipo_visto__nome")
     )
+    formularios, filtros_aplicados = _aplicar_filtros_tipos_formulario(formularios, request)
 
     contexto = {
         "formularios": formularios,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "filtros_aplicados": filtros_aplicados,
+        "paises": PaisDestino.objects.filter(ativo=True).order_by("nome"),
     }
 
     return render(request, "forms/listar_tipos_formulario.html", contexto)
@@ -497,7 +644,7 @@ def criar_opcao_selecao(request, pergunta_id: int):
 @login_required
 def selecionar_viagem_cliente_formulario(request):
                                                                          
-    from consultancy.models import ClienteConsultoria
+    from system.models import ClienteConsultoria
     
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)

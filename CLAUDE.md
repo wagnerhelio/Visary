@@ -55,12 +55,11 @@ Arquitetura alvo:
 
 ---
 
-## 3. Topologia de apps/domínios
+## 3. Topologia de app/domínios
 
-A organização do monólito reflete o domínio real do negócio. Os nomes físicos devem ser mantidos exatamente assim:
+A organização do monólito reflete o domínio real do negócio em um app único:
 
-- `consultancy/` — domínio principal: clientes, dependentes, viagens, processos, formulários dinâmicos, financeiro, parceiros, etapas de cadastro;
-- `system/` — infraestrutura: autenticação dual (consultor via `auth.User` sincronizado + cliente via sessão/CPF), permissões por módulo/perfil, views de orquestração, área do cliente, administração, seeds e páginas estruturais.
+- `system/` — domínio completo e infraestrutura: clientes, dependentes, viagens, processos, formulários dinâmicos, financeiro, parceiros, etapas de cadastro, autenticação dual (consultor via `auth.User` sincronizado + cliente via sessão/CPF), permissões por módulo/perfil, views de orquestração, área do cliente, administração, seeds e páginas estruturais.
 
 ---
 
@@ -201,7 +200,7 @@ Modelos:
 4. **`sincronizar_status_viagem_post_save`** (post_save em `Viagem`) — sincroniza `ViagemStatusProcesso` disponíveis.
 5. **`sincronizar_status_viagem_status`** (post_save em `StatusProcesso`) — atualiza viagens quando um status de processo muda.
 6. **`ensure_initial_system_data`** (post_migrate) — carrega módulos, perfis e usuários do `.env`.
-7. **`ensure_initial_consultancy_data`** (post_migrate) — carrega países, tipos de visto, parceiros, status de processo, formulários e etapas do `.env` e JSON.
+7. **`ensure_initial_domain_data`** (post_migrate) — carrega países, tipos de visto, parceiros, status de processo, formulários e etapas do `.env` e JSON.
 
 ---
 
@@ -209,7 +208,7 @@ Modelos:
 
 ### 7.1 Consulta de CEP
 
-Serviço: `consultancy/services/cep.py` — `buscar_endereco_por_cep(cep)`.
+Serviço: `system/services/cep.py` — `buscar_endereco_por_cep(cep)`.
 
 Estratégia multi-fonte com fallback sequencial:
 1. **ViaCEP** (API REST)
@@ -226,6 +225,38 @@ Regras:
 ### 7.2 Sem gateway de pagamento
 
 O financeiro é puramente de controle interno (baixa manual). Não há integração com Stripe ou outro gateway.
+
+### 7.3 Importação legada de produção para teste (`criar_seeds_prod`)
+
+Objetivo operacional:
+- espelhar dados de produção no ambiente de teste local em uma carga única;
+- sem sincronização incremental, sem agendamento e sem jobs periódicos.
+
+Fluxo padrão esperado:
+1. `python cleanup.py`
+2. `python manage.py makemigrations`
+3. `python manage.py migrate`
+4. `python manage.py criar_superuser_admin`
+5. `python manage.py criar_seeds_prod`
+
+Configuração mínima obrigatória no `.env`:
+- `LEGACY_DB_HOST`
+- `LEGACY_DB_PORT`
+- `LEGACY_DB_NAME`
+- `LEGACY_DB_USER`
+- `LEGACY_DB_PASSWORD`
+- `LEGACY_IMPORT_SHARED_PASSWORD`
+
+Regras de segurança e operação:
+- Credenciais de SSH (`ssh -p ... user@host`) e de MySQL (`LEGACY_DB_USER/LEGACY_DB_PASSWORD`) são independentes.
+- Nunca assumir que usuário/senha de SSH funcionam no MySQL.
+- Erros de autenticação do MySQL (`1045`) devem ser tratados como problema de credencial/permissão remota, não como falha de mapeamento do import.
+- O import deve ser idempotente por execução (upsert + deduplicação semântica, sem hard reset de domínio) e respeitar constraints de unicidade do sistema atual.
+- O mapeamento legado de tipo de visto deve usar normalização semântica (acentos/hífens/pontuação) para evitar catálogos duplicados que quebrem o vínculo com formulários.
+- A revalidação final do import deve comparar cobertura de formulários por tipo de visto efetivamente usado e completude mínima de perguntas com os JSONs de `static/forms_ini`.
+- O `cleanup.py` deve ser estritamente não destrutivo para código-fonte: remover apenas `__pycache__`, migrations locais e `db.sqlite3`; é proibido strip de comentários/docstrings e encerramento indiscriminado de processos Python.
+- Execução e instalação de dependências para import devem ocorrer no `.venv` do projeto; não instalar drivers do legado no Python global.
+- Diagnóstico mínimo obrigatório quando `criar_seeds_prod` falhar: `sys.executable`, presença de `mysql-connector-python`/`pymysql` no `.venv`, e confirmação de ausência desses pacotes no Python global.
 
 ---
 
@@ -287,6 +318,8 @@ Se uma feature nova não se encaixar claramente em um desses domínios, a modela
 10. Sincronização de `ViagemStatusProcesso` ao salvar viagem ou status de processo.
 11. Falha na consulta de CEP: manter cadastro em estado consistente.
 12. Login de cliente: normalização de CPF, bloqueio de dependente, migração de senhas.
+13. Import de produção em `criar_seeds_prod`: validar autenticação em banco legado, preservar constraints locais e evitar mistura com seed de demonstração.
+14. Falha de dependência no import legado: validar escopo de instalação (`.venv` vs global) antes de alterar mapeamentos de domínio.
 
 ---
 
@@ -303,6 +336,7 @@ Se uma feature nova não se encaixar claramente em um desses domínios, a modela
 - Ignorar fallback do serviço de CEP e deixar o fluxo travar sem orientação.
 - Assumir que signals financeiros cobrem todos os cenários de vínculo sem verificar edge cases.
 - Testar concorrência só em SQLite e assumir que produção está coberta.
+- Executar rotina de limpeza que altere código-fonte (ex.: strip de comentários/docstrings) ou finalize processos Python fora do escopo do projeto.
 
 ---
 
@@ -323,3 +357,7 @@ Uma mudança é considerada pronta quando:
 
 - **[2026-03-19]** Criação/primeira consolidação da spec do Visary.
 - **[2026-03-19]** Consolidação completa: mapeamento exaustivo de 18 models, 113 URLs, 7 signals, sistema de autenticação dual, wizard de cadastro, formulários dinâmicos, fluxo financeiro com propagação, permissões por módulo/perfil, integrações de CEP multi-fonte e macroblocos de telas.
+- **[2026-03-20]** Adicionada política explícita de importação legada (`criar_seeds_prod`): carga total para teste, variáveis `LEGACY_DB_*`, separação entre credenciais SSH e MySQL, e diagnóstico operacional para erro de autenticação remota.
+- **[2026-03-20]** Reforçada política de ambiente para import legado: dependências obrigatórias no `.venv`, proibição de instalação no Python global e checklist de diagnóstico de execução.
+- **[2026-03-20]** Definida política de segurança do `cleanup.py`: limpeza apenas de artefatos locais (`__pycache__`, migrations locais e `db.sqlite3`), sem mutação de código-fonte e sem encerramento indiscriminado de processos Python.
+- **[2026-03-20]** Definida regra de deduplicação semântica para `TipoVisto` no import legado e revalidação obrigatória de formulários modularizados com base em `static/forms_ini`.

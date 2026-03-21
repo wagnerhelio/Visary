@@ -1,390 +1,367 @@
 {% extends "base.html" %}
-{% load static tz %}
+{% load static %}
 
-{% block title %}Visary | Processos{% endblock %}
+{% block title %}Visary | Meus Processos{% endblock %}
 
 {% block base_styles %}
     {{ block.super }}
-
     <style>
-    .stats-card {
-        background: var(--card-bg);
-        border-radius: 24px;
-        border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 32px;
-        text-align: center;
-    }
-
-    .stats-card span {
-        display: block;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        margin-bottom: 8px;
-    }
-
-    .stats-card strong {
-        display: block;
-        font-size: 2.5rem;
-        color: var(--accent);
-        font-weight: 700;
-    }
-
-    .actions-grid {
+    .home-acoes {
         display: grid;
-        gap: 20px;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        margin-top: 32px;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        margin-bottom: 24px;
     }
 
-    .action-card {
+    .home-card {
         background: var(--card-bg);
-        border-radius: 24px;
+        border-radius: 20px;
         border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 32px;
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 20px;
         display: flex;
-        flex-direction: column;
         align-items: center;
-        text-align: center;
         gap: 16px;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none;
     }
 
-    .action-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 32px 64px rgba(5, 8, 17, 0.6);
+    .home-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(5, 8, 17, 0.5);
     }
 
-    .action-card__icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 16px;
+    .home-card__icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
         background: linear-gradient(135deg, var(--accent), var(--accent-strong));
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2rem;
+        font-size: 1.4rem;
         color: #081423;
+        flex-shrink: 0;
     }
 
-    .action-card h3 {
+    .home-card__icon.admin {
+        background: linear-gradient(135deg, #ffc107, #ff9800);
+    }
+
+    .home-card__content h3 {
         margin: 0;
-        font-size: 1.3rem;
+        font-size: 0.95rem;
         color: var(--text-primary);
     }
 
-    .action-card p {
-        margin: 0;
+    .home-card__content p {
+        margin: 2px 0 0 0;
+        font-size: 0.78rem;
         color: var(--text-secondary);
-        font-size: 0.9rem;
     }
 
-    .action-card .btn {
-        margin-top: auto;
+    .home-grid {
+        display: grid;
+        gap: 24px;
     }
 
-    .processos-list {
-        margin-top: 32px;
-    }
-
-    .processos-list-card {
-        background: var(--card-bg);
-        border-radius: 24px;
-        border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 24px;
-    }
-
-    .processos-list-card header {
+    .kpi-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         margin-bottom: 20px;
     }
 
-    .processos-list-card h2 {
+    .kpi-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.22);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .kpi-card span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.35rem;
+        color: var(--accent);
+    }
+
+    .home-section {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 24px;
+    }
+
+    .home-section__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .home-section__header h2 {
         margin: 0;
-        font-size: 1.2rem;
+        font-size: 1.05rem;
         color: var(--text-primary);
     }
 
-    .processos-list-card p {
-        margin: 8px 0 0 0;
+    .home-section__header p {
+        margin: 3px 0 0 0;
+        font-size: 0.78rem;
         color: var(--text-secondary);
-        font-size: 0.9rem;
     }
 
-    .empty-state {
-        padding: 18px;
-        border-radius: 16px;
-        border: 1px dashed rgba(86, 244, 156, 0.35);
-        color: rgba(245, 245, 245, 0.72);
-        text-align: center;
+    .home-section__actions {
+        display: flex;
+        gap: 8px;
     }
+
+    .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mini-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .mini-table th {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.7rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(245, 245, 245, 0.5);
+        white-space: nowrap;
+    }
+
+    .mini-table td {
+        padding: 10px 10px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.85rem;
+        color: rgba(245, 245, 245, 0.88);
+        vertical-align: middle;
+    }
+
+    .mini-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-principal { background: rgba(86, 244, 156, 0.18); color: rgba(86, 244, 156, 0.95); }
+    .badge-dependente { background: rgba(255, 193, 7, 0.18); color: rgba(255, 193, 7, 0.95); }
+
+    tr.row-dependente td:first-child {
+        padding-left: 16px;
+        border-left: 2px solid rgba(255, 193, 7, 0.25);
+    }
+
+    .progress-cell { min-width: 100px; }
+
+    .progress-bar-cell {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .progress-bar-cell__bar {
+        flex: 1;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .progress-bar-cell__fill {
+        height: 100%;
+        background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%);
+    }
+
+    .progress-bar-cell__label {
+        font-size: 0.78rem;
+        color: rgba(245, 245, 245, 0.7);
+        min-width: 38px;
+    }
+
+    .nome-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .nome-cell__name {
+        font-weight: 500;
+        color: rgba(245, 245, 245, 0.92);
+        font-size: 0.88rem;
+    }
+
+    .nome-cell__sub {
+        font-size: 0.68rem;
+        color: rgba(245, 245, 245, 0.5);
+    }
+
+    .btn-small { padding: 5px 10px; font-size: 0.8rem; }
 
     .filtros-card {
         background: var(--card-bg);
-        border-radius: 24px;
+        border-radius: 20px;
         border: 1px solid var(--border-soft);
-        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: 24px;
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 20px;
         margin-bottom: 24px;
-    }
-
-    .filtros-card header {
-        margin-bottom: 20px;
-    }
-
-    .filtros-card h2 {
-        margin: 0;
-        font-size: 1.2rem;
-        color: var(--text-primary);
-    }
-
-    .filtros-form {
-        display: grid;
-        gap: 16px;
     }
 
     .filtros-grid {
         display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
 
-    .filtros-form label {
-        display: block;
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: rgba(245, 245, 245, 0.8);
-        margin-bottom: 6px;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-    }
-
-    .filtros-form input,
-    .filtros-form select {
+    .filtros-grid input,
+    .filtros-grid select {
         width: 100%;
         padding: 10px 12px;
         border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(12, 19, 35, 0.72);
         color: #f5f5f5;
-        font-size: 0.9rem;
-        transition: border 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .filtros-form input:focus,
-    .filtros-form select:focus {
-        outline: none;
-        border-color: rgba(86, 244, 156, 0.65);
-        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
-        background: rgba(12, 19, 35, 0.85);
     }
 
     .filtros-actions {
+        grid-column: 1 / -1;
         display: flex;
         gap: 12px;
-        margin-top: 8px;
     }
 
-    .processos-table {
-        width: 100%;
-        border-collapse: collapse;
+    .filtros-actions .btn { width: auto; }
+
+    @media (max-width: 480px) {
+        .home-acoes { grid-template-columns: 1fr; }
+        .home-section__header { flex-direction: column; align-items: flex-start; }
+        .filtros-actions { flex-direction: column; }
+        .filtros-actions .btn { width: 100%; }
     }
-
-    .processos-table th {
-        text-align: left;
-        padding: 12px 0;
-        border-bottom: 1px solid var(--border-soft);
-        font-size: 0.78rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: rgba(245, 245, 245, 0.6);
-    }
-
-    .processos-table td {
-        padding: 14px 0;
-        border-bottom: 1px solid var(--border-soft);
-        font-size: 0.9rem;
-        color: rgba(245, 245, 245, 0.88);
-    }
-
-    .processos-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    .badge {
-        display: inline-block;
-        padding: 2px 10px;
-        border-radius: 10px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-
-    .badge-principal {
-        background: rgba(86, 244, 156, 0.18);
-        color: rgba(86, 244, 156, 0.95);
-        border: 1px solid rgba(86, 244, 156, 0.4);
-    }
-
-    .badge-dependente {
-        background: rgba(255, 193, 7, 0.18);
-        color: rgba(255, 193, 7, 0.95);
-        border: 1px solid rgba(255, 193, 7, 0.4);
-    }
-
-    .nome-cell {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .nome-cell__name {
-        font-weight: 500;
-        color: rgba(245, 245, 245, 0.92);
-        line-height: 1.3;
-    }
-
-    .nome-cell__sub {
-        font-size: 0.75rem;
-        color: rgba(245, 245, 245, 0.5);
-        line-height: 1.2;
-    }
-
-    .row-dependente td:first-child {
-        padding-left: 24px;
-        border-left: 2px solid rgba(255, 193, 7, 0.25);
-    }
-
-    .btn-small {
-        padding: 6px 12px;
-        font-size: 0.85rem;
-    }
-
-    @media (max-width: 768px) {
-        .filtros-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .filtros-actions {
-            flex-direction: column;
-        }
-
-        .actions-grid {
-            grid-template-columns: 1fr;
-            gap: 16px;
-        }
-
-        .action-card {
-            padding: 24px;
-        }
-
-        .stats-card {
-            padding: 24px;
-        }
-    }
-
     </style>
 {% endblock %}
 
-
-
 {% block app_header %}
 <section class="page-header">
-    <div class="page-header__titles">
-        <h1>Processos</h1>
-        <p>Gerencie os processos de visto dos clientes.</p>
+    <div>
+        <h1>Meus Processos</h1>
+        <p>Acompanhe processos de visto dos seus clientes.</p>
     </div>
 </section>
 {% endblock %}
 
 {% block app_content %}
-<section class="actions-grid">
-    <article class="action-card">
-        <div class="action-card__icon">➕</div>
-        <h3>Criar Processo</h3>
-        <p>Cadastre um novo processo</p>
-        <a href="{% url 'system:criar_processo' %}" class="btn btn-primary">Criar</a>
-    </article>
-
-    <article class="action-card">
-        <div class="action-card__icon">📋</div>
-        <h3>Listar Processos</h3>
-        <p>Visualize todos os processos cadastrados</p>
-        <a href="{% url 'system:listar_processos' %}" class="btn btn-outline">Listar</a>
-    </article>
-
+<section class="home-acoes">
+    <a href="{% url 'system:criar_processo' %}" class="home-card">
+        <div class="home-card__icon">&#10133;</div>
+        <div class="home-card__content">
+            <h3>Criar Processo</h3>
+            <p>Novo processo</p>
+        </div>
+    </a>
+    <a href="{% url 'system:listar_processos' %}" class="home-card">
+        <div class="home-card__icon">&#128196;</div>
+        <div class="home-card__content">
+            <h3>Listar Processos</h3>
+            <p>Ver todos</p>
+        </div>
+    </a>
     {% if pode_gerenciar_todos %}
-    <article class="action-card">
-        <div class="action-card__icon">⚙️</div>
-        <h3>Gerenciar Status</h3>
-        <p>Crie e edite os status dos processos</p>
-        <a href="{% url 'system:listar_status_processo' %}" class="btn btn-outline">Gerenciar</a>
-    </article>
+    <a href="{% url 'system:listar_status_processo' %}" class="home-card" style="border-color: rgba(255,193,7,0.25);">
+        <div class="home-card__icon admin">&#9881;</div>
+        <div class="home-card__content">
+            <h3>Gerenciar Status</h3>
+            <p>Status de processo</p>
+        </div>
+    </a>
     {% endif %}
 </section>
 
-{% if not pode_gerenciar_todos %}
 <section class="filtros-card">
-    <header>
-        <h2>Filtros</h2>
-    </header>
-    <form method="get" class="filtros-form">
-        <div class="filtros-grid">
-            <div>
-                <label for="cliente">Cliente</label>
-                <input type="text" id="cliente" name="cliente" value="{{ filtros_aplicados.cliente }}" placeholder="Nome do cliente">
-            </div>
-            <div>
-                <label for="viagem">Viagem</label>
-                <input type="text" id="viagem" name="viagem" value="{{ filtros_aplicados.viagem }}" placeholder="País ou tipo de visto">
-            </div>
-            <div>
-                <label for="assessor">Assessor</label>
-                <select id="assessor" name="assessor">
-                    <option value="">Todos</option>
-                    {% for assessor in assessores %}
-                        <option value="{{ assessor.nome }}" {% if filtros_aplicados.assessor == assessor.nome %}selected{% endif %}>
-                            {{ assessor.nome }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
+    <form method="get" class="filtros-grid">
+        <input type="text" name="cliente" value="{{ filtros_aplicados.cliente }}" placeholder="Nome do cliente">
+        <input type="text" name="viagem" value="{{ filtros_aplicados.viagem }}" placeholder="País ou tipo de visto">
         <div class="filtros-actions">
             <button type="submit" class="btn btn-primary">Filtrar</button>
-            <a href="{% url 'system:home_processos' %}" class="btn btn-outline">Limpar Filtros</a>
+            <a href="{% url 'system:home_processos' %}" class="btn btn-outline">Limpar</a>
         </div>
     </form>
 </section>
-{% endif %}
 
-{% if processos %}
-<section class="processos-list" style="margin-top: 32px;">
-    <article class="processos-list-card">
-        <header>
-            <h2>Meus Processos</h2>
-            <p>Processos vinculados aos seus clientes</p>
-        </header>
-        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
-        <table class="processos-table">
+<div class="home-grid">
+    <section class="home-section">
+        <div class="kpi-grid">
+            <article class="kpi-card">
+                <span>Total de processos</span>
+                <strong>{{ total_processos }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Concluídos</span>
+                <strong>{{ total_processos_concluidos }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Pendentes</span>
+                <strong>{{ total_processos_pendentes }}</strong>
+            </article>
+        </div>
+    </section>
+
+    {% if processos %}
+    <section class="home-section">
+        <div class="home-section__header">
+            <div>
+                <h2>Meus Processos</h2>
+                <p>{{ total_processos }} processo(s)</p>
+            </div>
+            <div class="home-section__actions">
+                <a href="{% url 'system:listar_processos' %}" class="btn btn-outline btn-small">Ver Todos</a>
+            </div>
+        </div>
+        <div class="table-wrapper">
+        <table class="mini-table">
             <thead>
                 <tr>
                     <th>Cliente</th>
-                    <th>Viagem</th>
-                    <th>País</th>
+                    <th>Pais</th>
+                    <th>Tipo de Visto</th>
                     <th>Progresso</th>
                     <th>Assessor</th>
-                    <th style="width:180px;">Ações</th>
+                    <th>Acoes</th>
                 </tr>
             </thead>
             <tbody>
                 {% for processo in processos %}
-                <tr {% if processo.cliente.is_dependente %}class="row-dependente"{% endif %}>
+                <tr{% if processo.cliente.cliente_principal_id %} class="row-dependente"{% endif %}>
                     <td>
                         <div class="nome-cell">
                             <span class="nome-cell__name">{{ processo.cliente.nome }}</span>
-                            {% if processo.cliente.is_dependente %}
+                            {% if processo.cliente.cliente_principal_id %}
                                 <span class="badge badge-dependente">Dependente</span>
                                 <span class="nome-cell__sub">de {{ processo.cliente.cliente_principal.nome|default:"-" }}</span>
                             {% else %}
@@ -392,56 +369,27 @@
                             {% endif %}
                         </div>
                     </td>
-                    <td>{{ processo.viagem.tipo_visto.nome }}</td>
                     <td>{{ processo.viagem.pais_destino.nome }}</td>
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div style="flex: 1; background: rgba(255, 255, 255, 0.1); border-radius: 8px; height: 8px; overflow: hidden;">
-                                <div style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); height: 100%; width: {{ processo.progresso_percentual }}%; transition: width 0.3s ease;"></div>
+                    <td>{{ processo.viagem.tipo_visto.nome }}</td>
+                    <td class="progress-cell">
+                        <div class="progress-bar-cell">
+                            <div class="progress-bar-cell__bar">
+                                <div class="progress-bar-cell__fill" style="width: {{ processo.progresso_percentual }}%;"></div>
                             </div>
-                            <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7); min-width: 45px;">{{ processo.progresso_percentual }}%</span>
+                            <span class="progress-bar-cell__label">{{ processo.progresso_percentual }}%</span>
                         </div>
-                        <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
-                            {{ processo.etapas_concluidas }} de {{ processo.total_etapas }} etapas
-                        </div>
+                        <div class="nome-cell__sub">{{ processo.etapas_concluidas }}/{{ processo.total_etapas }} etapas</div>
                     </td>
                     <td>{{ processo.assessor_responsavel.nome }}</td>
                     <td>
-                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <a href="{% url 'system:visualizar_processo' processo.pk %}" class="btn btn-primary btn-small">Visualizar</a>
-                            {% if pode_gerenciar_todos or consultor and processo.assessor_responsavel.pk == consultor.pk %}
-                                <a href="{% url 'system:editar_processo' processo.pk %}" class="btn btn-outline btn-small">Editar</a>
-                                {% if pode_gerenciar_todos %}
-                                    <form method="post" action="{% url 'system:excluir_processo' processo.pk %}" onsubmit="return confirm('Deseja realmente excluir este processo?');" style="margin: 0;">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-danger btn-small">Excluir</button>
-                                    </form>
-                                {% endif %}
-                            {% endif %}
-                        </div>
+                        <a href="{% url 'system:visualizar_processo' processo.pk %}" class="btn btn-primary btn-small">Ver</a>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         </div>
-    </article>
-</section>
-{% else %}
-<section class="processos-list" style="margin-top: 32px;">
-    <article class="processos-list-card">
-        <header>
-            <h2>Meus Processos</h2>
-            <p>Processos vinculados aos seus clientes</p>
-        </header>
-        <div class="empty-state">
-            {% if filtros_aplicados.cliente or filtros_aplicados.viagem or filtros_aplicados.assessor %}
-                Nenhum processo encontrado com os filtros aplicados. <a href="{% url 'system:home_processos' %}">Limpar filtros</a>.
-            {% else %}
-                Nenhum processo cadastrado até o momento. <a href="{% url 'system:criar_processo' %}">Cadastre o primeiro processo</a>.
-            {% endif %}
-        </div>
-    </article>
-</section>
-{% endif %}
+    </section>
+    {% endif %}
+</div>
 {% endblock %}

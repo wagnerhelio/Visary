@@ -56,12 +56,12 @@
                    data-close-sidebar>
                     Processos
                 </a>
-                {% if perfil_usuario == 'Administrador' or request.user.is_superuser %}
                 <a class="nav-item {% if request.resolver_match.url_name == 'home_formularios' or request.resolver_match.url_name == 'visualizar_formulario_cliente' or request.resolver_match.url_name == 'editar_formulario_cliente' or request.resolver_match.url_name == 'listar_formularios_viagem' %}is-active{% endif %}"
                    href="{% url 'system:home_formularios' %}"
                    data-close-sidebar>
                     Formulários
                 </a>
+                {% if perfil_usuario == 'Administrador' or request.user.is_superuser %}
                 <a class="nav-item {% if 'partners' in request.resolver_match.url_name or 'partner' in request.resolver_match.url_name %}is-active{% endif %}" 
                    href="{% url 'system:home_partners' %}" 
                    data-close-sidebar>
