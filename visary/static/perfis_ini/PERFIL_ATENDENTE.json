@@ -1,0 +1,9 @@
+{
+  "nome": "Atendente",
+  "descricao": "Perfil focado no atendimento operacional dos clientes.",
+  "pode_criar": true,
+  "pode_visualizar": true,
+  "pode_atualizar": false,
+  "pode_excluir": false,
+  "ativo": true
+}

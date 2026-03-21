@@ -32,7 +32,6 @@ from system.models import (
 )
 from system.models.financial_models import Financeiro, StatusFinanceiro
 from system.services.cep import buscar_endereco_por_cep
-from system.services.passport_ocr import extract_passport_fields_from_document
 from system.models import UsuarioConsultoria
 
 User = get_user_model()
@@ -2634,60 +2633,12 @@ def _mask_passport_for_log(passport_number: str | None) -> str:
 @login_required
 @require_http_methods(["POST"])
 def api_extrair_passaporte(request):
-    documento = request.FILES.get("documento")
-    if not documento:
-        return JsonResponse({"success": False, "error": "Arquivo nao informado."}, status=400)
-
-    if documento.size > 8 * 1024 * 1024:
-        return JsonResponse(
-            {"success": False, "error": "Arquivo muito grande. Envie ate 8MB."},
-            status=400,
-        )
-
-    nome_arquivo = (documento.name or "").lower()
-    extensoes_validas = (".jpg", ".jpeg", ".png", ".pdf")
-    if not nome_arquivo.endswith(extensoes_validas):
-        return JsonResponse(
-            {"success": False, "error": "Formato invalido. Use JPG, PNG ou PDF."},
-            status=400,
-        )
-
-    file_bytes = documento.read()
-    extraction = extract_passport_fields_from_document(
-        file_bytes=file_bytes,
-        filename=nome_arquivo,
-    )
-
-    if not extraction.success:
-        return JsonResponse(
-            {
-                "success": False,
-                "error": extraction.message or "Falha ao extrair dados do passaporte.",
-                "warnings": extraction.warnings,
-            },
-            status=422,
-        )
-
-    target = (request.POST.get("target") or "cliente").strip().lower()
-    persist_in_session = request.POST.get("persist_in_session") == "true"
-
-    if persist_in_session and target == "cliente":
-        dados_temporarios = _obter_dados_temporarios_sessao(request) or {}
-        dados_temporarios.update(extraction.fields)
-        _salvar_dados_temporarios_sessao(request, dados_temporarios)
-
-    logger.info(
-        "Extração de passaporte concluída sem persistência de arquivo. numero=%s warnings=%s",
-        _mask_passport_for_log(extraction.fields.get("numero_passaporte")),
-        ",".join(extraction.warnings) if extraction.warnings else "none",
-    )
     return JsonResponse(
         {
-            "success": True,
-            "fields": extraction.fields,
-            "warnings": extraction.warnings,
-            "message": "Dados extraidos com sucesso. Revise antes de salvar.",
-        }
+            "success": False,
+            "error": "Extração automática de passaporte está desativada neste ambiente.",
+        },
+        status=503,
     )
 
 

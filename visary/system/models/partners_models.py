@@ -3,9 +3,8 @@
    
 
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
-
-from system.services.passwords import check_password_with_legacy_fallback
 
 
 class Partner(models.Model):
@@ -55,17 +54,22 @@ class Partner(models.Model):
         return self.nome_responsavel
 
     def set_password(self, raw_password):
-                                         
-        from django.contrib.auth.hashers import make_password
         self.senha = make_password(raw_password)
 
     def check_password(self, raw_password):
-        password_is_valid, should_upgrade_hash = check_password_with_legacy_fallback(
-            raw_password,
-            self.senha,
-        )
-        if password_is_valid and should_upgrade_hash:
+        if not self.senha:
+            return False
+
+        try:
+            if check_password(raw_password, self.senha):
+                return True
+        except ValueError:
+            pass
+
+        if self.senha == raw_password:
             self.set_password(raw_password)
             self.save(update_fields=["senha", "atualizado_em"])
-        return password_is_valid
+            return True
+
+        return False
 

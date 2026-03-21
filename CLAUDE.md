@@ -255,6 +255,7 @@ Regras de segurança e operação:
 - O mapeamento legado de tipo de visto deve usar normalização semântica (acentos/hífens/pontuação) para evitar catálogos duplicados que quebrem o vínculo com formulários.
 - A revalidação final do import deve comparar cobertura de formulários por tipo de visto efetivamente usado e completude mínima de perguntas com os JSONs de `static/forms_ini`.
 - O `cleanup.py` deve ser estritamente não destrutivo para código-fonte: remover apenas `__pycache__`, migrations locais e `db.sqlite3`; é proibido strip de comentários/docstrings e encerramento indiscriminado de processos Python.
+- Em execução operacional do agente, comandos `git` (status/diff/log/checkout/reset/rebase etc.) só podem ocorrer com solicitação explícita do usuário na tarefa atual.
 - Execução e instalação de dependências para import devem ocorrer no `.venv` do projeto; não instalar drivers do legado no Python global.
 - Diagnóstico mínimo obrigatório quando `criar_seeds_prod` falhar: `sys.executable`, presença de `mysql-connector-python`/`pymysql` no `.venv`, e confirmação de ausência desses pacotes no Python global.
 
@@ -337,6 +338,7 @@ Se uma feature nova não se encaixar claramente em um desses domínios, a modela
 - Assumir que signals financeiros cobrem todos os cenários de vínculo sem verificar edge cases.
 - Testar concorrência só em SQLite e assumir que produção está coberta.
 - Executar rotina de limpeza que altere código-fonte (ex.: strip de comentários/docstrings) ou finalize processos Python fora do escopo do projeto.
+- Executar comandos `git` sem solicitação explícita do usuário na tarefa atual.
 
 ---
 

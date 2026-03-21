@@ -204,13 +204,14 @@ pip install -r requirements.txt
 
 4. **Configure as variáveis de ambiente:**
 
-Crie um arquivo `.env` baseado em `.env_exemple` e configure:
+Crie um arquivo `.env` e configure apenas dados sensíveis.
 
 ```env
 SECRET_KEY=sua-chave-secreta-aqui
 DEBUG=True
 ALLOWED_HOSTS=*
-SYSTEM_SEED_PROFILES=[...]  # JSON com perfis iniciais
+SYSTEM_SEED_USERS_PASSWORDS='{"juliana.lopes@visary.com.br":"senha"}'
+SYSTEM_SEED_PARTNER_PASSWORDS='{"bni@hotmail.com":"senha"}'
 ```
 
 5. **Execute as migrações:**
@@ -234,12 +235,36 @@ Este comando cria/atualiza o usuário:
 
 ⚠️ **Importante:** Altere a senha em produção!
 
-7. **Carregue dados iniciais** (se houver fixtures ou comandos personalizados):
+7. **Carregue dados iniciais (opcional, sob demanda):**
 
-O sistema pode carregar automaticamente:
-- Formulários iniciais de `static/forms_ini/`
-- Etapas iniciais de `static/etapas_cliente_ini/`
-- Módulos e perfis baseados em `SYSTEM_SEED_PROFILES`
+O sistema sobe limpo após `migrate`. Rode apenas as seeds desejadas:
+
+```bash
+python manage.py initial_seeds
+
+# ou execute por seed especifica
+python manage.py seed_modulos
+python manage.py seed_perfis
+python manage.py seed_usuarios_consultoria
+python manage.py seed_paises
+python manage.py seed_tipos_visto
+python manage.py seed_status_processo
+python manage.py seed_formularios_visto
+python manage.py seed_etapas_cliente
+python manage.py seed_parceiros
+```
+
+Seeds especificas por filtro:
+
+```bash
+python manage.py seed_paises --nome "Canada"
+python manage.py seed_tipos_visto --nome "F1 (visto oficial de estudante)"
+python manage.py seed_status_processo --nome "Processo finalizado"
+python manage.py seed_formularios_visto --tipo-visto "F1 (visto oficial de estudante)"
+python manage.py seed_formularios_visto --arquivo FORMULARIO_EUA_F1.json
+python manage.py seed_parceiros --email "bni@hotmail.com"
+python manage.py seed_etapas_cliente --nome "Dados Pessoais"
+```
 
 ## ▶️ Execução
 
@@ -338,29 +363,13 @@ O sistema utiliza um modelo de permissões baseado em:
 
 ### Configuração Inicial
 
-Os perfis são definidos via variável de ambiente `SYSTEM_SEED_PROFILES` (JSON):
+As definições não sensíveis ficam em JSON em `visary/static/modulos_ini/`, `visary/static/perfis_ini/`, `visary/static/usuarios_consultoria_ini/`, `visary/static/paises_destino_ini/`, `visary/static/tipos_visto_ini/`, `visary/static/parceiros_ini/`, `visary/static/status_processo_ini/`, `visary/static/forms_ini/` e `visary/static/etapas_cliente_ini/`.
 
-```json
-[
-  {
-    "nome": "Administrador",
-    "descricao": "Acesso total ao sistema",
-    "pode_criar": true,
-    "pode_visualizar": true,
-    "pode_atualizar": true,
-    "pode_excluir": true,
-    "ativo": true
-  },
-  {
-    "nome": "Assessor",
-    "descricao": "Gestão de clientes e processos",
-    "pode_criar": true,
-    "pode_visualizar": true,
-    "pode_atualizar": true,
-    "pode_excluir": false,
-    "ativo": true
-  }
-]
+As únicas variáveis de seed no `.env` são as senhas:
+
+```env
+SYSTEM_SEED_USERS_PASSWORDS='{"email":"senha"}'
+SYSTEM_SEED_PARTNER_PASSWORDS='{"email":"senha"}'
 ```
 
 ## 🌐 APIs Disponíveis

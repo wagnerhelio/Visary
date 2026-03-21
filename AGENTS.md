@@ -30,6 +30,7 @@ Para qualquer solicitação, opere nesta ordem.
 ### Fase 1 — Leitura de contexto e impacto
 
 Antes de alterar qualquer arquivo:
+0. não execute comandos `git` (ex.: `git status`, `git diff`, `git log`) sem solicitação explícita do usuário na tarefa atual;
 1. leia o `CLAUDE.md` e a área do código afetada (models, views, forms, templates, services e signals);
 2. identifique quais domínios serão impactados: `clientes`, `dependentes`, `viagens`, `processos`, `etapas`, `formulários`, `respostas`, `financeiro`, `parceiros`, `permissões/módulos`, `autenticação`;
 3. verifique se a mudança toca alguma regra crítica:
@@ -223,6 +224,7 @@ TDD obrigatório (test-first):
 - Ignorar o fallback do serviço de CEP e deixar o fluxo travar sem orientação.
 - Testar concorrência só em SQLite e assumir que produção está coberta.
 - Executar `cleanup.py` destrutivo que altere código-fonte (ex.: remover comentários/docstrings) ou finalize processos Python sem escopo explícito.
+- Executar qualquer comando `git` sem pedido explícito do usuário na tarefa atual.
 
 ---
 

@@ -1,0 +1,9 @@
+{
+  "nome": "Administrador",
+  "descricao": "Perfil com acesso completo a todos os modulos e permissoes.",
+  "pode_criar": true,
+  "pode_visualizar": true,
+  "pode_atualizar": true,
+  "pode_excluir": true,
+  "ativo": true
+}

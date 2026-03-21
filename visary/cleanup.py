@@ -114,75 +114,6 @@ def remove_database(root: Path) -> bool:
     return True
 
 
-def _collect_python_processes(excluded_pids: set[int]) -> list["psutil.Process"]:
-    assert psutil is not None
-
-    processes: list["psutil.Process"] = []
-    for proc in psutil.process_iter(["pid", "name", "exe", "cmdline"]):
-        if proc.pid in excluded_pids:
-            continue
-
-        try:
-            name = (proc.info.get("name") or "").lower()
-            exe = (proc.info.get("exe") or "").lower()
-            cmdline: Iterable[str] | None = proc.info.get("cmdline")
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
-
-        if "python" in name or "python" in exe:
-            processes.append(proc)
-            continue
-
-        if cmdline and any("python" in part.lower() for part in cmdline):
-            processes.append(proc)
-    return processes
-
-
-def list_and_terminate_python_processes() -> int:
-    if psutil is None:
-        print("psutil não está instalado; não é possível listar/finalizar processos Python.")
-        return 0
-
-    current_pid = psutil.Process().pid
-    excluded = {current_pid}
-
-    processes = _collect_python_processes(excluded)
-    if not processes:
-        print("Nenhum processo Python restante.")
-        return 0
-
-    print("Processos Python restantes:")
-    for proc in processes:
-        cmdline = " ".join(proc.info.get("cmdline") or [])
-        print(f"- PID {proc.pid} | {proc.info.get('name') or ''} | {cmdline}")
-
-    terminated = 0
-    for proc in processes:
-        try:
-            proc.terminate()
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            continue
-
-    gone, alive = psutil.wait_procs(processes, timeout=3)
-    terminated += len(gone)
-
-    for proc in alive:
-        try:
-            proc.kill()
-            terminated += 1
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            print(f"Aviso: não foi possível encerrar PID {proc.pid}.")
-
-    leftovers = _collect_python_processes(excluded)
-    if leftovers:
-        pids = ", ".join(str(proc.pid) for proc in leftovers)
-        print(f"Processos que permaneceram ativos: {pids}")
-    else:
-        print("Todos os processos Python foram finalizados.")
-
-    return terminated
-
-
 def strip_comments_and_docstrings(root: Path) -> None:
                                                                
     repo_root = root.parent
@@ -779,28 +710,7 @@ def clean() -> None:
 
     remove_database(root)
 
-    services_root = root / "services" / "pysql"
-    reports_dir = services_root / "reports"
-    images_dir = services_root / "images"
-    logs_dir = services_root / "logs"
-
-    removed_reports = clean_directory(reports_dir)
-    removed_images = clean_directory(images_dir, {"LogoRelatorio.jpg"})
-    removed_logs = clean_directory(logs_dir)
-
-    total_removed = removed_reports + removed_images + removed_logs
-    if total_removed:
-        print(
-            "Arquivos removidos dos diretórios reports/images/logs: "
-            f"{total_removed} (reports={removed_reports}, images={removed_images}, logs={removed_logs})"
-        )
-    else:
-        print("Nenhum arquivo removido dos diretórios reports/images/logs.")
-
-                                                                                    
-    strip_comments_and_docstrings(root)
-
-    list_and_terminate_python_processes()
+    print("Limpeza concluída com segurança (sem strip de código e sem checks automáticos do Django).")
 
 
 def main() -> None:

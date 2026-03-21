@@ -1,0 +1,8 @@
+{
+  "nome": "Clientes",
+  "ordem": 1,
+  "perfis": [
+    "Atendente",
+    "Administrador"
+  ]
+}
