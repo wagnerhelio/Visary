@@ -33,6 +33,7 @@ from system.models import (
 from system.models.financial_models import Financeiro, StatusFinanceiro
 from system.services.legacy_markers import extract_legacy_meta, strip_legacy_meta, upsert_legacy_meta
 from system.services.cep import buscar_endereco_por_cep
+from system.services.passport_ocr import PassportExtractionError, extract_passport_data_from_document
 from system.models import UsuarioConsultoria
 
 User = get_user_model()
@@ -2667,13 +2668,37 @@ def _mask_passport_for_log(passport_number: str | None) -> str:
 @login_required
 @require_http_methods(["POST"])
 def api_extrair_passaporte(request):
-    return JsonResponse(
-        {
-            "success": False,
-            "error": "Extração automática de passaporte está desativada neste ambiente.",
-        },
-        status=503,
+    documento = request.FILES.get("documento")
+    if not documento:
+        return JsonResponse({"success": False, "error": "Envie um documento para extração."}, status=400)
+
+    if documento.size > 10 * 1024 * 1024:
+        return JsonResponse({"success": False, "error": "Arquivo muito grande. Limite de 10MB."}, status=400)
+
+    target = request.POST.get("target", "cliente").strip().lower() or "cliente"
+    persist_in_session = request.POST.get("persist_in_session", "false").lower() == "true"
+
+    try:
+        extraction = extract_passport_data_from_document(documento)
+    except PassportExtractionError as exc:
+        return JsonResponse({"success": False, "error": str(exc)}, status=400)
+    except Exception:
+        logger.exception("Falha inesperada ao extrair OCR de passaporte.")
+        return JsonResponse({"success": False, "error": "Falha interna ao processar o documento."}, status=500)
+
+    fields = extraction.get("fields", {})
+    warnings = extraction.get("warnings", [])
+    if persist_in_session:
+        request.session[f"passport_ocr_{target}"] = fields
+        request.session.modified = True
+
+    logger.info(
+        "OCR passaporte concluído target=%s numero=%s campos=%s",
+        target,
+        _mask_passport_for_log(fields.get("numero_passaporte")),
+        ",".join(sorted(fields.keys())),
     )
+    return JsonResponse({"success": True, "fields": fields, "warnings": warnings})
 
 
 @login_required

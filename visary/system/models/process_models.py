@@ -98,9 +98,13 @@ class Processo(models.Model):
 
     @property
     def progresso_percentual(self):
-                                                            
+        
         if self.total_etapas == 0:
             return 0
+        if self.etapas.filter(status__nome__iexact="Processo finalizado", concluida=True).exists():
+            return 100
+        if self.etapas.filter(status__nome__iexact="Processo cancelado", concluida=True).exists():
+            return 100
         return int((self.etapas_concluidas / self.total_etapas) * 100)
 
 

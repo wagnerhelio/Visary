@@ -61,6 +61,9 @@ urlpatterns = [
     path("formularios/tipos/listar/",views.listar_tipos_formulario,name="listar_tipos_formulario",),
     path("formularios/tipos/<int:pk>/editar/",views.editar_formulario,name="editar_formulario",),
     path("formularios/tipos/<int:pk>/excluir/",views.excluir_formulario,name="excluir_formulario",),
+    path("formularios/tipos/<int:formulario_id>/etapas/criar/",views.criar_etapa_formulario,name="criar_etapa_formulario",),
+    path("formularios/etapas/<int:pk>/editar/",views.editar_etapa_formulario,name="editar_etapa_formulario",),
+    path("formularios/etapas/<int:pk>/excluir/",views.excluir_etapa_formulario,name="excluir_etapa_formulario",),
     path("formularios/tipos/<int:formulario_id>/perguntas/criar/",views.criar_pergunta,name="criar_pergunta",),
     path("processos/",views.home_processos,name="home_processos",),
     path("processos/criar/",views.criar_processo,name="criar_processo",),
@@ -110,5 +113,8 @@ urlpatterns = [
     path("cliente/dashboard/",views.cliente_dashboard,name="cliente_dashboard",),
     path("cliente/viagem/<int:viagem_id>/formulario/",views.cliente_visualizar_formulario,name="cliente_visualizar_formulario",),
     path("cliente/viagem/<int:viagem_id>/salvar-resposta/",views.cliente_salvar_resposta,name="cliente_salvar_resposta",),
+    path("parceiro/dashboard/",views.parceiro_dashboard,name="parceiro_dashboard",),
+    path("parceiro/clientes/<int:cliente_id>/visualizar/",views.parceiro_visualizar_cliente,name="parceiro_visualizar_cliente",),
+    path("parceiro/logout/",views.parceiro_logout_view,name="parceiro_logout",),
 ]
 

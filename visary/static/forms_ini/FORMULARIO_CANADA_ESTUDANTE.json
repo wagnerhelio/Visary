@@ -7,28 +7,32 @@
         "pergunta": "Sobrenome",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 2,
         "pergunta": "Nome",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 3,
         "pergunta": "Nomes anteriores",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 4,
         "pergunta": "CPF",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 5,
@@ -39,49 +43,56 @@
         "opcoes": [
           "Masculino",
           "Feminino"
-        ]
+        ],
+        "etapa": 1
       },
       {
         "ordem": 6,
         "pergunta": "Data de Nascimento (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 7,
         "pergunta": "Cidade e estado de Nascimento",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 8,
         "pergunta": "País de Nascimento",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 9,
         "pergunta": "Você é cidadão brasileiro?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 10,
         "pergunta": "Possui outras cidadanias?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 11,
         "pergunta": "Você esteve por mais de seis meses longe do seu país de residência nos últimos cinco anos?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 12,
@@ -97,28 +108,32 @@
           "Desquitado(a)",
           "Viúvo(a)",
           "Divorciado"
-        ]
+        ],
+        "etapa": 1
       },
       {
         "ordem": 13,
         "pergunta": "Sobrenome do cônjuge anterior",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 14,
         "pergunta": "Primeiro Nome do cônjuge anterior",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 15,
         "pergunta": "Data de Nascimento",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 16,
@@ -129,84 +144,96 @@
         "opcoes": [
           "União estável",
           "Casamento"
-        ]
+        ],
+        "etapa": 2
       },
       {
         "ordem": 17,
         "pergunta": "Data do início do casamento ou união estável (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 18,
         "pergunta": "Data do término do casamento ou união estável (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 19,
         "pergunta": "Qual a data em que você se casou ou iniciou sua união estável?",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 20,
         "pergunta": "Sobrenome do cônjuge atual, divorciado ou falecido",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 21,
         "pergunta": "Primeiro Nome do cônjuge atual, divorciado ou falecido",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 22,
         "pergunta": "Data de nascimento do cônjuge",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 23,
         "pergunta": "País de nascimento do cônjuge",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 24,
         "pergunta": "Endereço atual do cônjuge",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 25,
         "pergunta": "Ocupação atual do cônjuge",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 26,
         "pergunta": "Viaja com você para o Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 27,
         "pergunta": "Você já foi casado(a) ou possuiu uma outra união estável anteriormente?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 28,
@@ -221,84 +248,96 @@
           "Já ocupou posição de autoridade no governo, judiciário ou partido político?",
           "Em tempos de paz ou guerra, esteve envolvido em crimes que lesa a humanidade?",
           "Não se aplica."
-        ]
+        ],
+        "etapa": 3
       },
       {
         "ordem": 29,
         "pergunta": "Número do Passaporte",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 30,
         "pergunta": "País referente ao passaporte",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 31,
         "pergunta": "Data de emissão do passaporte",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 32,
         "pergunta": "Data de expiração do passaporte",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 33,
         "pergunta": "Como você quer que seja feita a devolução do seu passaporte?",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 34,
         "pergunta": "Endereço completo",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 5
       },
       {
         "ordem": 35,
         "pergunta": "Bairro",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 5
       },
       {
         "ordem": 36,
         "pergunta": "CEP",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 5
       },
       {
         "ordem": 37,
         "pergunta": "Cidade e estado",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 5
       },
       {
         "ordem": 38,
         "pergunta": "País",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 5
       },
       {
         "ordem": 39,
         "pergunta": "Telefone Primário",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 5
       },
       {
         "ordem": 40,
@@ -310,14 +349,16 @@
           "Residencial",
           "Trabalho",
           "Celular"
-        ]
+        ],
+        "etapa": 5
       },
       {
         "ordem": 41,
         "pergunta": "Telefone Secundário",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 5
       },
       {
         "ordem": 42,
@@ -329,14 +370,16 @@
           "Residencial",
           "Trabalho",
           "Celular"
-        ]
+        ],
+        "etapa": 5
       },
       {
         "ordem": 43,
         "pergunta": "E-mail",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 5
       },
       {
         "ordem": 44,
@@ -348,14 +391,16 @@
           "Estudos acima de seis meses",
           "High School",
           "Intercâmbio (Estudo e Trabalho)"
-        ]
+        ],
+        "etapa": 6
       },
       {
         "ordem": 45,
         "pergunta": "Nome da Instituição de Ensino no Canadá",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 46,
@@ -377,77 +422,88 @@
           "QC - Québec",
           "SK - Saskatchewan",
           "YT - Yukon Territories"
-        ]
+        ],
+        "etapa": 6
       },
       {
         "ordem": 47,
         "pergunta": "Cidade",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 48,
         "pergunta": "Endereço da Instituição de Ensino",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 49,
         "pergunta": "Campo de estudo",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 50,
         "pergunta": "Data da entrada no Canadá (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 51,
         "pergunta": "Data da saída do Canadá (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 52,
         "pergunta": "Código DLI (Designated Learning Institution DLI)",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 53,
         "pergunta": "Student ID",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 54,
         "pergunta": "Valor total do curso",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 55,
         "pergunta": "Valor da acomodação",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 56,
         "pergunta": "Fundos disponíveis para a sua visita (em dólares canadenses)",
         "tipo_campo": "numero",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 6
       },
       {
         "ordem": 57,
@@ -461,84 +517,96 @@
           "Mãe",
           "Ambos (Pai e Mãe)",
           "Outro"
-        ]
+        ],
+        "etapa": 7
       },
       {
         "ordem": 58,
         "pergunta": "Você realizou algum estudo após o Ensino Médio (incluindo universidades e estudos técnicos)",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 59,
         "pergunta": "Data de início do curso (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 60,
         "pergunta": "Data do término do curso (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 61,
         "pergunta": "Área de Estudos",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 62,
         "pergunta": "Nome da Instituição de Ensino",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 63,
         "pergunta": "Cidade da Instituição de Ensino",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 64,
         "pergunta": "País da Instituição de Ensino",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 65,
         "pergunta": "Qual a sua ocupação ou profissão atual?",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 8
       },
       {
         "ordem": 66,
         "pergunta": "Endereço completo do empregador ou escola",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 8
       },
       {
         "ordem": 67,
         "pergunta": "Data de admissão no trabalho ou início dos estudos?",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 8
       },
       {
         "ordem": 68,
         "pergunta": "Nome do empregador ou escola?",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 8
       },
       {
         "ordem": 69,
@@ -556,259 +624,296 @@
           "Problemas médicos",
           "Desertei",
           "Outro"
-        ]
+        ],
+        "etapa": 8
       },
       {
         "ordem": 70,
         "pergunta": "1 - Ocupação ou profissão",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 71,
         "pergunta": "Nome do empregador ou Instituição de Ensino",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 72,
         "pergunta": "Cidade",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 73,
         "pergunta": "País",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 74,
         "pergunta": "Data de início da ocupação / Estudo (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 75,
         "pergunta": "Data do término da ocupação / Estudo (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 76,
         "pergunta": "2 - Ocupação anterior",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 77,
         "pergunta": "Nome do empregador",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 78,
         "pergunta": "Cidade",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 79,
         "pergunta": "País",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 80,
         "pergunta": "Data de início da ocupação (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 81,
         "pergunta": "Data do término da ocupação (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 82,
         "pergunta": "3 - Ocupação anterior",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 83,
         "pergunta": "Nome do empregador",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 84,
         "pergunta": "Cidade",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 85,
         "pergunta": "País",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 86,
         "pergunta": "Data de início da ocupação (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 87,
         "pergunta": "Data do término da ocupação (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 88,
         "pergunta": "Nos últimos dois anos, você ou algum membro da família tiveram tuberculose ou contato próximo com alguém com tuberculose?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 10
       },
       {
         "ordem": 89,
         "pergunta": "Você tem algum distúrbio físico ou mental que demandaria serviços sociais ou de saúde (que não sejam simples medicação) durante sua estadia no Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 10
       },
       {
         "ordem": 90,
         "pergunta": "Já teve um visto negado para o Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 10
       },
       {
         "ordem": 91,
         "pergunta": "Já teve a entrada recusada, ou foi obrigado(a) a deixar o Canadá ou qualquer outro país?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 10
       },
       {
         "ordem": 92,
         "pergunta": "Já solicitou algum visto para o Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 10
       },
       {
         "ordem": 93,
         "pergunta": "Caso tenha respondido \"Sim\" a qualquer uma das perguntas acima, especifique",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 94,
         "pergunta": "1- Salário mensal dos seus empregos nos últimos 10 anos",
         "tipo_campo": "numero",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 95,
         "pergunta": "2- a) Caso tenha servido ao exército, milícia, polícia ou unidade de defesa, detalhe sua função",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 96,
         "pergunta": "2- b) Caso tenha recebido algum treinamento especial, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 97,
         "pergunta": "2- c) Caso tenha participado em alguma forma de combate, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 98,
         "pergunta": "2- d) Por quê deixou de servir?",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 99,
         "pergunta": "3- Caso já tenha participado ou testemunhado maus tratos a prisioneiros ou civis, pilhagem ou violação de edifícios religiosos, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 100,
         "pergunta": "4- Caso já tenha sido membro de partido político ou outro grupo ou organização, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 101,
         "pergunta": "5- Caso já tenha ocupado um cargo no governo, judiciário ou empresa pública, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 102,
         "pergunta": "6- Caso você ou algum membro de sua família que esteja acompanhando tenha cometido, sido preso ou acusado por qualquer crime, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 103,
         "pergunta": "Nome completo de sua mãe",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 104,
         "pergunta": "Data de nascimento de sua mãe (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 105,
         "pergunta": "País de nascimento de sua mãe",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 106,
@@ -822,49 +927,56 @@
           "Divorciado(a)",
           "Viúvo(a)",
           "União Estável"
-        ]
+        ],
+        "etapa": 12
       },
       {
         "ordem": 107,
         "pergunta": "Endereço atual de sua mãe",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 108,
         "pergunta": "Ocupação atual da sua mãe",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 109,
         "pergunta": "Sua mãe vai acompanhar você ao Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 110,
         "pergunta": "Nome completo de seu pai",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 13
       },
       {
         "ordem": 111,
         "pergunta": "Data de nascimento de seu pai (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 13
       },
       {
         "ordem": 112,
         "pergunta": "País de nascimento de seu pai",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 13
       },
       {
         "ordem": 113,
@@ -878,35 +990,40 @@
           "Divorciado(a)",
           "Viúvo(a)",
           "União Estável"
-        ]
+        ],
+        "etapa": 13
       },
       {
         "ordem": 114,
         "pergunta": "Endereço atual de seu pai",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 13
       },
       {
         "ordem": 115,
         "pergunta": "Ocupação atual de seu pai",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 13
       },
       {
         "ordem": 116,
         "pergunta": "Seu pai vai acompanhar você ao Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 13
       },
       {
         "ordem": 117,
         "pergunta": "Você possui filhos?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 118,
@@ -919,28 +1036,32 @@
           "2",
           "3",
           "Acima de 3"
-        ]
+        ],
+        "etapa": 14
       },
       {
         "ordem": 119,
         "pergunta": "1- Nome completo",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 120,
         "pergunta": "1- Data de nascimento (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 121,
         "pergunta": "1- País de nascimento",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 122,
@@ -954,49 +1075,56 @@
           "Divorciado(a)",
           "Viúvo(a)",
           "União Estável"
-        ]
+        ],
+        "etapa": 14
       },
       {
         "ordem": 123,
         "pergunta": "1- Endereço atual",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 124,
         "pergunta": "1- Ocupação atual",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 125,
         "pergunta": "1- Vai acompanhar você ao Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 126,
         "pergunta": "2- Nome completo",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 127,
         "pergunta": "2- Data de nascimento (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 128,
         "pergunta": "2- País de nascimento",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 129,
@@ -1010,49 +1138,56 @@
           "Divorciado(a)",
           "Viúvo(a)",
           "União Estável"
-        ]
+        ],
+        "etapa": 14
       },
       {
         "ordem": 130,
         "pergunta": "2- Endereço atual",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 131,
         "pergunta": "2- Ocupação atual",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 132,
         "pergunta": "2- Vai acompanhar você ao Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 133,
         "pergunta": "3- Nome completo",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 134,
         "pergunta": "3- Data de nascimento (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 135,
         "pergunta": "3- País de nascimento",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 136,
@@ -1066,77 +1201,88 @@
           "Divorciado(a)",
           "Viúvo(a)",
           "União Estável"
-        ]
+        ],
+        "etapa": 14
       },
       {
         "ordem": 137,
         "pergunta": "3- Endereço atual",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 138,
         "pergunta": "3- Ocupação atual",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 139,
         "pergunta": "3- Vai acompanhar você ao Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 140,
         "pergunta": "Dados dos outros filhos",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       },
       {
         "ordem": 141,
         "pergunta": "Breve descrição das atividades enquanto estiver no Canadá",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 15
       },
       {
         "ordem": 142,
         "pergunta": "Tem algum conhecido no Canadá (amigos, família, colegas de trabalho, etc)?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 15
       },
       {
         "ordem": 143,
         "pergunta": "Está viajando com alguém para o Canadá (amigos, família, colegas de trabalho, etc)?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 15
       },
       {
         "ordem": 144,
         "pergunta": "Alguma informação relevante que queira mencionar?",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 15
       },
       {
         "ordem": 145,
         "pergunta": "Qual a sua língua nativa?",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 15
       },
       {
         "ordem": 146,
         "pergunta": "Se não for inglês ou francês, qual língua você usa com mais frequência?",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 15
       },
       {
         "ordem": 147,
@@ -1149,14 +1295,16 @@
           "Francês",
           "Nenhum",
           "Ambos os idiomas"
-        ]
+        ],
+        "etapa": 15
       },
       {
         "ordem": 148,
         "pergunta": "Você já realizou algum teste de proficiência em Inglês ou Francês?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 15
       }
     ]
   }

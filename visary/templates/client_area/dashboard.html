@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Visary | Área do Cliente{% endblock %}
+{% block title %}Visary | Area do Cliente{% endblock %}
 
 {% block base_styles %}
     {{ block.super }}
@@ -92,9 +92,89 @@
             min-width: 120px;
         }
 
-        .viagem-actions {
+        .viajantes-section {
+            margin-bottom: 8px;
+        }
+
+        .viajante-card {
+            background: rgba(12, 19, 35, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
             display: flex;
+            justify-content: space-between;
+            align-items: center;
             gap: 12px;
+        }
+
+        .viajante-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .viajante-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .viajante-nome {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-principal {
+            background: rgba(86, 244, 156, 0.2);
+            border: 1px solid rgba(86, 244, 156, 0.4);
+            color: rgba(86, 244, 156, 0.9);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .badge-dependente {
+            background: rgba(255, 193, 7, 0.15);
+            border: 1px solid rgba(255, 193, 7, 0.35);
+            color: rgba(255, 193, 7, 0.85);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .viajante-cpf {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .viajante-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .status-badge.pendente {
+            background: rgba(255, 193, 7, 0.15);
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            color: rgba(255, 193, 7, 0.9);
+        }
+
+        .status-badge.respondido {
+            background: rgba(86, 244, 156, 0.15);
+            border: 1px solid rgba(86, 244, 156, 0.4);
+            color: rgba(86, 244, 156, 0.9);
         }
 
         .empty-state {
@@ -126,12 +206,14 @@
                 gap: 12px;
             }
 
-            .viagem-actions {
+            .viajante-card {
                 flex-direction: column;
+                align-items: flex-start;
             }
 
-            .viagem-actions .btn {
+            .viajante-actions {
                 width: 100%;
+                justify-content: flex-end;
             }
         }
     </style>
@@ -141,7 +223,7 @@
 <div class="client-header">
     <div>
         <h1>Bem-vindo, {{ cliente.nome }}!</h1>
-        <p>Gerencie suas viagens e formulários</p>
+        <p>Gerencie suas viagens e formularios</p>
     </div>
     <a href="{% url 'system:cliente_logout' %}" class="btn btn-outline">Sair</a>
 </div>
@@ -157,20 +239,6 @@
 
                 <div class="viagem-info">
                     <div class="viagem-info-item">
-                        <strong>Viajantes:</strong>
-                        <span>
-                            {% with clientes_viagem=viagem.clientes.all %}
-                                {% for c in clientes_viagem %}
-                                    {% if c.pk == cliente.pk %}
-                                        <strong>{{ c.nome }}</strong>{% if not forloop.last %}, {% endif %}
-                                    {% else %}
-                                        {{ c.nome }}{% if not forloop.last %}, {% endif %}
-                                    {% endif %}
-                                {% endfor %}
-                            {% endwith %}
-                        </span>
-                    </div>
-                    <div class="viagem-info-item">
                         <strong>Data da Viagem:</strong>
                         <span>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</span>
                     </div>
@@ -184,25 +252,54 @@
                     </div>
                 </div>
 
-                <div class="viagem-actions">
-                    {% if viagem.tipo_visto.formulario %}
-                        <a href="{% url 'system:cliente_visualizar_formulario' viagem.pk %}" class="btn btn-primary">
-                            📝 Preencher Formulário
-                        </a>
-                    {% else %}
-                        <span class="btn btn-outline" style="opacity: 0.5; cursor: not-allowed;">
-                            Formulário não disponível
-                        </span>
-                    {% endif %}
+                {% if viagem.tipo_visto.formulario %}
+                <div class="viajantes-section">
+                    {% for c in viagem.clientes.all %}
+                        {% if c.is_principal %}
+                        <div class="viajante-card">
+                            <div class="viajante-info">
+                                <span class="viajante-nome">
+                                    {{ c.nome }}
+                                    <span class="badge-principal">Titular</span>
+                                </span>
+                                <span class="viajante-cpf">{{ c.cpf }}</span>
+                            </div>
+                            <div class="viajante-actions">
+                                <a href="{% url 'system:cliente_visualizar_formulario' viagem.pk %}" class="btn btn-primary">
+                                    Preencher Formulario
+                                </a>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="viajante-card">
+                            <div class="viajante-info">
+                                <span class="viajante-nome">
+                                    {{ c.nome }}
+                                    <span class="badge-dependente">Dependente</span>
+                                </span>
+                                <span class="viajante-cpf">{{ c.cpf }}</span>
+                            </div>
+                            <div class="viajante-actions">
+                                <a href="{% url 'system:cliente_visualizar_formulario' viagem.pk %}" class="btn btn-primary">
+                                    Preencher Formulario
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                 </div>
+                {% else %}
+                    <div style="padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.05); color: var(--text-secondary); text-align: center; font-size: 0.9rem;">
+                        Formulario nao disponivel para este tipo de visto.
+                    </div>
+                {% endif %}
             </div>
         {% endfor %}
     </div>
 {% else %}
     <div class="empty-state">
         <h3>Nenhuma viagem encontrada</h3>
-        <p>Você ainda não está vinculado a nenhuma viagem.</p>
+        <p>Voce ainda nao esta vinculado a nenhuma viagem.</p>
     </div>
 {% endif %}
 {% endblock %}
-

@@ -154,6 +154,15 @@
             </div>
 
             <div>
+                <label for="{{ form.etapa.id_for_label }}">Etapa do Formulário</label>
+                {{ form.etapa }}
+                {{ form.etapa.errors }}
+                <p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 0.85rem;">
+                    Você pode mover esta pergunta para outra etapa ou deixá-la sem etapa.
+                </p>
+            </div>
+
+            <div>
                 <label for="{{ form.tipo_campo.id_for_label }}">Tipo de Campo *</label>
                 {{ form.tipo_campo }}
                 {{ form.tipo_campo.errors }}

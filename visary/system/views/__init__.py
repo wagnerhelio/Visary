@@ -24,6 +24,7 @@ from .client_area_views import (
     cliente_salvar_resposta,
     cliente_visualizar_formulario,
 )
+from .partner_area_views import parceiro_dashboard, parceiro_logout_view, parceiro_visualizar_cliente
 from .home_views import home
 from .client_views import (
     adicionar_dependente,
@@ -56,12 +57,15 @@ from .financial_views import (
     listar_financeiro,
 )
 from .form_views import (
+    criar_etapa_formulario,
     criar_formulario,
     criar_opcao_selecao,
     criar_pergunta,
+    editar_etapa_formulario,
     editar_formulario,
     editar_opcao_selecao,
     editar_pergunta,
+    excluir_etapa_formulario,
     excluir_formulario,
     excluir_opcao_selecao,
     excluir_pergunta,
@@ -144,6 +148,9 @@ __all__ = (
     "cliente_logout_view",
     "cliente_salvar_resposta",
     "cliente_visualizar_formulario",
+    "parceiro_dashboard",
+    "parceiro_logout_view",
+    "parceiro_visualizar_cliente",
     "criar_pais_destino",
     "criar_processo",
     "criar_status_processo",
@@ -188,14 +195,17 @@ __all__ = (
     "listar_etapas_cadastro",
     "remover_dependente",
     "criar_formulario",
+    "criar_etapa_formulario",
     "criar_opcao_selecao",
     "criar_pergunta",
     "criar_partner",
     "editar_formulario",
+    "editar_etapa_formulario",
     "editar_opcao_selecao",
     "editar_pergunta",
     "editar_partner",
     "excluir_formulario",
+    "excluir_etapa_formulario",
     "excluir_opcao_selecao",
     "excluir_pergunta",
     "excluir_partner",

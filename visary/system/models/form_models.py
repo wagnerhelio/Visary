@@ -29,6 +29,29 @@ class FormularioVisto(models.Model):
         return f"Formulário - {self.tipo_visto.nome}"
 
 
+class EtapaFormularioVisto(models.Model):
+    formulario = models.ForeignKey(
+        FormularioVisto,
+        on_delete=models.CASCADE,
+        related_name="etapas",
+        verbose_name="Formulário",
+    )
+    nome = models.CharField("Nome da etapa", max_length=120)
+    ordem = models.PositiveIntegerField("Ordem", default=0)
+    ativo = models.BooleanField("Ativo", default=True)
+    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
+    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+
+    class Meta:
+        verbose_name = "Etapa do Formulário"
+        verbose_name_plural = "Etapas do Formulário"
+        ordering = ("formulario", "ordem", "nome")
+        unique_together = [("formulario", "ordem")]
+
+    def __str__(self):
+        return f"{self.formulario} - {self.nome}"
+
+
 class PerguntaFormulario(models.Model):
                                                    
 
@@ -45,6 +68,14 @@ class PerguntaFormulario(models.Model):
         on_delete=models.CASCADE,
         related_name="perguntas",
         verbose_name="Formulário",
+    )
+    etapa = models.ForeignKey(
+        EtapaFormularioVisto,
+        on_delete=models.SET_NULL,
+        related_name="perguntas",
+        verbose_name="Etapa",
+        null=True,
+        blank=True,
     )
     pergunta = models.CharField("Pergunta", max_length=500)
     regra_exibicao = models.JSONField("Regra de Exibição", null=True, blank=True)

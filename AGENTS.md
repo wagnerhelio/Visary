@@ -157,6 +157,7 @@ Frase de encerramento obrigatória quando houver nova descoberta relevante:
 ### Estrutura
 - Prefira monólito modular Django bem organizado a espalhar regra de negócio em arquivos aleatórios.
 - Regras de domínio ficam no backend.
+- **Aparência visual é parte da entrega.** Nunca entregue template funcional sem estilo. Todo template novo ou reescrito deve seguir o design system do projeto: CSS custom properties (`--card-bg`, `--accent`, `--text-primary`, etc.), cards com `border-radius: 24px`, `box-shadow: 0 24px 48px rgba(5,8,17,0.5)`, botões com cores/acentos consistentes, badges coloridos por tipo (verde para ativo/sucesso, amarelo para atenção, vermelho para perigo, etc.), inputs com transições suaves. Templates genéricos (`{{ form.as_p }}` sem estilização, classes CSS inventadas ou inline styles avulsos) são rejeitados em revisão.
 - Templates não carregam regra de negócio complexa; apenas renderizam e exibem.
 - Forms devem ser validados no backend; UI pode ajudar, mas nunca decide o que é permitido.
 - MVT: Models (dados e validações), Views (orquestração e permissão), Templates (apenas renderização).
@@ -211,6 +212,7 @@ TDD obrigatório (test-first):
 
 ## 6. O que o agente deve evitar
 
+- **Criar migrações manuais.** Sempre usar `makemigrations` do Django. Nunca escrever arquivos de migração manualmente.
 - Criar dois clientes para a mesma pessoa (especialmente via CPF, inclusive durante wizard de cadastro).
 - Misturar regra financeira com renderização de template.
 - Confiar apenas em bloqueio visual de frontend para permissões/escopo.

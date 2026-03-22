@@ -43,6 +43,19 @@ def normalize_semantic_key(value: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", "", text.lower())
 
 
+def question_starts_with_key(question: str, key: str) -> bool:
+    question = (question or "").strip()
+    key = (key or "").strip()
+    if not question or not key:
+        return False
+    return (
+        question == key
+        or question.startswith(f"{key} ")
+        or question.startswith(f"{key}?")
+        or question.startswith(f"{key}:")
+    )
+
+
 def normalize_cpf(value: str | None) -> str:
     digits = re.sub(r"\D", "", str(value or ""))
     return digits if len(digits) == 11 else ""
@@ -737,11 +750,54 @@ class Command(BaseCommand):
         for process_id in cronograma_by_process:
             cronograma_by_process[process_id].sort(
                 key=lambda item: (
-                    item.get("updated_at") or item.get("created_at") or datetime.min,
                     int(item.get("id") or 0),
                 )
             )
         return situacao_by_id, cronograma_by_process
+
+    def _build_expected_stage_state(self, statuses, status_by_name, cron_rows, situacao_by_id, fallback_conclusao_date):
+        state = {}
+        mapped_rows = []
+
+        for cron_row in cron_rows:
+            situacao_name = situacao_by_id.get(int(cron_row.get("situacao_id") or 0))
+            if not situacao_name:
+                continue
+            status = status_by_name.get(situacao_name)
+            if not status:
+                continue
+
+            prazo_dias_raw = str(cron_row.get("dias_prazo_finalizacao") or "").strip()
+            prazo_dias = int(prazo_dias_raw) if prazo_dias_raw.isdigit() else status.prazo_padrao_dias
+            concluida = cron_row.get("data_finalizacao") is not None
+            data_conclusao = parse_date(cron_row.get("data_finalizacao")) if concluida else None
+
+            state[status.pk] = {
+                "concluida": concluida,
+                "prazo_dias": prazo_dias,
+                "data_conclusao": data_conclusao,
+            }
+            mapped_rows.append((status, concluida))
+
+        if mapped_rows:
+            current_status, current_done = mapped_rows[-1]
+            if normalize_text(current_status.nome) != "processo cancelado":
+                for status in statuses:
+                    if status.ordem < current_status.ordem:
+                        base_state = state.get(status.pk, {})
+                        state[status.pk] = {
+                            "concluida": True,
+                            "prazo_dias": base_state.get("prazo_dias", status.prazo_padrao_dias),
+                            "data_conclusao": base_state.get("data_conclusao") or fallback_conclusao_date,
+                        }
+                current_base = state.get(current_status.pk, {})
+                state[current_status.pk] = {
+                    "concluida": current_done,
+                    "prazo_dias": current_base.get("prazo_dias", current_status.prazo_padrao_dias),
+                    "data_conclusao": current_base.get("data_conclusao") or (fallback_conclusao_date if current_done else None),
+                }
+
+        return state
 
     def _build_status_name_map(self, tipo):
         statuses = list(StatusProcesso.objects.filter(ativo=True, tipo_visto=tipo).order_by("ordem", "id"))
@@ -771,28 +827,18 @@ class Command(BaseCommand):
                 continue
 
             cron_rows = cronograma_by_process.get(process_id, [])
-            cronograma_state_by_status = {}
-
-            for cron_row in cron_rows:
-                situacao_name = situacao_by_id.get(int(cron_row.get("situacao_id") or 0))
-                status = status_by_name.get(situacao_name)
-                if not status:
-                    continue
-
-                prazo_dias_raw = str(cron_row.get("dias_prazo_finalizacao") or "").strip()
-                prazo_dias = int(prazo_dias_raw) if prazo_dias_raw.isdigit() else status.prazo_padrao_dias
-                concluida = cron_row.get("data_finalizacao") is not None
-                data_conclusao = parse_date(cron_row.get("data_finalizacao")) if concluida else None
-                cronograma_state_by_status[status.pk] = {
-                    "concluida": concluida,
-                    "prazo_dias": prazo_dias,
-                    "data_conclusao": data_conclusao,
-                }
+            fallback_conclusao_date = parse_date(row.get("updated_at"))
+            cronograma_state_by_status = self._build_expected_stage_state(
+                statuses=statuses,
+                status_by_name=status_by_name,
+                cron_rows=cron_rows,
+                situacao_by_id=situacao_by_id,
+                fallback_conclusao_date=fallback_conclusao_date,
+            )
 
             percentage = self._parse_legacy_percentage(row.get("percet_conclusao"))
             concluida_count = int(round((percentage / 100) * len(statuses)))
             concluida_count = max(0, min(len(statuses), concluida_count))
-            fallback_conclusao_date = parse_date(row.get("updated_at"))
 
             for index, status in enumerate(statuses):
                 if cron_rows:
@@ -925,7 +971,7 @@ class Command(BaseCommand):
         ]
 
         for key, value in checks:
-            if key in q and value not in (None, ""):
+            if question_starts_with_key(q, key) and value not in (None, ""):
                 return value
 
         generic_sources = [cliente, processo, passaporte, escola, financeiro]
@@ -1057,6 +1103,12 @@ class Command(BaseCommand):
             for row in legacy["processos"]
             if row.get("id") is not None
         }
+        payload_maps = self._legacy_process_payload_maps(legacy)
+        legacy_client_map = {
+            int(row["id"]): row
+            for row in legacy["clientes"]
+            if row.get("id") is not None
+        }
         situacao_by_id, cronograma_by_process = self._legacy_cronograma_maps(legacy)
 
         stage_mismatches = []
@@ -1075,12 +1127,26 @@ class Command(BaseCommand):
             if not statuses:
                 continue
 
-            for cron_row in cronograma_by_process.get(process_id, []):
-                situacao_name = situacao_by_id.get(int(cron_row.get("situacao_id") or 0))
-                status = status_by_name.get(situacao_name)
-                if not status:
-                    continue
-                expected_done = cron_row.get("data_finalizacao") is not None
+            cronograma_state_by_status = {}
+            cron_rows = cronograma_by_process.get(process_id, [])
+            fallback_conclusao_date = parse_date(legacy_row.get("updated_at"))
+            cronograma_state_by_status = self._build_expected_stage_state(
+                statuses=statuses,
+                status_by_name=status_by_name,
+                cron_rows=cron_rows,
+                situacao_by_id=situacao_by_id,
+                fallback_conclusao_date=fallback_conclusao_date,
+            )
+
+            percentage = self._parse_legacy_percentage(legacy_row.get("percet_conclusao"))
+            concluida_count = int(round((percentage / 100) * len(statuses)))
+            concluida_count = max(0, min(len(statuses), concluida_count))
+
+            for index, status in enumerate(statuses):
+                if cron_rows:
+                    expected_done = cronograma_state_by_status.get(status.pk, {}).get("concluida", False)
+                else:
+                    expected_done = index < concluida_count
                 etapa = EtapaProcesso.objects.filter(processo=processo, status=status).first()
                 if not etapa:
                     stage_mismatches.append(
@@ -1114,19 +1180,86 @@ class Command(BaseCommand):
                 )
 
         form_mismatches = []
+        critical_form_aliases = (
+            "orgao emissor",
+            "numero do passaporte",
+            "pais emissor",
+            "data emissao",
+            "data validade",
+            "cidade emissao",
+        )
         for process_id, processo in processo_map.items():
             legacy_row = legacy_process_map.get(process_id)
             if not legacy_row:
                 continue
             expected_concluded_form = parse_bool(legacy_row.get("conclusao_formulario")) is True
-            orm_response_count = RespostaFormulario.objects.filter(
+            orm_qs = RespostaFormulario.objects.filter(
                 viagem=processo.viagem,
                 cliente=processo.cliente,
-            ).count()
+            )
+            orm_response_count = orm_qs.count()
             if expected_concluded_form and orm_response_count == 0:
                 form_mismatches.append(
                     f"Processo {process_id}: legado conclusao_formulario=1 mas ORM sem respostas"
                 )
+
+            formulario = FormularioVisto.objects.filter(tipo_visto=processo.viagem.tipo_visto, ativo=True).first()
+            legacy_cliente = legacy_client_map.get(int(legacy_row.get("cliente_id") or 0))
+            if not formulario or not legacy_cliente:
+                continue
+
+            context = {
+                "cliente": legacy_cliente,
+                "processo": legacy_row,
+            }
+            for table_name, table_map in payload_maps.items():
+                context[table_name] = table_map.get(process_id, {})
+
+            for pergunta in PerguntaFormulario.objects.filter(formulario=formulario, ativo=True).order_by("ordem"):
+                question_key = normalize_text(pergunta.pergunta)
+                if not any(alias in question_key for alias in critical_form_aliases):
+                    continue
+                expected_value = self._extract_answer_value(pergunta.pergunta, context)
+                if expected_value in (None, ""):
+                    continue
+                resposta = orm_qs.filter(pergunta=pergunta).first()
+                if not resposta:
+                    form_mismatches.append(
+                        f"Processo {process_id}: pergunta '{pergunta.pergunta}' sem resposta no ORM"
+                    )
+                    continue
+
+                if pergunta.tipo_campo == "data":
+                    expected_date = parse_date(expected_value)
+                    if expected_date and resposta.resposta_data != expected_date:
+                        form_mismatches.append(
+                            f"Processo {process_id}: pergunta '{pergunta.pergunta}' data esperada={expected_date} orm={resposta.resposta_data}"
+                        )
+                elif pergunta.tipo_campo == "numero":
+                    expected_number = parse_decimal_strict(expected_value)
+                    if expected_number is not None and resposta.resposta_numero != expected_number:
+                        form_mismatches.append(
+                            f"Processo {process_id}: pergunta '{pergunta.pergunta}' numero esperado={expected_number} orm={resposta.resposta_numero}"
+                        )
+                elif pergunta.tipo_campo == "booleano":
+                    expected_bool = parse_bool(expected_value)
+                    if expected_bool is not None and resposta.resposta_booleano != expected_bool:
+                        form_mismatches.append(
+                            f"Processo {process_id}: pergunta '{pergunta.pergunta}' booleano esperado={expected_bool} orm={resposta.resposta_booleano}"
+                        )
+                elif pergunta.tipo_campo == "selecao":
+                    expected_option = self._match_option(pergunta, expected_value)
+                    if expected_option and resposta.resposta_selecao_id != expected_option.pk:
+                        form_mismatches.append(
+                            f"Processo {process_id}: pergunta '{pergunta.pergunta}' selecao esperada={expected_option.texto} orm={resposta.get_resposta_display()}"
+                        )
+                else:
+                    expected_text_key = normalize_semantic_key(expected_value)
+                    actual_text_key = normalize_semantic_key(resposta.resposta_texto)
+                    if expected_text_key and actual_text_key and expected_text_key != actual_text_key:
+                        form_mismatches.append(
+                            f"Processo {process_id}: pergunta '{pergunta.pergunta}' texto esperado={expected_value} orm={resposta.resposta_texto}"
+                        )
 
         return {
             "stage_mismatches": stage_mismatches,

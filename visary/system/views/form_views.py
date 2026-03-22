@@ -11,11 +11,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
 from system.forms import (
+    FormularioEtapaForm,
     FormularioVistoForm,
     OpcaoSelecaoForm,
     PerguntaFormularioForm,
 )
-from system.models import FormularioVisto, OpcaoSelecao, PaisDestino, PerguntaFormulario, Viagem
+from system.models import EtapaFormularioVisto, FormularioVisto, OpcaoSelecao, PaisDestino, PerguntaFormulario, Viagem
 from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
 
 
@@ -443,7 +444,6 @@ def listar_tipos_formulario(request):
 
     formularios = (
         FormularioVisto.objects.select_related("tipo_visto", "tipo_visto__pais_destino")
-        .prefetch_related("perguntas")
         .all()
         .order_by("tipo_visto__nome")
     )
@@ -477,6 +477,14 @@ def editar_formulario(request, pk: int):
         .prefetch_related("opcoes")
         .order_by("ordem", "pergunta")
     )
+    etapas = list(
+        EtapaFormularioVisto.objects.filter(formulario=formulario)
+        .prefetch_related("perguntas")
+        .order_by("ordem")
+    )
+    perguntas_s_orphan = list(
+        formulario.perguntas.filter(ativo=True, etapa__isnull=True).order_by("ordem")
+    )
 
     if request.method == "POST":
         form = FormularioVistoForm(data=request.POST, instance=formulario)
@@ -492,10 +500,86 @@ def editar_formulario(request, pk: int):
         "form": form,
         "formulario": formulario,
         "perguntas": perguntas,
+        "etapas": etapas,
+        "perguntas_s_orphan": perguntas_s_orphan,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
     }
 
     return render(request, "forms/editar_formulario.html", contexto)
+
+
+@login_required
+def criar_etapa_formulario(request, formulario_id: int):
+    consultor = obter_consultor_usuario(request.user)
+    if not usuario_pode_gerenciar_todos(request.user, consultor):
+        raise PermissionDenied
+
+    formulario = get_object_or_404(FormularioVisto, pk=formulario_id)
+    if request.method == "POST":
+        form = FormularioEtapaForm(data=request.POST, formulario=formulario)
+        if form.is_valid():
+            etapa = form.save(commit=False)
+            etapa.formulario = formulario
+            etapa.save()
+            messages.success(request, "Etapa do formulário criada com sucesso.")
+            return redirect("system:editar_formulario", pk=formulario.pk)
+        messages.error(request, "Não foi possível criar a etapa do formulário.")
+    else:
+        form = FormularioEtapaForm(formulario=formulario)
+
+    return render(
+        request,
+        "forms/criar_etapa_formulario.html",
+        {"form": form, "formulario": formulario, "perfil_usuario": consultor.perfil.nome if consultor else None},
+    )
+
+
+@login_required
+def editar_etapa_formulario(request, pk: int):
+    consultor = obter_consultor_usuario(request.user)
+    if not usuario_pode_gerenciar_todos(request.user, consultor):
+        raise PermissionDenied
+
+    etapa = get_object_or_404(EtapaFormularioVisto.objects.select_related("formulario"), pk=pk)
+    formulario = etapa.formulario
+    perguntas = etapa.perguntas.all().order_by("ordem", "pergunta")
+
+    if request.method == "POST":
+        form = FormularioEtapaForm(data=request.POST, instance=etapa)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Etapa do formulário atualizada com sucesso.")
+            return redirect("system:editar_etapa_formulario", pk=etapa.pk)
+        messages.error(request, "Não foi possível atualizar a etapa do formulário.")
+    else:
+        form = FormularioEtapaForm(instance=etapa)
+
+    return render(
+        request,
+        "forms/editar_etapa_formulario.html",
+        {
+            "form": form,
+            "etapa": etapa,
+            "formulario": formulario,
+            "perguntas": perguntas,
+            "perfil_usuario": consultor.perfil.nome if consultor else None,
+        },
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def excluir_etapa_formulario(request, pk: int):
+    consultor = obter_consultor_usuario(request.user)
+    if not usuario_pode_gerenciar_todos(request.user, consultor):
+        raise PermissionDenied
+
+    etapa = get_object_or_404(EtapaFormularioVisto.objects.select_related("formulario"), pk=pk)
+    formulario_id = etapa.formulario_id
+    PerguntaFormulario.objects.filter(etapa=etapa).update(etapa=None)
+    etapa.delete()
+    messages.success(request, "Etapa removida. Perguntas ficaram sem agrupamento.")
+    return redirect("system:editar_formulario", pk=formulario_id)
 
 
 @login_required

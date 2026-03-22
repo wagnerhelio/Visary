@@ -12,7 +12,7 @@ from django.contrib.auth.hashers import is_password_usable
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from system.models import ClienteConsultoria
+from system.models import ClienteConsultoria, Partner
 from system.forms.authentication_forms import ConsultancyAuthenticationForm
 from system.models import UsuarioConsultoria
 
@@ -25,6 +25,8 @@ def _verificar_autenticacao_previa(request):
         return redirect(settings.LOGIN_REDIRECT_URL)
     if "cliente_id" in request.session:
         return redirect("system:cliente_dashboard")
+    if "partner_id" in request.session:
+        return redirect("system:parceiro_dashboard")
     return None
 
 
@@ -109,6 +111,30 @@ def _autenticar_cliente(identifier: str, password: str, request, remember: bool)
     return None
 
 
+def _autenticar_parceiro(identifier: str, password: str, request, remember: bool):
+    if "@" not in identifier:
+        return None
+
+    parceiro = Partner.objects.filter(email__iexact=identifier.strip(), ativo=True).first()
+    if not parceiro:
+        return None
+
+    if not parceiro.check_password(password):
+        return None
+
+    request.session["partner_id"] = parceiro.pk
+    request.session["partner_nome"] = parceiro.nome_responsavel
+    request.session["partner_email"] = parceiro.email
+
+    if not remember:
+        request.session.set_expiry(0)
+    else:
+        request.session.set_expiry(1209600)
+
+    messages.success(request, f"Bem-vindo(a), {parceiro.nome_responsavel}!")
+    return redirect("system:parceiro_dashboard")
+
+
 def login_view(request):
        
                                                                       
@@ -132,7 +158,10 @@ def login_view(request):
             if user is not None and user.is_active:
                 return _processar_login_consultor(request, user, remember)
 
-                                                                     
+            if redirect_response := _autenticar_parceiro(identifier, password, request, remember):
+                return redirect_response
+
+            
             if redirect_response := _autenticar_cliente(identifier, password, request, remember):
                 return redirect_response
 

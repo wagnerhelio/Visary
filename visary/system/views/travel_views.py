@@ -23,6 +23,8 @@ from system.models import ClienteConsultoria, ClienteViagem, FormularioVisto, Op
 from system.models.financial_models import Financeiro
 from system.models import UsuarioConsultoria
 from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
+from system.services.form_stages import build_stage_items, filter_questions_by_stage, resolve_stage_token
+from system.services.form_prefill import prefill_form_answers
 
 
 def _limpar_flags_viagens_cadastradas(request):
@@ -1302,19 +1304,16 @@ def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
         return None
 
 
-def _obter_dados_formulario(viagem, cliente):
-                                                                                                         
-                                                          
+def _obter_dados_formulario(viagem, cliente, stage_token=None):
     tipo_visto = _obter_tipo_visto_cliente(viagem, cliente)
     
     if not tipo_visto:
-        return None, None, None
+        return None, None, None, None, None, None
     
-                                                     
     formulario = _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True)
     
     if not formulario:
-        return None, None, None
+        return None, None, None, None, None, None
     
     perguntas = (
         formulario.perguntas.filter(ativo=True)
@@ -1327,8 +1326,14 @@ def _obter_dados_formulario(viagem, cliente):
     ).select_related("resposta_selecao")
     
     respostas_existentes = {r.pergunta_id: r for r in respostas_list}
-    
-    return formulario, perguntas, respostas_existentes
+
+    prefill_form_answers(viagem, cliente, perguntas, respostas_existentes)
+
+    stage_items = build_stage_items(formulario)
+    current_stage = resolve_stage_token(stage_items, stage_token)
+    stage_perguntas = filter_questions_by_stage(perguntas, current_stage)
+
+    return formulario, perguntas, respostas_existentes, stage_items, current_stage, list(stage_perguntas)
 
 
 def _atualizar_resposta_formulario(resposta, pergunta, valor):
@@ -1621,7 +1626,6 @@ def listar_formularios_viagem(request, viagem_id: int):
 
 @login_required
 def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
-                                                                             
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -1638,7 +1642,8 @@ def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
     if cliente not in viagem.clientes.all():
         raise PermissionDenied("Este cliente não está vinculado a esta viagem.")
     
-    formulario, perguntas, respostas_existentes = _obter_dados_formulario(viagem, cliente)
+    stage_token = request.GET.get("etapa")
+    formulario, all_perguntas, respostas_existentes, stage_items, current_stage, perguntas = _obter_dados_formulario(viagem, cliente, stage_token)
     
     if not formulario:
         messages.warning(
@@ -1656,12 +1661,35 @@ def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
         else:
             messages.success(
                 request,
-                f"Formulário do cliente {cliente.nome} salvo com sucesso! {respostas_salvas} resposta(s) registrada(s).",
+                f"Etapa '{current_stage['nome'] if current_stage else 'Atual'}' salva com sucesso!",
             )
-            return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
+            next_action = request.POST.get("next_action")
+            if next_action == "next" and current_stage:
+                next_stage = None
+                for i, item in enumerate(stage_items):
+                    if item["token"] == current_stage["token"] and i + 1 < len(stage_items):
+                        next_stage = stage_items[i + 1]
+                        break
+                if next_stage:
+                    return redirect(f"{reverse('system:editar_formulario_cliente', args=[viagem_id, cliente_id])}?etapa={next_stage['token'].replace(':', '%3A')}")
+                return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
+            elif next_action == "finish":
+                return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
+            else:
+                stage_param = f"?etapa={current_stage['token'].replace(':', '%3A')}" if current_stage else ""
+                return redirect(f"{reverse('system:editar_formulario_cliente', args=[viagem_id, cliente_id])}{stage_param}")
     
-                                                                      
     tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
+
+    stage_index = 0
+    if current_stage and stage_items:
+        for i, item in enumerate(stage_items):
+            if item["token"] == current_stage["token"]:
+                stage_index = i
+                break
+
+    next_stage = stage_items[stage_index + 1] if stage_index + 1 < len(stage_items) else None
+    prev_stage = stage_items[stage_index - 1] if stage_index > 0 else None
     
     contexto = {
         "viagem": viagem,
@@ -1669,10 +1697,16 @@ def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
         "tipo_visto_cliente": tipo_visto_cliente,
         "formulario": formulario,
         "perguntas": perguntas,
+        "all_perguntas": all_perguntas,
         "respostas_existentes": respostas_existentes,
         "respostas_ids": list(respostas_existentes.keys()),
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "stage_items": stage_items,
+        "current_stage": current_stage,
+        "next_stage": next_stage,
+        "prev_stage": prev_stage,
+        "stage_index": stage_index,
     }
     
     return render(request, "travel/editar_formulario_cliente.html", contexto)
@@ -1680,7 +1714,6 @@ def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
 
 @login_required
 def visualizar_formulario_cliente(request, viagem_id: int, cliente_id: int):
-                                                                                          
     consultor = obter_consultor_usuario(request.user)
     pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
     
@@ -1689,15 +1722,13 @@ def visualizar_formulario_cliente(request, viagem_id: int, cliente_id: int):
         pk=viagem_id
     )
     
-                                                              
-                                                             
-    
     cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)
     
     if cliente not in viagem.clientes.all():
         raise PermissionDenied("Este cliente não está vinculado a esta viagem.")
     
-    formulario, perguntas, respostas_existentes = _obter_dados_formulario(viagem, cliente)
+    stage_token = request.GET.get("etapa")
+    formulario, all_perguntas, respostas_existentes, stage_items, current_stage, perguntas = _obter_dados_formulario(viagem, cliente, stage_token)
     
     if not formulario:
         messages.warning(
@@ -1706,8 +1737,17 @@ def visualizar_formulario_cliente(request, viagem_id: int, cliente_id: int):
         )
         return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
     
-                                                                      
     tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
+
+    stage_index = 0
+    if current_stage and stage_items:
+        for i, item in enumerate(stage_items):
+            if item["token"] == current_stage["token"]:
+                stage_index = i
+                break
+
+    next_stage = stage_items[stage_index + 1] if stage_index + 1 < len(stage_items) else None
+    prev_stage = stage_items[stage_index - 1] if stage_index > 0 else None
     
     contexto = {
         "viagem": viagem,
@@ -1715,10 +1755,16 @@ def visualizar_formulario_cliente(request, viagem_id: int, cliente_id: int):
         "tipo_visto_cliente": tipo_visto_cliente,
         "formulario": formulario,
         "perguntas": perguntas,
+        "all_perguntas": all_perguntas,
         "respostas_existentes": respostas_existentes,
         "respostas_ids": list(respostas_existentes.keys()),
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
+        "stage_items": stage_items,
+        "current_stage": current_stage,
+        "next_stage": next_stage,
+        "prev_stage": prev_stage,
+        "stage_index": stage_index,
     }
     
     return render(request, "travel/visualizar_formulario_cliente.html", contexto)

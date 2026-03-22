@@ -631,7 +631,7 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
     {% block body %}
-        {% if request.user.is_authenticated or request.session.cliente_id %}
+        {% if request.user.is_authenticated or request.session.cliente_id or request.session.partner_id %}
             {% include 'partials/_sidebar.html' %}
 
             <main class="app-main">

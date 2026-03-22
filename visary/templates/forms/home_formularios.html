@@ -292,22 +292,7 @@
             <p>Ver todos</p>
         </div>
     </a>
-    {% if pode_gerenciar_todos %}
-    <a href="{% url 'system:home_tipos_formulario' %}" class="home-card" style="border-color: rgba(255,193,7,0.25);">
-        <div class="home-card__icon admin">&#9881;</div>
-        <div class="home-card__content">
-            <h3>Tipos de Formulario</h3>
-            <p>Gerenciar tipos</p>
-        </div>
-    </a>
-    <a href="{% url 'system:criar_formulario' %}" class="home-card" style="border-color: rgba(255,193,7,0.25);">
-        <div class="home-card__icon admin">&#43;</div>
-        <div class="home-card__content">
-            <h3>Criar Formulario</h3>
-            <p>Novo formulario</p>
-        </div>
-    </a>
-    {% endif %}
+
 </section>
 
 <section class="filtros-card">
@@ -408,6 +393,7 @@
                         <div class="nome-cell__sub">{{ item.cliente_info.total_respostas }}/{{ item.cliente_info.total_perguntas }}</div>
                     </td>
                     <td>
+                        <a href="{% url 'system:visualizar_formulario_cliente' item.viagem.pk item.cliente_info.cliente.pk %}" class="btn btn-outline btn-small">Visualizar</a>
                         <a href="{% url 'system:editar_formulario_cliente' item.viagem.pk item.cliente_info.cliente.pk %}" class="btn btn-primary btn-small">Preencher</a>
                     </td>
                 </tr>

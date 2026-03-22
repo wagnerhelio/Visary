@@ -7,21 +7,24 @@
         "pergunta": "Sobrenome",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 2,
         "pergunta": "Nome",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 3,
         "pergunta": "Nomes Anteriores",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 4,
@@ -29,6 +32,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": true,
         "ativo": true,
+        "etapa": 1,
         "opcoes": [
           "Masculino",
           "Feminino"
@@ -40,6 +44,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": true,
         "ativo": true,
+        "etapa": 1,
         "opcoes": [
           "Solteiro(a)",
           "Casado(a)",
@@ -55,140 +60,160 @@
         "pergunta": "Data de Nascimento",
         "tipo_campo": "data",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 7,
         "pergunta": "Cidade Natal / Estado",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 8,
         "pergunta": "País Natal",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 9,
         "pergunta": "Outras Cidadanias",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 10,
         "pergunta": "CPF",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 11,
         "pergunta": "Você tem ou já teve um Social Security Number?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 1
       },
       {
         "ordem": 12,
         "pergunta": "Endereço(rua/quadra/avenida)",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 13,
         "pergunta": "Bairro",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 14,
         "pergunta": "Cidade",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 15,
         "pergunta": "Estado",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 16,
         "pergunta": "CEP",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 17,
         "pergunta": "País de Residência",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 18,
         "pergunta": "Seu passaporte será encaminhado para o endereço residencial?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 19,
         "pergunta": "Caso a resposta seja Não, favor informar o endereço alternativo completo com cep",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 2
       },
       {
         "ordem": 20,
         "pergunta": "Telefone Primário",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 3
       },
       {
         "ordem": 21,
         "pergunta": "Telefone Secundário",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 3
       },
       {
         "ordem": 22,
         "pergunta": "Telefone do Trabalho",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 3
       },
       {
         "ordem": 23,
         "pergunta": "Você já usou outros números de telefone nos últimos cinco anos?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 3
       },
       {
         "ordem": 24,
         "pergunta": "E-mail",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 3
       },
       {
         "ordem": 25,
         "pergunta": "Você usou outros endereços de e-mail nos últimos cinco anos?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 3
       },
       {
         "ordem": 26,
@@ -196,6 +221,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": true,
         "ativo": true,
+        "etapa": 4,
         "opcoes": [
           "Estudos (com carga horária inferior a 18 horas semanais)",
           "Estudos (com carga horária superior a 18 horas semanais)"
@@ -206,49 +232,56 @@
         "pergunta": "Data de chegada aos EUA",
         "tipo_campo": "data",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 28,
         "pergunta": "Data da saída dos EUA",
         "tipo_campo": "data",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 29,
         "pergunta": "Endereço completo onde ficará nos Estados Unidos",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 30,
         "pergunta": "Cidade onde ficará nos Estados Unidos",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 31,
         "pergunta": "Estado onde ficará nos Estados Unidos",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 32,
         "pergunta": "CEP de onde ficará nos Estados Unidos",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 4
       },
       {
         "ordem": 33,
         "pergunta": "Você possui conta em alguma rede social? Se sim, informar a plataforma e nome de usuário",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 5
       },
       {
         "ordem": 34,
@@ -256,6 +289,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": true,
         "ativo": true,
+        "etapa": 6,
         "opcoes": [
           "Eu mesmo(a)",
           "Outra pessoa",
@@ -267,210 +301,240 @@
         "pergunta": "Nome da escola",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 36,
         "pergunta": "Curso que será realizado",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 37,
         "pergunta": "Endereço da escola",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 38,
         "pergunta": "Cidade da escola",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 39,
         "pergunta": "Estado da escola",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 40,
         "pergunta": "CEP",
         "tipo_campo": "texto",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 41,
         "pergunta": "Você já possui o documento I-20 ou DS-2019?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 42,
         "pergunta": "Número da SEVIS",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 7
       },
       {
         "ordem": 43,
         "pergunta": "Quantas pessoas viajarão com você?",
         "tipo_campo": "numero",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 8
       },
       {
         "ordem": 44,
         "pergunta": "Nome completo e relação com cada um deles",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 8
       },
       {
         "ordem": 45,
         "pergunta": "Você se enquadra em algum destes casos?",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 8
       },
       {
         "ordem": 46,
         "pergunta": "Você teve algum emprego anterior?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 47,
         "pergunta": "Você realizou algum curso acadêmico ou vocacional após o Ensino Médio?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 9
       },
       {
         "ordem": 48,
         "pergunta": "Alguma outra informação relevante que deseje comentar?",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 10
       },
       {
         "ordem": 49,
         "pergunta": "Contato nº1 - Sobrenome",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 50,
         "pergunta": "Primeiro nome",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 51,
         "pergunta": "Endereco completo",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 52,
         "pergunta": "Ciddade",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 53,
         "pergunta": "Estado/Província",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 54,
         "pergunta": "CEP",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 55,
         "pergunta": "Telefone",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 56,
         "pergunta": "Email",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 11
       },
       {
         "ordem": 57,
         "pergunta": "Contato nº2 - Sobrenome",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 58,
         "pergunta": "Primeiro nome",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 59,
         "pergunta": "Endereco completo",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 60,
         "pergunta": "Ciddade",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 61,
         "pergunta": "Estado/Província",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 62,
         "pergunta": "CEP",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 63,
         "pergunta": "Telefone",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 64,
         "pergunta": "Email",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true
+        "ativo": true,
+        "etapa": 12
       },
       {
         "ordem": 65,
@@ -478,6 +542,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": false,
         "ativo": true,
+        "etapa": 13,
         "opcoes": [
           "CASV Brasília",
           "CASV Rio de Janeiro",
@@ -494,6 +559,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": false,
         "ativo": true,
+        "etapa": 13,
         "opcoes": [
           "Embaixada de Brasília",
           "Consulado do Rio de Janeiro",
@@ -509,6 +575,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": false,
         "ativo": true,
+        "etapa": 13,
         "opcoes": [
           "Agendar para a próxima data disponível",
           "Agendar para a próxima vaga disponível na próxima semana",
@@ -522,7 +589,8 @@
         "pergunta": "Declaração: Todas as respostas deste formulário devem ser conferidas, pois serão utilizadas no formulário eletrônico da Imigração. Qualquer informação errada repassada através deste formulário é de responsabilidade exclusiva do requerente",
         "tipo_campo": "booleano",
         "obrigatorio": true,
-        "ativo": true
+        "ativo": true,
+        "etapa": 14
       }
     ]
   }

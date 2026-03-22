@@ -28,6 +28,52 @@
             margin: 0;
         }
 
+        .stage-nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-soft);
+        }
+
+        .stage-nav a, .stage-nav span {
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .stage-nav a {
+            background: rgba(86, 244, 156, 0.1);
+            border: 1px solid rgba(86, 244, 156, 0.3);
+            color: rgba(86, 244, 156, 0.9);
+        }
+
+        .stage-nav a:hover {
+            background: rgba(86, 244, 156, 0.2);
+            border-color: rgba(86, 244, 156, 0.5);
+        }
+
+        .stage-nav span {
+            background: rgba(86, 244, 156, 0.25);
+            border: 1px solid rgba(86, 244, 156, 0.5);
+            color: rgba(86, 244, 156, 1);
+        }
+
+        .stage-nav .disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .stage-progress {
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
         .formulario-card {
             background: var(--card-bg);
             border-radius: 24px;
@@ -101,23 +147,47 @@
         }
 
         .btn-submit {
-            width: 100%;
-            padding: 16px 24px;
+            padding: 14px 24px;
             background: linear-gradient(135deg, rgba(86, 244, 156, 0.9), rgba(86, 244, 156, 0.7));
             color: #0c1323;
             border: none;
             border-radius: 14px;
             font-weight: 600;
-            font-size: 1rem;
+            font-size: 0.95rem;
             cursor: pointer;
             transition: all 0.2s ease;
-            margin-top: 8px;
         }
 
         .btn-submit:hover {
             background: linear-gradient(135deg, rgba(86, 244, 156, 1), rgba(86, 244, 156, 0.9));
             transform: translateY(-1px);
             box-shadow: 0 8px 16px rgba(86, 244, 156, 0.3);
+        }
+
+        .btn-outline-secondary {
+            padding: 14px 24px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-outline-secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            flex-wrap: wrap;
         }
 
         .messages {
@@ -154,6 +224,16 @@
             font-size: 0.9rem;
             color: rgba(86, 244, 156, 0.9);
         }
+
+        .prefill-badge {
+            background: rgba(86, 244, 156, 0.15);
+            border: 1px solid rgba(86, 244, 156, 0.4);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            color: rgba(86, 244, 156, 0.9);
+            margin-left: 8px;
+        }
     </style>
 {% endblock %}
 
@@ -161,6 +241,31 @@
 <div class="form-header">
     <h1>Formulário: {{ viagem.tipo_visto.nome }}</h1>
     <p>Viagem para {{ viagem.pais_destino.nome }} - {{ viagem.data_prevista_viagem|date:"d/m/Y" }}</p>
+    {% if stage_items %}
+    <div class="stage-nav">
+        {% if prev_stage %}
+            <a href="{{ request.path }}?etapa={{ prev_stage.token|urlencode }}">← {{ prev_stage.nome }}</a>
+        {% else %}
+            <span class="disabled">← Anterior</span>
+        {% endif %}
+        <span>Etapa {{ stage_index|add:1 }} de {{ stage_items|length }}: {{ current_stage.nome }}</span>
+        {% if next_stage %}
+            <a href="{{ request.path }}?etapa={{ next_stage.token|urlencode }}">{{ next_stage.nome }} →</a>
+        {% else %}
+            <span class="disabled">Finalizar →</span>
+        {% endif %}
+    </div>
+    <div class="stage-progress">
+        {% for item in stage_items %}
+            {% if item.token == current_stage.token %}
+                <strong>{{ item.nome }}</strong>
+            {% else %}
+                {{ item.nome }}
+            {% endif %}
+            {% if not forloop.last %} › {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
     <div style="margin-top: 16px;">
         <a href="{% url 'system:cliente_dashboard' %}" class="btn btn-outline">← Voltar</a>
     </div>
@@ -168,6 +273,7 @@
 <div class="formulario-card">
     <form method="post" action="{% url 'system:cliente_salvar_resposta' viagem.pk %}" novalidate>
         {% csrf_token %}
+        <input type="hidden" name="etapa_token" value="{{ current_stage.token|default:'' }}">
 
         {% for pergunta in perguntas %}
             <div class="form-group" data-ordem="{{ pergunta.ordem }}" data-regra='{{ pergunta.regra_exibicao|default_if_none:"" }}'>
@@ -187,7 +293,7 @@
                                 name="pergunta_{{ pergunta.pk }}"
                                 {% if pergunta.obrigatorio %}required{% endif %}
                             >{{ resposta.resposta_texto }}</textarea>
-                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
+                            <div class="resposta-existente">✓ Resposta salva</div>
                         {% elif pergunta.tipo_campo == "data" %}
                             <input
                                 type="date"
@@ -196,7 +302,7 @@
                                 {% if pergunta.obrigatorio %}required{% endif %}
                                 {% if resposta.resposta_data %}value="{{ resposta.resposta_data|date:'Y-m-d' }}"{% endif %}
                             >
-                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
+                            <div class="resposta-existente">✓ Resposta salva</div>
                         {% elif pergunta.tipo_campo == "numero" %}
                             <input
                                 type="number"
@@ -206,7 +312,7 @@
                                 {% if pergunta.obrigatorio %}required{% endif %}
                                 {% if resposta.resposta_numero %}value="{{ resposta.resposta_numero }}"{% endif %}
                             >
-                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
+                            <div class="resposta-existente">✓ Resposta salva</div>
                         {% elif pergunta.tipo_campo == "booleano" %}
                             <div class="form-group-radio">
                                 <label>
@@ -230,7 +336,7 @@
                                     Não
                                 </label>
                             </div>
-                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
+                            <div class="resposta-existente">✓ Resposta salva</div>
                         {% elif pergunta.tipo_campo == "selecao" %}
                             <select
                                 id="pergunta_{{ pergunta.pk }}"
@@ -246,7 +352,7 @@
                                     {% endif %}
                                 {% endfor %}
                             </select>
-                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
+                            <div class="resposta-existente">✓ Resposta salva</div>
                         {% endif %}
                         {% endif %}
                     {% endfor %}
@@ -311,7 +417,15 @@
             </div>
         {% endfor %}
 
-        <button type="submit" class="btn-submit">💾 Salvar Formulário</button>
+        <div class="form-actions">
+            {% if next_stage %}
+                <button type="submit" name="next_action" value="save" class="btn-submit">💾 Salvar</button>
+                <button type="submit" name="next_action" value="next" class="btn-submit">{{ next_stage.nome }} →</button>
+            {% else %}
+                <button type="submit" name="next_action" value="save" class="btn-submit">💾 Salvar</button>
+                <button type="submit" name="next_action" value="finish" class="btn-submit">✓ Finalizar</button>
+            {% endif %}
+        </div>
     </form>
 </div>
 

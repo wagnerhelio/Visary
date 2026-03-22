@@ -7,7 +7,7 @@ from .client_forms import ClienteConsultoriaForm
 from .user_forms import UsuarioConsultoriaForm
 from .etapa_forms import CampoEtapaClienteForm, CampoEtapaClienteInlineForm, EtapaCadastroClienteForm
 from .financial_forms import DarBaixaFinanceiroForm
-from .form_forms import FormularioVistoForm, PerguntaFormularioForm
+from .form_forms import FormularioEtapaForm, FormularioVistoForm, PerguntaFormularioForm
 from .opcao_forms import OpcaoSelecaoForm
 from .partners_forms import PartnerForm
 from .permission_forms import ModuloForm, PerfilForm
@@ -24,6 +24,7 @@ __all__ = (
     "EtapaCadastroClienteForm",
     "EtapaProcessoForm",
     "FormularioVistoForm",
+    "FormularioEtapaForm",
     "ModuloForm",
     "OpcaoSelecaoForm",
     "PartnerForm",

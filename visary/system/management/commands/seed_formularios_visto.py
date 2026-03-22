@@ -7,7 +7,147 @@ from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
-from system.models import FormularioVisto, OpcaoSelecao, PerguntaFormulario, TipoVisto
+from system.models import (
+    EtapaFormularioVisto,
+    FormularioVisto,
+    OpcaoSelecao,
+    PerguntaFormulario,
+    TipoVisto,
+)
+
+STAGES_MAP = {
+    "B1 / B2 (Turismo, Neg\u00f3cios ou Estudos Recreativos)": [
+        (1, "Dados Pessoais"),
+        (2, "Dados da Viagem"),
+        (3, "Contato Brasil"),
+        (4, "Passaporte"),
+        (5, "Contato EUA / Acompanhante"),
+        (6, "Parente nos EUA"),
+        (7, "Dados do Cônjuge"),
+        (8, "Dados dos Pais"),
+        (9, "Ocupação Atual"),
+        (10, "Empregos Anteriores"),
+        (11, "Informações Educacionais"),
+        (12, "Idioma e Experiência"),
+        (13, "Perguntas de Segurança"),
+        (14, "Comentários Adicionais"),
+        (15, "Agendamento"),
+    ],
+    "F1 (visto oficial de estudante)": [
+        (1, "Dados Pessoais"),
+        (2, "Endereço Brasil"),
+        (3, "Contato Brasil"),
+        (4, "Dados da Viagem"),
+        (5, "Redes Sociais"),
+        (6, "Custeio da Viagem"),
+        (7, "Dados da Escola"),
+        (8, "Acompanhantes"),
+        (9, "Empregos e Estudos Anteriores"),
+        (10, "Comentários Adicionais"),
+        (11, "Contato nos EUA (1)"),
+        (12, "Contato nos EUA (2)"),
+        (13, "Agendamento"),
+        (14, "Declaração"),
+    ],
+    "J1 (visto de intercâmbio)": [
+        (1, "Dados Pessoais"),
+        (2, "Endereço Brasil"),
+        (3, "Contato Brasil"),
+        (4, "Dados da Viagem"),
+        (5, "Redes Sociais"),
+        (6, "Custeio da Viagem"),
+        (7, "Dados da Escola"),
+        (8, "Acompanhantes"),
+        (9, "Empregos e Estudos Anteriores"),
+        (10, "Comentários Adicionais"),
+        (11, "Contato nos EUA (1)"),
+        (12, "Contato nos EUA (2)"),
+        (13, "Agendamento"),
+        (14, "Declaração"),
+    ],
+    "Estudante - Study Permit": [
+        (1, "Dados Pessoais"),
+        (2, "Cônjuge / Estado Civil"),
+        (3, "Perguntas de Segurança"),
+        (4, "Passaporte"),
+        (5, "Contato Brasil"),
+        (6, "Dados da Viagem e Escola"),
+        (7, "Estudos Anteriores"),
+        (8, "Ocupação Atual"),
+        (9, "Ocupações Anteriores"),
+        (10, "Saúde"),
+        (11, "Detalhes de Segurança"),
+        (12, "Dados da Mãe"),
+        (13, "Dados do Pai"),
+        (14, "Dados dos Filhos"),
+        (15, "Viagem e Idiomas"),
+    ],
+    "Temporary Resident Visa - TRV": [
+        (1, "Dados Pessoais"),
+        (2, "Cônjuge"),
+        (3, "Perguntas de Segurança"),
+        (4, "Passaporte"),
+        (5, "Contato Brasil"),
+        (6, "Dados da Viagem"),
+        (7, "Estudos Anteriores"),
+        (8, "Ocupação Atual"),
+        (9, "Atividade Últimos 10 Anos"),
+        (10, "Ocupações Anteriores"),
+        (11, "Saúde e Vistos"),
+        (12, "Visto Negado Outro País"),
+        (13, "Detalhes de Segurança"),
+        (14, "Dados da Mãe"),
+        (15, "Dados do Pai"),
+        (16, "Dados dos Filhos"),
+        (17, "Viagem e Idiomas"),
+    ],
+    "Visto de Estudante": [
+        (1, "Aplicação"),
+        (2, "Dados Pessoais"),
+        (3, "Cônjuge"),
+        (4, "Documentos de Identidade"),
+        (5, "Endereço Brasil"),
+        (6, "Família no Brasil"),
+        (7, "Parentes"),
+        (8, "Vistos Anteriores"),
+        (9, "Dados da Viagem"),
+        (10, "Estudos e Passaporte"),
+        (11, "Dados da Escola"),
+        (12, "Contato Emergencial"),
+        (13, "Inglês"),
+        (14, "Estudos de Inglês"),
+        (15, "Trabalho Atual"),
+        (16, "Custeio"),
+        (17, "Renda e Fundos"),
+        (18, "Saúde"),
+        (19, "Saúde Detalhada"),
+        (20, "Criminal e Imigração"),
+        (21, "Militar"),
+        (22, "Declarações"),
+        (23, "Pagamento"),
+    ],
+    "Visto de Visitante": [
+        (1, "Dados Pessoais"),
+        (2, "Cônjuge"),
+        (3, "Endereço Brasil"),
+        (4, "Passaporte"),
+        (5, "Perguntas de Segurança"),
+        (6, "Passaporte e Nacionalidade"),
+        (7, "Ocupação Atual"),
+        (8, "Custeio da Viagem"),
+        (9, "Dados da Viagem"),
+        (10, "Visitas Anteriores"),
+        (11, "Estudos"),
+        (12, "Família no Brasil"),
+        (13, "Filhos"),
+        (14, "Viagens Anteriores"),
+        (15, "Saúde"),
+        (16, "Saúde Detalhada"),
+        (17, "Responsável Legal (1)"),
+        (18, "Responsável Legal (2)"),
+        (19, "Declarações"),
+    ],
+}
 
 
 class Command(BaseCommand):
@@ -55,7 +195,29 @@ class Command(BaseCommand):
                 formulario.ativo = True
                 formulario.save(update_fields=["ativo", "atualizado_em"])
 
+                stages = STAGES_MAP.get(tipo_nome, [])
+                etapas_existentes = {
+                    e.ordem: e for e in EtapaFormularioVisto.objects.filter(formulario=formulario)
+                }
+
+                for ordem, nome in stages:
+                    etapa, created = EtapaFormularioVisto.objects.get_or_create(
+                        formulario=formulario,
+                        ordem=ordem,
+                        defaults={"nome": nome},
+                    )
+                    if not created and etapa.nome != nome:
+                        etapa.nome = nome
+                        etapa.save(update_fields=["nome"])
+
+                stage_map = {
+                    e.ordem: e for e in EtapaFormularioVisto.objects.filter(formulario=formulario)
+                }
+
                 for pergunta_item in form_item.get("perguntas", []):
+                    etapa_ordem = pergunta_item.get("etapa")
+                    etapa_obj = stage_map.get(etapa_ordem) if etapa_ordem else None
+
                     pergunta, _ = PerguntaFormulario.objects.get_or_create(
                         formulario=formulario,
                         ordem=pergunta_item["ordem"],
@@ -65,6 +227,7 @@ class Command(BaseCommand):
                     pergunta.obrigatorio = pergunta_item.get("obrigatorio", False)
                     pergunta.ativo = pergunta_item.get("ativo", True)
                     pergunta.regra_exibicao = pergunta_item.get("regra_exibicao")
+                    pergunta.etapa = etapa_obj
                     pergunta.save()
 
                     if pergunta.tipo_campo != "selecao":
