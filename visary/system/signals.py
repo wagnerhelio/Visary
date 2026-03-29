@@ -1,79 +1,76 @@
-from django.db import models
-from django.db.models.signals import m2m_changed, post_save
+import logging
+
+from django.db import models, transaction
+from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 
-from system.models import Financeiro, StatusFinanceiro, StatusProcesso, Viagem, ViagemStatusProcesso
+from system.models import ClienteViagem, Financeiro, StatusFinanceiro, StatusProcesso, Viagem, ViagemStatusProcesso
+
+logger = logging.getLogger("visary.financial")
 
 
 def _criar_registros_financeiros_para_viagem(viagem: Viagem) -> None:
+    from system.models import ClienteViagem
+
     if viagem.valor_assessoria <= 0:
         return
 
-    registros_existentes = Financeiro.objects.filter(viagem=viagem)
-    clientes_com_registro = set(
-        registros_existentes.exclude(cliente=None).values_list("cliente_id", flat=True)
-    )
-    clientes = viagem.clientes.select_related("cliente_principal").all()
+    with transaction.atomic():
+        registros_existentes = Financeiro.objects.filter(viagem=viagem)
+        clientes_com_registro = set(
+            registros_existentes.exclude(cliente=None).values_list("cliente_id", flat=True)
+        )
+        clientes_viagem = ClienteViagem.objects.filter(viagem=viagem).select_related("cliente")
 
-    if clientes.exists():
-        registros_existentes.filter(cliente=None).delete()
-        cliente_principal = None
-        dependentes = []
+        if clientes_viagem.exists():
+            registros_existentes.filter(cliente=None).delete()
 
-        for cliente in clientes:
-            if cliente.is_principal:
-                cliente_principal = cliente
-            else:
-                dependentes.append(cliente)
+            cv_principal = clientes_viagem.filter(papel="principal").first()
+            if cv_principal:
+                if cv_principal.cliente_id not in clientes_com_registro:
+                    Financeiro.objects.create(
+                        viagem=viagem,
+                        cliente=cv_principal.cliente,
+                        assessor_responsavel=viagem.assessor_responsavel,
+                        valor=viagem.valor_assessoria,
+                        status=StatusFinanceiro.PENDENTE,
+                        criado_por=viagem.criado_por,
+                    )
+                    logger.info(
+                        "Registro financeiro criado para principal '%s' (pk=%s), viagem pk=%s, valor=%s",
+                        cv_principal.cliente.nome_completo, cv_principal.cliente_id, viagem.pk, viagem.valor_assessoria,
+                    )
+                return
 
-        if cliente_principal:
-            if cliente_principal.pk not in clientes_com_registro:
+            primeiro_cv = clientes_viagem.first()
+            if primeiro_cv and primeiro_cv.cliente_id not in clientes_com_registro:
                 Financeiro.objects.create(
                     viagem=viagem,
-                    cliente=cliente_principal,
+                    cliente=primeiro_cv.cliente,
                     assessor_responsavel=viagem.assessor_responsavel,
                     valor=viagem.valor_assessoria,
                     status=StatusFinanceiro.PENDENTE,
                     criado_por=viagem.criado_por,
                 )
-            return
-
-        if dependentes:
-            primeiro_dependente = dependentes[0]
-            principal_do_grupo = primeiro_dependente.cliente_principal
-            destino = principal_do_grupo or primeiro_dependente
-            if destino.pk not in clientes_com_registro:
-                Financeiro.objects.create(
-                    viagem=viagem,
-                    cliente=destino,
-                    assessor_responsavel=viagem.assessor_responsavel,
-                    valor=viagem.valor_assessoria,
-                    status=StatusFinanceiro.PENDENTE,
-                    criado_por=viagem.criado_por,
+                logger.info(
+                    "Registro financeiro criado para primeiro cliente '%s' (pk=%s), viagem pk=%s",
+                    primeiro_cv.cliente.nome_completo, primeiro_cv.cliente_id, viagem.pk,
                 )
             return
 
-        primeiro_cliente = clientes.first()
-        if primeiro_cliente and primeiro_cliente.pk not in clientes_com_registro:
+        if not registros_existentes.filter(cliente=None).exists():
             Financeiro.objects.create(
                 viagem=viagem,
-                cliente=primeiro_cliente,
+                cliente=None,
                 assessor_responsavel=viagem.assessor_responsavel,
                 valor=viagem.valor_assessoria,
                 status=StatusFinanceiro.PENDENTE,
                 criado_por=viagem.criado_por,
             )
-        return
-
-    if not registros_existentes.filter(cliente=None).exists():
-        Financeiro.objects.create(
-            viagem=viagem,
-            cliente=None,
-            assessor_responsavel=viagem.assessor_responsavel,
-            valor=viagem.valor_assessoria,
-            status=StatusFinanceiro.PENDENTE,
-            criado_por=viagem.criado_por,
-        )
+            logger.info(
+                "Registro financeiro sem cliente criado para viagem pk=%s",
+                viagem.pk,
+            )
 
 
 def _sincronizar_status_viagem(viagem: Viagem) -> None:
@@ -106,6 +103,31 @@ def criar_registro_financeiro(sender, instance: Viagem, created: bool, **kwargs)
 def criar_registro_financeiro_ao_adicionar_cliente(sender, instance: Viagem, action: str, **kwargs) -> None:
     if action == "post_add" and instance.pk:
         _criar_registros_financeiros_para_viagem(instance)
+
+
+@receiver(post_save, sender=ClienteViagem)
+def auto_promover_primeiro_principal(sender, instance: ClienteViagem, created: bool, **kwargs) -> None:
+    """Se a viagem não tem principal, promove este cliente automaticamente."""
+    if not created:
+        return
+    viagem = instance.viagem
+    if not ClienteViagem.objects.filter(viagem=viagem, papel="principal").exists():
+        instance.papel = "principal"
+        instance.cliente_principal_viagem = None
+        instance.save(update_fields=["papel", "cliente_principal_viagem", "atualizado_em"])
+
+
+@receiver(post_delete, sender=ClienteViagem)
+def auto_promover_ao_remover_principal(sender, instance: ClienteViagem, **kwargs) -> None:
+    """Se o principal foi removido, promove o primeiro dependente."""
+    if instance.papel != "principal":
+        return
+    viagem_id = instance.viagem_id
+    proximo = ClienteViagem.objects.filter(viagem_id=viagem_id, papel="dependente").first()
+    if proximo:
+        proximo.papel = "principal"
+        proximo.cliente_principal_viagem = None
+        proximo.save(update_fields=["papel", "cliente_principal_viagem", "atualizado_em"])
 
 
 @receiver(post_save, sender=Viagem)

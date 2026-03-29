@@ -339,6 +339,7 @@ Se uma feature nova não se encaixar claramente em um desses domínios, a modela
 - Testar concorrência só em SQLite e assumir que produção está coberta.
 - Executar rotina de limpeza que altere código-fonte (ex.: strip de comentários/docstrings) ou finalize processos Python fora do escopo do projeto.
 - Executar comandos `git` sem solicitação explícita do usuário na tarefa atual.
+- Entregar template sem testar responsividade: campos de formulário com largura fixa que estouram em mobile, grids sem `min()` que criam scroll horizontal, inputs sem `box-sizing: border-box` que ultrapassam o container, formulários flex sem fallback para coluna única em telas estreitas.
 
 ---
 
@@ -365,3 +366,4 @@ Uma mudança é considerada pronta quando:
 - **[2026-03-20]** Definida regra de deduplicação semântica para `TipoVisto` no import legado e revalidação obrigatória de formulários modularizados com base em `static/forms_ini`.
  - **[2026-03-22]** Definida política de migrações: **nunca criar migrações manuais**. Sempre usar `makemigrations` do Django. Código novo em desenvolvimento não deve gerar migrações versionadas; o banco de desenvolvimento local deve ser recriado via `cleanup.py` + `makemigrations` + `migrate`.
 - **[2026-03-22]** Definida política de consistência visual: **todo template novo ou reescrito deve respeitar o design system do projeto** (CSS custom properties: `--card-bg`, `--accent`, `--text-primary`, etc.; cards com `border-radius: 24px`, `box-shadow`, gradientes escuros; botões com estilização consistente; badges coloridos por tipo; inputs com transições). Templates genéricos (bare `{{ form.as_p }}`, classes CSS aleatórias ou inline styles inconsistentes) são rejeitados em revisão.
+- **[2026-03-26]** Definida política de responsividade obrigatória: **todo template deve funcionar corretamente em desktop (1120px+), tablet (768px) e mobile (480px)**. Regras invioláveis: `box-sizing: border-box` em todos os elementos; inputs/selects sempre `width: 100%` dentro do container; grids com `minmax(min(Xpx, 100%), 1fr)` para evitar overflow; formulários em grid com fallback para coluna única em mobile; tabelas envoltas em `.table-responsive` (`overflow-x: auto`); containers com `min-width: 0` para prevenir estouro de flex/grid; proibido `flex: 0 0 <valor fixo>` sem `@media` correspondente. Campos de formulário minúsculos, desalinhados ou que quebrem a viewport em qualquer resolução são rejeitados em revisão.

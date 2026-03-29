@@ -208,7 +208,7 @@
                 {% for membro in membros_viagem %}
                     <div style="padding: 12px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px; margin-bottom: 8px;">
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <strong style="font-size: 0.95rem; color: var(--text-primary);">{{ membro.cliente.nome }}</strong>
+                            <strong style="font-size: 0.95rem; color: var(--text-primary);">{{ membro.cliente.nome_completo }}</strong>
                             {% if membro.tipo == 'principal' %}
                                 <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
                                     Principal
@@ -277,7 +277,7 @@
                     <div style="margin-top: 32px; padding: 24px; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                             <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">
-                                Dependente: {{ membro.cliente.nome }}
+                                Dependente: {{ membro.cliente.nome_completo }}
                             </h3>
                             <button 
                                 type="button" 

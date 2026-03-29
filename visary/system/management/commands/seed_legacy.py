@@ -532,11 +532,10 @@ class Command(BaseCommand):
             cpf_seen.add(raw_cpf)
             cpf_formatted = format_cpf(use_cpf)
 
-            full_name = " ".join(
-                [str(row.get("nome") or "").strip(), str(row.get("sobrenome") or "").strip()]
-            ).strip()
-            if not full_name:
-                full_name = f"Cliente legado #{legacy_id}"
+            first_name = str(row.get("nome") or "").strip()
+            last_name = str(row.get("sobrenome") or "").strip()
+            if not first_name and not last_name:
+                first_name = f"Cliente legado #{legacy_id}"
 
             cliente = by_legacy_id.get(legacy_id)
             if not cliente:
@@ -546,7 +545,8 @@ class Command(BaseCommand):
                 cliente = ClienteConsultoria(
                     assessor_responsavel=assessor_default,
                     criado_por=actor,
-                    nome=full_name,
+                    nome=first_name,
+                    sobrenome=last_name,
                     cpf=cpf_formatted,
                     data_nascimento=parse_date(row.get("nascimento")) or datetime(1990, 1, 1).date(),
                     nacionalidade=str(row.get("nacionalidade") or "Nao informado"),
@@ -554,7 +554,8 @@ class Command(BaseCommand):
                     senha=str(row.get("user_password") or "legacy-import"),
                 )
 
-            cliente.nome = full_name
+            cliente.nome = first_name
+            cliente.sobrenome = last_name
             cliente.cpf = cpf_formatted
             cliente.data_nascimento = parse_date(row.get("nascimento")) or cliente.data_nascimento
             cliente.nacionalidade = str(row.get("nacionalidade") or cliente.nacionalidade)

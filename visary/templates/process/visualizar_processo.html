@@ -246,13 +246,8 @@
                 <span class="info-label">Cliente</span>
                 <span class="info-value">
                     <a href="{% url 'system:visualizar_cliente' processo.cliente.pk %}">
-                        {{ processo.cliente.nome }}
+                        {{ processo.cliente.nome_completo }}
                     </a>
-                    {% if processo.cliente.is_dependente %}
-                        <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.6); display: block; margin-top: 4px;">
-                            Dependente de {{ processo.cliente.cliente_principal.nome|default:"-" }}
-                        </span>
-                    {% endif %}
                 </span>
             </div>
             

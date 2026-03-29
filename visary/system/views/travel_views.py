@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db import models
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -20,11 +21,13 @@ from django.utils.dateparse import parse_date
 
 from system.forms import PaisDestinoForm, TipoVistoForm, ViagemForm
 from system.models import ClienteConsultoria, ClienteViagem, FormularioVisto, OpcaoSelecao, Partner, PaisDestino, Processo, RespostaFormulario, TipoVisto, Viagem
-from system.models.financial_models import Financeiro
+from django.db import transaction
+from system.models.financial_models import Financeiro, StatusFinanceiro
 from system.models import UsuarioConsultoria
 from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
 from system.services.form_stages import build_stage_items, filter_questions_by_stage, resolve_stage_token
 from system.services.form_prefill import prefill_form_answers
+from system.services.form_responses import build_pergunta_estado, pergunta_e_visivel, processar_respostas_formulario, atualizar_resposta_por_tipo as _atualizar_resposta_formulario_svc
 
 
 def _limpar_flags_viagens_cadastradas(request):
@@ -102,24 +105,19 @@ def home_viagens(request):
     filtros_aplicados = {}
     viagens = _aplicar_filtros_viagens(viagens, request, filtros_aplicados, incluir_assessor=False)
     
-                     
-                                                                  
-    viagens_limitadas = viagens[:10]
-    
-                                                                                    
-    viagens_com_formulario = _obter_viagens_com_formularios_nao_preenchidos(viagens_limitadas)
     kpis = _montar_kpis_viagens(viagens)
-    
-                                       
+    viagens_com_info = _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor)
+
+    viagens_com_formulario = _obter_viagens_com_formularios_nao_preenchidos(viagens[:10])
     mensagens_filtradas = _filtrar_mensagens_para_template(request)
-    
-                                                                
+
     paises = PaisDestino.objects.filter(ativo=True).order_by("nome")
     tipos_visto = TipoVisto.objects.filter(ativo=True).select_related("pais_destino").order_by("pais_destino__nome", "nome")
 
     contexto = {
         "total_viagens": viagens.count(),
-        "viagens": viagens_limitadas,
+        "viagens": viagens[:10],
+        "viagens_com_info": viagens_com_info,
         "viagens_formularios_nao_preenchidos": viagens_com_formulario,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "mensagens_filtradas": mensagens_filtradas,
@@ -371,36 +369,38 @@ def _processar_viagens_separadas(viagem, membros_viagem_separada_ids, request):
     return viagens_criadas
 
 
-def _organizar_membros_viagem(clientes_ids_list):
-                                                                             
+def _organizar_membros_viagem(clientes_ids_list, viagem=None):
+    """Organiza membros para exibição. Se viagem informada, usa papel por viagem."""
     clientes_objs = ClienteConsultoria.objects.filter(
         pk__in=clientes_ids_list
     ).select_related('cliente_principal', 'assessor_responsavel').order_by('nome')
-    
-    cliente_principal = None
-    dependentes = []
-    
-    for cliente in clientes_objs:
-        if cliente.is_principal:
-            cliente_principal = cliente
-        else:
-            dependentes.append(cliente)
-    
+
+    if viagem:
+        cv_map = {
+            cv.cliente_id: cv
+            for cv in ClienteViagem.objects.filter(viagem=viagem, cliente_id__in=clientes_ids_list)
+        }
+        membros_data = []
+        for cliente in clientes_objs:
+            cv = cv_map.get(cliente.pk)
+            papel = cv.papel if cv else "dependente"
+            membros_data.append({
+                'cliente': cliente,
+                'tipo': papel,
+                'tipo_visto': cv.tipo_visto if cv else None,
+                'cliente_principal_viagem': cv.cliente_principal_viagem if cv else None,
+            })
+        membros_data.sort(key=lambda m: (0 if m['tipo'] == 'principal' else 1, m['cliente'].nome))
+        return membros_data
+
     membros_data = []
-    if cliente_principal:
+    for cliente in clientes_objs:
         membros_data.append({
-            'cliente': cliente_principal,
-            'tipo': 'principal',
+            'cliente': cliente,
+            'tipo': 'principal' if cliente.is_principal else 'dependente',
             'tipo_visto': None,
         })
-    
-    membros_data.extend({
-        'cliente': dependente,
-        'tipo': 'dependente',
-        'cliente_principal': dependente.cliente_principal,
-        'tipo_visto': None,
-    } for dependente in dependentes)
-    
+    membros_data.sort(key=lambda m: (0 if m['tipo'] == 'principal' else 1, m['cliente'].nome))
     return membros_data
 
 
@@ -582,16 +582,13 @@ def _processar_post_criar_viagem(request, form):
             todos_clientes_ids.update(viagem_sep.clientes.all().values_list('pk', flat=True))
         
         if todos_clientes_ids:
-            for cliente_obj in ClienteConsultoria.objects.filter(pk__in=list(todos_clientes_ids)):
-                if cliente_obj.is_principal:
-                    todos_clientes_ids.update(
-                        ClienteConsultoria.objects.filter(cliente_principal=cliente_obj).values_list('pk', flat=True)
-                    )
-                elif cliente_obj.cliente_principal_id:
-                    todos_clientes_ids.add(cliente_obj.cliente_principal_id)
-                    todos_clientes_ids.update(
-                        ClienteConsultoria.objects.filter(cliente_principal_id=cliente_obj.cliente_principal_id).values_list('pk', flat=True)
-                    )
+            viagens_com_clientes = ClienteViagem.objects.filter(
+                cliente_id__in=list(todos_clientes_ids)
+            ).values_list("viagem_id", flat=True).distinct()
+            clientes_relacionados = ClienteViagem.objects.filter(
+                viagem_id__in=viagens_com_clientes
+            ).values_list("cliente_id", flat=True)
+            todos_clientes_ids.update(clientes_relacionados)
         
                                                                      
         if len(todos_clientes_ids) == 1:
@@ -1156,110 +1153,15 @@ def _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor):
     return viagens_com_info
 
 
-def _build_pergunta_estado(perguntas, post_dict, respostas_existentes):
-    estado = {}
-    for p in perguntas:
-        if p.tipo_campo == "booleano":
-            val = post_dict.get(f"pergunta_{p.pk}", "")
-            if val == "sim":
-                estado[p.ordem] = "sim"
-            elif val == "nao":
-                estado[p.ordem] = "nao"
-            elif p.pk in respostas_existentes:
-                r = respostas_existentes[p.pk]
-                if r.resposta_booleano is True:
-                    estado[p.ordem] = "sim"
-                elif r.resposta_booleano is False:
-                    estado[p.ordem] = "nao"
-        elif p.tipo_campo == "selecao":
-            val = post_dict.get(f"pergunta_{p.pk}", "")
-            if val:
-                try:
-                    opcao_id = int(val)
-                    opcao = OpcaoSelecao.objects.filter(pk=opcao_id, pergunta=p).first()
-                    estado[p.ordem] = opcao.texto if opcao else val
-                except ValueError:
-                    estado[p.ordem] = val
-            elif p.pk in respostas_existentes:
-                r = respostas_existentes[p.pk]
-                if r.resposta_selecao_id:
-                    estado[p.ordem] = r.resposta_selecao.texto
-        elif p.tipo_campo == "numero":
-            val = post_dict.get(f"pergunta_{p.pk}", "")
-            estado[p.ordem] = val
-        elif p.tipo_campo == "data":
-            val = post_dict.get(f"pergunta_{p.pk}", "")
-            estado[p.ordem] = val
-        else:
-            val = post_dict.get(f"pergunta_{p.pk}", "")
-            if not val and p.pk in respostas_existentes:
-                val = respostas_existentes[p.pk].resposta_texto or ""
-            estado[p.ordem] = val
-    return estado
-
-
-def _pergunta_e_visivel(pergunta, estado):
-    regra = pergunta.regra_exibicao
-    if not regra:
-        return True
-    tipo = regra.get("tipo")
-    if tipo != "mostrar_se":
-        return True
-    pergunta_ordem = regra.get("pergunta_ordem")
-    valores_esperados = regra.get("valor")
-    if pergunta_ordem is None or valores_esperados is None:
-        return True
-    if isinstance(valores_esperados, list):
-        return estado.get(pergunta_ordem) in valores_esperados
-    return estado.get(pergunta_ordem) == valores_esperados
+_build_pergunta_estado = build_pergunta_estado
+_pergunta_e_visivel = pergunta_e_visivel
 
 
 def _processar_respostas_formulario(request, viagem, cliente, perguntas, respostas_existentes=None):
-                                                                 
-    respostas_salvas = 0
-    erros = []
-    respostas_existentes = respostas_existentes or {}
-    estado = _build_pergunta_estado(perguntas, request.POST, respostas_existentes)
-    
-    for pergunta in perguntas:
-        campo_name = f"pergunta_{pergunta.pk}"
-        valor = request.POST.get(campo_name)
-        
-        if pergunta.obrigatorio and not valor and _pergunta_e_visivel(pergunta, estado):
-            erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
-            continue
-
-        
-        if pergunta.obrigatorio and not valor:
-            erros.append(f"A pergunta '{pergunta.pergunta}' é obrigatória.")
-            continue
-        
-        resposta, _ = RespostaFormulario.objects.get_or_create(
-            viagem=viagem,
-            cliente=cliente,
-            pergunta=pergunta,
-            defaults={},
-        )
-        
-        if pergunta.tipo_campo == "numero" and valor:
-            try:
-                Decimal(valor)
-            except (InvalidOperation, ValueError):
-                erros.append(f"Valor inválido para a pergunta '{pergunta.pergunta}'.")
-                continue
-        elif pergunta.tipo_campo == "selecao" and valor:
-            try:
-                opcao_id = int(valor)
-                OpcaoSelecao.objects.get(pk=opcao_id, pergunta=pergunta)
-            except (ValueError, OpcaoSelecao.DoesNotExist):
-                erros.append(f"Opção inválida para a pergunta '{pergunta.pergunta}'.")
-                continue
-        
-        _atualizar_resposta_formulario(resposta, pergunta, valor)
-        resposta.save()
-        respostas_salvas += 1
-    
-    return respostas_salvas, erros
+    """Wrapper que delega para o serviço centralizado."""
+    return processar_respostas_formulario(
+        request.POST, viagem, cliente, perguntas, respostas_existentes
+    )
 
 
 def _obter_tipo_visto_cliente(viagem, cliente):
@@ -1337,26 +1239,8 @@ def _obter_dados_formulario(viagem, cliente, stage_token=None):
 
 
 def _atualizar_resposta_formulario(resposta, pergunta, valor):
-                                                                                   
-                                     
-    resposta.resposta_texto = ""
-    resposta.resposta_data = None
-    resposta.resposta_numero = None
-    resposta.resposta_booleano = None
-    resposta.resposta_selecao = None
-    
-                                                  
-    if pergunta.tipo_campo == "texto":
-        resposta.resposta_texto = valor or ""
-    elif pergunta.tipo_campo == "data":
-        resposta.resposta_data = parse_date(valor) if valor else None
-    elif pergunta.tipo_campo == "numero":
-        resposta.resposta_numero = Decimal(valor) if valor else None
-    elif pergunta.tipo_campo == "booleano":
-        resposta.resposta_booleano = valor == "sim" if valor else None
-    elif pergunta.tipo_campo == "selecao" and valor:
-        opcao_id = int(valor)
-        resposta.resposta_selecao = OpcaoSelecao.objects.get(pk=opcao_id, pergunta=pergunta)
+    """Wrapper que delega para o serviço centralizado."""
+    _atualizar_resposta_formulario_svc(resposta, pergunta, valor)
 
 
 @login_required
@@ -1416,34 +1300,40 @@ def visualizar_viagem(request, pk: int):
             "tipo_visto",
             "tipo_visto__formulario",
             "assessor_responsavel",
-        ).prefetch_related("clientes", "clientes__cliente_principal"),
+        ).prefetch_related("clientes"),
         pk=pk
     )
-    
-                                                          
-                                                             
-    
-                                                                                   
-    clientes = viagem.clientes.all().select_related("cliente_principal", "assessor_responsavel").order_by("cliente_principal", "nome")
-    
-                                 
+
+    clientes_viagem_qs = ClienteViagem.objects.filter(
+        viagem=viagem
+    ).select_related(
+        "cliente", "cliente__assessor_responsavel", "cliente_principal_viagem", "tipo_visto"
+    ).order_by(
+        models.Case(
+            models.When(papel="principal", then=0),
+            default=1,
+            output_field=models.IntegerField(),
+        ),
+        "cliente__nome",
+    )
+
     processos = Processo.objects.filter(
         viagem=viagem
     ).select_related(
         "cliente",
         "assessor_responsavel",
     ).prefetch_related("etapas", "etapas__status").order_by("-criado_em")
-    
-                                                     
+
     clientes_com_info = []
-    for cliente in clientes:
+    for cv in clientes_viagem_qs:
+        cliente = cv.cliente
         tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
         formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=False)
-        
+
         tem_resposta = False
         total_perguntas = 0
         total_respostas = 0
-        
+
         if formulario and formulario.ativo:
             perguntas = formulario.perguntas.filter(ativo=True)
             total_perguntas = perguntas.count()
@@ -1454,7 +1344,7 @@ def visualizar_viagem(request, pk: int):
                 )
                 total_respostas = respostas.count()
                 tem_resposta = total_respostas > 0
-        
+
         clientes_com_info.append({
             "cliente": cliente,
             "tipo_visto": tipo_visto_cliente,
@@ -1463,6 +1353,8 @@ def visualizar_viagem(request, pk: int):
             "total_perguntas": total_perguntas,
             "total_respostas": total_respostas,
             "completo": tem_resposta and total_respostas == total_perguntas if total_perguntas > 0 else False,
+            "papel": cv.papel,
+            "cliente_principal_viagem": cv.cliente_principal_viagem,
         })
     
                                             
@@ -1474,12 +1366,15 @@ def visualizar_viagem(request, pk: int):
     ).order_by("-criado_em")
     
     pode_editar = pode_gerenciar_todos or (consultor and viagem.assessor_responsavel_id == consultor.pk)
-    
+
+    papeis_por_cliente = {item["cliente"].pk: item["papel"] for item in clientes_com_info}
+
     contexto = {
         "viagem": viagem,
         "clientes_com_info": clientes_com_info,
         "processos": processos,
         "registros_financeiros": registros_financeiros,
+        "papeis_por_cliente": papeis_por_cliente,
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": pode_gerenciar_todos,
         "pode_editar": pode_editar,
@@ -1801,8 +1696,94 @@ def excluir_respostas_formulario(request, viagem_id: int, cliente_id: int):
     
     messages.success(
         request,
-        f"Todas as respostas do formulário do cliente {cliente.nome} foram excluídas com sucesso. ({respostas_deletadas} resposta(s) removida(s))"
+        f"Todas as respostas do formulário do cliente {cliente.nome_completo} foram excluídas com sucesso. ({respostas_deletadas} resposta(s) removida(s))"
     )
-    
+
     return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
+
+
+import logging
+
+logger = logging.getLogger("visary.travel")
+
+
+@login_required
+@require_http_methods(["POST"])
+def trocar_principal_viagem(request, pk: int, cliente_id: int):
+    """Troca o cliente principal de uma viagem com transferência automática de financeiro."""
+    consultor = obter_consultor_usuario(request.user)
+    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+
+    viagem = get_object_or_404(Viagem, pk=pk)
+
+    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel_id != consultor.pk):
+        raise PermissionDenied
+
+    novo_principal = get_object_or_404(ClienteConsultoria, pk=cliente_id)
+
+    cv_novo = ClienteViagem.objects.filter(viagem=viagem, cliente=novo_principal).first()
+    if not cv_novo:
+        messages.error(request, "Cliente não está vinculado a esta viagem.")
+        return redirect("system:visualizar_viagem", pk=pk)
+
+    if cv_novo.papel == "principal":
+        messages.info(request, f"{novo_principal.nome} já é o principal desta viagem.")
+        return redirect("system:visualizar_viagem", pk=pk)
+
+    with transaction.atomic():
+        cv_antigo_principal = ClienteViagem.objects.filter(
+            viagem=viagem, papel="principal"
+        ).select_related("cliente").first()
+
+        if cv_antigo_principal:
+            antigo_principal = cv_antigo_principal.cliente
+
+            cv_antigo_principal.papel = "dependente"
+            cv_antigo_principal.cliente_principal_viagem = novo_principal
+            cv_antigo_principal.save(update_fields=["papel", "cliente_principal_viagem", "atualizado_em"])
+
+            try:
+                fin_antigo = Financeiro.objects.select_for_update().get(
+                    viagem=viagem, cliente=antigo_principal
+                )
+                fin_novo, created = Financeiro.objects.select_for_update().get_or_create(
+                    viagem=viagem, cliente=novo_principal,
+                    defaults={
+                        "assessor_responsavel": viagem.assessor_responsavel,
+                        "valor": fin_antigo.valor,
+                        "status": fin_antigo.status,
+                        "criado_por": viagem.criado_por,
+                    },
+                )
+                if not created:
+                    fin_novo.valor = fin_antigo.valor
+                    fin_novo.status = fin_antigo.status
+                    if fin_antigo.data_pagamento:
+                        fin_novo.data_pagamento = fin_antigo.data_pagamento
+                    fin_novo.save(update_fields=["valor", "status", "data_pagamento", "atualizado_em"])
+
+                fin_antigo.valor = 0
+                fin_antigo.save(update_fields=["valor", "atualizado_em"])
+
+                logger.info(
+                    "Financeiro transferido: viagem pk=%s, de '%s' (pk=%s) para '%s' (pk=%s)",
+                    viagem.pk, antigo_principal.nome, antigo_principal.pk,
+                    novo_principal.nome, novo_principal.pk,
+                )
+            except Financeiro.DoesNotExist:
+                pass
+
+        cv_novo.papel = "principal"
+        cv_novo.cliente_principal_viagem = None
+        cv_novo.save(update_fields=["papel", "cliente_principal_viagem", "atualizado_em"])
+
+        ClienteViagem.objects.filter(
+            viagem=viagem, papel="dependente"
+        ).update(cliente_principal_viagem=novo_principal)
+
+    messages.success(
+        request,
+        f"{novo_principal.nome} agora é o cliente principal desta viagem."
+    )
+    return redirect("system:visualizar_viagem", pk=pk)
 

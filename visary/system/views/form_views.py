@@ -43,15 +43,18 @@ def _filtro_formulario_cliente_ok(cliente_info, viagem, filtros):
     return True
 
 
-def _ordenar_clientes_por_grupo_familiar(clientes):
-    return sorted(
-        clientes,
-        key=lambda cliente: (
-            cliente.cliente_principal_id or cliente.pk,
-            1 if cliente.cliente_principal_id else 0,
-            cliente.pk,
-        ),
-    )
+def _ordenar_clientes_por_grupo_familiar(clientes, viagem=None):
+    if viagem:
+        from system.models import ClienteViagem
+        cv_map = {
+            cv.cliente_id: cv.papel
+            for cv in ClienteViagem.objects.filter(viagem=viagem)
+        }
+        return sorted(
+            clientes,
+            key=lambda c: (0 if cv_map.get(c.pk) == "principal" else 1, c.nome),
+        )
+    return sorted(clientes, key=lambda c: (c.nome,))
 
 
 def _aplicar_filtros_formularios_respostas(formularios_respostas, filtros):
@@ -779,7 +782,7 @@ def selecionar_viagem_cliente_formulario(request):
                                     
     viagens_com_clientes = []
     for viagem in viagens:
-        clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids).select_related("cliente_principal")
+        clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids).select_related("assessor_responsavel")
         if clientes_viagem.exists():
             viagens_com_clientes.append({
                 "viagem": viagem,

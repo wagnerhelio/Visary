@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Visary | Visualizar Formulario - {{ cliente.nome }}{% endblock %}
+{% block title %}Visary | Visualizar Formulário - {{ cliente.nome_completo }}{% endblock %}
 
 {% block base_styles %}
     {{ block.super }}
@@ -223,7 +223,7 @@
 
 {% block app_content %}
 <div class="form-header">
-    <h1>Visualizar Formulario: {{ cliente.nome }}</h1>
+    <h1>Visualizar Formulário: {{ cliente.nome_completo }}</h1>
     <p>Viagem para {{ viagem.pais_destino.nome }} - {{ tipo_visto_cliente.nome|default:viagem.tipo_visto.nome }} - {{ viagem.data_prevista_viagem|date:"d/m/Y" }}</p>
     {% if stage_items %}
     <div class="stages-stepper">
@@ -239,10 +239,10 @@
         {% endfor %}
     </div>
     {% endif %}
-    <div style="margin-top: 16px; display: flex; gap: 8px;">
+    <div class="header-actions" style="margin-top: 16px; display: flex; gap: 8px;">
         <a href="{% url 'system:listar_formularios_viagem' viagem.pk %}" class="btn btn-outline">Voltar</a>
         {% if pode_gerenciar_todos %}
-            <a href="{% url 'system:editar_formulario_cliente' viagem.pk cliente.pk %}" class="btn btn-primary">Editar Formulario</a>
+            <a href="{% url 'system:editar_formulario_cliente' viagem.pk cliente.pk %}" class="btn btn-primary">Editar Formulário</a>
         {% endif %}
     </div>
 </div>

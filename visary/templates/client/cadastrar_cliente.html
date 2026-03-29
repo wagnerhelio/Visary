@@ -967,28 +967,6 @@
                 </ul>
             {% endif %}
 
-            
-            {% for etapa in etapas %}
-                {% if etapa.pk != etapa_atual.pk %}
-                    {% for campo_etapa in etapa.campos.all %}
-                        {% if campo_etapa.nome_campo != 'confirmar_senha' %}
-                            {% if cliente %}
-                                {% with valor_campo=cliente|getattr_filter:campo_etapa.nome_campo %}
-                                    {% if campo_etapa.nome_campo == 'assessor_responsavel' %}
-                                        <input type="hidden" name="{{ campo_etapa.nome_campo }}" value="{{ cliente.assessor_responsavel.pk|default:'' }}">
-                                    {% elif campo_etapa.nome_campo == 'parceiro_indicador' %}
-                                        <input type="hidden" name="{{ campo_etapa.nome_campo }}" value="{{ cliente.parceiro_indicador.pk|default:'' }}">
-                                    {% elif campo_etapa.tipo_campo == 'data' and valor_campo %}
-                                        <input type="hidden" name="{{ campo_etapa.nome_campo }}" value="{{ valor_campo|date:'Y-m-d' }}">
-                                    {% elif valor_campo %}
-                                        <input type="hidden" name="{{ campo_etapa.nome_campo }}" value="{{ valor_campo }}">
-                                    {% endif %}
-                                {% endwith %}
-                            {% endif %}
-                        {% endif %}
-                    {% endfor %}
-                {% endif %}
-            {% endfor %}
 
             
             {% if False %}
@@ -1368,16 +1346,18 @@
             </script>
             {% endif %}
 
+            {% if etapa_atual.campo_booleano == 'etapa_passaporte' %}
             <div style="margin-bottom: 18px; padding: 14px; border: 1px dashed rgba(86, 244, 156, 0.35); border-radius: 12px; background: rgba(86, 244, 156, 0.06);">
-                <label for="passport-document-input-cliente" style="margin-bottom: 8px;">Extrair dados do passaporte (preenchimento automatico)</label>
+                <label for="passport-document-input-cliente" style="margin-bottom: 8px; display: block; font-size: 0.9rem; color: var(--text-primary);">Extrair dados do passaporte (preenchimento automático)</label>
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <input id="passport-document-input-cliente" type="file" accept=".pdf,.jpg,.jpeg,.png" style="max-width: 100%;">
+                    <input id="passport-document-input-cliente" type="file" accept=".pdf,.jpg,.jpeg,.png" style="max-width: 100%; box-sizing: border-box;">
                     <button type="button" id="btn-extrair-passaporte-cliente" class="btn btn-outline">Extrair e aplicar</button>
                 </div>
                 <p id="passport-extract-status-cliente" style="margin: 10px 0 0 0; font-size: 0.88rem; color: rgba(245, 245, 245, 0.75); line-height: 1.35; overflow-wrap: anywhere; word-break: break-word; white-space: normal;">
-                    Funciona desde o inicio do cadastro. Os campos extraidos sao reaproveitados nas proximas etapas.
+                    Os dados extraídos preenchem esta etapa e são reaproveitados nas demais etapas do cadastro.
                 </p>
             </div>
+            {% endif %}
 
             {% for campo_etapa in campos_etapa %}
                 {% if campo_etapa.nome_campo in form.fields %}

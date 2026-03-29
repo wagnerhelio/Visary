@@ -36,6 +36,7 @@ class ClienteConsultoriaForm(forms.ModelForm):
         fields = (
             "assessor_responsavel",
             "nome",
+            "sobrenome",
             "cpf",
             "data_nascimento",
             "nacionalidade",
@@ -71,7 +72,10 @@ class ClienteConsultoriaForm(forms.ModelForm):
                 }
             ),
             "nome": forms.TextInput(
-                attrs={"placeholder": "Nome completo", "autocomplete": "name"}
+                attrs={"placeholder": "Nome", "autocomplete": "given-name"}
+            ),
+            "sobrenome": forms.TextInput(
+                attrs={"placeholder": "Sobrenome", "autocomplete": "family-name"}
             ),
             "cpf": forms.TextInput(
                 attrs={
@@ -345,7 +349,7 @@ class ClienteConsultoriaForm(forms.ModelForm):
         if queryset.exists():
             cliente_existente = queryset.first()
             raise forms.ValidationError(
-                f"Este email já está em uso por outro cliente: {cliente_existente.nome}."
+                f"Este email já está em uso por outro cliente: {cliente_existente.nome_completo}."
             )
 
         return email

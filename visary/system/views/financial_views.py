@@ -56,8 +56,7 @@ def home_financeiro(request):
     registros = Financeiro.objects.select_related(
         "viagem",
         "cliente",
-        "cliente__cliente_principal",
-        "assessor_responsavel",
+                "assessor_responsavel",
     ).order_by("-criado_em")
     registros, filtros = _aplicar_filtros_financeiro(registros, request)
 
@@ -100,8 +99,7 @@ def listar_financeiro(request):
     registros = Financeiro.objects.select_related(
         "viagem",
         "cliente",
-        "cliente__cliente_principal",
-        "assessor_responsavel",
+                "assessor_responsavel",
     ).order_by("-criado_em")
     registros, filtros = _aplicar_filtros_financeiro(registros, request)
 

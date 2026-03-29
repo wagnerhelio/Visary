@@ -232,7 +232,7 @@
         <select name="cliente">
             <option value="">Cliente</option>
             {% for cliente in clientes_filtro %}
-                <option value="{{ cliente.pk }}" {% if filtros_aplicados.cliente == cliente.pk|stringformat:"s" %}selected{% endif %}>{{ cliente.nome }}</option>
+                <option value="{{ cliente.pk }}" {% if filtros_aplicados.cliente == cliente.pk|stringformat:"s" %}selected{% endif %}>{{ cliente.nome_completo }}</option>
             {% endfor %}
         </select>
         <select name="pais">
@@ -293,27 +293,19 @@
             </thead>
             <tbody>
                 {% for cliente_info in item.clientes %}
-                <tr class="{% if cliente_info.cliente.is_dependente %}row-dependente{% else %}row-principal{% endif %}">
+                <tr>
                     <td>
-                        <strong>{{ cliente_info.cliente.nome }}</strong>
-                        {% if cliente_info.cliente.is_dependente %}
-                            <span class="badge badge-dependente" style="font-size: 0.72rem; padding: 1px 8px; margin-left: 4px;">Dependente</span>
-                            <div style="font-size: 0.72rem; color: rgba(245, 245, 245, 0.5); margin-top: 2px;">
-                                de {{ cliente_info.cliente.cliente_principal.nome|default:"-" }}
-                            </div>
-                        {% else %}
-                            <span class="badge badge-principal" style="font-size: 0.72rem; padding: 1px 8px; margin-left: 4px;">Principal</span>
-                        {% endif %}
+                        <strong>{{ cliente_info.cliente.nome_completo }}</strong>
                     </td>
                     <td>
                         {{ cliente_info.tipo_visto.nome|default:"-" }}
                     </td>
                     <td>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div style="flex: 1; background: rgba(255, 255, 255, 0.1); border-radius: 8px; height: 8px; overflow: hidden;">
-                                <div style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); height: 100%; width: {% if cliente_info.total_perguntas > 0 %}{% widthratio cliente_info.total_respostas cliente_info.total_perguntas 100 %}{% else %}0{% endif %}%; transition: width 0.3s ease;"></div>
+                        <div class="progress-bar-cell">
+                            <div class="progress-bar-cell__bar">
+                                <div class="progress-bar-cell__fill" style="width: {% if cliente_info.total_perguntas > 0 %}{% widthratio cliente_info.total_respostas cliente_info.total_perguntas 100 %}{% else %}0{% endif %}%;"></div>
                             </div>
-                            <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7); min-width: 45px;">
+                            <span class="progress-bar-cell__label">
                                 {% if cliente_info.total_perguntas > 0 %}
                                     {% widthratio cliente_info.total_respostas cliente_info.total_perguntas 100 %}%
                                 {% else %}

@@ -19,6 +19,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 from system.forms import ProcessoForm
 from system.models import (
     ClienteConsultoria,
+    ClienteViagem,
     EtapaProcesso,
     Processo,
     StatusProcesso,
@@ -54,16 +55,17 @@ def _aplicar_filtros_processos(processos, request, incluir_assessor=True):
     return processos, filtros
 
 
-def _ordenar_processos_por_grupo_familiar(processos):
-    return sorted(
-        processos,
-        key=lambda processo: (
-            processo.cliente.cliente_principal_id or processo.cliente_id,
-            1 if processo.cliente.cliente_principal_id else 0,
-            processo.cliente_id,
-            processo.pk,
-        ),
-    )
+def _ordenar_processos_por_grupo_familiar(processos, viagem=None):
+    if viagem:
+        cv_map = {
+            cv.cliente_id: cv.papel
+            for cv in ClienteViagem.objects.filter(viagem=viagem)
+        }
+        return sorted(
+            processos,
+            key=lambda p: (0 if cv_map.get(p.cliente_id) == "principal" else 1, p.cliente.nome_completo, p.pk),
+        )
+    return sorted(processos, key=lambda p: (p.cliente.nome_completo, p.pk))
 
 
 @login_required
@@ -345,17 +347,12 @@ def _obter_proximo_cliente_mesma_viagem(viagem: Viagem, cliente_atual: ClienteCo
        
     clientes_na_viagem = viagem.clientes.all()
     clientes_relacionados_ids = set(clientes_na_viagem.values_list('pk', flat=True))
-
-    for cliente_viagem in clientes_na_viagem:
-        if cliente_viagem.is_principal:
-            clientes_relacionados_ids.update(
-                ClienteConsultoria.objects.filter(cliente_principal=cliente_viagem).values_list('pk', flat=True)
-            )
-        elif cliente_viagem.cliente_principal_id:
-            clientes_relacionados_ids.add(cliente_viagem.cliente_principal_id)
-            clientes_relacionados_ids.update(
-                ClienteConsultoria.objects.filter(cliente_principal_id=cliente_viagem.cliente_principal_id).values_list('pk', flat=True)
-            )
+    viagens_com_clientes = ClienteViagem.objects.filter(
+        cliente_id__in=clientes_relacionados_ids
+    ).values_list("viagem_id", flat=True).distinct()
+    clientes_relacionados_ids.update(
+        ClienteViagem.objects.filter(viagem_id__in=viagens_com_clientes).values_list("cliente_id", flat=True)
+    )
     
                              
     clientes_relacionados_ids.discard(cliente_atual.pk)
@@ -397,17 +394,12 @@ def _obter_proximo_cliente_viagem_separada(cliente: ClienteConsultoria, viagem_a
                                                                                               
        
     clientes_relacionados_ids = {cliente.pk}
-
-    if cliente.is_principal:
-        clientes_relacionados_ids.update(
-            ClienteConsultoria.objects.filter(cliente_principal=cliente).values_list('pk', flat=True)
-        )
-    elif cliente.cliente_principal:
-        principal = cliente.cliente_principal
-        clientes_relacionados_ids.add(principal.pk)
-        clientes_relacionados_ids.update(
-            ClienteConsultoria.objects.filter(cliente_principal=principal).values_list('pk', flat=True)
-        )
+    viagens_do_cliente = ClienteViagem.objects.filter(
+        cliente=cliente
+    ).values_list("viagem_id", flat=True).distinct()
+    clientes_relacionados_ids.update(
+        ClienteViagem.objects.filter(viagem_id__in=viagens_do_cliente).values_list("cliente_id", flat=True)
+    )
     
                              
     clientes_relacionados_ids.discard(cliente.pk)
@@ -449,9 +441,9 @@ def _redirecionar_para_proximo_cliente(request, processo: Processo, proximo_clie
                                                                                      
     try:
         proximo_cliente = ClienteConsultoria.objects.get(pk=proximo_cliente_info['cliente_id'])
-        mensagem = mensagem_especifica or f"Processo criado para {processo.cliente.nome}. Criando processo para {proximo_cliente.nome}..."
+        mensagem = mensagem_especifica or f"Processo criado para {processo.cliente.nome_completo}. Criando processo para {proximo_cliente.nome_completo}..."
     except ClienteConsultoria.DoesNotExist:
-        mensagem = f"Processo criado para {processo.cliente.nome}. Criando próximo processo..."
+        mensagem = f"Processo criado para {processo.cliente.nome_completo}. Criando próximo processo..."
     
     messages.info(request, mensagem)
     return redirect(
@@ -465,7 +457,7 @@ def _processar_proximo_cliente(request, processo: Processo) -> HttpResponseRedir
         return _redirecionar_para_proximo_cliente(request, processo, proximo_cliente_processo)
     
     if proximo_cliente_viagem_separada := _obter_proximo_cliente_viagem_separada(processo.cliente, processo.viagem):
-        mensagem = f"Processo criado para {processo.cliente.nome}. Criando processo em viagem separada..."
+        mensagem = f"Processo criado para {processo.cliente.nome_completo}. Criando processo em viagem separada..."
         return _redirecionar_para_proximo_cliente(request, processo, proximo_cliente_viagem_separada, mensagem)
     
     return None
@@ -487,7 +479,7 @@ def _processar_post_criar_processo(request, cliente_id, viagem_id) -> HttpRespon
     if redirect_response := _processar_proximo_cliente(request, processo):
         return redirect_response
     
-    messages.success(request, f"Todos os processos foram criados com sucesso! Processo criado para {processo.cliente.nome}.")
+    messages.success(request, f"Todos os processos foram criados com sucesso! Processo criado para {processo.cliente.nome_completo}.")
     return redirect("system:home_processos")
 
 
@@ -570,7 +562,6 @@ def visualizar_processo(request, pk: int):
             "viagem__pais_destino",
             "viagem__tipo_visto",
             "cliente",
-            "cliente__cliente_principal",
             "assessor_responsavel",
         ).prefetch_related("etapas", "etapas__status"),
         pk=pk
@@ -718,7 +709,7 @@ def excluir_processo(request, pk: int):
         raise PermissionDenied("Você não tem permissão para excluir processos.")
 
     processo = get_object_or_404(Processo, pk=pk)
-    cliente_nome = processo.cliente.nome
+    cliente_nome = processo.cliente.nome_completo
     processo.delete()
 
     messages.success(request, f"Processo de {cliente_nome} excluído com sucesso.")
@@ -937,40 +928,32 @@ def api_clientes_viagem(request):
     try:
         viagem = Viagem.objects.get(pk=viagem_id)
                                         
-        clientes_diretos = viagem.clientes.all()
-        
-        clientes_ids = set(clientes_diretos.values_list('pk', flat=True))
-        for cliente_direto in clientes_diretos:
-            if cliente_direto.is_principal:
-                clientes_ids.update(
-                    ClienteConsultoria.objects.filter(cliente_principal=cliente_direto).values_list('pk', flat=True)
-                )
-            elif cliente_direto.cliente_principal_id:
-                clientes_ids.add(cliente_direto.cliente_principal_id)
-                clientes_ids.update(
-                    ClienteConsultoria.objects.filter(cliente_principal_id=cliente_direto.cliente_principal_id).values_list('pk', flat=True)
-                )
-        
-                                                                   
-                                                          
-        clientes = ClienteConsultoria.objects.filter(pk__in=clientes_ids).select_related('cliente_principal')
-        
-                                          
-        principais = [c for c in clientes if c.is_principal]
-        dependentes = [c for c in clientes if not c.is_principal]
-        
-                                     
-        principais.sort(key=lambda x: x.nome)
-        dependentes.sort(key=lambda x: x.nome)
-        
-                                                           
-        clientes_ordenados = principais + dependentes
-        
+        clientes_viagem_qs = ClienteViagem.objects.filter(
+            viagem=viagem
+        ).select_related("cliente")
+
+        # Expandir grupo familiar via viagens compartilhadas
+        clientes_ids = set(clientes_viagem_qs.values_list("cliente_id", flat=True))
+        viagens_relacionadas = ClienteViagem.objects.filter(
+            cliente_id__in=clientes_ids
+        ).values_list("viagem_id", flat=True).distinct()
+        clientes_ids.update(
+            ClienteViagem.objects.filter(viagem_id__in=viagens_relacionadas).values_list("cliente_id", flat=True)
+        )
+
+        cv_map = {cv.cliente_id: cv.papel for cv in clientes_viagem_qs}
+        clientes = ClienteConsultoria.objects.filter(pk__in=clientes_ids).order_by("nome")
+
+        clientes_ordenados = sorted(
+            clientes,
+            key=lambda c: (0 if cv_map.get(c.pk) == "principal" else 1, c.nome),
+        )
+
         clientes_list = [
             {
                 "id": cliente.pk,
-                "nome": cliente.nome,
-                "is_principal": cliente.is_principal,
+                "nome": cliente.nome_completo,
+                "is_principal": cv_map.get(cliente.pk) == "principal",
             }
             for cliente in clientes_ordenados
         ]

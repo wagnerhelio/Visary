@@ -139,13 +139,7 @@
             {% for cliente in item.clientes %}
             {
                 id: {{ cliente.pk }},
-                nome: "{{ cliente.nome }}",
-                {% if cliente.is_dependente %}
-                is_dependente: true,
-                principal: "{{ cliente.cliente_principal.nome|default:'' }}"
-                {% else %}
-                is_dependente: false
-                {% endif %}
+                nome: "{{ cliente.nome_completo }}"
             }{% if not forloop.last %},{% endif %}
             {% endfor %}
         ]{% if not forloop.last %},{% endif %}
@@ -160,11 +154,7 @@
             viagensData[viagemId].forEach(function(cliente) {
                 const option = document.createElement('option');
                 option.value = cliente.id;
-                let text = cliente.nome;
-                if (cliente.is_dependente && cliente.principal) {
-                    text += ' (Dependente de ' + cliente.principal + ')';
-                }
-                option.textContent = text;
+                option.textContent = cliente.nome_completo;
                 clienteSelect.appendChild(option);
             });
         }

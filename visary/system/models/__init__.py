@@ -5,7 +5,7 @@
                                       
    
 
-from .client_models import ClienteConsultoria
+from .client_models import ClienteConsultoria, Lembrete
 from .etapa_models import CampoEtapaCliente, EtapaCadastroCliente
 from .financial_models import Financeiro, StatusFinanceiro
 from .form_models import (
@@ -30,6 +30,7 @@ __all__ = (
     "Financeiro",
     "StatusFinanceiro",
     "FormularioVisto",
+    "Lembrete",
     "Modulo",
     "OpcaoSelecao",
     "Partner",

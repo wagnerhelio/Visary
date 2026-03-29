@@ -297,6 +297,13 @@
 <section class="filtros-card">
     <form method="get" class="filtros-grid">
         <input type="text" name="nome" value="{{ filtros.nome }}" placeholder="Nome do cliente">
+        <select name="status_financeiro">
+            <option value="">Status Financeiro</option>
+            <option value="pendente" {% if filtros.status_financeiro == "pendente" %}selected{% endif %}>Pendente</option>
+            <option value="pago" {% if filtros.status_financeiro == "pago" %}selected{% endif %}>Pago</option>
+            <option value="cancelado" {% if filtros.status_financeiro == "cancelado" %}selected{% endif %}>Cancelado</option>
+            <option value="sem_registros" {% if filtros.status_financeiro == "sem_registros" %}selected{% endif %}>Sem registros</option>
+        </select>
         <div class="filtros-actions">
             <button type="submit" class="btn btn-primary">Filtrar</button>
             <a href="{% url 'system:home_clientes' %}" class="btn btn-outline">Limpar</a>
@@ -349,34 +356,47 @@
         <table class="mini-table">
             <thead>
                 <tr>
-                    <th>Cliente</th>
-                    <th>Financeiro</th>
-                    <th>Formulario</th>
-                    <th>Parceiro</th>
+                    <th>Nome</th>
+                    <th>Progresso</th>
+                    <th>Status Financeiro</th>
+                    <th>Status do Formulário</th>
+                    <th>Parceiro Indicador</th>
                     <th>Telefone</th>
-                    <th>Acoes</th>
+                    <th>E-mail</th>
+                    <th>Cadastro</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in clientes_com_status %}
-                <tr data-cliente="{{ item.cliente.pk }}" data-principal-pk="{% if item.cliente.cliente_principal_id %}{{ item.cliente.cliente_principal_id }}{% endif %}">
+                <tr>
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ item.cliente.nome }}</span>
-                            {% if item.cliente.is_dependente %}
-                                <span class="badge badge-dependente">Dependente</span>
-                                <span class="nome-cell__sub">de {{ item.cliente.cliente_principal.nome|default:"-" }}</span>
-                            {% else %}
-                                <span class="badge badge-principal">Principal</span>
-                            {% endif %}
+                            <span class="nome-cell__name">{{ item.cliente.nome_completo }}</span>
                             {% if item.legacy_meta.imported %}
                                 {% if item.legacy_meta.status == "problem" %}
-                                    <span class="badge badge-cancelado">Legado com pendencia</span>
+                                    <span class="badge badge-cancelado">Legado com pendência</span>
                                 {% else %}
                                     <span class="badge badge-completo">Importado legado</span>
                                 {% endif %}
                             {% endif %}
                         </div>
+                    </td>
+                    <td>
+                        {% if progressos %}
+                        {% for prog in progressos %}
+                            {% if prog.cliente_pk == item.cliente.pk %}
+                                <div class="progress-bar-cell">
+                                    <div class="progress-bar-cell__bar" style="width: 120px;">
+                                        <div class="progress-bar-cell__fill" style="width: {{ prog.progresso }}%;"></div>
+                                    </div>
+                                    <span class="progress-bar-cell__label">{{ prog.progresso }}%</span>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        {% else %}
+                            <span class="progress-bar-cell__label">-</span>
+                        {% endif %}
                     </td>
                     <td>
                         {% if item.status_financeiro == "Pendente" %}
@@ -391,31 +411,39 @@
                     </td>
                     <td>
                         {% if item.status_formulario == "Completo" %}
-                            <span class="badge badge-completo">&#10003; Completo</span>
+                            <span class="badge badge-completo">Completo</span>
+                            {% if item.total_perguntas > 0 %}
+                                <div class="nome-cell__sub" style="margin-top: 4px;">{{ item.total_respostas }}/{{ item.total_perguntas }} pergunta{{ item.total_perguntas|pluralize }}</div>
+                            {% endif %}
                         {% elif item.status_formulario == "Parcial" %}
                             <span class="badge badge-parcial">Parcial</span>
                             {% if item.total_perguntas > 0 %}
-                                <div class="nome-cell__sub">{{ item.total_respostas }}/{{ item.total_perguntas }}</div>
+                                <div class="nome-cell__sub" style="margin-top: 4px;">{{ item.total_respostas }}/{{ item.total_perguntas }} pergunta{{ item.total_perguntas|pluralize }}</div>
                             {% endif %}
-                        {% elif item.status_formulario == "Nao preenchido" %}
-                            <span class="badge badge-nao-preenchido">Nao preenchido</span>
+                        {% elif item.status_formulario == "Não preenchido" %}
+                            <span class="badge badge-nao-preenchido">Não preenchido</span>
                         {% else %}
-                            <span class="badge badge-sem">Sem formulario</span>
+                            <span class="badge badge-sem">Sem formulário</span>
                         {% endif %}
                     </td>
                     <td>
                         {% if item.cliente.parceiro_indicador %}
-                            <span style="font-size:0.82rem;">{{ item.cliente.parceiro_indicador }}</span>
+                            {{ item.cliente.parceiro_indicador }}
                         {% else %}
-                            <span style="color:rgba(245,245,245,0.35);">—</span>
+                            <span style="color: rgba(245, 245, 245, 0.5);">—</span>
                         {% endif %}
                     </td>
                     <td>{{ item.cliente.telefone }}</td>
+                    <td>{{ item.cliente.email|default:"-" }}</td>
+                    <td>{{ item.cliente.criado_em|date:"d/m/Y" }}</td>
                     <td>
-                        {% if item.cliente.is_principal %}
-                            <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small">Viagem</a>
-                        {% endif %}
-                        <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Ver</a>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small">Criar Viagem</a>
+                            <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                            {% if item.pode_editar %}
+                                <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

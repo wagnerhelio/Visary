@@ -91,13 +91,6 @@ def _autenticar_cliente(identifier: str, password: str, request, remember: bool)
     if not cliente:
         return None
 
-    if cliente.cliente_principal_id is not None:
-        messages.error(
-            request,
-            "Dependentes não possuem login próprio. Acesse usando a conta do cliente principal.",
-        )
-        return None
-
     if not is_password_usable(cliente.senha):
         messages.error(
             request,
@@ -178,7 +171,7 @@ def login_view(request):
 def _processar_login_cliente(request, cliente: ClienteConsultoria, remember: bool):
                                                            
     request.session["cliente_id"] = cliente.pk
-    request.session["cliente_nome"] = cliente.nome
+    request.session["cliente_nome"] = cliente.nome_completo
     request.session["cliente_cpf"] = cliente.cpf
 
     if not remember:
@@ -186,7 +179,7 @@ def _processar_login_cliente(request, cliente: ClienteConsultoria, remember: boo
     else:
         request.session.set_expiry(1209600)             
 
-    messages.success(request, f"Bem-vindo, {cliente.nome}!")
+    messages.success(request, f"Bem-vindo, {cliente.nome_completo}!")
     return redirect("system:cliente_dashboard")
 
 

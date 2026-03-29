@@ -215,7 +215,7 @@
 
     .progress-bar-cell__fill {
         height: 100%;
-        background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%);
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
     }
 
     .progress-bar-cell__label {
@@ -364,7 +364,7 @@
     .painel-filtros__combobox .btn-buscar {
         background: rgba(86, 244, 156, 0.2);
         border: 1px solid rgba(86, 244, 156, 0.4);
-        color: #56f49c;
+        color: var(--accent);
         padding: 8px 16px;
         border-radius: 10px;
         cursor: pointer;
@@ -449,7 +449,7 @@
     }
 
     .painel-filtros__combobox .highlight {
-        color: #56f49c;
+        color: var(--accent);
         font-weight: 600;
     }
 
@@ -546,13 +546,13 @@
                 <div class="dropdown-list" id="filtro-cliente-dropdown">
                     <div class="dropdown-item" data-value="" onclick="selecionarClienteDropdown(this)">Todos os Clientes</div>
                     {% for cliente in filtro_clientes %}
-                    <div class="dropdown-item" data-value="{{ cliente.pk }}" data-principal-pk="{% if cliente.principal_pk %}{{ cliente.principal_pk }}{% endif %}" onclick="selecionarClienteDropdown(this)">{{ cliente.nome }}</div>
+                    <div class="dropdown-item" data-value="{{ cliente.pk }}" data-principal-pk="{% if cliente.principal_pk %}{{ cliente.principal_pk }}{% endif %}" onclick="selecionarClienteDropdown(this)">{{ cliente.nome_completo }}</div>
                     {% endfor %}
                 </div>
                 <select id="filtro-cliente" name="cliente" onchange="aplicarFiltrosPainel()" style="display:none;">
                     <option value="">Todos os Clientes</option>
                     {% for cliente in filtro_clientes %}
-                    <option value="{{ cliente.pk }}" data-principal-pk="{% if cliente.principal_pk %}{{ cliente.principal_pk }}{% endif %}" {% if filtros_painel.cliente == cliente.pk|stringformat:"s" %}selected{% endif %}>{{ cliente.nome }}</option>
+                    <option value="{{ cliente.pk }}" data-principal-pk="{% if cliente.principal_pk %}{{ cliente.principal_pk }}{% endif %}" {% if filtros_painel.cliente == cliente.pk|stringformat:"s" %}selected{% endif %}>{{ cliente.nome_completo }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -675,25 +675,19 @@
             <thead>
                 <tr>
                     <th>Cliente</th>
-                    <th>Pais</th>
+                    <th>País</th>
                     <th>Tipo de Visto</th>
                     <th>Progresso</th>
-                    <th>Acoes</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% if formularios_pendentes %}
                 {% for item in formularios_pendentes %}
-                <tr data-cliente="{{ item.cliente_info.cliente.pk }}" data-principal-pk="{% if item.cliente_info.cliente.cliente_principal_id %}{{ item.cliente_info.cliente.cliente_principal_id }}{% endif %}" data-visto="{% if item.cliente_info.tipo_visto %}{{ item.cliente_info.tipo_visto.pk }}{% endif %}" data-formulario="parcial nao-preenchido">
+                <tr data-cliente="{{ item.cliente_info.cliente.pk }}" data-principal-pk="" data-visto="{% if item.cliente_info.tipo_visto %}{{ item.cliente_info.tipo_visto.pk }}{% endif %}" data-formulario="parcial nao-preenchido">
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ item.cliente_info.cliente.nome }}</span>
-                            {% if item.cliente_info.cliente.is_dependente %}
-                                <span class="badge badge-dependente">Dependente</span>
-                                <span class="nome-cell__sub">de {{ item.cliente_info.cliente.cliente_principal.nome|default:"-" }}</span>
-                            {% else %}
-                                <span class="badge badge-principal">Principal</span>
-                            {% endif %}
+                            <span class="nome-cell__name">{{ item.cliente_info.cliente.nome_completo }}</span>
                         </div>
                     </td>
                     <td>{{ item.viagem.pais_destino.nome }}</td>
@@ -738,25 +732,19 @@
             <thead>
                 <tr>
                     <th>Cliente</th>
-                    <th>Pais</th>
+                    <th>País</th>
                     <th>Tipo de Visto</th>
                     <th>Status</th>
-                    <th>Acoes</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% if formularios_preenchidos %}
                 {% for item in formularios_preenchidos %}
-                <tr data-cliente="{{ item.cliente_info.cliente.pk }}" data-principal-pk="{% if item.cliente_info.cliente.cliente_principal_id %}{{ item.cliente_info.cliente.cliente_principal_id }}{% endif %}" data-visto="{% if item.cliente_info.tipo_visto %}{{ item.cliente_info.tipo_visto.pk }}{% endif %}" data-formulario="completo">
+                <tr data-cliente="{{ item.cliente_info.cliente.pk }}" data-principal-pk="" data-visto="{% if item.cliente_info.tipo_visto %}{{ item.cliente_info.tipo_visto.pk }}{% endif %}" data-formulario="completo">
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ item.cliente_info.cliente.nome }}</span>
-                            {% if item.cliente_info.cliente.is_dependente %}
-                                <span class="badge badge-dependente">Dependente</span>
-                                <span class="nome-cell__sub">de {{ item.cliente_info.cliente.cliente_principal.nome|default:"-" }}</span>
-                            {% else %}
-                                <span class="badge badge-principal">Principal</span>
-                            {% endif %}
+                            <span class="nome-cell__name">{{ item.cliente_info.cliente.nome_completo }}</span>
                         </div>
                     </td>
                     <td>{{ item.viagem.pais_destino.nome }}</td>
@@ -797,25 +785,19 @@
             <thead>
                 <tr>
                     <th>Cliente</th>
-                    <th>Pais</th>
+                    <th>País</th>
                     <th>Tipo de Visto</th>
                     <th>Progresso</th>
                     <th>Assessor</th>
-                    <th>Acoes</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for processo in processos %}
-                <tr data-cliente="{{ processo.cliente.pk }}" data-principal-pk="{% if processo.cliente.cliente_principal_id %}{{ processo.cliente.cliente_principal_id }}{% endif %}" data-visto="{% if processo.viagem.tipo_visto %}{{ processo.viagem.tipo_visto.pk }}{% endif %}">
+                <tr data-cliente="{{ processo.cliente.pk }}" data-principal-pk="" data-visto="{% if processo.viagem.tipo_visto %}{{ processo.viagem.tipo_visto.pk }}{% endif %}">
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ processo.cliente.nome }}</span>
-                            {% if processo.cliente.is_dependente %}
-                                <span class="badge badge-dependente">Dependente</span>
-                                <span class="nome-cell__sub">de {{ processo.cliente.cliente_principal.nome|default:"-" }}</span>
-                            {% else %}
-                                <span class="badge badge-principal">Principal</span>
-                            {% endif %}
+                            <span class="nome-cell__name">{{ processo.cliente.nome_completo }}</span>
                         </div>
                     </td>
                     <td>{{ processo.viagem.pais_destino.nome }}</td>
@@ -859,24 +841,18 @@
                 <tr>
                     <th>Cliente</th>
                     <th>Financeiro</th>
-                    <th>Formulario</th>
+                    <th>Formulário</th>
                     <th>Parceiro</th>
                     <th>Telefone</th>
-                    <th>Acoes</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in clientes_com_status %}
-                <tr data-cliente="{{ item.cliente.pk }}" data-principal-pk="{% if item.cliente.cliente_principal_id %}{{ item.cliente.cliente_principal_id }}{% endif %}" data-financeiro="{{ item.status_financeiro|lower }}" data-formulario="{{ item.status_formulario|lower }}">
+                <tr data-cliente="{{ item.cliente.pk }}" data-principal-pk="" data-financeiro="{{ item.status_financeiro|lower }}" data-formulario="{{ item.status_formulario|lower }}">
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ item.cliente.nome }}</span>
-                            {% if item.cliente.is_dependente %}
-                                <span class="badge badge-dependente">Dependente</span>
-                                <span class="nome-cell__sub">de {{ item.cliente.cliente_principal.nome|default:"-" }}</span>
-                            {% else %}
-                                <span class="badge badge-principal">Principal</span>
-                            {% endif %}
+                            <span class="nome-cell__name">{{ item.cliente.nome_completo }}</span>
                         </div>
                     </td>
                     <td>
@@ -913,9 +889,7 @@
                     </td>
                     <td>{{ item.cliente.telefone }}</td>
                     <td>
-                        {% if item.cliente.is_principal %}
-                            <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small">Viagem</a>
-                        {% endif %}
+                        <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small">Viagem</a>
                         <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Ver</a>
                     </td>
                 </tr>
@@ -942,17 +916,17 @@
         <table class="painel-mini-table">
             <thead>
                 <tr>
-                    <th>Pais</th>
+                    <th>País</th>
                     <th>Tipo de Visto</th>
                     <th>Data Ida</th>
                     <th>Data Retorno</th>
                     <th>Clientes</th>
-                    <th>Acoes</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for viagem in viagens_dashboard %}
-                <tr data-cliente="{% for cliente in viagem.clientes.all %}{{ cliente.pk }}{% if not forloop.last %} {% endif %}{% endfor %}" data-principal-pk="{% for cliente in viagem.clientes.all %}{% if cliente.cliente_principal_id %}{{ cliente.cliente_principal_id }}{% endif %}{% if not forloop.last %} {% endif %}{% endfor %}" data-visto="{% if viagem.tipo_visto %}{{ viagem.tipo_visto.pk }}{% endif %}">
+                <tr data-cliente="{% for cliente in viagem.clientes.all %}{{ cliente.pk }}{% if not forloop.last %} {% endif %}{% endfor %}" data-principal-pk="" data-visto="{% if viagem.tipo_visto %}{{ viagem.tipo_visto.pk }}{% endif %}">
                     <td>{{ viagem.pais_destino.nome }}</td>
                     <td>{{ viagem.tipo_visto.nome }}</td>
                     <td>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
@@ -962,21 +936,9 @@
                             {% if clientes %}
                                 <div class="family-stack">
                                     {% for cliente in clientes %}
-                                        {% if cliente.is_principal %}
-                                            <div class="family-member family-member--principal">
-                                                <span class="family-member__name">{{ cliente.nome }}</span>
-                                                <span class="badge badge-principal">Principal</span>
-                                            </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                    {% for cliente in clientes %}
-                                        {% if cliente.is_dependente %}
-                                            <div class="family-member family-member--dependente">
-                                                <span class="family-member__name">{{ cliente.nome }}</span>
-                                                <span class="badge badge-dependente">Dependente</span>
-                                                <span class="family-member__sub">de {{ cliente.cliente_principal.nome|default:"-" }}</span>
-                                            </div>
-                                        {% endif %}
+                                        <div class="family-member">
+                                            <span class="family-member__name">{{ cliente.nome_completo }}</span>
+                                        </div>
                                     {% endfor %}
                                 </div>
                             {% else %}

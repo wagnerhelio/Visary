@@ -33,12 +33,15 @@ from .client_views import (
     api_dados_cliente,
     cadastrar_cliente_view,
     cadastrar_dependente,
+    criar_lembrete,
     editar_cliente_view,
     excluir_cliente,
+    excluir_lembrete,
     home_clientes,
     listar_clientes,
     listar_clientes_view,
     remover_dependente,
+    toggle_lembrete,
     usuario_pode_gerenciar_todos,
     visualizar_cliente,
 )
@@ -127,6 +130,7 @@ from .travel_views import (
     visualizar_formulario_cliente,
     visualizar_pais_destino,
     visualizar_tipo_visto,
+    trocar_principal_viagem,
     visualizar_viagem,
 )
 
@@ -135,6 +139,9 @@ __all__ = (
     "api_extrair_passaporte",
     "api_dados_cliente",
     "api_cliente_info",
+    "criar_lembrete",
+    "excluir_lembrete",
+    "toggle_lembrete",
     "api_prazo_status_processo",
     "api_status_processo",
     "api_tipos_visto",
@@ -238,5 +245,6 @@ __all__ = (
     "visualizar_pais_destino",
     "visualizar_processo",
     "visualizar_tipo_visto",
+    "trocar_principal_viagem",
     "visualizar_viagem",
 )

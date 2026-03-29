@@ -158,6 +158,16 @@ Frase de encerramento obrigatória quando houver nova descoberta relevante:
 - Prefira monólito modular Django bem organizado a espalhar regra de negócio em arquivos aleatórios.
 - Regras de domínio ficam no backend.
 - **Aparência visual é parte da entrega.** Nunca entregue template funcional sem estilo. Todo template novo ou reescrito deve seguir o design system do projeto: CSS custom properties (`--card-bg`, `--accent`, `--text-primary`, etc.), cards com `border-radius: 24px`, `box-shadow: 0 24px 48px rgba(5,8,17,0.5)`, botões com cores/acentos consistentes, badges coloridos por tipo (verde para ativo/sucesso, amarelo para atenção, vermelho para perigo, etc.), inputs com transições suaves. Templates genéricos (`{{ form.as_p }}` sem estilização, classes CSS inventadas ou inline styles avulsos) são rejeitados em revisão.
+- **Responsividade é obrigatória em toda entrega.** Todo template deve funcionar sem quebra visual em desktop (1120px+), tablet (768px) e mobile (480px). Checklist inviolável antes de entregar qualquer template:
+  1. `box-sizing: border-box` aplicado (`*` ou nos containers relevantes);
+  2. inputs e selects com `width: 100%` dentro do container pai;
+  3. grids com `minmax(min(Xpx, 100%), 1fr)` — nunca `minmax(Xpx, 1fr)` sem `min()`, pois estoura em viewports menores que `Xpx`;
+  4. formulários em grid/flex com `@media (max-width: 768px)` que colapse para coluna única;
+  5. tabelas envoltas em container com `overflow-x: auto` (classe `.table-responsive`);
+  6. containers flex/grid com `min-width: 0` para prevenir estouro;
+  7. proibido `flex: 0 0 <valor fixo>` sem `@media` correspondente que libere em mobile;
+  8. proibido `style="margin-bottom: 2px"` ou hacks de alinhamento — usar gap/padding do grid/flex.
+  Campos minúsculos, desalinhados à direita, ou que quebrem a viewport em qualquer resolução são rejeitados.
 - Templates não carregam regra de negócio complexa; apenas renderizam e exibem.
 - Forms devem ser validados no backend; UI pode ajudar, mas nunca decide o que é permitido.
 - MVT: Models (dados e validações), Views (orquestração e permissão), Templates (apenas renderização).
@@ -227,6 +237,7 @@ TDD obrigatório (test-first):
 - Testar concorrência só em SQLite e assumir que produção está coberta.
 - Executar `cleanup.py` destrutivo que altere código-fonte (ex.: remover comentários/docstrings) ou finalize processos Python sem escopo explícito.
 - Executar qualquer comando `git` sem pedido explícito do usuário na tarefa atual.
+- Entregar template sem validar responsividade: inputs com largura fixa, grids sem `min()`, formulários flex sem fallback mobile, tabelas sem `overflow-x: auto`, elementos sem `box-sizing: border-box`.
 
 ---
 

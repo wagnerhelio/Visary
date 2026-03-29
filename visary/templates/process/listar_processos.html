@@ -407,16 +407,10 @@
             </thead>
             <tbody>
             {% for processo in processos %}
-                <tr class="{% if processo.cliente.is_dependente %}row-dependente{% else %}row-principal{% endif %}">
+                <tr>
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ processo.cliente.nome }}</span>
-                            {% if processo.cliente.is_dependente %}
-                                <span class="badge badge-dependente">Dependente</span>
-                                <span class="nome-cell__sub">de {{ processo.cliente.cliente_principal.nome|default:"-" }}</span>
-                            {% else %}
-                                <span class="badge badge-principal">Principal</span>
-                            {% endif %}
+                            <span class="nome-cell__name">{{ processo.cliente.nome_completo }}</span>
                         </div>
                     </td>
                     <td>{{ processo.viagem.tipo_visto.nome }}</td>

@@ -141,11 +141,12 @@ def home(request):
 
     if selected_cliente_id:
         ids_cliente = {selected_cliente_id}
-        cliente_filter = clientes_usuario.filter(pk=selected_cliente_id).select_related("cliente_principal").first()
-        if cliente_filter and cliente_filter.cliente_principal_id:
-            ids_cliente.add(cliente_filter.cliente_principal_id)
-        elif cliente_filter:
-            ids_cliente.update(cliente_filter.dependentes.values_list("pk", flat=True))
+        viagens_do_cliente = ClienteViagem.objects.filter(
+            cliente_id=selected_cliente_id
+        ).values_list("viagem_id", flat=True).distinct()
+        ids_cliente.update(
+            ClienteViagem.objects.filter(viagem_id__in=viagens_do_cliente).values_list("cliente_id", flat=True)
+        )
         clientes_usuario = clientes_usuario.filter(pk__in=ids_cliente)
 
     if selected_visto_id:
@@ -166,7 +167,7 @@ def home(request):
 
     clientes_qs = clientes_usuario.select_related(
         "assessor_responsavel", "criado_por", "parceiro_indicador"
-    ).prefetch_related("dependentes", "viagens").order_by("-criado_em")
+    ).prefetch_related("viagens").order_by("-criado_em")
 
     processos_qs = Processo.objects.filter(
         cliente__pk__in=clientes_ids
@@ -183,7 +184,9 @@ def home(request):
         viagens_qs = viagens_qs.filter(tipo_visto_id=selected_visto_id)
 
     total_clientes = clientes_usuario.count()
-    total_dependentes = clientes_usuario.filter(cliente_principal__isnull=False).count()
+    total_dependentes = ClienteViagem.objects.filter(
+        cliente_id__in=clientes_ids, papel="dependente"
+    ).values("cliente_id").distinct().count()
     total_viagens = viagens_qs.count()
     total_viagens_proximas = viagens_qs.filter(
         data_prevista_viagem__gte=hoje,
@@ -206,11 +209,12 @@ def home(request):
 
         if selected_cliente_id:
             ids_kpi_cliente = {selected_cliente_id}
-            cliente_filter = clientes_filtro_base.filter(pk=selected_cliente_id).select_related("cliente_principal").first()
-            if cliente_filter and cliente_filter.cliente_principal_id:
-                ids_kpi_cliente.add(cliente_filter.cliente_principal_id)
-            elif cliente_filter:
-                ids_kpi_cliente.update(cliente_filter.dependentes.values_list("pk", flat=True))
+            viagens_kpi = ClienteViagem.objects.filter(
+                cliente_id=selected_cliente_id
+            ).values_list("viagem_id", flat=True).distinct()
+            ids_kpi_cliente.update(
+                ClienteViagem.objects.filter(viagem_id__in=viagens_kpi).values_list("cliente_id", flat=True)
+            )
             financeiro_qs_kpi = financeiro_qs_kpi.filter(cliente_id__in=ids_kpi_cliente)
 
         if selected_visto_id:
@@ -325,11 +329,14 @@ def home(request):
         if not clientes_viagem.exists():
             continue
 
-        principais_v = [c for c in clientes_viagem if not c.cliente_principal_id]
-        dependentes_v = [c for c in clientes_viagem if c.cliente_principal_id]
-        principais_v.sort(key=lambda c: c.pk)
-        dependentes_v.sort(key=lambda d: d.pk)
-        clientes_ordenados_v = principais_v + dependentes_v
+        cv_map = {
+            cv.cliente_id: cv.papel
+            for cv in ClienteViagem.objects.filter(viagem=viagem)
+        }
+        clientes_ordenados_v = sorted(
+            clientes_viagem,
+            key=lambda c: (0 if cv_map.get(c.pk) == "principal" else 1, c.pk),
+        )
 
         clientes_info = []
         for cliente in clientes_ordenados_v:
@@ -418,8 +425,8 @@ def home(request):
     filtro_clientes = [
         {
             "pk": cliente.pk,
-            "nome": cliente.nome,
-            "principal_pk": cliente.cliente_principal_id,
+            "nome": cliente.nome_completo,
+            "principal_pk": None,
         }
         for cliente in clientes_usuario.order_by("nome")
     ]

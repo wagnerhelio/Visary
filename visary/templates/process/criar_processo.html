@@ -374,7 +374,7 @@
                 principais.forEach(cliente => {
                     const option = document.createElement('option');
                     option.value = cliente.id;
-                    option.textContent = cliente.nome;
+                    option.textContent = cliente.nome_completo;
                     option.style.fontWeight = 'bold';
                     clienteSelect.appendChild(option);
                 });
@@ -383,7 +383,7 @@
                 dependentes.forEach(cliente => {
                     const option = document.createElement('option');
                     option.value = cliente.id;
-                    option.textContent = cliente.nome;
+                    option.textContent = cliente.nome_completo;
                     option.style.color = 'rgba(245, 245, 245, 0.8)';
                     clienteSelect.appendChild(option);
                 });

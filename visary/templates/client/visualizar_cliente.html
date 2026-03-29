@@ -7,6 +7,12 @@
     {{ block.super }}
 
     <style>
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
     .layout-grid {
         display: grid;
         gap: 24px;
@@ -17,7 +23,9 @@
         border-radius: 24px;
         border: 1px solid var(--border-soft);
         box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
-        padding: clamp(18px, 3.5vw, 28px);
+        padding: clamp(16px, 3.5vw, 28px);
+        width: 100%;
+        min-width: 0;
     }
 
     .card header {
@@ -28,7 +36,7 @@
 
     .card h2 {
         margin: 0;
-        font-size: 1.4rem;
+        font-size: clamp(1.1rem, 2.5vw, 1.4rem);
         color: var(--text-primary);
     }
 
@@ -41,13 +49,18 @@
     .info-grid {
         display: grid;
         gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
     }
 
     .info-item {
         display: flex;
         flex-direction: column;
         gap: 6px;
+        min-width: 0;
+    }
+
+    .info-item--full {
+        grid-column: 1 / -1;
     }
 
     .info-label {
@@ -61,6 +74,16 @@
     .info-value {
         font-size: 0.95rem;
         color: rgba(245, 245, 245, 0.88);
+        word-break: break-word;
+    }
+
+    .info-value--obs {
+        white-space: pre-wrap;
+        padding: 12px;
+        background: rgba(12, 19, 35, 0.72);
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        line-height: 1.6;
     }
 
     .badge {
@@ -95,6 +118,12 @@
         border: 1px solid rgba(158, 158, 158, 0.4);
     }
 
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
     table {
         width: 100%;
         border-collapse: collapse;
@@ -112,6 +141,7 @@
         font-size: 0.78rem;
         letter-spacing: 0.08em;
         color: rgba(245, 245, 245, 0.6);
+        white-space: nowrap;
     }
 
     td {
@@ -129,8 +159,172 @@
     .btn-small {
         padding: 6px 12px;
         font-size: 0.85rem;
+        white-space: nowrap;
     }
 
+    /* ── Lembretes ── */
+    .lembretes-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .lembrete-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        background: rgba(12, 19, 35, 0.5);
+        min-width: 0;
+    }
+
+    .lembrete-item--concluido {
+        opacity: 0.55;
+    }
+
+    .lembrete-item--concluido .lembrete-texto {
+        text-decoration: line-through;
+    }
+
+    .lembrete-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .lembrete-texto {
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        line-height: 1.5;
+        word-break: break-word;
+    }
+
+    .lembrete-meta {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .lembrete-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+        align-items: center;
+    }
+
+    .lembrete-actions form {
+        margin: 0;
+        display: inline;
+    }
+
+    .lembrete-actions button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        transition: background 0.15s, color 0.15s;
+        white-space: nowrap;
+    }
+
+    .lembrete-actions button:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-primary);
+    }
+
+    .lembrete-actions .btn-concluir {
+        color: var(--accent);
+    }
+
+    .lembrete-actions .btn-excluir {
+        color: rgba(244, 67, 54, 0.8);
+    }
+
+    .lembrete-form {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 20px;
+    }
+
+    .lembrete-form label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+    }
+
+    .lembrete-form input[type="text"],
+    .lembrete-form input[type="date"] {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        background: rgba(12, 19, 35, 0.72);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .lembrete-form input:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+    }
+
+    /* ── Clientes vinculados ── */
+    .vinculados-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+    }
+
+    .vinculado-card {
+        padding: 16px;
+        border-radius: 14px;
+        border: 1px solid var(--border-soft);
+        background: rgba(12, 19, 35, 0.5);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: border-color 0.15s;
+        text-decoration: none;
+        min-width: 0;
+    }
+
+    .vinculado-card:hover {
+        border-color: rgba(86, 244, 156, 0.3);
+    }
+
+    .vinculado-card__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .vinculado-card__nome {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        word-break: break-word;
+    }
+
+    .vinculado-card__info {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        word-break: break-word;
+    }
+
+    /* ── Mobile ── */
     @media (max-width: 768px) {
         .info-grid {
             grid-template-columns: 1fr;
@@ -142,6 +336,28 @@
 
         th, td {
             padding: 10px 8px;
+        }
+
+        .lembrete-form {
+            grid-template-columns: 1fr;
+        }
+
+        .lembrete-item {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .lembrete-actions {
+            align-self: flex-end;
+        }
+
+        .vinculados-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .vinculado-card__header {
+            flex-direction: column;
+            align-items: flex-start;
         }
     }
 
@@ -169,7 +385,7 @@
         {% if legacy_meta.status == "problem" %}
             <section class="card" style="border: 1px solid rgba(255, 82, 82, 0.35); background: rgba(255, 82, 82, 0.08);">
                 <header>
-                    <h2 style="margin: 0;">Importação legado com pendências</h2>
+                    <h2>Importação legado com pendências</h2>
                 </header>
                 <ul style="margin: 0; padding-left: 18px;">
                     {% for issue in legacy_meta.issues %}
@@ -183,7 +399,7 @@
             </section>
         {% endif %}
     {% endif %}
-    
+
     <section class="card">
         <header>
             <h2>Informações do Cliente</h2>
@@ -191,22 +407,7 @@
         <div class="info-grid">
             <div class="info-item">
                 <span class="info-label">Nome</span>
-                <span class="info-value">{{ cliente.nome }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Status</span>
-                <span class="info-value">
-                    {% if cliente.is_principal %}
-                        <span class="badge badge-primary">Principal</span>
-                    {% else %}
-                        <span class="badge badge-warning">Dependente</span>
-                        {% if cliente.cliente_principal %}
-                            <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
-                                de {{ cliente.cliente_principal.nome }}
-                            </div>
-                        {% endif %}
-                    {% endif %}
-                </span>
+                <span class="info-value">{{ cliente.nome_completo }}</span>
             </div>
             <div class="info-item">
                 <span class="info-label">E-mail</span>
@@ -251,22 +452,77 @@
                 <span class="info-value">{{ cliente.criado_em|localtime|date:"d/m/Y H:i" }}</span>
             </div>
             {% if observacoes_limpa %}
-            <div class="info-item" style="grid-column: 1 / -1;">
+            <div class="info-item info-item--full">
                 <span class="info-label">Observações do Cadastro</span>
-                <div class="info-value" style="white-space: pre-wrap; padding: 12px; background: rgba(12, 19, 35, 0.72); border-radius: 12px; border: 1px solid var(--border-soft); line-height: 1.6;">{{ observacoes_limpa }}</div>
+                <div class="info-value info-value--obs">{{ observacoes_limpa }}</div>
             </div>
             {% endif %}
         </div>
     </section>
 
-    
+    <section class="card">
+        <header>
+            <h2>Lembretes</h2>
+            <p>Lembretes e anotações vinculados ao cliente</p>
+        </header>
+        {% if pode_editar %}
+        <form method="post" action="{% url 'system:criar_lembrete' cliente.pk %}" class="lembrete-form">
+            {% csrf_token %}
+            <div>
+                <label for="lembrete-texto">Novo lembrete</label>
+                <input type="text" id="lembrete-texto" name="texto" placeholder="Digite o lembrete..." required>
+            </div>
+            <div>
+                <label for="lembrete-data">Data (opcional)</label>
+                <input type="date" id="lembrete-data" name="data_lembrete">
+            </div>
+            <button type="submit" class="btn btn-primary btn-small">Adicionar</button>
+        </form>
+        {% endif %}
+        {% if lembretes %}
+        <div class="lembretes-list">
+            {% for lembrete in lembretes %}
+            <div class="lembrete-item {% if lembrete.concluido %}lembrete-item--concluido{% endif %}">
+                <div class="lembrete-content">
+                    <div class="lembrete-texto">{{ lembrete.texto }}</div>
+                    <div class="lembrete-meta">
+                        {{ lembrete.criado_por.nome }} &middot; {{ lembrete.criado_em|localtime|date:"d/m/Y H:i" }}
+                        {% if lembrete.data_lembrete %}
+                            &middot; Lembrar em {{ lembrete.data_lembrete|date:"d/m/Y" }}
+                        {% endif %}
+                    </div>
+                </div>
+                {% if pode_editar %}
+                <div class="lembrete-actions">
+                    <form method="post" action="{% url 'system:toggle_lembrete' lembrete.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-concluir" title="{% if lembrete.concluido %}Reabrir{% else %}Concluir{% endif %}">
+                            {% if lembrete.concluido %}Reabrir{% else %}Concluir{% endif %}
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'system:excluir_lembrete' lembrete.pk %}" onsubmit="return confirm('Excluir este lembrete?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-excluir" title="Excluir">Excluir</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            Nenhum lembrete registrado para este cliente.
+        </div>
+        {% endif %}
+    </section>
+
     <section class="card">
         <header>
             <h2>Viagens</h2>
             <p>Viagens vinculadas ao cliente</p>
         </header>
         {% if viagens %}
-        <div style="overflow-x: auto;">
+        <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
@@ -293,7 +549,7 @@
                                     {{ viagem.observacoes|truncatewords:20 }}
                                 </div>
                             {% else %}
-                                <span style="color: rgba(245, 245, 245, 0.5);">—</span>
+                                <span class="text-muted">—</span>
                             {% endif %}
                         </td>
                         <td>
@@ -311,14 +567,13 @@
         {% endif %}
     </section>
 
-    
     <section class="card">
         <header>
             <h2>Processos</h2>
             <p>Processos de visto vinculados ao cliente</p>
         </header>
         {% if processos %}
-        <div style="overflow-x: auto;">
+        <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
@@ -337,13 +592,13 @@
                         <td>{{ processo.viagem.pais_destino.nome }} - {{ processo.viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
                         <td>{{ processo.viagem.pais_destino.nome }}</td>
                         <td>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <div style="flex: 1; background: rgba(255, 255, 255, 0.1); border-radius: 8px; height: 8px; overflow: hidden;">
-                                    <div style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); height: 100%; width: {{ processo.progresso_percentual }}%; transition: width 0.3s ease;"></div>
+                            <div class="progress-bar-cell">
+                                <div class="progress-bar-cell__bar">
+                                    <div class="progress-bar-cell__fill" style="width: {{ processo.progresso_percentual }}%;"></div>
                                 </div>
-                                <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7); min-width: 45px;">{{ processo.progresso_percentual }}%</span>
+                                <span class="progress-bar-cell__label">{{ processo.progresso_percentual }}%</span>
                             </div>
-                            <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
                                 {{ processo.etapas_concluidas }} de {{ processo.total_etapas }} etapas
                             </div>
                         </td>
@@ -354,7 +609,7 @@
                                     {{ processo.observacoes|truncatewords:20 }}
                                 </div>
                             {% else %}
-                                <span style="color: rgba(245, 245, 245, 0.5);">—</span>
+                                <span class="text-muted">—</span>
                             {% endif %}
                         </td>
                         <td>{{ processo.criado_em|localtime|date:"d/m/Y" }}</td>
@@ -373,14 +628,13 @@
         {% endif %}
     </section>
 
-    
     {% if registros_financeiros %}
     <section class="card">
         <header>
             <h2>Registros Financeiros</h2>
             <p>Registros financeiros vinculados ao cliente</p>
         </header>
-        <div style="overflow-x: auto;">
+        <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
@@ -414,6 +668,40 @@
         </div>
     </section>
     {% endif %}
+
+    {% if clientes_vinculados %}
+    <section class="card">
+        <header>
+            <h2>Clientes Vinculados</h2>
+            <p>
+                {% if cliente.is_principal %}
+                    Dependentes vinculados a este cliente
+                {% else %}
+                    Cliente principal e outros dependentes do grupo familiar
+                {% endif %}
+            </p>
+        </header>
+        <div class="vinculados-grid">
+            {% for item in clientes_vinculados %}
+            <a href="{% url 'system:visualizar_cliente' item.cliente.pk %}" class="vinculado-card">
+                <div class="vinculado-card__header">
+                    <span class="vinculado-card__nome">{{ item.cliente.nome_completo }}</span>
+                    {% if item.relacao == "Principal" %}
+                        <span class="badge badge-primary">Principal</span>
+                    {% else %}
+                        <span class="badge badge-warning">Dependente</span>
+                    {% endif %}
+                </div>
+                <div class="vinculado-card__info">
+                    {{ item.cliente.email|default:"Sem e-mail" }} &middot; {{ item.cliente.telefone|default:"Sem telefone" }}
+                </div>
+                <div class="vinculado-card__info">
+                    CPF: {{ item.cliente.cpf }} &middot; Nasc.: {{ item.cliente.data_nascimento|date:"d/m/Y"|default:"-" }}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
 </div>
 {% endblock %}
-

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Visary | Meus Formularios{% endblock %}
+{% block title %}Visary | Meus Formulários{% endblock %}
 
 {% block base_styles %}
     {{ block.super }}
@@ -198,7 +198,7 @@
 
     .progress-bar-cell__fill {
         height: 100%;
-        background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%);
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
     }
 
     .progress-bar-cell__label {
@@ -281,7 +281,7 @@
     <a href="{% url 'system:selecionar_viagem_cliente_formulario' %}" class="home-card">
         <div class="home-card__icon">&#9998;</div>
         <div class="home-card__content">
-            <h3>Preencher Formulario</h3>
+            <h3>Preencher Formulário</h3>
             <p>Selecionar viagem e cliente</p>
         </div>
     </a>
@@ -300,7 +300,7 @@
         <select name="cliente">
             <option value="">Cliente</option>
             {% for cliente in clientes_filtro %}
-                <option value="{{ cliente.pk }}" {% if filtros_aplicados.cliente == cliente.pk|stringformat:"s" %}selected{% endif %}>{{ cliente.nome }}</option>
+                <option value="{{ cliente.pk }}" {% if filtros_aplicados.cliente == cliente.pk|stringformat:"s" %}selected{% endif %}>{{ cliente.nome_completo }}</option>
             {% endfor %}
         </select>
         <select name="pais">
@@ -364,21 +364,15 @@
                     <th>Pais</th>
                     <th>Tipo de Visto</th>
                     <th>Progresso</th>
-                    <th>Acoes</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in formularios_pendentes %}
-                <tr class="{% if item.cliente_info.cliente.cliente_principal_id %}row-dependente{% else %}row-principal{% endif %}">
+                <tr>
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ item.cliente_info.cliente.nome }}</span>
-                            {% if item.cliente_info.cliente.cliente_principal_id %}
-                                <span class="badge badge-dependente">Dependente</span>
-                                <span class="nome-cell__sub">de {{ item.cliente_info.cliente.cliente_principal.nome|default:"-" }}</span>
-                            {% else %}
-                                <span class="badge badge-principal">Principal</span>
-                            {% endif %}
+                            <span class="nome-cell__name">{{ item.cliente_info.cliente.nome_completo }}</span>
                         </div>
                     </td>
                     <td>{{ item.viagem.pais_destino.nome }}</td>
@@ -423,21 +417,15 @@
                     <th>Pais</th>
                     <th>Tipo de Visto</th>
                     <th>Status</th>
-                    <th>Acoes</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in formularios_preenchidos %}
-                <tr class="{% if item.cliente_info.cliente.cliente_principal_id %}row-dependente{% else %}row-principal{% endif %}">
+                <tr>
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ item.cliente_info.cliente.nome }}</span>
-                            {% if item.cliente_info.cliente.cliente_principal_id %}
-                                <span class="badge badge-dependente">Dependente</span>
-                                <span class="nome-cell__sub">de {{ item.cliente_info.cliente.cliente_principal.nome|default:"-" }}</span>
-                            {% else %}
-                                <span class="badge badge-principal">Principal</span>
-                            {% endif %}
+                            <span class="nome-cell__name">{{ item.cliente_info.cliente.nome_completo }}</span>
                         </div>
                     </td>
                     <td>{{ item.viagem.pais_destino.nome }}</td>

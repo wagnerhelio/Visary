@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(update-config)",
+      "Bash(grep -r \"Authorization\\\\|Bearer\\\\|API_KEY\\\\|password\" C:UserswhsfDocumentsGitHubvisary-front/src --include=*.tsx --include=*.ts --include=*.jsx --include=*.js)",
+      "Bash(grep -r \"fetch\\\\|axios\" C:UserswhsfDocumentsGitHubvisary-front/src --include=*.tsx --include=*.ts --include=*.jsx --include=*.js)",
+      "Bash(grep -r \"\\\\.raw\\\\|\\\\.extra\\\\|\\\\.annotate.*RawSQL\" C:UserswhsfDocumentsGitHubVisary/visary/system --include=*.py)",
+      "Bash(grep -r \"offline\\\\|service.worker\\\\|localStorage\\\\|sessionStorage\\\\|retry\\\\|queue\\\\|cache\" /c/Users/whsf/Documents/GitHub/Visary/visary --include=*.py --include=*.js --include=*.html)",
+      "Bash(grep -r \"fetch\\\\|XMLHttpRequest\\\\|axios\\\\|ajax\\\\|catch\\\\|error\" /c/Users/whsf/Documents/GitHub/Visary/visary/templates --include=*.html)",
+      "Bash(find /c/Users/whsf/Documents/GitHub/Visary/visary -type f -name test*.py -o -name *test.py)",
+      "Bash(wc -l /c/Users/whsf/Documents/GitHub/Visary/visary/system/models/*.py /c/Users/whsf/Documents/GitHub/Visary/visary/system/views/*.py)",
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''visary/system/services/form_responses.py'', doraise=True\\); print\\(''OK''\\)\")",
+      "Bash(python -c \"import py_compile; py_compile.compile\\(''visary/system/views/travel_views.py'', doraise=True\\); print\\(''OK''\\)\")",
+      "Bash(python -c \":*)",
+      "Bash(python cleanup.py)",
+      "Bash(python manage.py makemigrations)",
+      "Bash(python manage.py migrate)",
+      "Bash(python manage.py migrate system)",
+      "Bash(python manage.py showmigrations system)",
+      "Bash(python manage.py migrate --run-syncdb)",
+      "Bash(python manage.py check)",
+      "Bash(python:*)",
+      "Bash(find C:UserswhsfDocumentsGitHubVisaryvisarystatic -name *.css -type f)",
+      "Bash(find C:UserswhsfDocumentsGitHubVisaryvisary -name *.css -type f)",
+      "Bash(find C:UserswhsfDocumentsGitHubVisaryvisarytemplates -name *.html -type f)",
+      "Bash(grep -l \"\\\\.badge\\\\|<style>\" C:UserswhsfDocumentsGitHubVisaryvisarytemplatesclient_area*.html)",
+      "Read(//c/Users/whsf/.claude/projects/**)",
+      "Read(//c/Users/whsf/.claude/**)",
+      "Bash(grep -v \"//\")",
+      "Bash(grep:*)"
+    ]
+  }
+}

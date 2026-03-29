@@ -222,8 +222,8 @@
 {% block app_content %}
 <div class="client-header">
     <div>
-        <h1>Bem-vindo, {{ cliente.nome }}!</h1>
-        <p>Gerencie suas viagens e formularios</p>
+        <h1>Bem-vindo, {{ cliente.nome_completo }}!</h1>
+        <p>Gerencie suas viagens e formulários</p>
     </div>
     <a href="{% url 'system:cliente_logout' %}" class="btn btn-outline">Sair</a>
 </div>
@@ -255,42 +255,22 @@
                 {% if viagem.tipo_visto.formulario %}
                 <div class="viajantes-section">
                     {% for c in viagem.clientes.all %}
-                        {% if c.is_principal %}
                         <div class="viajante-card">
                             <div class="viajante-info">
-                                <span class="viajante-nome">
-                                    {{ c.nome }}
-                                    <span class="badge-principal">Titular</span>
-                                </span>
+                                <span class="viajante-nome">{{ c.nome }}</span>
                                 <span class="viajante-cpf">{{ c.cpf }}</span>
                             </div>
                             <div class="viajante-actions">
                                 <a href="{% url 'system:cliente_visualizar_formulario' viagem.pk %}" class="btn btn-primary">
-                                    Preencher Formulario
+                                    Preencher Formulário
                                 </a>
                             </div>
                         </div>
-                        {% else %}
-                        <div class="viajante-card">
-                            <div class="viajante-info">
-                                <span class="viajante-nome">
-                                    {{ c.nome }}
-                                    <span class="badge-dependente">Dependente</span>
-                                </span>
-                                <span class="viajante-cpf">{{ c.cpf }}</span>
-                            </div>
-                            <div class="viajante-actions">
-                                <a href="{% url 'system:cliente_visualizar_formulario' viagem.pk %}" class="btn btn-primary">
-                                    Preencher Formulario
-                                </a>
-                            </div>
-                        </div>
-                        {% endif %}
                     {% endfor %}
                 </div>
                 {% else %}
-                    <div style="padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.05); color: var(--text-secondary); text-align: center; font-size: 0.9rem;">
-                        Formulario nao disponivel para este tipo de visto.
+                    <div class="empty-state" style="padding: 16px; border: none;">
+                        Formulário não disponível para este tipo de visto.
                     </div>
                 {% endif %}
             </div>
@@ -299,7 +279,7 @@
 {% else %}
     <div class="empty-state">
         <h3>Nenhuma viagem encontrada</h3>
-        <p>Voce ainda nao esta vinculado a nenhuma viagem.</p>
+        <p>Você ainda não está vinculado a nenhuma viagem. Entre em contato com seu assessor.</p>
     </div>
 {% endif %}
 {% endblock %}

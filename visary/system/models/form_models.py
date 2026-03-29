@@ -175,7 +175,7 @@ class RespostaFormulario(models.Model):
         unique_together = [("viagem", "cliente", "pergunta")]
 
     def __str__(self):
-        return f"{self.cliente.nome} - {self.pergunta.pergunta}"
+        return f"{self.cliente.nome_completo} - {self.pergunta.pergunta}"
 
     def get_resposta_display(self):
                                                                          

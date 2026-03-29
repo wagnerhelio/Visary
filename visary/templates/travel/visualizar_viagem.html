@@ -53,46 +53,105 @@
     .info-label {
         font-size: 0.78rem;
         font-weight: 600;
-        color: rgba(245, 245, 245, 0.6);
+        color: var(--text-secondary);
         letter-spacing: 0.08em;
         text-transform: uppercase;
     }
 
     .info-value {
         font-size: 0.95rem;
-        color: rgba(245, 245, 245, 0.88);
+        color: var(--text-primary);
     }
 
     .badge {
         display: inline-block;
         padding: 4px 12px;
         border-radius: 12px;
-        font-size: 0.85rem;
+        font-size: 0.75rem;
         font-weight: 600;
+        white-space: nowrap;
     }
 
     .badge-primary {
-        background: rgba(86, 244, 156, 0.2);
+        background: rgba(86, 244, 156, 0.15);
         color: rgba(86, 244, 156, 0.95);
-        border: 1px solid rgba(86, 244, 156, 0.4);
+        border: 1px solid rgba(86, 244, 156, 0.35);
     }
 
     .badge-warning {
-        background: rgba(255, 193, 7, 0.2);
+        background: rgba(255, 193, 7, 0.15);
         color: rgba(255, 193, 7, 0.95);
-        border: 1px solid rgba(255, 193, 7, 0.4);
+        border: 1px solid rgba(255, 193, 7, 0.35);
     }
 
     .badge-danger {
-        background: rgba(244, 67, 54, 0.2);
+        background: rgba(244, 67, 54, 0.15);
         color: rgba(244, 67, 54, 0.95);
-        border: 1px solid rgba(244, 67, 54, 0.4);
+        border: 1px solid rgba(244, 67, 54, 0.35);
     }
 
     .badge-gray {
-        background: rgba(158, 158, 158, 0.2);
+        background: rgba(158, 158, 158, 0.15);
         color: rgba(158, 158, 158, 0.95);
-        border: 1px solid rgba(158, 158, 158, 0.4);
+        border: 1px solid rgba(158, 158, 158, 0.35);
+    }
+
+    .cliente-nome {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .cliente-sub {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .progress-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .progress-bar__track {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        height: 8px;
+        overflow: hidden;
+    }
+
+    .progress-bar__fill {
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+
+    .progress-bar__label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        min-width: 45px;
+    }
+
+    .progress-sub {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .btn-tornar-principal {
+        border-color: rgba(255, 193, 7, 0.45);
+        color: rgba(255, 193, 7, 0.95);
+    }
+
+    .btn-tornar-principal:hover {
+        background: rgba(255, 193, 7, 0.1);
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
     }
 
     table {
@@ -111,24 +170,30 @@
         text-transform: uppercase;
         font-size: 0.78rem;
         letter-spacing: 0.08em;
-        color: rgba(245, 245, 245, 0.6);
+        color: var(--text-secondary);
     }
 
     td {
-        color: rgba(245, 245, 245, 0.88);
+        color: var(--text-primary);
     }
 
     .empty-state {
-        padding: 24px;
+        padding: 32px;
         text-align: center;
         color: var(--text-secondary);
-        border: 1px dashed rgba(86, 244, 156, 0.35);
+        border: 1px dashed var(--border-soft);
         border-radius: 12px;
+        font-size: 0.9rem;
     }
 
     .btn-small {
         padding: 6px 12px;
         font-size: 0.85rem;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     @media (max-width: 768px) {
@@ -137,11 +202,20 @@
         }
 
         table {
-            font-size: 0.85rem;
+            font-size: 0.82rem;
         }
 
         th, td {
             padding: 10px 8px;
+        }
+
+        .actions-cell {
+            flex-direction: column;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            padding: 3px 8px;
         }
     }
 
@@ -209,7 +283,7 @@
             <p>Clientes e status dos formulários</p>
         </header>
         {% if clientes_com_info %}
-        <div style="overflow-x: auto;">
+        <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
@@ -224,12 +298,16 @@
                     {% for item in clientes_com_info %}
                     <tr>
                         <td>
-                            <strong>{{ item.cliente.nome }}</strong>
-                            {% if item.cliente.is_dependente %}
-                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
-                                    Dependente de {{ item.cliente.cliente_principal.nome|default:"-" }}
-                                </div>
-                            {% endif %}
+                            <div class="cliente-nome">
+                                <strong>{{ item.cliente.nome_completo }}</strong>
+                                {% if item.papel == "principal" %}
+                                    <span class="badge badge-primary">Principal</span>
+                                {% elif item.papel == "dependente" %}
+                                    <span class="cliente-sub">
+                                        Dependente{% if item.cliente_principal_viagem %} de {{ item.cliente_principal_viagem.nome }}{% endif %}
+                                    </span>
+                                {% endif %}
+                            </div>
                         </td>
                         <td>{{ item.tipo_visto.nome }}</td>
                         <td>
@@ -247,20 +325,28 @@
                         </td>
                         <td>
                             {% if item.formulario and item.total_perguntas > 0 %}
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <div style="flex: 1; background: rgba(255, 255, 255, 0.1); border-radius: 8px; height: 8px; overflow: hidden;">
-                                        <div style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); height: 100%; width: {% widthratio item.total_respostas item.total_perguntas 100 %}%; transition: width 0.3s ease;"></div>
+                                <div class="progress-bar">
+                                    <div class="progress-bar__track">
+                                        <div class="progress-bar__fill" style="width: {% widthratio item.total_respostas item.total_perguntas 100 %}%;"></div>
                                     </div>
-                                    <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7); min-width: 45px;">{{ item.total_respostas }}/{{ item.total_perguntas }}</span>
+                                    <span class="progress-bar__label">{{ item.total_respostas }}/{{ item.total_perguntas }}</span>
                                 </div>
                             {% else %}
-                                <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                                <span class="progress-bar__label">-</span>
                             {% endif %}
                         </td>
                         <td>
-                            {% if item.formulario %}
-                                <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" class="btn btn-outline btn-small">Ver Formulário</a>
-                            {% endif %}
+                            <div class="actions-cell">
+                                {% if item.formulario %}
+                                    <a href="{% url 'system:visualizar_formulario_cliente' viagem.pk item.cliente.pk %}" class="btn btn-outline btn-small">Ver Formulário</a>
+                                {% endif %}
+                                {% if pode_editar and item.papel == "dependente" %}
+                                    <form method="post" action="{% url 'system:trocar_principal_viagem' viagem.pk item.cliente.pk %}" onsubmit="return confirm('Deseja tornar {{ item.cliente.nome_completo }} o cliente principal desta viagem? O financeiro será transferido automaticamente.');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline btn-small btn-tornar-principal">Tornar Principal</button>
+                                    </form>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -281,7 +367,7 @@
             <p>Processos de visto vinculados à viagem</p>
         </header>
         {% if processos %}
-        <div style="overflow-x: auto;">
+        <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
@@ -296,21 +382,16 @@
                     {% for processo in processos %}
                     <tr>
                         <td>
-                            <strong>{{ processo.cliente.nome }}</strong>
-                            {% if processo.cliente.is_dependente %}
-                                <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
-                                    Dependente de {{ processo.cliente.cliente_principal.nome|default:"-" }}
-                                </div>
-                            {% endif %}
+                            <strong>{{ processo.cliente.nome_completo }}</strong>
                         </td>
                         <td>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <div style="flex: 1; background: rgba(255, 255, 255, 0.1); border-radius: 8px; height: 8px; overflow: hidden;">
-                                    <div style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); height: 100%; width: {{ processo.progresso_percentual }}%; transition: width 0.3s ease;"></div>
+                            <div class="progress-bar">
+                                <div class="progress-bar__track">
+                                    <div class="progress-bar__fill" style="width: {{ processo.progresso_percentual }}%;"></div>
                                 </div>
-                                <span style="font-size: 0.85rem; color: rgba(245, 245, 245, 0.7); min-width: 45px;">{{ processo.progresso_percentual }}%</span>
+                                <span class="progress-bar__label">{{ processo.progresso_percentual }}%</span>
                             </div>
-                            <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                            <div class="progress-sub">
                                 {{ processo.etapas_concluidas }} de {{ processo.total_etapas }} etapas
                             </div>
                         </td>
@@ -338,7 +419,7 @@
             <h2>Registros Financeiros</h2>
             <p>Registros financeiros vinculados à viagem</p>
         </header>
-        <div style="overflow-x: auto;">
+        <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
@@ -352,7 +433,7 @@
                 <tbody>
                     {% for registro in registros_financeiros %}
                     <tr>
-                        <td>{{ registro.cliente.nome|default:"-" }}</td>
+                        <td>{{ registro.cliente.nome_completo|default:"-" }}</td>
                         <td>R$ {{ registro.valor|floatformat:2 }}</td>
                         <td>
                             {% if registro.status == "pendente" %}

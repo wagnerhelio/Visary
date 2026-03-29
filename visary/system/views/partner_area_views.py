@@ -131,13 +131,12 @@ def parceiro_dashboard(request):
 
     if selected_cliente_id:
         ids_cliente = {selected_cliente_id}
-        cliente_filter = (
-            clientes_base.filter(pk=selected_cliente_id).select_related("cliente_principal").first()
+        viagens_do_cliente = ClienteViagem.objects.filter(
+            cliente_id=selected_cliente_id
+        ).values_list("viagem_id", flat=True).distinct()
+        ids_cliente.update(
+            ClienteViagem.objects.filter(viagem_id__in=viagens_do_cliente).values_list("cliente_id", flat=True)
         )
-        if cliente_filter and cliente_filter.cliente_principal_id:
-            ids_cliente.add(cliente_filter.cliente_principal_id)
-        elif cliente_filter:
-            ids_cliente.update(cliente_filter.dependentes.values_list("pk", flat=True))
         clientes_base = clientes_base.filter(pk__in=ids_cliente)
 
     if selected_visto_id:
@@ -147,7 +146,7 @@ def parceiro_dashboard(request):
 
     clientes_qs = (
         clientes_base.select_related("assessor_responsavel", "criado_por", "parceiro_indicador")
-        .prefetch_related("dependentes", "viagens")
+        .prefetch_related("viagens")
         .order_by("-criado_em")
     )
 
@@ -171,7 +170,9 @@ def parceiro_dashboard(request):
         viagens_qs = viagens_qs.filter(tipo_visto_id=selected_visto_id)
 
     total_clientes = clientes_base.count()
-    total_dependentes = clientes_base.filter(cliente_principal__isnull=False).count()
+    total_dependentes = ClienteViagem.objects.filter(
+        cliente_id__in=clientes_ids, papel="dependente"
+    ).values("cliente_id").distinct().count()
     total_viagens = viagens_qs.count()
     total_viagens_proximas = viagens_qs.filter(
         data_prevista_viagem__gte=hoje,
@@ -249,11 +250,14 @@ def parceiro_dashboard(request):
         if not clientes_viagem.exists():
             continue
 
-        principais_v = [c for c in clientes_viagem if not c.cliente_principal_id]
-        dependentes_v = [c for c in clientes_viagem if c.cliente_principal_id]
-        principais_v.sort(key=lambda c: c.pk)
-        dependentes_v.sort(key=lambda d: d.pk)
-        clientes_ordenados_v = principais_v + dependentes_v
+        cv_map = {
+            cv.cliente_id: cv.papel
+            for cv in ClienteViagem.objects.filter(viagem=viagem)
+        }
+        clientes_ordenados_v = sorted(
+            clientes_viagem,
+            key=lambda c: (0 if cv_map.get(c.pk) == "principal" else 1, c.pk),
+        )
 
         for cliente in clientes_ordenados_v:
             tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
@@ -332,8 +336,8 @@ def parceiro_dashboard(request):
     filtro_clientes = [
         {
             "pk": cliente.pk,
-            "nome": cliente.nome,
-            "principal_pk": cliente.cliente_principal_id,
+            "nome": cliente.nome_completo,
+            "principal_pk": None,
         }
         for cliente in clientes_base.order_by("nome")
     ]
@@ -399,7 +403,7 @@ def parceiro_visualizar_cliente(request, cliente_id: int):
 
     cliente = get_object_or_404(
         ClienteConsultoria.objects.select_related(
-            "assessor_responsavel", "cliente_principal", "parceiro_indicador"
+            "assessor_responsavel", "parceiro_indicador"
         ),
         pk=cliente_id,
         parceiro_indicador_id=partner.pk,

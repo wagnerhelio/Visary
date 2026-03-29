@@ -165,7 +165,7 @@
 <section class="page-header">
     <div class="page-header__titles">
         <h1>Editar Cliente</h1>
-        <p>Atualize os dados do cliente {{ cliente.nome }}.</p>
+        <p>Atualize os dados do cliente {{ cliente.nome_completo }}.</p>
     </div>
 </section>
 {% endblock %}
@@ -207,10 +207,17 @@
                 {{ form.assessor_responsavel }}
                 {{ form.assessor_responsavel.errors }}
             </div>
-            <div>
-                <label for="{{ form.nome.id_for_label }}">Nome completo *</label>
-                {{ form.nome }}
-                {{ form.nome.errors }}
+            <div class="grid-inline">
+                <div>
+                    <label for="{{ form.nome.id_for_label }}">Nome *</label>
+                    {{ form.nome }}
+                    {{ form.nome.errors }}
+                </div>
+                <div>
+                    <label for="{{ form.sobrenome.id_for_label }}">Sobrenome *</label>
+                    {{ form.sobrenome }}
+                    {{ form.sobrenome.errors }}
+                </div>
             </div>
             <div>
                 <label for="{{ form.cpf.id_for_label }}">CPF *</label>
@@ -379,47 +386,6 @@
                 </div>
             </div>
 
-            {% if cliente.is_dependente %}
-                <div style="margin-top: 24px; padding: 16px; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px;">
-                    <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: rgba(255, 193, 7, 0.95);">Cliente Dependente</h3>
-                    <p style="margin: 0; color: rgba(245, 245, 245, 0.9); font-size: 0.9rem;">
-                        <strong>Cliente Principal:</strong> 
-                        <a href="{% url 'system:editar_cliente' cliente.cliente_principal.pk %}" style="color: rgba(255, 193, 7, 0.95); text-decoration: underline;">
-                            {{ cliente.cliente_principal.nome }}
-                        </a>
-                    </p>
-                </div>
-            {% elif cliente.is_principal %}
-                <div style="margin-top: 24px; padding: 16px; background: rgba(86, 244, 156, 0.1); border: 1px solid rgba(86, 244, 156, 0.3); border-radius: 12px;">
-                    <h3 style="margin: 0 0 12px 0; font-size: 1rem; color: rgba(86, 244, 156, 0.95);">Clientes Dependentes</h3>
-                    {% if cliente.total_dependentes > 0 %}
-                        <p style="margin: 0 0 8px 0; color: rgba(245, 245, 245, 0.9); font-size: 0.9rem;">
-                            Este cliente possui <strong>{{ cliente.total_dependentes }}</strong> dependente{{ cliente.total_dependentes|pluralize }} vinculado{{ cliente.total_dependentes|pluralize }}.
-                        </p>
-                        <ul style="margin: 8px 0 0 0; padding-left: 20px; color: rgba(245, 245, 245, 0.8); font-size: 0.9rem;">
-                            {% for dependente in cliente.dependentes.all %}
-                                <li>
-                                    <a href="{% url 'system:editar_cliente' dependente.pk %}" style="color: rgba(86, 244, 156, 0.95); text-decoration: underline;">
-                                        {{ dependente.nome }}
-                                    </a>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <p style="margin: 0 0 12px 0; color: rgba(245, 245, 245, 0.9); font-size: 0.9rem;">
-                            Este cliente ainda não possui dependentes vinculados.
-                        </p>
-                    {% endif %}
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
-                        <a href="{% url 'system:adicionar_dependente' cliente.pk %}" class="btn btn-primary btn-small">
-                            Vincular Cliente Existente
-                        </a>
-                        <a href="{% url 'system:cadastrar_dependente' cliente.pk %}" class="btn btn-outline btn-small">
-                            Cadastrar Novo Dependente
-                        </a>
-                    </div>
-                </div>
-            {% endif %}
 
             <button type="submit" class="btn btn-primary">Atualizar cliente</button>
         </form>

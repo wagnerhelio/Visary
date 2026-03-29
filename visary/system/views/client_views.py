@@ -26,6 +26,7 @@ from system.models import (
     ClienteViagem,
     EtapaCadastroCliente,
     FormularioVisto,
+    Lembrete,
     Processo,
     RespostaFormulario,
     Viagem,
@@ -47,14 +48,7 @@ class DependentesNaoValidosError(Exception):
 
 
 def _ordenar_clientes_por_grupo_familiar(clientes):
-    return sorted(
-        clientes,
-        key=lambda cliente: (
-            cliente.cliente_principal_id or cliente.pk,
-            1 if cliente.cliente_principal_id else 0,
-            cliente.pk,
-        ),
-    )
+    return sorted(clientes, key=lambda cliente: (cliente.nome_completo, cliente.pk))
 
 
 def _aplicar_filtros_clientes(clientes, request, incluir_assessor=False):
@@ -90,9 +84,6 @@ def _aplicar_filtros_clientes(clientes, request, incluir_assessor=False):
 def _obter_status_financeiro_cliente(cliente: ClienteConsultoria) -> str:
     registros = Financeiro.objects.filter(cliente=cliente)
     if not registros.exists():
-        principal = getattr(cliente, "cliente_principal", None)
-        if principal is not None:
-            return _obter_status_financeiro_cliente(principal)
         return "Sem registros"
     tem_pendente = registros.filter(status=StatusFinanceiro.PENDENTE).exists()
     tem_pago = registros.filter(status=StatusFinanceiro.PAGO).exists()
@@ -240,8 +231,6 @@ def listar_clientes(user: User) -> QuerySet[ClienteConsultoria]:
         "assessor_responsavel",
         "criado_por",
         "assessor_responsavel__perfil",
-        "cliente_principal",
-        "cliente_principal__assessor_responsavel",
         "parceiro_indicador",
     ).order_by("-criado_em")
 
@@ -253,16 +242,9 @@ def listar_clientes(user: User) -> QuerySet[ClienteConsultoria]:
     if not consultor:
         return queryset.none()
 
-                                                          
-                                                                                          
-                                                                                                           
-                                                                                                                                
     consultor_id = consultor.pk
     return queryset.filter(
-                                                 
-        Q(assessor_responsavel_id=consultor_id) |
-                                                                         
-        Q(cliente_principal__assessor_responsavel_id=consultor_id)
+        Q(assessor_responsavel_id=consultor_id)
     ).distinct()
 
 
@@ -271,8 +253,6 @@ def listar_clientes_com_escopo_total(user: User) -> QuerySet[ClienteConsultoria]
         "assessor_responsavel",
         "criado_por",
         "assessor_responsavel__perfil",
-        "cliente_principal",
-        "cliente_principal__assessor_responsavel",
         "parceiro_indicador",
     ).order_by("-criado_em")
     return queryset
@@ -355,7 +335,7 @@ def excluir_cliente(request, pk: int):
         raise PermissionDenied
 
     cliente.delete()
-    messages.success(request, f"{cliente.nome} excluído com sucesso.")
+    messages.success(request, f"{cliente.nome_completo} excluído com sucesso.")
     return redirect("system:listar_clientes_view")
 
 
@@ -371,24 +351,19 @@ def home_clientes(request):
         "assessor_responsavel",
         "criado_por",
         "assessor_responsavel__perfil",
-        "cliente_principal",
-        "cliente_principal__assessor_responsavel",
         "parceiro_indicador",
-    ).prefetch_related("dependentes", "viagens").order_by("-criado_em")
+    ).prefetch_related("viagens").order_by("-criado_em")
 
     if pode_gerenciar_todos:
         meus_clientes = listar_clientes(request.user)
     elif consultor:
         meus_clientes = base_qs.filter(
-            Q(assessor_responsavel=consultor) |
-            Q(cliente_principal__assessor_responsavel=consultor)
+            Q(assessor_responsavel=consultor)
         ).distinct()
     else:
         meus_clientes = base_qs.none()
 
-    filtros = {"nome": request.GET.get("nome", "").strip()}
-    if filtros["nome"]:
-        meus_clientes = meus_clientes.filter(nome__icontains=filtros["nome"])
+    meus_clientes, filtros = _aplicar_filtros_clientes(meus_clientes, request, incluir_assessor=False)
 
     def _build_item(cliente):
         status_financeiro = _obter_status_financeiro_cliente(cliente)
@@ -408,10 +383,22 @@ def home_clientes(request):
     clientes_ordenados = _ordenar_clientes_por_grupo_familiar(meus_clientes)
     clientes_com_status = [_build_item(cliente) for cliente in clientes_ordenados]
 
+    progressos = []
+    for c in meus_clientes:
+        for proc in Processo.objects.filter(cliente=c):
+            progressos.append({
+                'cliente_pk': c.pk,
+                'processo_pk': proc.pk,
+                'progresso': proc.progresso_percentual,
+            })
+
     assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
 
     total_clientes_kpi = len(clientes_com_status)
-    total_dependentes_kpi = sum(1 for item in clientes_com_status if item["cliente"].is_dependente)
+    total_dependentes_kpi = ClienteViagem.objects.filter(
+        cliente_id__in=[item["cliente"].pk for item in clientes_com_status],
+        papel="dependente",
+    ).values("cliente_id").distinct().count()
     total_financeiro_pendente_kpi = sum(
         1 for item in clientes_com_status if item["status_financeiro"] == "Pendente"
     )
@@ -437,6 +424,7 @@ def home_clientes(request):
         "pode_excluir_clientes": pode_gerenciar_todos,
         "filtros": filtros,
         "assessores": assessores,
+        "progressos": progressos,
     })
 
 
@@ -480,7 +468,10 @@ def listar_clientes_view(request):
             })
 
     total_clientes_kpi = len(clientes_com_status)
-    total_dependentes_kpi = sum(1 for item in clientes_com_status if item["cliente"].is_dependente)
+    total_dependentes_kpi = ClienteViagem.objects.filter(
+        cliente_id__in=[item["cliente"].pk for item in clientes_com_status],
+        papel="dependente",
+    ).values("cliente_id").distinct().count()
     total_financeiro_pendente_kpi = sum(
         1 for item in clientes_com_status if item["status_financeiro"] == "Pendente"
     )
@@ -669,7 +660,7 @@ def _aplicar_dados_ao_cliente(cliente, dados: dict, campos_excluidos: set = None
             continue
         
                                                                               
-        if campo_nome == 'cliente_principal' and hasattr(cliente, 'cliente_principal_id') and cliente.cliente_principal_id:
+        if campo_nome == 'cliente_principal':
             continue
         
                                                                                      
@@ -910,73 +901,47 @@ def _criar_cliente_da_sessao(request) -> ClienteConsultoria | None:
 
 
 def _configurar_campos_formulario(form, etapa_atual):
-                                                                                 
     campos_etapa_dict = {
         campo.nome_campo: campo
         for campo in CampoEtapaCliente.objects.filter(
             etapa=etapa_atual, ativo=True
         ).order_by("ordem", "nome_campo")
     }
+    campos_para_remover = []
     for field_name, field in form.fields.items():
         campo_config = campos_etapa_dict.get(field_name)
-                                                                           
-                                                                                     
-        field.required = campo_config.obrigatorio if campo_config else False
+        if campo_config:
+            field.required = campo_config.obrigatorio
+        else:
+            campos_para_remover.append(field_name)
+    for field_name in campos_para_remover:
+        del form.fields[field_name]
 
 
 def _salvar_etapa_na_sessao(form, etapa_atual, request):
-       
-                                                       
-    
-                                                                       
-                                                                       
-    
-         
-                                             
-                                               
-                                         
-    
-          
-                                                              
-       
-                                      
+    campos_etapa = set(
+        CampoEtapaCliente.objects.filter(
+            etapa=etapa_atual, ativo=True
+        ).values_list("nome_campo", flat=True)
+    )
+    if 'senha' in campos_etapa:
+        campos_etapa.add('confirmar_senha')
+
     dados_existentes = _obter_dados_temporarios_sessao(request)
-    
-                                           
     dados_atualizados = dados_existentes.copy()
-    dados_atualizados.update(form.cleaned_data)
-    
-                                        
-                                       
-                                                                          
-                                                                                  
-    assessor_existente = dados_existentes.get('assessor_responsavel')
-    assessor_cleaned = form.cleaned_data.get('assessor_responsavel')
-    
-                                                         
-    assessor_cleaned_id = None
-    if assessor_cleaned:
-        if hasattr(assessor_cleaned, 'pk'):
-            assessor_cleaned_id = assessor_cleaned.pk
-        elif isinstance(assessor_cleaned, (int, str)) and str(assessor_cleaned).strip():
-            try:
-                assessor_cleaned_id = int(assessor_cleaned)
-            except (ValueError, TypeError):
-                assessor_cleaned_id = None
-    
-                                                          
-    if assessor_existente and not assessor_cleaned_id:
-        dados_atualizados['assessor_responsavel'] = assessor_existente
-        logger.debug(f"🔒 Preservando assessor_responsavel da sessão: {assessor_existente}")
-    
-                                 
+
+    for campo, valor in form.cleaned_data.items():
+        if campo not in campos_etapa:
+            continue
+        if hasattr(valor, 'pk'):
+            dados_atualizados[campo] = valor.pk
+        else:
+            dados_atualizados[campo] = valor
+
     if etapa_atual.campo_booleano:
         dados_atualizados[etapa_atual.campo_booleano] = True
 
-                                                    
     _salvar_dados_temporarios_sessao(request, dados_atualizados)
-
-                                                         
     _log_resumo_etapa_finalizada(request, etapa_atual, form.cleaned_data, dados_atualizados)
 
 
@@ -1141,10 +1106,10 @@ def _processar_dependentes_temporarios(request, cliente: ClienteConsultoria) -> 
        
     dependentes_temporarios = request.session.get("dependentes_temporarios", [])
     if not dependentes_temporarios:
-        logger.info(f"ℹ️ Nenhum dependente temporário encontrado na sessão para cliente {cliente.nome}")
+        logger.info(f"ℹ️ Nenhum dependente temporário encontrado na sessão para cliente {cliente.nome_completo}")
         return 0
     
-    logger.info(f"📦 Processando {len(dependentes_temporarios)} dependente(s) temporário(s) para cliente {cliente.nome}")
+    logger.info(f"📦 Processando {len(dependentes_temporarios)} dependente(s) temporário(s) para cliente {cliente.nome_completo}")
     dependentes_salvos = 0
     dependentes_com_erro: list[str] = []
     
@@ -1257,10 +1222,10 @@ def _processar_e_logar_dependentes(request, cliente: ClienteConsultoria) -> int:
     dependentes_salvos = _processar_dependentes_temporarios(request, cliente)
     
     if dependentes_salvos > 0:
-        logger.info(f"✅ {dependentes_salvos} dependente(s) vinculado(s) ao cliente {cliente.nome}")
+        logger.info(f"✅ {dependentes_salvos} dependente(s) vinculado(s) ao cliente {cliente.nome_completo}")
         _adicionar_log_debug(request, f"{dependentes_salvos} dependente(s) vinculado(s) ao cliente")
     else:
-        logger.warning(f"⚠️ Nenhum dependente foi salvo para o cliente {cliente.nome}")
+        logger.warning(f"⚠️ Nenhum dependente foi salvo para o cliente {cliente.nome_completo}")
         if dependentes_temporarios_antes:
             logger.error(f"❌ Havia {len(dependentes_temporarios_antes)} dependente(s) na sessão, mas nenhum foi salvo!")
     
@@ -1301,10 +1266,10 @@ def _salvar_e_logar_cliente(request, cliente: ClienteConsultoria) -> None:
             etapas_confirmadas[campo_booleano] = bool(getattr(cliente, campo_booleano))
 
     logger.info(
-        f"✅ Cliente '{cliente.nome}' salvo no banco (ID: {cliente.pk}) "
+        f"✅ Cliente '{cliente.nome_completo}' salvo no banco (ID: {cliente.pk}) "
         f"dependentes_salvos={dependentes_salvos} etapas_confirmadas={etapas_confirmadas}"
     )
-    _adicionar_log_debug(request, f"Cliente '{cliente.nome}' salvo no banco (ID: {cliente.pk})")
+    _adicionar_log_debug(request, f"Cliente '{cliente.nome_completo}' salvo no banco (ID: {cliente.pk})")
     request.session.modified = True
 
 
@@ -1348,7 +1313,7 @@ def _obter_ids_clientes_com_dependentes(cliente: ClienteConsultoria) -> list:
 
 def _criar_redirect_viagem_com_clientes(request, cliente: ClienteConsultoria):
                                                                         
-    logger.info(f"🚀 Redirecionando para criar viagem com cliente {cliente.nome} (ID: {cliente.pk})")
+    logger.info(f"🚀 Redirecionando para criar viagem com cliente {cliente.nome_completo} (ID: {cliente.pk})")
                                                          
     clientes_ids = _obter_ids_clientes_com_dependentes(cliente)
     redirect_url = f"{reverse('system:criar_viagem')}?clientes={','.join(map(str, clientes_ids))}"
@@ -1397,7 +1362,7 @@ def _finalizar_cadastro_cliente(request, cliente: ClienteConsultoria, criar_viag
     num_dependentes = ClienteConsultoria.objects.filter(cliente_principal=cliente).count()
     
                             
-    _adicionar_log_debug(request, f"Cadastro finalizado com sucesso! Cliente: {cliente.nome}, Dependentes: {num_dependentes}")
+    _adicionar_log_debug(request, f"Cadastro finalizado com sucesso! Cliente: {cliente.nome_completo}, Dependentes: {num_dependentes}")
     
                                                                            
     if "cliente_dados_temporarios" in request.session:
@@ -1411,12 +1376,12 @@ def _finalizar_cadastro_cliente(request, cliente: ClienteConsultoria, criar_viag
     if num_dependentes > 0:
         messages.success(
             request, 
-            f"✅ Cadastro finalizado com sucesso! Cliente '{cliente.nome}' e {num_dependentes} dependente(s) foram cadastrados. O cliente foi salvo no sistema e está disponível na lista de clientes."
+            f"✅ Cadastro finalizado com sucesso! Cliente '{cliente.nome_completo}' e {num_dependentes} dependente(s) foram cadastrados. O cliente foi salvo no sistema e está disponível na lista de clientes."
         )
     else:
         messages.success(
             request, 
-            f"✅ Cadastro finalizado com sucesso! Cliente '{cliente.nome}' foi cadastrado. O cliente foi salvo no sistema e está disponível na lista de clientes."
+            f"✅ Cadastro finalizado com sucesso! Cliente '{cliente.nome_completo}' foi cadastrado. O cliente foi salvo no sistema e está disponível na lista de clientes."
         )
     
                                                               
@@ -2084,13 +2049,18 @@ def _processar_editar_dependente(request, etapa_atual):
 
 
 def _preparar_dados_iniciais_formulario(request, cliente_temporario):
-                                                                  
-    if not request.POST and cliente_temporario:
+    if request.POST:
+        return None
+    dados_iniciais = {}
+    ocr_data = request.session.get("passport_ocr_cliente", {})
+    if ocr_data:
+        dados_iniciais.update({k: v for k, v in ocr_data.items() if v})
+    if cliente_temporario:
         if dados_temporarios := _obter_dados_temporarios_sessao(request):
-            dados_iniciais = dados_temporarios.copy()
-            dados_iniciais.pop('confirmar_senha', None)
-            return dados_iniciais
-    return None
+            temp = dados_temporarios.copy()
+            temp.pop('confirmar_senha', None)
+            dados_iniciais.update({k: v for k, v in temp.items() if v})
+    return dados_iniciais or None
 
 
 def _extrair_assessor_id_sessao(dados_iniciais):
@@ -2189,7 +2159,7 @@ def _criar_e_validar_cliente_do_banco(request) -> ClienteConsultoria:
                                                               
     logger.info("📝 Criando cliente do banco...")
     cliente = _criar_cliente_do_banco(request)
-    logger.info(f"✅ Cliente criado com sucesso: {cliente.nome} (ID: {cliente.pk})")
+    logger.info(f"✅ Cliente criado com sucesso: {cliente.nome_completo} (ID: {cliente.pk})")
     
                                                            
     if not cliente.assessor_responsavel_id:
@@ -2494,22 +2464,19 @@ def visualizar_cliente(request, pk: int):
     cliente = get_object_or_404(
         ClienteConsultoria.objects.select_related(
             "assessor_responsavel",
-            "cliente_principal",
             "assessor_responsavel__perfil",
-        ).prefetch_related("dependentes"),
+        ),
         pk=pk,
     )
 
-                         
     pode_visualizar = usuario_pode_gerenciar_todos(request.user, consultor) or (
         consultor and cliente.assessor_responsavel_id == consultor.pk
         or cliente.criado_por == request.user
     )
-    
+
     if not pode_visualizar:
         raise PermissionDenied
-    
-                               
+
     viagens = Viagem.objects.filter(
         clientes=cliente
     ).select_related(
@@ -2539,6 +2506,18 @@ def visualizar_cliente(request, pk: int):
                        
     status_financeiro = _obter_status_financeiro_cliente(cliente)
     
+    lembretes = Lembrete.objects.filter(cliente=cliente).select_related("criado_por").order_by("concluido", "-criado_em")
+
+    clientes_vinculados = []
+    if cliente.cliente_principal:
+        principal = ClienteConsultoria.objects.select_related("assessor_responsavel").get(pk=cliente.cliente_principal_id)
+        clientes_vinculados.append({"cliente": principal, "relacao": "Principal"})
+        for dep in principal.dependentes.select_related("assessor_responsavel").exclude(pk=cliente.pk):
+            clientes_vinculados.append({"cliente": dep, "relacao": "Dependente"})
+    else:
+        for dep in cliente.dependentes.select_related("assessor_responsavel").all():
+            clientes_vinculados.append({"cliente": dep, "relacao": "Dependente"})
+
     contexto = {
         "cliente": cliente,
         "viagens": viagens,
@@ -2550,8 +2529,10 @@ def visualizar_cliente(request, pk: int):
         "perfil_usuario": consultor.perfil.nome if consultor else None,
         "pode_gerenciar_todos": usuario_pode_gerenciar_todos(request.user, consultor),
         "pode_editar": pode_visualizar,
+        "lembretes": lembretes,
+        "clientes_vinculados": clientes_vinculados,
     }
-    
+
     return render(request, "client/visualizar_cliente.html", contexto)
 
 
@@ -2562,12 +2543,10 @@ def editar_cliente_view(request, pk: int):
     cliente = get_object_or_404(
         ClienteConsultoria.objects.select_related(
             "assessor_responsavel",
-            "cliente_principal",
-        ).prefetch_related("dependentes"),
+        ),
         pk=pk,
     )
 
-                         
     pode_editar = usuario_pode_gerenciar_todos(request.user, consultor) or (
         consultor and cliente.assessor_responsavel_id == consultor.pk
         or cliente.criado_por == request.user
@@ -2648,7 +2627,7 @@ def api_dados_cliente(request):
         response_data = {
             "data_base": data_base,
             "cliente": {
-                "nome": cliente.nome,
+                "nome": cliente.nome_completo,
             },
         }
         return JsonResponse(response_data)
@@ -2690,6 +2669,10 @@ def api_extrair_passaporte(request):
     warnings = extraction.get("warnings", [])
     if persist_in_session:
         request.session[f"passport_ocr_{target}"] = fields
+        if target == "cliente":
+            dados_temp = request.session.get("cliente_dados_temporarios", {})
+            dados_temp.update({k: v for k, v in fields.items() if v})
+            request.session["cliente_dados_temporarios"] = dados_temp
         request.session.modified = True
 
     logger.info(
@@ -2840,4 +2823,69 @@ def remover_dependente(request, pk: int, dependente_id: int):
 
     messages.success(request, f"{dependente_nome} removido como dependente.")
     return redirect("system:editar_cliente", pk=cliente_principal.pk)
+
+
+@login_required
+@require_http_methods(["POST"])
+def criar_lembrete(request, cliente_id: int):
+    consultor = obter_consultor_usuario(request.user)
+    cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)
+
+    pode = usuario_pode_gerenciar_todos(request.user, consultor) or (
+        consultor and cliente.assessor_responsavel_id == consultor.pk
+    )
+    if not pode:
+        raise PermissionDenied
+
+    texto = request.POST.get("texto", "").strip()
+    data_lembrete = request.POST.get("data_lembrete") or None
+
+    if not texto:
+        messages.error(request, "O texto do lembrete é obrigatório.")
+        return redirect("system:visualizar_cliente", pk=cliente_id)
+
+    Lembrete.objects.create(
+        cliente=cliente,
+        texto=texto,
+        data_lembrete=data_lembrete,
+        criado_por=consultor,
+    )
+    messages.success(request, "Lembrete adicionado.")
+    return redirect("system:visualizar_cliente", pk=cliente_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_lembrete(request, pk: int):
+    consultor = obter_consultor_usuario(request.user)
+    lembrete = get_object_or_404(Lembrete.objects.select_related("cliente"), pk=pk)
+    cliente = lembrete.cliente
+
+    pode = usuario_pode_gerenciar_todos(request.user, consultor) or (
+        consultor and cliente.assessor_responsavel_id == consultor.pk
+    )
+    if not pode:
+        raise PermissionDenied
+
+    lembrete.concluido = not lembrete.concluido
+    lembrete.save(update_fields=["concluido"])
+    return redirect("system:visualizar_cliente", pk=cliente.pk)
+
+
+@login_required
+@require_http_methods(["POST"])
+def excluir_lembrete(request, pk: int):
+    consultor = obter_consultor_usuario(request.user)
+    lembrete = get_object_or_404(Lembrete.objects.select_related("cliente"), pk=pk)
+    cliente = lembrete.cliente
+
+    pode = usuario_pode_gerenciar_todos(request.user, consultor) or (
+        consultor and cliente.assessor_responsavel_id == consultor.pk
+    )
+    if not pode:
+        raise PermissionDenied
+
+    lembrete.delete()
+    messages.success(request, "Lembrete excluído.")
+    return redirect("system:visualizar_cliente", pk=cliente.pk)
 

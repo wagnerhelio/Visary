@@ -147,7 +147,7 @@
         font-size: 0.7rem;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: rgba(245, 245, 245, 0.5);
+        color: var(--text-secondary);
         white-space: nowrap;
     }
 
@@ -155,12 +155,27 @@
         padding: 10px 10px;
         border-bottom: 1px solid var(--border-soft);
         font-size: 0.85rem;
-        color: rgba(245, 245, 245, 0.88);
+        color: var(--text-primary);
         vertical-align: middle;
     }
 
     .mini-table tr:last-child td {
         border-bottom: none;
+    }
+
+    .family-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .family-member__name {
+        font-size: 0.85rem;
+        color: var(--text-primary);
+    }
+
+    .text-muted {
+        color: var(--text-secondary);
     }
 
     .badge {
@@ -172,12 +187,24 @@
         white-space: nowrap;
     }
 
-    .badge-principal { background: rgba(86, 244, 156, 0.18); color: rgba(86, 244, 156, 0.95); }
-    .badge-dependente { background: rgba(255, 193, 7, 0.18); color: rgba(255, 193, 7, 0.95); }
+    .badge-completo {
+        background: rgba(86, 244, 156, 0.15);
+        color: rgba(86, 244, 156, 0.95);
+    }
 
-    tr.row-dependente td:first-child {
-        padding-left: 16px;
-        border-left: 2px solid rgba(255, 193, 7, 0.25);
+    .badge-parcial {
+        background: rgba(255, 193, 7, 0.15);
+        color: rgba(255, 193, 7, 0.95);
+    }
+
+    .badge-pendente {
+        background: rgba(255, 104, 104, 0.15);
+        color: rgba(255, 104, 104, 0.95);
+    }
+
+    .badge-sem {
+        color: var(--text-secondary);
+        font-weight: 400;
     }
 
     .btn-small { padding: 5px 10px; font-size: 0.8rem; }
@@ -201,9 +228,9 @@
         width: 100%;
         padding: 10px 12px;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid var(--border-soft);
         background: rgba(12, 19, 35, 0.72);
-        color: #f5f5f5;
+        color: var(--text-primary);
     }
 
     .filtros-actions {
@@ -267,7 +294,7 @@
         <select name="cliente">
             <option value="">Cliente</option>
             {% for cliente in clientes %}
-                <option value="{{ cliente.pk }}" {% if filtros_aplicados.cliente == cliente.pk %}selected{% endif %}>{{ cliente.nome }}</option>
+                <option value="{{ cliente.pk }}" {% if filtros_aplicados.cliente == cliente.pk %}selected{% endif %}>{{ cliente.nome_completo }}</option>
             {% endfor %}
         </select>
         <select name="parceiro">
@@ -332,51 +359,73 @@
         <table class="mini-table">
             <thead>
                 <tr>
-                    <th>Pais</th>
-                    <th>Tipo de Visto</th>
-                    <th>Data Ida</th>
-                    <th>Data Retorno</th>
                     <th>Clientes</th>
-                    <th>Acoes</th>
+                    <th>País</th>
+                    <th>Tipo de Visto</th>
+                    <th>Parceiro</th>
+                    <th>Data Viagem</th>
+                    <th>Data Retorno</th>
+                    <th>Valor</th>
+                    <th>Formulário</th>
+                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
-                {% for viagem in viagens %}
+                {% for item in viagens_com_info %}
                 <tr>
-                    <td>{{ viagem.pais_destino.nome }}</td>
-                    <td>{{ viagem.tipo_visto.nome }}</td>
-                    <td>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
-                    <td>{{ viagem.data_prevista_retorno|date:"d/m/Y" }}</td>
                     <td>
-                        {% with clientes=viagem.clientes.all %}
+                        {% with clientes=item.viagem.clientes.all %}
                             {% if clientes %}
                                 <div class="family-stack">
                                     {% for cliente in clientes %}
-                                        {% if cliente.is_principal %}
-                                            <div class="family-member family-member--principal">
-                                                <span class="family-member__name">{{ cliente.nome }}</span>
-                                                <span class="badge badge-principal">Principal</span>
-                                            </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                    {% for cliente in clientes %}
-                                        {% if cliente.is_dependente %}
-                                            <div class="family-member family-member--dependente">
-                                                <span class="family-member__name">{{ cliente.nome }}</span>
-                                                <span class="badge badge-dependente">Dependente</span>
-                                                <span class="family-member__sub">de {{ cliente.cliente_principal.nome|default:"-" }}</span>
-                                            </div>
-                                        {% endif %}
+                                        <div class="family-member">
+                                            <span class="family-member__name">{{ cliente.nome_completo }}</span>
+                                        </div>
                                     {% endfor %}
                                 </div>
                             {% else %}
-                                <span style="color:rgba(245,245,245,0.35);">—</span>
+                                <span class="text-muted">—</span>
                             {% endif %}
                         {% endwith %}
                     </td>
+                    <td>{{ item.viagem.pais_destino.nome }}</td>
+                    <td>{{ item.viagem.tipo_visto.nome }}</td>
                     <td>
-                        <a href="{% url 'system:visualizar_viagem' viagem.pk %}" class="btn btn-outline btn-small">Ver</a>
-                        <a href="{% url 'system:listar_formularios_viagem' viagem.pk %}" class="btn btn-outline btn-small">Formularios</a>
+                        {% if item.parceiros_vinculados %}
+                            {% for parceiro in item.parceiros_vinculados %}
+                                {% if parceiro.nome_empresa %}{{ parceiro.nome_empresa }}{% else %}{{ parceiro.nome_responsavel }}{% endif %}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
+                    <td>{{ item.viagem.data_prevista_retorno|date:"d/m/Y" }}</td>
+                    <td>R$ {{ item.viagem.valor_assessoria|floatformat:2 }}</td>
+                    <td>
+                        {% if item.tem_formulario %}
+                            {% if item.total_clientes > 0 %}
+                                {% if item.clientes_com_resposta == item.total_clientes %}
+                                    <span class="badge badge-completo">Completo</span>
+                                {% elif item.clientes_com_resposta > 0 %}
+                                    <span class="badge badge-parcial">{{ item.clientes_com_resposta }}/{{ item.total_clientes }}</span>
+                                {% else %}
+                                    <span class="badge badge-pendente">Pendente</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge badge-sem">Sem clientes</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge-sem">Sem formulário</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:visualizar_viagem' item.viagem.pk %}" class="btn btn-primary btn-small">Ver</a>
+                            {% if item.pode_editar_excluir %}
+                                <a href="{% url 'system:editar_viagem' item.viagem.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

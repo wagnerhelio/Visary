@@ -98,6 +98,7 @@ class Viagem(models.Model):
         verbose_name="Clientes vinculados",
         blank=True,
         through="ClienteViagem",
+        through_fields=("viagem", "cliente"),
     )
     observacoes = models.TextField("Observações", blank=True)
     criado_por = models.ForeignKey(
@@ -119,8 +120,13 @@ class Viagem(models.Model):
 
 
 class ClienteViagem(models.Model):
-                                                                                          
-    
+    """Vínculo entre cliente e viagem, incluindo papel (principal/dependente) por viagem."""
+
+    PAPEL_CHOICES = [
+        ("principal", "Principal"),
+        ("dependente", "Dependente"),
+    ]
+
     viagem = models.ForeignKey(
         Viagem,
         on_delete=models.CASCADE,
@@ -142,14 +148,62 @@ class ClienteViagem(models.Model):
         blank=True,
         help_text="Tipo de visto específico para este cliente. Se não informado, usa o tipo de visto da viagem.",
     )
+    papel = models.CharField(
+        "Papel na viagem",
+        max_length=20,
+        choices=PAPEL_CHOICES,
+        default="dependente",
+    )
+    cliente_principal_viagem = models.ForeignKey(
+        "system.ClienteConsultoria",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="dependentes_viagem",
+        verbose_name="Cliente principal nesta viagem",
+        help_text="Se dependente, quem é o principal NESTA viagem.",
+    )
     criado_em = models.DateTimeField("Criado em", auto_now_add=True)
     atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
-    
+
     class Meta:
         verbose_name = "Cliente na Viagem"
         verbose_name_plural = "Clientes na Viagem"
         unique_together = [("viagem", "cliente")]
-    
+        constraints = [
+            models.UniqueConstraint(
+                fields=["viagem"],
+                condition=models.Q(papel="principal"),
+                name="unique_principal_per_viagem",
+            ),
+        ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.papel == "principal" and self.cliente_principal_viagem is not None:
+            raise ValidationError(
+                {"cliente_principal_viagem": "O cliente principal não pode ter um principal vinculado."}
+            )
+        if self.papel == "dependente":
+            if self.cliente_principal_viagem is None:
+                raise ValidationError(
+                    {"cliente_principal_viagem": "Dependente deve ter um cliente principal nesta viagem."}
+                )
+            if self.cliente_principal_viagem_id == self.cliente_id:
+                raise ValidationError(
+                    {"cliente_principal_viagem": "Um cliente não pode ser principal de si mesmo."}
+                )
+
+    @property
+    def is_principal_na_viagem(self) -> bool:
+        return self.papel == "principal"
+
+    @property
+    def is_dependente_na_viagem(self) -> bool:
+        return self.papel == "dependente"
+
     def __str__(self) -> str:
         tipo_visto_str = f" - {self.tipo_visto}" if self.tipo_visto else ""
-        return f"{self.cliente.nome} em {self.viagem}{tipo_visto_str}"
+        papel_str = f" ({self.get_papel_display()})"
+        return f"{self.cliente.nome_completo} em {self.viagem}{tipo_visto_str}{papel_str}"

@@ -419,18 +419,10 @@
             </thead>
             <tbody>
             {% for item in clientes_com_status %}
-                <tr class="{% if item.cliente.is_dependente %}row-dependente{% else %}row-principal{% endif %}">
+                <tr class="">
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ item.cliente.nome }}</span>
-                            {% if item.cliente.is_dependente %}
-                                <span class="badge badge-dependente">Dependente</span>
-                                {% if item.cliente.cliente_principal %}
-                                    <span class="nome-cell__sub">de {{ item.cliente.cliente_principal.nome }}</span>
-                                {% endif %}
-                            {% else %}
-                                <span class="badge badge-principal">Principal</span>
-                            {% endif %}
+                            <span class="nome-cell__name">{{ item.cliente.nome_completo }}</span>
                             {% if item.legacy_meta.imported %}
                                 {% if item.legacy_meta.status == "problem" %}
                                     <span class="badge badge-cancelado">Legado com pendencia</span>
@@ -444,14 +436,16 @@
                         {% if progressos %}
                         {% for prog in progressos %}
                             {% if prog.cliente_pk == item.cliente.pk %}
-                                <div style="width: 120px; height: 8px; background: #2b2f3a; border-radius: 6px; overflow:hidden;">
-                                    <div style="width: {{ prog.progresso }}%; height: 100%; background: linear-gradient(135deg, #56f49c, #4dd0e1);"></div>
+                                <div class="progress-bar-cell">
+                                    <div class="progress-bar-cell__bar" style="width: 120px;">
+                                        <div class="progress-bar-cell__fill" style="width: {{ prog.progresso }}%;"></div>
+                                    </div>
+                                    <span class="progress-bar-cell__label">{{ prog.progresso }}%</span>
                                 </div>
-                                <span style="font-size: 0.75rem; color: #b9c6e7;">{{ prog.progresso }}%</span>
                             {% endif %}
                         {% endfor %}
                         {% else %}
-                            <span style="color: rgba(245,245,245,0.5);">-</span>
+                            <span class="progress-bar-cell__label">-</span>
                         {% endif %}
                     </td>
                     <td>
@@ -499,19 +493,9 @@
                     <td>{{ item.cliente.criado_em|localtime|date:"d/m/Y" }}</td>
                     <td>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            {% if item.cliente.is_principal %}
-                                {% with dependentes=item.cliente.dependentes.all %}
-                                    {% if dependentes %}
-                                        <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}{% for dependente in dependentes %},{{ dependente.pk }}{% endfor %}" class="btn btn-primary btn-small" style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); border: none;">
-                                            Criar Viagem
-                                        </a>
-                                    {% else %}
-                                        <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small" style="background: linear-gradient(135deg, #56f49c 0%, #4dd0e1 100%); border: none;">
-                                            Criar Viagem
-                                        </a>
-                                    {% endif %}
-                                {% endwith %}
-                            {% endif %}
+                            <a href="{% url 'system:criar_viagem' %}?clientes={{ item.cliente.pk }}" class="btn btn-primary btn-small">
+                                Criar Viagem
+                            </a>
                             {% with viagens=item.cliente.viagens.all %}
                                 {% if viagens %}
                                     {% for viagem in viagens %}
@@ -548,7 +532,7 @@
                                 <a href="{% url 'system:editar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Editar</a>
                             {% endif %}
                             {% if pode_excluir_clientes %}
-                                <form method="post" action="{% url 'system:excluir_cliente' item.cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ item.cliente.nome }}?');" style="margin: 0;">
+                                <form method="post" action="{% url 'system:excluir_cliente' item.cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir {{ item.cliente.nome_completo }}?');" style="margin: 0;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-danger btn-small">Excluir</button>
                                 </form>

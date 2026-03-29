@@ -197,10 +197,13 @@ def _build_fields(lines_by_source: dict[str, list[str]], mrz_lines: list[str]) -
         passport_number = _extract_passport_number(lines)
         if passport_number:
             fields["numero_passaporte"] = passport_number
-    if not fields.get("nome"):
+    if not fields.get("nome") and not fields.get("sobrenome"):
         fallback_name = _extract_name_with_consensus(lines_by_source)
         if fallback_name:
-            fields["nome"] = fallback_name
+            parts = fallback_name.split(None, 1)
+            fields["nome"] = parts[0]
+            if len(parts) > 1:
+                fields["sobrenome"] = parts[1]
     return {key: value for key, value in fields.items() if value}
 
 
@@ -212,9 +215,9 @@ def _fields_from_mrz(mrz_lines: list[str]) -> dict[str, str]:
         return {}
 
     surname, given_names = _split_mrz_name(line1[5:44])
-    full_name = " ".join(part for part in [given_names, surname] if part).strip()
     fields = {
-        "nome": full_name,
+        "nome": given_names,
+        "sobrenome": surname,
         "tipo_passaporte": "comum" if line1.startswith("P<") else "",
         "numero_passaporte": line2[0:9].replace("<", ""),
         "pais_emissor_passaporte": line1[2:5].replace("<", ""),

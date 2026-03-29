@@ -10,6 +10,7 @@ from .permission_models import UsuarioConsultoria
 
 
 class ClienteConsultoria(models.Model):
+    """Modelo principal de cliente da consultoria."""
        
                                                                  
        
@@ -20,7 +21,8 @@ class ClienteConsultoria(models.Model):
         related_name="clientes_assessorados",
         verbose_name="Assessor responsável",
     )
-    nome = models.CharField("Nome completo", max_length=160)
+    nome = models.CharField("Nome", max_length=100)
+    sobrenome = models.CharField("Sobrenome", max_length=100)
     cpf = models.CharField(
         "CPF",
         max_length=14,
@@ -155,8 +157,12 @@ class ClienteConsultoria(models.Model):
         verbose_name = "Cliente"
         verbose_name_plural = "Clientes"
 
+    @property
+    def nome_completo(self) -> str:
+        return f"{self.nome} {self.sobrenome}".strip()
+
     def __str__(self) -> str:
-        return self.nome
+        return self.nome_completo
 
     def set_password(self, raw_password: str) -> None:
         self.senha = make_password(raw_password)
@@ -193,6 +199,41 @@ class ClienteConsultoria(models.Model):
                                                          
         return self.dependentes.count()
 
+    def papel_na_viagem(self, viagem) -> str | None:
+        """Retorna 'principal' ou 'dependente' para uma viagem específica, ou None se não vinculado."""
+        from .travel_models import ClienteViagem
+
+        try:
+            cv = ClienteViagem.objects.get(viagem=viagem, cliente=self)
+            return cv.papel
+        except ClienteViagem.DoesNotExist:
+            return None
+
+    def is_principal_na_viagem(self, viagem) -> bool:
+        return self.papel_na_viagem(viagem) == "principal"
+
+    def dependentes_na_viagem(self, viagem):
+        """QuerySet de clientes que são dependentes deste cliente numa viagem."""
+        from .client_models import ClienteConsultoria
+
+        return ClienteConsultoria.objects.filter(
+            viagens_cliente__viagem=viagem,
+            viagens_cliente__cliente_principal_viagem=self,
+            viagens_cliente__papel="dependente",
+        )
+
+    def principal_na_viagem(self, viagem):
+        """Retorna o cliente principal deste cliente numa viagem, ou None."""
+        from .travel_models import ClienteViagem
+
+        try:
+            cv = ClienteViagem.objects.select_related("cliente_principal_viagem").get(
+                viagem=viagem, cliente=self
+            )
+            return cv.cliente_principal_viagem
+        except ClienteViagem.DoesNotExist:
+            return None
+
     @property
     def progresso_etapas(self) -> int:
                                                            
@@ -204,4 +245,31 @@ class ClienteConsultoria(models.Model):
         ]
         concluidas = sum(etapas)
         return int((concluidas / len(etapas)) * 100) if etapas else 0
+
+
+class Lembrete(models.Model):
+    cliente = models.ForeignKey(
+        ClienteConsultoria,
+        on_delete=models.CASCADE,
+        related_name="lembretes",
+        verbose_name="Cliente",
+    )
+    texto = models.CharField("Lembrete", max_length=500)
+    data_lembrete = models.DateField("Data do lembrete", null=True, blank=True)
+    concluido = models.BooleanField("Concluído", default=False)
+    criado_por = models.ForeignKey(
+        UsuarioConsultoria,
+        on_delete=models.PROTECT,
+        related_name="lembretes_criados",
+        verbose_name="Criado por",
+    )
+    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
+
+    class Meta:
+        ordering = ("concluido", "-criado_em")
+        verbose_name = "Lembrete"
+        verbose_name_plural = "Lembretes"
+
+    def __str__(self) -> str:
+        return self.texto[:60]
 

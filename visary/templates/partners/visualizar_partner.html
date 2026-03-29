@@ -230,12 +230,7 @@
                     {% for cliente in clientes_vinculados %}
                         <tr>
                             <td>
-                                <strong>{{ cliente.nome }}</strong>
-                                {% if cliente.is_dependente %}
-                                    <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
-                                        Dependente de {{ cliente.cliente_principal.nome|default:"-" }}
-                                    </div>
-                                {% endif %}
+                                <strong>{{ cliente.nome_completo }}</strong>
                             </td>
                             <td>{{ cliente.email }}</td>
                             <td>{{ cliente.telefone }}</td>

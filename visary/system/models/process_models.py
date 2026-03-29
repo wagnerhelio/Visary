@@ -84,7 +84,7 @@ class Processo(models.Model):
         unique_together = [("viagem", "cliente")]
 
     def __str__(self) -> str:
-        return f"{self.cliente.nome} - {self.viagem}"
+        return f"{self.cliente.nome_completo} - {self.viagem}"
 
     @property
     def etapas_concluidas(self):

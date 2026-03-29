@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Visary | Cliente {{ cliente.nome }}{% endblock %}
+{% block title %}Visary | Cliente {{ cliente.nome_completo }}{% endblock %}
 
 {% block base_styles %}
     {{ block.super }}
@@ -87,14 +87,8 @@
 {% block app_header %}
 <section class="page-header">
     <div class="page-header__titles">
-        <h1>{{ cliente.nome }}</h1>
-        <p>
-            {% if cliente.cliente_principal_id %}
-                Dependente de {{ cliente.cliente_principal.nome }}
-            {% else %}
-                Cliente principal
-            {% endif %}
-        </p>
+        <h1>{{ cliente.nome_completo }}</h1>
+        <p>Detalhes do cliente</p>
     </div>
     <div class="actions-inline">
         <a href="{% url 'system:parceiro_dashboard' %}" class="btn btn-outline">Voltar</a>

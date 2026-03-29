@@ -7,7 +7,7 @@ import logging
 from django import forms
 from django.contrib.auth.models import User
 
-from system.models import EtapaProcesso, Processo, ViagemStatusProcesso
+from system.models import ClienteViagem, EtapaProcesso, Processo, ViagemStatusProcesso
 from system.models import UsuarioConsultoria
 
 logger = logging.getLogger(__name__)
@@ -118,16 +118,13 @@ class ProcessoForm(forms.ModelForm):
                 clientes_na_viagem = viagem_obj.clientes.all()
                 
                 clientes_ids = set(clientes_na_viagem.values_list('pk', flat=True))
-                for cliente_viagem in clientes_na_viagem:
-                    if cliente_viagem.is_principal:
-                        clientes_ids.update(
-                            ClienteConsultoria.objects.filter(cliente_principal=cliente_viagem).values_list('pk', flat=True)
-                        )
-                    elif cliente_viagem.cliente_principal_id:
-                        clientes_ids.add(cliente_viagem.cliente_principal_id)
-                        clientes_ids.update(
-                            ClienteConsultoria.objects.filter(cliente_principal_id=cliente_viagem.cliente_principal_id).values_list('pk', flat=True)
-                        )
+                viagens_com_clientes = ClienteViagem.objects.filter(
+                    cliente_id__in=clientes_ids
+                ).values_list("viagem_id", flat=True).distinct()
+                clientes_relacionados = ClienteViagem.objects.filter(
+                    viagem_id__in=viagens_com_clientes
+                ).values_list("cliente_id", flat=True)
+                clientes_ids.update(clientes_relacionados)
                 
                 clientes_queryset = clientes_queryset.filter(
                     pk__in=clientes_ids
@@ -294,19 +291,14 @@ class ProcessoForm(forms.ModelForm):
                 if cliente.email in emails_na_viagem:
                     cliente_com_mesmo_email_na_viagem = True
             
-                                                                                     
-            cliente_principal_na_viagem = False
-            if cliente.cliente_principal:
-                cliente_principal_na_viagem = cliente.cliente_principal in viagem.clientes.all()
-            
-                                                                                                     
-            dependente_na_viagem = False
-            if cliente.is_principal:
-                dependentes_na_viagem = viagem.clientes.filter(cliente_principal=cliente).exists()
-                dependente_na_viagem = dependentes_na_viagem
-            
-                                                                                                                                   
-            cliente_valido = cliente_na_viagem or cliente_com_mesmo_email_na_viagem or cliente_principal_na_viagem or dependente_na_viagem
+            # Verifica se cliente tem vínculo familiar via viagens compartilhadas
+            familia_na_viagem = ClienteViagem.objects.filter(
+                viagem=viagem, cliente_principal_viagem=cliente
+            ).exists() or ClienteViagem.objects.filter(
+                viagem=viagem, cliente=cliente
+            ).exists()
+
+            cliente_valido = cliente_na_viagem or cliente_com_mesmo_email_na_viagem or familia_na_viagem
             
             if not cliente_valido:
                 self.add_error(

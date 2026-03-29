@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Visary | Editar Formulário - {{ cliente.nome }}{% endblock %}
+{% block title %}Visary | Editar Formulário - {{ cliente.nome_completo }}{% endblock %}
 
 {% block base_styles %}
     {{ block.super }}
@@ -107,9 +107,9 @@
             width: 100%;
             padding: 14px 16px;
             border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            border: 1px solid var(--border-soft);
             background: rgba(12, 19, 35, 0.72);
-            color: #f5f5f5;
+            color: var(--text-primary);
             font-size: 0.95rem;
             transition: border 0.2s ease, box-shadow 0.2s ease;
         }
@@ -126,6 +126,33 @@
         .form-group textarea {
             min-height: 100px;
             resize: vertical;
+        }
+
+        .read-only-banner {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 0.88rem;
+            color: rgba(255, 193, 7, 0.95);
+        }
+
+        .draft-banner {
+            display: none;
+            background: rgba(86, 244, 156, 0.1);
+            border: 1px solid rgba(86, 244, 156, 0.3);
+            border-radius: 12px;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            color: rgba(86, 244, 156, 0.9);
+        }
+
+        .form-legend {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
         }
 
         .form-group-radio {
@@ -196,21 +223,50 @@
             color: rgba(255, 104, 104, 0.95);
         }
 
-        .resposta-existente {
-            background: rgba(86, 244, 156, 0.1);
-            border: 1px solid rgba(86, 244, 156, 0.3);
-            border-radius: 12px;
-            padding: 12px;
-            margin-top: 8px;
-            font-size: 0.9rem;
-            color: rgba(86, 244, 156, 0.9);
+        .header-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .formulario-card {
+                padding: 18px;
+            }
+
+            .form-group textarea {
+                min-height: 70px;
+            }
+
+            .stage-nav {
+                gap: 6px;
+            }
+
+            .stage-nav a, .stage-nav span {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .form-actions .btn-submit {
+                width: 100%;
+                text-align: center;
+            }
+
+            .header-actions {
+                flex-direction: column;
+            }
         }
     </style>
 {% endblock %}
 
 {% block app_content %}
 <div class="form-header">
-    <h1>{% if pode_gerenciar_todos %}Editar{% else %}Visualizar{% endif %} Formulário: {{ cliente.nome }}</h1>
+    <h1>{% if pode_gerenciar_todos %}Editar{% else %}Visualizar{% endif %} Formulário: {{ cliente.nome_completo }}</h1>
     <p>Viagem para {{ viagem.pais_destino.nome }} - {{ viagem.tipo_visto.nome }} - {{ viagem.data_prevista_viagem|date:"d/m/Y" }}</p>
     {% if stage_items %}
     <div class="stage-nav">
@@ -237,10 +293,10 @@
         {% endfor %}
     </div>
     {% endif %}
-    <div style="margin-top: 16px; display: flex; gap: 8px;">
-        <a href="{% url 'system:listar_formularios_viagem' viagem.pk %}" class="btn btn-outline">← Voltar</a>
+    <div class="header-actions">
+        <a href="{% url 'system:listar_formularios_viagem' viagem.pk %}" class="btn btn-outline">Voltar</a>
         {% if pode_gerenciar_todos %}
-            <form method="post" action="{% url 'system:excluir_respostas_formulario' viagem.pk cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir todas as respostas deste formulário?');" style="margin: 0;">
+            <form method="post" action="{% url 'system:excluir_respostas_formulario' viagem.pk cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir todas as respostas deste formulário?');">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-danger">Excluir Respostas</button>
             </form>
@@ -248,6 +304,13 @@
     </div>
 </div>
 <div class="formulario-card">
+    {% if not pode_gerenciar_todos %}
+        <div class="read-only-banner">Este formulário está em modo de visualização.</div>
+    {% endif %}
+    <div class="draft-banner" id="draftBanner"></div>
+    {% if perguntas %}
+        <p class="form-legend"><span style="color: rgba(255, 81, 81, 0.9);">*</span> Campos obrigatórios</p>
+    {% endif %}
     <form method="post" action="{{ request.path }}?etapa={{ current_stage.token|urlencode|default:'' }}" novalidate>
         {% csrf_token %}
         <input type="hidden" name="etapa_token" value="{{ current_stage.token|default:'' }}">
@@ -270,7 +333,6 @@
                                 name="pergunta_{{ pergunta.pk }}"
                                 {% if pergunta.obrigatorio %}required{% endif %}
                             >{{ resposta.resposta_texto }}</textarea>
-                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
                         {% elif pergunta.tipo_campo == "data" %}
                             <input
                                 type="date"
@@ -279,7 +341,6 @@
                                 {% if pergunta.obrigatorio %}required{% endif %}
                                 {% if resposta.resposta_data %}value="{{ resposta.resposta_data|date:'Y-m-d' }}"{% endif %}
                             >
-                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
                         {% elif pergunta.tipo_campo == "numero" %}
                             <input
                                 type="number"
@@ -289,7 +350,6 @@
                                 {% if pergunta.obrigatorio %}required{% endif %}
                                 {% if resposta.resposta_numero %}value="{{ resposta.resposta_numero }}"{% endif %}
                             >
-                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
                         {% elif pergunta.tipo_campo == "booleano" %}
                             <div class="form-group-radio">
                                 <label>
@@ -313,7 +373,6 @@
                                     Não
                                 </label>
                             </div>
-                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
                         {% elif pergunta.tipo_campo == "selecao" %}
                             <select
                                 id="pergunta_{{ pergunta.pk }}"
@@ -330,7 +389,6 @@
                                     {% endif %}
                                 {% endfor %}
                             </select>
-                            <div class="resposta-existente">✓ Resposta salva anteriormente</div>
                         {% endif %}
                         {% endif %}
                     {% endfor %}
@@ -403,11 +461,11 @@
 
         {% if pode_gerenciar_todos %}
         <div class="form-actions">
-            <button type="submit" name="next_action" value="save" class="btn-submit">💾 Salvar</button>
+            <button type="submit" name="next_action" value="save" class="btn-submit">Salvar</button>
             {% if next_stage %}
-                <button type="submit" name="next_action" value="next" class="btn-submit">{{ next_stage.nome }} →</button>
+                <button type="submit" name="next_action" value="next" class="btn-submit">Salvar e Avançar</button>
             {% else %}
-                <button type="submit" name="next_action" value="finish" class="btn-submit">✓ Finalizar</button>
+                <button type="submit" name="next_action" value="finish" class="btn-submit">Salvar e Finalizar</button>
             {% endif %}
         </div>
         {% endif %}
@@ -470,6 +528,66 @@
     });
 
     atualizarVisibilidade();
+})();
+</script>
+
+<script>
+(function() {
+    /* ── Auto-save rascunho em localStorage (consultor) ── */
+    var viagemId = '{{ viagem.pk }}';
+    var clienteId = '{{ cliente.pk }}';
+    var stageToken = '{{ current_stage.token|default:"all" }}';
+    var draftKey = 'visary_cons_draft_' + viagemId + '_' + clienteId + '_' + stageToken;
+    var form = document.querySelector('form[method="post"][novalidate]');
+    if (!form) return;
+
+    var banner = document.getElementById('draftBanner');
+
+    var successMsg = document.querySelector('.messages .success');
+    if (successMsg) { localStorage.removeItem(draftKey); return; }
+
+    function serializeForm() {
+        var data = {};
+        form.querySelectorAll('input, select, textarea').forEach(function(el) {
+            if (!el.name || el.name === 'csrfmiddlewaretoken' || el.name === 'etapa_token' || el.name === 'next_action') return;
+            if (el.type === 'radio') { if (el.checked) data[el.name] = el.value; }
+            else { data[el.name] = el.value; }
+        });
+        return data;
+    }
+
+    function restoreDraft() {
+        var raw = localStorage.getItem(draftKey);
+        if (!raw) return;
+        try { var data = JSON.parse(raw); } catch(e) { return; }
+        var restored = false;
+        Object.keys(data).forEach(function(name) {
+            var val = data[name];
+            var radios = form.querySelectorAll('input[name="' + name + '"][type="radio"]');
+            if (radios.length > 0) {
+                radios.forEach(function(r) { r.checked = (r.value === val); });
+                restored = true;
+            } else {
+                var el = form.querySelector('[name="' + name + '"]');
+                if (el && !el.value && val) { el.value = val; restored = true; }
+            }
+        });
+        if (restored) {
+            banner.textContent = 'Rascunho restaurado automaticamente.';
+            banner.style.display = 'block';
+        }
+    }
+    restoreDraft();
+
+    var saveTimer;
+    form.addEventListener('input', function() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function() { localStorage.setItem(draftKey, JSON.stringify(serializeForm())); }, 500);
+    });
+    form.addEventListener('change', function() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function() { localStorage.setItem(draftKey, JSON.stringify(serializeForm())); }, 500);
+    });
 })();
 </script>
 {% endblock %}
