@@ -1,7 +1,3 @@
-   
-                                        
-   
-
 import logging
 from contextlib import suppress
 from datetime import timedelta
@@ -16,109 +12,104 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods
 
-from system.forms import ProcessoForm
+from system.forms import ProcessForm
 from system.models import (
-    ClienteConsultoria,
-    ClienteViagem,
-    EtapaProcesso,
-    Processo,
-    StatusProcesso,
-    Viagem,
-    ViagemStatusProcesso,
+    ConsultancyClient,
+    TripClient,
+    ProcessStage,
+    Process,
+    ProcessStatus,
+    Trip,
+    TripProcessStatus,
 )
-from system.models import UsuarioConsultoria
-from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
+from system.models import ConsultancyUser
+from system.views.client_views import list_clients, get_user_consultant, user_can_manage_all
 
 
 logger = logging.getLogger(__name__)
 
 
-def _aplicar_filtros_processos(processos, request, incluir_assessor=True):
-    filtros = {
-        "cliente": request.GET.get("cliente", "").strip(),
-        "viagem": request.GET.get("viagem", "").strip(),
+def _apply_process_filters(processes, request, include_advisor=True):
+    filters = {
+        "client": request.GET.get("client", "").strip(),
+        "trip": request.GET.get("trip", "").strip(),
     }
-    if incluir_assessor:
-        filtros["assessor"] = request.GET.get("assessor", "").strip()
+    if include_advisor:
+        filters["advisor"] = request.GET.get("advisor", "").strip()
 
-    if filtros["cliente"]:
-        processos = processos.filter(cliente__nome__icontains=filtros["cliente"])
-    if filtros["viagem"]:
-        processos = processos.filter(
-            Q(viagem__pais_destino__nome__icontains=filtros["viagem"])
-            | Q(viagem__tipo_visto__nome__icontains=filtros["viagem"])
+    if filters["client"]:
+        processes = processes.filter(client__first_name__icontains=filters["client"])
+    if filters["trip"]:
+        processes = processes.filter(
+            Q(trip__destination_country__name__icontains=filters["trip"])
+            | Q(trip__visa_type__name__icontains=filters["trip"])
         )
-    if incluir_assessor and filtros.get("assessor"):
+    if include_advisor and filters.get("advisor"):
         with suppress(ValueError, TypeError):
-            processos = processos.filter(assessor_responsavel_id=int(filtros["assessor"]))
+            processes = processes.filter(assigned_advisor_id=int(filters["advisor"]))
 
-    return processos, filtros
+    return processes, filters
 
 
-def _ordenar_processos_por_grupo_familiar(processos, viagem=None):
-    if viagem:
-        cv_map = {
-            cv.cliente_id: cv.papel
-            for cv in ClienteViagem.objects.filter(viagem=viagem)
+def _sort_processes_by_family_group(processes, trip=None):
+    if trip:
+        trip_client_map = {
+            cv.client_id: cv.role
+            for cv in TripClient.objects.filter(trip=trip)
         }
         return sorted(
-            processos,
-            key=lambda p: (0 if cv_map.get(p.cliente_id) == "principal" else 1, p.cliente.nome_completo, p.pk),
+            processes,
+            key=lambda p: (0 if trip_client_map.get(p.client_id) == "primary" else 1, p.client.full_name, p.pk),
         )
-    return sorted(processos, key=lambda p: (p.cliente.nome_completo, p.pk))
+    return sorted(processes, key=lambda p: (p.client.full_name, p.pk))
 
 
 @login_required
-def home_processos(request):
-                                                              
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def home_processes(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-                                                                                                                              
-    from system.views.client_views import listar_clientes
-    clientes_usuario = listar_clientes(request.user)
-    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
-    
-                                                                
-    processos = Processo.objects.filter(
-        cliente__pk__in=clientes_ids
+    from system.views.client_views import list_clients
+    user_clients = list_clients(request.user)
+    client_ids = list(user_clients.values_list("pk", flat=True))
+
+    processes = Process.objects.filter(
+        client__pk__in=client_ids
     ).select_related(
-        "viagem",
-        "viagem__pais_destino",
-        "viagem__tipo_visto",
-        "cliente",
-        "assessor_responsavel",
-    ).prefetch_related("etapas", "etapas__status").distinct()
+        "trip",
+        "trip__destination_country",
+        "trip__visa_type",
+        "client",
+        "assigned_advisor",
+    ).prefetch_related("stages", "stages__status").distinct()
 
-    processos, filtros_aplicados = _aplicar_filtros_processos(processos, request, incluir_assessor=False)
-    
-    processos_ordenados = _ordenar_processos_por_grupo_familiar(processos)
-    
-    processos_limitados = processos_ordenados[:10]
-    total_processos_concluidos = sum(1 for processo in processos_ordenados if processo.progresso_percentual >= 100)
-    total_processos_pendentes = sum(1 for processo in processos_ordenados if processo.progresso_percentual < 100)
-    
-                                   
-    contexto = {
-        "processos": processos_limitados,
-        "total_processos": processos.count(),
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "consultor": consultor,
-        "clientes": clientes_usuario.order_by("nome"),
-        "filtros_aplicados": filtros_aplicados,
-        "total_processos_concluidos": total_processos_concluidos,
-        "total_processos_pendentes": total_processos_pendentes,
+    processes, applied_filters = _apply_process_filters(processes, request, include_advisor=False)
+
+    sorted_processes = _sort_processes_by_family_group(processes)
+
+    limited_processes = sorted_processes[:10]
+    total_completed_processes = sum(1 for p in sorted_processes if p.progress_percentage >= 100)
+    total_pending_processes = sum(1 for p in sorted_processes if p.progress_percentage < 100)
+
+    context = {
+        "processes": limited_processes,
+        "total_processes": processes.count(),
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "consultant": consultant,
+        "clients": user_clients.order_by("first_name"),
+        "applied_filters": applied_filters,
+        "total_completed_processes": total_completed_processes,
+        "total_pending_processes": total_pending_processes,
     }
 
-    return render(request, "process/home_processos.html", contexto)
+    return render(request, "process/home_processes.html", context)
 
 
-def _limpar_mensagens_duplicadas_sessao(request):
-                                                
+def _clear_duplicate_session_messages(request):
     if not (stored_messages := request.session.get('_messages')):
         return
-    
+
     filtered = []
     seen_texts = set()
     for msg in stored_messages:
@@ -126,7 +117,7 @@ def _limpar_mensagens_duplicadas_sessao(request):
         if message_text not in seen_texts:
             seen_texts.add(message_text)
             filtered.append(msg)
-    
+
     if filtered:
         request.session['_messages'] = filtered
     else:
@@ -134,11 +125,10 @@ def _limpar_mensagens_duplicadas_sessao(request):
     request.session.modified = True
 
 
-def _limpar_mensagens_viagem_sessao(request):
-                                                          
+def _clear_trip_session_messages(request):
     if stored_messages := request.session.get('_messages'):
         filtered = [
-            msg for msg in stored_messages 
+            msg for msg in stored_messages
             if "viagens cadastradas" not in str(msg.get('message', '') if isinstance(msg, dict) else msg).lower()
             and "viagem cadastrada" not in str(msg.get('message', '') if isinstance(msg, dict) else msg).lower()
         ]
@@ -147,499 +137,422 @@ def _limpar_mensagens_viagem_sessao(request):
         else:
             request.session.pop('_messages', None)
         request.session.modified = True
-    
+
     storage = messages.get_messages(request)
     storage.used = True
 
 
-def _atualizar_etapas_processo(processo: Processo, request, etapa_id: int | None = None) -> int:
-                                                                                                 
-    etapas_atualizadas = 0
-    
-                                                        
-    if etapa_id:
-        try:
-            etapa = processo.etapas.get(pk=etapa_id)
-            prazo_antes = etapa.prazo_dias
-            etapa_id_str = str(etapa.pk)
-            
-                                   
-            concluida = request.POST.get(f"etapa_{etapa_id_str}_concluida") == "on"
-            prazo_dias = request.POST.get(f"etapa_{etapa_id_str}_prazo", "").strip()
-            data_conclusao = request.POST.get(f"etapa_{etapa_id_str}_data", "").strip() or None
-            observacoes = request.POST.get(f"etapa_{etapa_id_str}_obs", "").strip()
+def _update_process_stages(process: Process, request, stage_id: int | None = None) -> int:
+    stages_updated = 0
 
-                              
-            etapa.concluida = concluida
-            etapa.observacoes = observacoes or ""
-            
-                                  
-            if prazo_dias:
+    if stage_id:
+        try:
+            stage = process.stages.get(pk=stage_id)
+            prev_deadline = stage.deadline_days
+            stage_id_str = str(stage.pk)
+
+            completed_val_bool = request.POST.get(f"stage_{stage_id_str}_completed_val_bool") == "on"
+            deadline_days_str = request.POST.get(f"stage_{stage_id_str}_deadline", "").strip()
+            completion_date_str = request.POST.get(f"stage_{stage_id_str}_date", "").strip() or None
+            notes = request.POST.get(f"stage_{stage_id_str}_notes", "").strip()
+
+            stage.completed = completed_val_bool
+            stage.notes = notes or ""
+
+            if deadline_days_str:
                 try:
-                    etapa.prazo_dias = int(prazo_dias)
+                    stage.deadline_days = int(deadline_days_str)
                 except ValueError:
                     messages.error(request, "Prazo (dias) inválido. Informe um número inteiro >= 0.")
-                    etapa.prazo_dias = prazo_antes
+                    stage.deadline_days = prev_deadline
                     return 0
             else:
-                etapa.prazo_dias = 0
-            
-                                      
-            if data_conclusao:
+                stage.deadline_days = 0
+
+            if completion_date_str:
                 try:
-                    etapa.data_conclusao = parse_date(data_conclusao)
+                    stage.completion_date = parse_date(completion_date_str)
                 except (ValueError, TypeError):
-                    etapa.data_conclusao = None
+                    stage.completion_date = None
             else:
-                                                                
-                if not concluida:
-                    etapa.data_conclusao = None
-            
-                                           
-            etapa.save(update_fields=["concluida", "prazo_dias", "data_conclusao", "observacoes", "atualizado_em"])
-            
-                                                             
-            etapa.refresh_from_db()
-            etapas_atualizadas = 1
-        except EtapaProcesso.DoesNotExist:
-            logger.warning(f"Etapa {etapa_id} não encontrada no processo {processo.pk}")
+                if not completed_val_bool:
+                    stage.completion_date = None
+
+            stage.save(update_fields=["completed", "deadline_days", "completion_date", "notes", "updated_at"])
+
+            stage.refresh_from_db()
+            stages_updated = 1
+        except ProcessStage.DoesNotExist:
+            logger.warning(f"Etapa {stage_id} não encontrada no processo {process.pk}")
             return 0
         except Exception as e:
-            logger.error(f"Erro ao atualizar etapa {etapa_id}: {e}", exc_info=True)
+            logger.error(f"Erro ao atualizar etapa {stage_id}: {e}", exc_info=True)
             return 0
     else:
-                                   
-        etapas_no_processo = list(processo.etapas.all())
-        logger.debug("Processando %s etapa(s) do processo %s", len(etapas_no_processo), processo.pk)
-        
-        for etapa in etapas_no_processo:
-            etapa_id_str = str(etapa.pk)
-            
-                                   
-            concluida_val = request.POST.get(f"etapa_{etapa_id_str}_concluida", "")
-            concluida = concluida_val == "on"
-            prazo_dias_str = request.POST.get(f"etapa_{etapa_id_str}_prazo", "").strip()
-            data_conclusao_str = request.POST.get(f"etapa_{etapa_id_str}_data", "").strip() or None
-            observacoes = request.POST.get(f"etapa_{etapa_id_str}_obs", "").strip()
-            
-                                                       
-            concluida_antes = etapa.concluida
-            prazo_antes = etapa.prazo_dias
-            data_antes = etapa.data_conclusao
-            obs_antes = etapa.observacoes
+        process_stages_list = list(process.stages.all())
+        logger.debug("Processando %s etapa(s) do processo %s", len(process_stages_list), process.pk)
 
-                              
-            etapa.concluida = concluida
-            etapa.observacoes = observacoes or ""
-            
-                                                                     
+        for stage in process_stages_list:
+            stage_id_str = str(stage.pk)
+
+            completed_val = request.POST.get(f"stage_{stage_id_str}_completed_val_bool", "")
+            completed_val_bool = completed_val == "on"
+            deadline_str = request.POST.get(f"stage_{stage_id_str}_deadline", "").strip()
+            completion_date_str = request.POST.get(f"stage_{stage_id_str}_date", "").strip() or None
+            notes = request.POST.get(f"stage_{stage_id_str}_notes", "").strip()
+
+            was_completed = stage.completed
+            prev_deadline = stage.deadline_days
+            prev_completion_date = stage.completion_date
+            prev_notes = stage.notes
+
+            stage.completed = completed_val_bool
+            stage.notes = notes or ""
+
             try:
-                if prazo_dias_str:
-                    etapa.prazo_dias = int(prazo_dias_str)
+                if deadline_str:
+                    stage.deadline_days = int(deadline_str)
                 else:
-                                                       
-                    etapa.prazo_dias = 0
+                    stage.deadline_days = 0
             except ValueError:
                 messages.error(request, "Prazo (dias) inválido. Informe um número inteiro >= 0.")
-                etapa.prazo_dias = prazo_antes
-                                                               
+                stage.deadline_days = prev_deadline
                 continue
-            
-                                      
-            if data_conclusao_str:
+
+            if completion_date_str:
                 try:
-                    etapa.data_conclusao = parse_date(data_conclusao_str)
+                    stage.completion_date = parse_date(completion_date_str)
                 except (ValueError, TypeError):
-                    etapa.data_conclusao = None
+                    stage.completion_date = None
             else:
-                                                                
-                if not concluida:
-                    etapa.data_conclusao = None
-            
-                                         
-            houve_mudanca = (
-                etapa.concluida != concluida_antes or
-                etapa.prazo_dias != prazo_antes or
-                etapa.data_conclusao != data_antes or
-                etapa.observacoes != obs_antes
+                if not completed_val_bool:
+                    stage.completion_date = None
+
+            has_changed = (
+                stage.completed != was_completed or
+                stage.deadline_days != prev_deadline or
+                stage.completion_date != prev_completion_date or
+                stage.notes != prev_notes
             )
-            
-                                                                                    
-            campos_presentes = any([
-                f"etapa_{etapa_id_str}_concluida" in request.POST,
-                f"etapa_{etapa_id_str}_prazo" in request.POST,
-                f"etapa_{etapa_id_str}_data" in request.POST,
-                f"etapa_{etapa_id_str}_obs" in request.POST,
+
+            fields_present = any([
+                f"stage_{stage_id_str}_completed_val_bool" in request.POST,
+                f"stage_{stage_id_str}_deadline" in request.POST,
+                f"stage_{stage_id_str}_date" in request.POST,
+                f"stage_{stage_id_str}_notes" in request.POST,
             ])
-            
-            if houve_mudanca or campos_presentes:
+
+            if has_changed or fields_present:
                 try:
-                    etapa.save(update_fields=["concluida", "prazo_dias", "data_conclusao", "observacoes", "atualizado_em"])
-                    etapa.refresh_from_db()
-                    etapas_atualizadas += 1
+                    stage.save(update_fields=["completed", "deadline_days", "completion_date", "notes", "updated_at"])
+                    stage.refresh_from_db()
+                    stages_updated += 1
                     logger.debug(
-                        "Etapa %s (%s) salva - concluida=%s prazo=%s data=%s",
-                        etapa_id_str,
-                        etapa.status.nome,
-                        concluida,
-                        etapa.prazo_dias,
-                        etapa.data_conclusao,
+                        "Etapa %s (%s) salva - completed_val_bool=%s prazo=%s data=%s",
+                        stage_id_str,
+                        stage.status.name,
+                        completed_val_bool,
+                        stage.deadline_days,
+                        stage.completion_date,
                     )
                 except Exception as e:
-                    logger.error(f"Erro ao salvar etapa {etapa_id_str}: {e}", exc_info=True)
+                    logger.error(f"Erro ao salvar etapa {stage_id_str}: {e}", exc_info=True)
 
-    return etapas_atualizadas
+    return stages_updated
 
 
-def _criar_etapas_se_necessario(processo: Processo):
-                                                                                            
-    if processo.etapas.exists():
+def _create_stages_if_needed(process: Process):
+    if process.stages.exists():
         return
-    
-    status_vinculados = ViagemStatusProcesso.objects.filter(
-        viagem=processo.viagem,
-        ativo=True
-    ).select_related('status').order_by('status__ordem', 'status__nome')
 
-    for viagem_status in status_vinculados:
-        status = viagem_status.status
-        prazo_dias = max(status.prazo_padrao_dias, 0)
+    status_vinculados = TripProcessStatus.objects.filter(
+        trip=process.trip,
+        is_active=True
+    ).select_related('status').order_by('status__order', 'status__name')
 
-        EtapaProcesso.objects.get_or_create(
-            processo=processo,
+    for trip_status in status_vinculados:
+        status = trip_status.status
+        deadline = max(status.default_deadline_days, 0)
+
+        ProcessStage.objects.get_or_create(
+            process=process,
             status=status,
             defaults={
-                'prazo_dias': prazo_dias,
-                'ordem': status.ordem,
+                'deadline_days': deadline,
+                'order': status.order,
             }
         )
 
 
-def _calcular_datas_finalizacao_etapas(processo: Processo, etapas):
-                                                                                             
-    data_base = processo.cliente.criado_em.date()
-    etapas_com_datas = []
-    for etapa in etapas:
-        data_finalizacao = None
-        if etapa.prazo_dias and etapa.prazo_dias > 0:
-            data_finalizacao = data_base + timedelta(days=etapa.prazo_dias)
+def _calculate_stage_completion_dates(process: Process, stages):
+    base_date = process.client.created_at.date()
+    stages_with_dates = []
+    for stage in stages:
+        completion_date = None
+        if stage.deadline_days and stage.deadline_days > 0:
+            completion_date = base_date + timedelta(days=stage.deadline_days)
 
-        etapas_com_datas.append({
-            'etapa': etapa,
-            'data_finalizacao': data_finalizacao,
+        stages_with_dates.append({
+            'stage': stage,
+            'completion_date': completion_date,
         })
-    return etapas_com_datas
+    return stages_with_dates
 
 
-def _obter_proximo_cliente_mesma_viagem(viagem: Viagem, cliente_atual: ClienteConsultoria) -> dict | None:
-       
-                                                                                  
-    
-                                                                                  
-                                         
-    
-         
-                            
-                                                                           
-    
-            
-                                                                                                 
-       
-    clientes_na_viagem = viagem.clientes.all()
-    clientes_relacionados_ids = set(clientes_na_viagem.values_list('pk', flat=True))
-    viagens_com_clientes = ClienteViagem.objects.filter(
-        cliente_id__in=clientes_relacionados_ids
-    ).values_list("viagem_id", flat=True).distinct()
-    clientes_relacionados_ids.update(
-        ClienteViagem.objects.filter(viagem_id__in=viagens_com_clientes).values_list("cliente_id", flat=True)
+def _get_next_client_same_trip(trip: Trip, current_client: ConsultancyClient) -> dict | None:
+    trip_clients = trip.clients.all()
+    related_client_ids = set(trip_clients.values_list('pk', flat=True))
+    trips_with_clients = TripClient.objects.filter(
+        client_id__in=related_client_ids
+    ).values_list("trip_id", flat=True).distinct()
+    related_client_ids.update(
+        TripClient.objects.filter(trip_id__in=trips_with_clients).values_list("client_id", flat=True)
     )
-    
-                             
-    clientes_relacionados_ids.discard(cliente_atual.pk)
-    
-    if not clientes_relacionados_ids:
+
+    related_client_ids.discard(current_client.pk)
+
+    if not related_client_ids:
         return None
-    
-                                                                               
-    for cliente_id in clientes_relacionados_ids:
-        cliente_relacionado = ClienteConsultoria.objects.get(pk=cliente_id)
-        processo_existente = Processo.objects.filter(
-            viagem=viagem,
-            cliente=cliente_relacionado
+
+    for client_id in related_client_ids:
+        related_client = ConsultancyClient.objects.get(pk=client_id)
+        existing_process = Process.objects.filter(
+            trip=trip,
+            client=related_client
         ).exists()
-        
-        if not processo_existente:
-                                                                                      
+
+        if not existing_process:
             return {
-                'cliente_id': cliente_relacionado.pk,
-                'viagem_id': viagem.pk,
+                'client_id': related_client.pk,
+                'trip_id': trip.pk,
             }
-    
+
     return None
 
 
-def _obter_proximo_cliente_viagem_separada(cliente: ClienteConsultoria, viagem_atual: Viagem) -> dict | None:
-       
-                                                                                                                          
-    
-                                                                                  
-                                                                                
-                                                     
-    
-         
-                                                                     
-                                                     
-    
-            
-                                                                                              
-       
-    clientes_relacionados_ids = {cliente.pk}
-    viagens_do_cliente = ClienteViagem.objects.filter(
-        cliente=cliente
-    ).values_list("viagem_id", flat=True).distinct()
-    clientes_relacionados_ids.update(
-        ClienteViagem.objects.filter(viagem_id__in=viagens_do_cliente).values_list("cliente_id", flat=True)
+def _get_next_client_separate_trip(client: ConsultancyClient, current_trip: Trip) -> dict | None:
+    related_client_ids = {client.pk}
+    client_trips = TripClient.objects.filter(
+        client=client
+    ).values_list("trip_id", flat=True).distinct()
+    related_client_ids.update(
+        TripClient.objects.filter(trip_id__in=client_trips).values_list("client_id", flat=True)
     )
-    
-                             
-    clientes_relacionados_ids.discard(cliente.pk)
-    
-    if not clientes_relacionados_ids:
+
+    related_client_ids.discard(client.pk)
+
+    if not related_client_ids:
         return None
-    
-                                                                              
-                                                                                            
-    viagens_relacionadas = Viagem.objects.filter(
-        clientes__pk__in=clientes_relacionados_ids
-    ).distinct().exclude(pk=viagem_atual.pk)
-    
-                                                                                     
-    for viagem_relacionada in viagens_relacionadas:
-                                                                      
-        clientes_na_viagem_relacionada = viagem_relacionada.clientes.filter(
-            pk__in=clientes_relacionados_ids
+
+    related_trips = Trip.objects.filter(
+        clients__pk__in=related_client_ids
+    ).distinct().exclude(pk=current_trip.pk)
+
+    for related_trip in related_trips:
+        related_trip_clients = related_trip.clients.filter(
+            pk__in=related_client_ids
         )
-        
-                                                                                    
-        for cliente_relacionado in clientes_na_viagem_relacionada:
-            processo_existente = Processo.objects.filter(
-                viagem=viagem_relacionada,
-                cliente=cliente_relacionado
+
+        for related_client in related_trip_clients:
+            existing_process = Process.objects.filter(
+                trip=related_trip,
+                client=related_client
             ).exists()
-            
-            if not processo_existente:
-                                                                                
+
+            if not existing_process:
                 return {
-                    'cliente_id': cliente_relacionado.pk,
-                    'viagem_id': viagem_relacionada.pk,
+                    'client_id': related_client.pk,
+                    'trip_id': related_trip.pk,
                 }
-    
+
     return None
 
 
-def _redirecionar_para_proximo_cliente(request, processo: Processo, proximo_cliente_info: dict, mensagem_especifica: str = None) -> HttpResponseRedirect:
-                                                                                     
+def _redirect_to_next_client(request, process: Process, next_client_info: dict, specific_message: str = None) -> HttpResponseRedirect:
     try:
-        proximo_cliente = ClienteConsultoria.objects.get(pk=proximo_cliente_info['cliente_id'])
-        mensagem = mensagem_especifica or f"Processo criado para {processo.cliente.nome_completo}. Criando processo para {proximo_cliente.nome_completo}..."
-    except ClienteConsultoria.DoesNotExist:
-        mensagem = f"Processo criado para {processo.cliente.nome_completo}. Criando próximo processo..."
-    
-    messages.info(request, mensagem)
+        next_client = ConsultancyClient.objects.get(pk=next_client_info['client_id'])
+        msg = specific_message or f"Processo criado para {process.client.full_name}. Criando processo para {next_client.full_name}..."
+    except ConsultancyClient.DoesNotExist:
+        msg = f"Processo criado para {process.client.full_name}. Criando próximo processo..."
+
+    messages.info(request, msg)
     return redirect(
-        f"{reverse('system:criar_processo')}?cliente_id={proximo_cliente_info['cliente_id']}&viagem_id={proximo_cliente_info['viagem_id']}"
+        f"{reverse('system:create_process')}?client_id={next_client_info['client_id']}&trip_id={next_client_info['trip_id']}"
     )
 
 
-def _processar_proximo_cliente(request, processo: Processo) -> HttpResponseRedirect | None:
-                                                                              
-    if proximo_cliente_processo := _obter_proximo_cliente_mesma_viagem(processo.viagem, processo.cliente):
-        return _redirecionar_para_proximo_cliente(request, processo, proximo_cliente_processo)
-    
-    if proximo_cliente_viagem_separada := _obter_proximo_cliente_viagem_separada(processo.cliente, processo.viagem):
-        mensagem = f"Processo criado para {processo.cliente.nome_completo}. Criando processo em viagem separada..."
-        return _redirecionar_para_proximo_cliente(request, processo, proximo_cliente_viagem_separada, mensagem)
-    
+def _process_next_client(request, process: Process) -> HttpResponseRedirect | None:
+    if same_trip_info := _get_next_client_same_trip(process.trip, process.client):
+        return _redirect_to_next_client(request, process, same_trip_info)
+
+    if separate_trip_info := _get_next_client_separate_trip(process.client, process.trip):
+        msg = f"Processo criado para {process.client.full_name}. Criando processo em viagem separada..."
+        return _redirect_to_next_client(request, process, separate_trip_info, msg)
+
     return None
 
 
-def _processar_post_criar_processo(request, cliente_id, viagem_id) -> HttpResponseRedirect | None:
-                                                       
-    _limpar_mensagens_duplicadas_sessao(request)
+def _process_create_post(request, client_id, trip_id) -> HttpResponseRedirect | None:
+    _clear_duplicate_session_messages(request)
     storage = messages.get_messages(request)
     storage.used = True
-    
-    form = ProcessoForm(request.POST, user=request.user, cliente_id=cliente_id, viagem_id=viagem_id)
+
+    form = ProcessForm(request.POST, user=request.user, client_id=client_id, trip_id=trip_id)
     if not form.is_valid():
         messages.error(request, "Não foi possível cadastrar o processo. Verifique os campos.")
         return None
-    
-    processo = form.save()
-    
-    if redirect_response := _processar_proximo_cliente(request, processo):
+
+    process = form.save()
+
+    if redirect_response := _process_next_client(request, process):
         return redirect_response
-    
-    messages.success(request, f"Todos os processos foram criados com sucesso! Processo criado para {processo.cliente.nome_completo}.")
-    return redirect("system:home_processos")
+
+    messages.success(request, f"Todos os processos foram criados com sucesso! Processo criado para {process.client.full_name}.")
+    return redirect("system:home_processes")
 
 
-def _determinar_cliente_pre_selecionado(cliente_id, viagem_id) -> bool:
-                                                                                         
-    if cliente_id:
+def _determine_preselected_client(client_id, trip_id) -> bool:
+    if client_id:
         return True
-    
-    if not viagem_id:
+
+    if not trip_id:
         return False
-    
-    with suppress(Viagem.DoesNotExist):
-        viagem = Viagem.objects.get(pk=viagem_id)
-        return viagem.clientes.count() == 1
-    
+
+    with suppress(Trip.DoesNotExist):
+        trip = Trip.objects.get(pk=trip_id)
+        return trip.clients.count() == 1
+
     return False
 
 
-def _obter_etapas_disponiveis_viagem(viagem_id) -> list:
-                                                                                   
-    if not viagem_id:
+def _get_available_trip_stages(trip_id) -> list:
+    if not trip_id:
         return []
-    
+
     try:
-        status_vinculados = ViagemStatusProcesso.objects.filter(
-            viagem_id=viagem_id,
-            ativo=True
-        ).select_related('status').order_by('status__ordem', 'status__nome')
-        
-        return [viagem_status.status for viagem_status in status_vinculados]
-    except (Viagem.DoesNotExist, ValueError):
+        status_vinculados = TripProcessStatus.objects.filter(
+            trip_id=trip_id,
+            is_active=True
+        ).select_related('status').order_by('status__order', 'status__name')
+
+        return [trip_status.status for trip_status in status_vinculados]
+    except (Trip.DoesNotExist, ValueError):
         return []
 
 
-def _preparar_contexto_criar_processo(consultor, form, cliente_id, viagem_id) -> dict:
-                                                                           
-    etapas_disponiveis = _obter_etapas_disponiveis_viagem(viagem_id) if viagem_id else []
-    
+def _prepare_create_process_context(consultant, form, client_id, trip_id) -> dict:
+    available_stages = _get_available_trip_stages(trip_id) if trip_id else []
+
     return {
         "form": form,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "cliente_pre_selecionado": _determinar_cliente_pre_selecionado(cliente_id, viagem_id),
-        "viagem_pre_selecionada": bool(viagem_id),
-        "etapas_disponiveis": etapas_disponiveis,
+        "user_profile": consultant.profile.name if consultant else None,
+        "preselected_client": _determine_preselected_client(client_id, trip_id),
+        "preselected_trip": bool(trip_id),
+        "available_stages": available_stages,
     }
 
 
 @login_required
-def criar_processo(request):
-                                                  
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def create_process(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
     if request.method == "GET":
-        _limpar_mensagens_viagem_sessao(request)
+        _clear_trip_session_messages(request)
 
-    cliente_id = request.GET.get("cliente_id")
-    viagem_id = request.GET.get("viagem_id")
+    client_id = request.GET.get("client_id")
+    trip_id = request.GET.get("trip_id")
 
     if request.method == "POST":
-        if redirect_response := _processar_post_criar_processo(request, cliente_id, viagem_id):
+        if redirect_response := _process_create_post(request, client_id, trip_id):
             return redirect_response
-        form = ProcessoForm(request.POST, user=request.user, cliente_id=cliente_id, viagem_id=viagem_id)
+        form = ProcessForm(request.POST, user=request.user, client_id=client_id, trip_id=trip_id)
     else:
-        form = ProcessoForm(user=request.user, cliente_id=cliente_id, viagem_id=viagem_id)
+        form = ProcessForm(user=request.user, client_id=client_id, trip_id=trip_id)
 
-    contexto = _preparar_contexto_criar_processo(consultor, form, cliente_id, viagem_id)
-    return render(request, "process/criar_processo.html", contexto)
+    context = _prepare_create_process_context(consultant, form, client_id, trip_id)
+    return render(request, "process/create_process.html", context)
 
 
 @login_required
-def visualizar_processo(request, pk: int):
-                                                     
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def view_process(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    processo = get_object_or_404(
-        Processo.objects.select_related(
-            "viagem",
-            "viagem__pais_destino",
-            "viagem__tipo_visto",
-            "cliente",
-            "assessor_responsavel",
-        ).prefetch_related("etapas", "etapas__status"),
+    process = get_object_or_404(
+        Process.objects.select_related(
+            "trip",
+            "trip__destination_country",
+            "trip__visa_type",
+            "client",
+            "assigned_advisor",
+        ).prefetch_related("stages", "stages__status"),
         pk=pk
     )
 
-                         
-                                                            
-                                                             
     pode_visualizar = True
 
-                               
-    etapas = processo.etapas.select_related("status").order_by("ordem", "status__nome").all()
+    stages = process.stages.select_related("status").order_by("order", "status__name").all()
 
-                                                   
-    etapas_com_datas = _calcular_datas_finalizacao_etapas(processo, etapas)
-    data_base = processo.cliente.criado_em.date()
+    stages_with_dates = _calculate_stage_completion_dates(process, stages)
+    base_date = process.client.created_at.date()
 
-    contexto = {
-        "processo": processo,
-        "etapas_com_datas": etapas_com_datas,
-        "data_base": data_base,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "pode_editar": pode_gerenciar_todos or (consultor and processo.assessor_responsavel_id == consultor.pk),
+    context = {
+        "process_obj": process,
+        "stages_with_dates": stages_with_dates,
+        "base_date": base_date,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "can_edit": can_manage_all or (consultant and process.assigned_advisor_id == consultant.pk),
     }
 
-    return render(request, "process/visualizar_processo.html", contexto)
+    return render(request, "process/view_process.html", context)
 
 
 @login_required
-def editar_processo(request, pk: int):
-                                                       
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def edit_process(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    processo = get_object_or_404(
-        Processo.objects.select_related(
-            "viagem",
-            "viagem__pais_destino",
-            "viagem__tipo_visto",
-            "cliente",
-            "assessor_responsavel",
-        ).prefetch_related("etapas", "etapas__status"),
+    process = get_object_or_404(
+        Process.objects.select_related(
+            "trip",
+            "trip__destination_country",
+            "trip__visa_type",
+            "client",
+            "assigned_advisor",
+        ).prefetch_related("stages", "stages__status"),
         pk=pk
     )
 
-                         
-    if not pode_gerenciar_todos and (not consultor or processo.assessor_responsavel_id != consultor.pk):
+    if not can_manage_all and (not consultant or process.assigned_advisor_id != consultant.pk):
         raise PermissionDenied("Você não tem permissão para editar este processo.")
 
     if request.method == "POST":
-        logger.debug("POST editar_processo %s com campos: %s", processo.pk, list(request.POST.keys()))
-        
-                                                            
-        if "alterar_assessor" in request.POST:
-            if pode_gerenciar_todos:
+        logger.debug("POST edit_process %s com campos: %s", process.pk, list(request.POST.keys()))
+
+        if "change_advisor" in request.POST:
+            if can_manage_all:
                 try:
-                    novo_assessor_id = int(request.POST.get("assessor_responsavel"))
-                    novo_assessor = UsuarioConsultoria.objects.get(pk=novo_assessor_id, ativo=True)
-                    processo.assessor_responsavel = novo_assessor
-                    processo.save(update_fields=["assessor_responsavel"])
-                    messages.success(request, f"Assessor responsável alterado para {novo_assessor.nome}.")
-                except (ValueError, TypeError, UsuarioConsultoria.DoesNotExist):
+                    new_advisor_id = int(request.POST.get("assigned_advisor"))
+                    new_advisor = ConsultancyUser.objects.get(pk=new_advisor_id, is_active=True)
+                    process.assigned_advisor = new_advisor
+                    process.save(update_fields=["assigned_advisor"])
+                    messages.success(request, f"Assessor responsável alterado para {new_advisor.name}.")
+                except (ValueError, TypeError, ConsultancyUser.DoesNotExist):
                     messages.error(request, "Erro ao alterar o assessor responsável. Verifique os dados.")
             else:
                 messages.error(request, "Você não tem permissão para alterar o assessor responsável.")
-            return redirect("system:editar_processo", pk=processo.pk)
-        
-                                                         
-        if "salvar_etapa" in request.POST:
+            return redirect("system:edit_process", pk=process.pk)
+
+        if "save_stage" in request.POST:
             try:
-                etapa_id = int(request.POST.get("salvar_etapa"))
-                                             
-                if not processo.etapas.filter(pk=etapa_id).exists():
-                    messages.error(request, f"Etapa {etapa_id} não encontrada no processo.")
+                stage_id = int(request.POST.get("save_stage"))
+                if not process.stages.filter(pk=stage_id).exists():
+                    messages.error(request, f"Etapa {stage_id} não encontrada no processo.")
                 else:
-                    etapas_atualizadas = _atualizar_etapas_processo(processo, request, etapa_id=etapa_id)
-                    if etapas_atualizadas > 0:
+                    stages_updated = _update_process_stages(process, request, stage_id=stage_id)
+                    if stages_updated > 0:
                         messages.success(request, "Etapa salva com sucesso.")
                     else:
                         messages.error(request, "Erro ao salvar a etapa. Verifique se os dados foram preenchidos corretamente.")
@@ -648,230 +561,208 @@ def editar_processo(request, pk: int):
             except Exception as e:
                 logger.error(f"Erro ao salvar etapa: {e}", exc_info=True)
                 messages.error(request, f"Erro ao salvar a etapa: {str(e)}")
-            return redirect("system:editar_processo", pk=processo.pk)
-        
-                                
+            return redirect("system:edit_process", pk=process.pk)
+
         if "salvar_tudo" in request.POST:
             try:
-                post_keys = [k for k in request.POST.keys() if k.startswith('etapa_')]
+                post_keys = [k for k in request.POST.keys() if k.startswith('stage_')]
                 logger.info(f"Salvando todas as etapas. POST com {len(post_keys)} campos de etapa.")
-                etapas_atualizadas = _atualizar_etapas_processo(processo, request)
+                stages_updated = _update_process_stages(process, request)
 
-                if etapas_atualizadas > 0:
-                    messages.success(request, f"{etapas_atualizadas} etapa(s) atualizada(s) com sucesso.")
+                if stages_updated > 0:
+                    messages.success(request, f"{stages_updated} etapa(s) atualizada(s) com sucesso.")
                 else:
                     messages.warning(request, "Nenhuma etapa foi atualizada. Verifique se há etapas no processo e se os dados foram preenchidos.")
             except Exception as e:
                 logger.error(f"Erro ao salvar todas as etapas: {e}", exc_info=True)
                 messages.error(request, f"Erro ao salvar as etapas: {str(e)}")
-            return redirect("system:editar_processo", pk=processo.pk)
+            return redirect("system:edit_process", pk=process.pk)
 
-                               
-    etapas = processo.etapas.select_related("status").order_by("ordem", "status__nome").all()
+    stages = process.stages.select_related("status").order_by("order", "status__name").all()
 
-                                
-    _criar_etapas_se_necessario(processo)
-    
-                                             
-    etapas = processo.etapas.select_related("status").order_by("ordem", "status__nome").all()
+    _create_stages_if_needed(process)
 
-                                                   
-    etapas_com_datas = _calcular_datas_finalizacao_etapas(processo, etapas)
-    data_base = processo.cliente.criado_em.date()
-    
-                                                                   
-    etapas_disponiveis = _obter_etapas_disponiveis_para_adicionar(processo)
+    stages = process.stages.select_related("status").order_by("order", "status__name").all()
 
-                                                  
-    assessores_disponiveis = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
-    
-    contexto = {
-        "processo": processo,
-        "etapas_com_datas": etapas_com_datas,
-        "data_base": data_base,
-        "etapas_disponiveis": etapas_disponiveis,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "assessores_disponiveis": assessores_disponiveis,
+    stages_with_dates = _calculate_stage_completion_dates(process, stages)
+    base_date = process.client.created_at.date()
+
+    available_stages = _get_available_stages_to_add(process)
+
+    available_advisors = ConsultancyUser.objects.filter(is_active=True).order_by("name")
+
+    context = {
+        "process_obj": process,
+        "stages_with_dates": stages_with_dates,
+        "base_date": base_date,
+        "available_stages": available_stages,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "available_advisors": available_advisors,
     }
 
-    return render(request, "process/editar_processo.html", contexto)
+    return render(request, "process/edit_process.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_processo(request, pk: int):
-                              
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def delete_process(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied("Você não tem permissão para excluir processos.")
 
-    processo = get_object_or_404(Processo, pk=pk)
-    cliente_nome = processo.cliente.nome_completo
-    processo.delete()
+    process = get_object_or_404(Process, pk=pk)
+    client_name = process.client.full_name
+    process.delete()
 
-    messages.success(request, f"Processo de {cliente_nome} excluído com sucesso.")
-    return redirect("system:listar_processos")
+    messages.success(request, f"Processo de {client_name} excluído com sucesso.")
+    return redirect("system:list_processes")
 
 
 @login_required
 @require_http_methods(["POST"])
-def remover_etapa_processo(request, processo_pk: int, etapa_pk: int):
-                                       
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    processo = get_object_or_404(
-        Processo.objects.select_related("assessor_responsavel"),
-        pk=processo_pk
+def remove_process_stage(request, process_pk: int, stage_pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    process = get_object_or_404(
+        Process.objects.select_related("assigned_advisor"),
+        pk=process_pk
     )
-    
-                         
-    if not pode_gerenciar_todos and (not consultor or processo.assessor_responsavel_id != consultor.pk):
+
+    if not can_manage_all and (not consultant or process.assigned_advisor_id != consultant.pk):
         raise PermissionDenied("Você não tem permissão para remover etapas deste processo.")
-    
-    etapa = get_object_or_404(
-        EtapaProcesso.objects.filter(processo=processo),
-        pk=etapa_pk
+
+    stage = get_object_or_404(
+        ProcessStage.objects.filter(process=process),
+        pk=stage_pk
     )
-    
-    etapa_nome = etapa.status.nome
-    etapa.delete()
-    
-    messages.success(request, f"Etapa '{etapa_nome}' removida do processo com sucesso.")
-    return redirect("system:editar_processo", pk=processo.pk)
+
+    stage_name = stage.status.name
+    stage.delete()
+
+    messages.success(request, f"Etapa '{stage_name}' removida do processo com sucesso.")
+    return redirect("system:edit_process", pk=process.pk)
 
 
-def _obter_etapas_disponiveis_para_adicionar(processo: Processo):
-                                                                                          
-                                               
-    status_vinculados = ViagemStatusProcesso.objects.filter(
-        viagem=processo.viagem,
-        ativo=True
-    ).select_related('status').order_by('status__ordem', 'status__nome')
-    
-                                                       
+def _get_available_stages_to_add(process: Process):
+    status_vinculados = TripProcessStatus.objects.filter(
+        trip=process.trip,
+        is_active=True
+    ).select_related('status').order_by('status__order', 'status__name')
+
     status_ids_existentes = set(
-        processo.etapas.values_list('status_id', flat=True)
+        process.stages.values_list('status_id', flat=True)
     )
-    
-                                               
+
     return [
-        viagem_status.status
-        for viagem_status in status_vinculados
-        if viagem_status.status.pk not in status_ids_existentes
+        trip_status.status
+        for trip_status in status_vinculados
+        if trip_status.status.pk not in status_ids_existentes
     ]
 
 
 @login_required
 @require_http_methods(["POST"])
-def adicionar_etapa_processo(request, processo_pk: int, status_pk: int):
-                                                                         
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    processo = get_object_or_404(
-        Processo.objects.select_related("assessor_responsavel", "viagem"),
-        pk=processo_pk
+def add_process_stage(request, process_pk: int, status_pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    process = get_object_or_404(
+        Process.objects.select_related("assigned_advisor", "trip"),
+        pk=process_pk
     )
-    
-                         
-    if not pode_gerenciar_todos and (not consultor or processo.assessor_responsavel_id != consultor.pk):
+
+    if not can_manage_all and (not consultant or process.assigned_advisor_id != consultant.pk):
         raise PermissionDenied("Você não tem permissão para adicionar etapas a este processo.")
-    
-                                                   
-    viagem_status = get_object_or_404(
-        ViagemStatusProcesso.objects.filter(
-            viagem=processo.viagem,
+
+    trip_status = get_object_or_404(
+        TripProcessStatus.objects.filter(
+            trip=process.trip,
             status_id=status_pk,
-            ativo=True
+            is_active=True
         )
     )
-    
-    status = viagem_status.status
-    
-                                                  
-    if EtapaProcesso.objects.filter(processo=processo, status=status).exists():
-        messages.error(request, f"Etapa '{status.nome}' já existe neste processo.")
-        return redirect("system:editar_processo", pk=processo.pk)
-    
-                   
-    prazo_dias = max(status.prazo_padrao_dias or 0, 0)
-    
-    EtapaProcesso.objects.create(
-        processo=processo,
+
+    status = trip_status.status
+
+    if ProcessStage.objects.filter(process=process, status=status).exists():
+        messages.error(request, f"Etapa '{status.name}' já existe neste processo.")
+        return redirect("system:edit_process", pk=process.pk)
+
+    deadline = max(status.default_deadline_days or 0, 0)
+
+    ProcessStage.objects.create(
+        process=process,
         status=status,
-        prazo_dias=prazo_dias,
-        ordem=status.ordem,
+        deadline_days=deadline,
+        order=status.order,
     )
-    
-    messages.success(request, f"Etapa '{status.nome}' adicionada ao processo com sucesso.")
-    return redirect("system:editar_processo", pk=processo.pk)
+
+    messages.success(request, f"Etapa '{status.name}' adicionada ao processo com sucesso.")
+    return redirect("system:edit_process", pk=process.pk)
 
 
 @login_required
-def listar_processos(request):
-                                    
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def list_processes(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-                                                          
-    processos = Processo.objects.select_related(
-        "viagem",
-        "viagem__pais_destino",
-        "viagem__tipo_visto",
-        "cliente",
-        "assessor_responsavel",
-    ).prefetch_related("etapas", "etapas__status").distinct()
+    processes = Process.objects.select_related(
+        "trip",
+        "trip__destination_country",
+        "trip__visa_type",
+        "client",
+        "assigned_advisor",
+    ).prefetch_related("stages", "stages__status").distinct()
 
-    processos, filtros_aplicados = _aplicar_filtros_processos(processos, request, incluir_assessor=True)
+    processes, applied_filters = _apply_process_filters(processes, request, include_advisor=True)
 
-    processos_ordenados = _ordenar_processos_por_grupo_familiar(processos)
-    total_processos_concluidos = sum(1 for processo in processos_ordenados if processo.progresso_percentual >= 100)
-    total_processos_pendentes = sum(1 for processo in processos_ordenados if processo.progresso_percentual < 100)
+    sorted_processes = _sort_processes_by_family_group(processes)
+    total_completed_processes = sum(1 for p in sorted_processes if p.progress_percentage >= 100)
+    total_pending_processes = sum(1 for p in sorted_processes if p.progress_percentage < 100)
 
-    assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
-    clientes = ClienteConsultoria.objects.order_by("nome")
+    advisors = ConsultancyUser.objects.filter(is_active=True).order_by("name")
+    clients = ConsultancyClient.objects.order_by("first_name")
 
-    contexto = {
-        "processos": processos_ordenados,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "consultor": consultor,
-        "filtros_aplicados": filtros_aplicados,
-        "clientes": clientes,
-        "assessores": assessores,
-        "total_processos": len(processos_ordenados),
-        "total_processos_concluidos": total_processos_concluidos,
-        "total_processos_pendentes": total_processos_pendentes,
+    context = {
+        "processes": sorted_processes,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "consultant": consultant,
+        "applied_filters": applied_filters,
+        "clients": clients,
+        "advisors": advisors,
+        "total_processes": len(sorted_processes),
+        "total_completed_processes": total_completed_processes,
+        "total_pending_processes": total_pending_processes,
     }
 
-    return render(request, "process/listar_processos.html", contexto)
+    return render(request, "process/list_processes.html", context)
 
 
 @login_required
 @require_GET
-def api_status_processo(request):
-                                                                    
-    viagem_id = request.GET.get("viagem_id")
+def api_process_status(request):
+    trip_id = request.GET.get("trip_id")
 
-    if not viagem_id:
+    if not trip_id:
         return JsonResponse({"error": "ID da viagem não fornecido."}, status=400)
 
     try:
-        status_vinculados = ViagemStatusProcesso.objects.filter(
-            viagem_id=viagem_id,
-            ativo=True
-        ).select_related('status').order_by('status__ordem', 'status__nome')
+        status_vinculados = TripProcessStatus.objects.filter(
+            trip_id=trip_id,
+            is_active=True
+        ).select_related('status').order_by('status__order', 'status__name')
 
         status_list = [
             {
                 "id": vs.status.pk,
-                "nome": vs.status.nome,
-                "prazo_padrao_dias": vs.status.prazo_padrao_dias,
-                "ordem": vs.status.ordem,
+                "name": vs.status.name,
+                "default_deadline_days": vs.status.default_deadline_days,
+                "ordem": vs.status.order,
             }
             for vs in status_vinculados
         ]
@@ -883,83 +774,78 @@ def api_status_processo(request):
 
 @login_required
 @require_GET
-def api_cliente_info(request):
-                                                        
-    cliente_id = request.GET.get("cliente_id")
+def api_client_info(request):
+    client_id = request.GET.get("client_id")
 
-    if not cliente_id:
+    if not client_id:
         return JsonResponse({"error": "ID do cliente não fornecido."}, status=400)
 
     try:
-        cliente = ClienteConsultoria.objects.get(pk=cliente_id)
-        criado_em = cliente.criado_em.isoformat()
-        return JsonResponse({"criado_em": criado_em})
-    except ClienteConsultoria.DoesNotExist:
+        client = ConsultancyClient.objects.get(pk=client_id)
+        created_at = client.created_at.isoformat()
+        return JsonResponse({"created_at": created_at})
+    except ConsultancyClient.DoesNotExist:
         return JsonResponse({"error": "Cliente não encontrado."}, status=404)
 
 
 @login_required
 @require_GET
-def api_prazo_status_processo(request):
-                                                                 
+def api_process_status_deadline(request):
     status_id = request.GET.get("status_id")
 
     if not status_id:
         return JsonResponse({"error": "ID do status não fornecido."}, status=400)
 
     try:
-        status = StatusProcesso.objects.get(pk=status_id, ativo=True)
+        status = ProcessStatus.objects.get(pk=status_id, is_active=True)
         return JsonResponse({
-            "prazo_padrao_dias": status.prazo_padrao_dias,
+            "default_deadline_days": status.default_deadline_days,
         })
-    except StatusProcesso.DoesNotExist:
+    except ProcessStatus.DoesNotExist:
         return JsonResponse({"error": "Status não encontrado."}, status=404)
 
 
 @login_required
 @require_GET
-def api_clientes_viagem(request):
-                                                             
-    viagem_id = request.GET.get("viagem_id")
+def api_trip_clients(request):
+    trip_id = request.GET.get("trip_id")
 
-    if not viagem_id:
+    if not trip_id:
         return JsonResponse({"error": "ID da viagem não fornecido."}, status=400)
 
     try:
-        viagem = Viagem.objects.get(pk=viagem_id)
-                                        
-        clientes_viagem_qs = ClienteViagem.objects.filter(
-            viagem=viagem
-        ).select_related("cliente")
+        trip = Trip.objects.get(pk=trip_id)
+        trip_clients_qs = TripClient.objects.filter(
+            trip=trip
+        ).select_related("client")
 
-        # Expandir grupo familiar via viagens compartilhadas
-        clientes_ids = set(clientes_viagem_qs.values_list("cliente_id", flat=True))
-        viagens_relacionadas = ClienteViagem.objects.filter(
-            cliente_id__in=clientes_ids
-        ).values_list("viagem_id", flat=True).distinct()
-        clientes_ids.update(
-            ClienteViagem.objects.filter(viagem_id__in=viagens_relacionadas).values_list("cliente_id", flat=True)
+        client_ids = set(trip_clients_qs.values_list("client_id", flat=True))
+        related_trips = TripClient.objects.filter(
+            client_id__in=client_ids
+        ).values_list("trip_id", flat=True).distinct()
+        client_ids.update(
+            TripClient.objects.filter(trip_id__in=related_trips).values_list("client_id", flat=True)
         )
 
-        cv_map = {cv.cliente_id: cv.papel for cv in clientes_viagem_qs}
-        clientes = ClienteConsultoria.objects.filter(pk__in=clientes_ids).order_by("nome")
+        trip_client_map = {cv.client_id: cv.role for cv in trip_clients_qs}
+        clients = ConsultancyClient.objects.filter(pk__in=client_ids).order_by("first_name")
 
-        clientes_ordenados = sorted(
-            clientes,
-            key=lambda c: (0 if cv_map.get(c.pk) == "principal" else 1, c.nome),
+        sorted_clients = sorted(
+            clients,
+            key=lambda c: (0 if trip_client_map.get(c.pk) == "primary" else 1, c.full_name),
         )
 
-        clientes_list = [
+        clients_list = [
             {
-                "id": cliente.pk,
-                "nome": cliente.nome_completo,
-                "is_principal": cv_map.get(cliente.pk) == "principal",
+                "id": client.pk,
+                "name": client.full_name,
+                "is_principal": trip_client_map.get(client.pk) == "primary",
             }
-            for cliente in clientes_ordenados
+            for client in sorted_clients
         ]
 
-        return JsonResponse(clientes_list, safe=False)
-    except Viagem.DoesNotExist:
+        return JsonResponse(clients_list, safe=False)
+    except Trip.DoesNotExist:
         return JsonResponse({"error": "Viagem não encontrada."}, status=404)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)

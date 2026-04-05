@@ -1,0 +1,634 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Formulário - {{ trip.visa_type.name }}{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+    <style>
+        .form-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .form-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 8px 0;
+        }
+
+        .form-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .stage-nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-soft);
+        }
+
+        .stage-nav a, .stage-nav span {
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .stage-nav a {
+            background: rgba(86, 244, 156, 0.1);
+            border: 1px solid rgba(86, 244, 156, 0.3);
+            color: rgba(86, 244, 156, 0.9);
+        }
+
+        .stage-nav a:hover {
+            background: rgba(86, 244, 156, 0.2);
+            border-color: rgba(86, 244, 156, 0.5);
+        }
+
+        .stage-nav span {
+            background: rgba(86, 244, 156, 0.25);
+            border: 1px solid rgba(86, 244, 156, 0.5);
+            color: rgba(86, 244, 156, 1);
+        }
+
+        .stage-nav .disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .stage-progress {
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .formulario-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+            padding: clamp(24px, 4vw, 40px);
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .form-group label .is_required {
+            color: rgba(255, 81, 81, 0.9);
+            margin-left: 4px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="date"],
+        .form-group input[type="number"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 1px solid var(--border-soft);
+            background: rgba(12, 19, 35, 0.72);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: rgba(86, 244, 156, 0.65);
+            box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+            background: rgba(12, 19, 35, 0.85);
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-group-radio {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .form-group-radio label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .form-group-radio input[type="radio"] {
+            width: auto;
+        }
+
+        .btn-submit {
+            padding: 14px 24px;
+            background: linear-gradient(135deg, rgba(86, 244, 156, 0.9), rgba(86, 244, 156, 0.7));
+            color: #0c1323;
+            border: none;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-submit:hover {
+            background: linear-gradient(135deg, rgba(86, 244, 156, 1), rgba(86, 244, 156, 0.9));
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(86, 244, 156, 0.3);
+        }
+
+        .btn-outline-secondary {
+            padding: 14px 24px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-outline-secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+
+        .messages {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 24px 0;
+        }
+
+        .messages li {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .messages .success {
+            background: rgba(86, 244, 156, 0.2);
+            border: 1px solid rgba(86, 244, 156, 0.55);
+            color: rgba(86, 244, 156, 0.95);
+        }
+
+        .messages .error {
+            background: rgba(255, 81, 81, 0.15);
+            border: 1px solid rgba(255, 104, 104, 0.55);
+            color: rgba(255, 104, 104, 0.95);
+        }
+
+        .draft-banner {
+            display: none;
+            border-radius: 12px;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+        }
+
+        .draft-banner--success {
+            background: rgba(86, 244, 156, 0.1);
+            border: 1px solid rgba(86, 244, 156, 0.3);
+            color: rgba(86, 244, 156, 0.9);
+        }
+
+        .draft-banner--error {
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid rgba(255, 82, 82, 0.3);
+            color: rgba(255, 82, 82, 0.9);
+        }
+
+        .form-legend {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        .header-actions {
+            margin-top: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .formulario-card {
+                padding: 18px;
+            }
+
+            .form-group textarea {
+                min-height: 70px;
+            }
+
+            .stage-nav {
+                gap: 6px;
+            }
+
+            .stage-nav a, .stage-nav span {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .form-actions .btn-submit,
+            .form-actions .btn-outline-secondary {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block app_content %}
+<div class="form-header">
+    <h1>Formulário: {{ trip.visa_type.name }}</h1>
+    <p>Viagem para {{ trip.destination_country.name }} - {{ trip.planned_departure_date|date:"d/m/Y" }}</p>
+    {% if stage_items %}
+    <div class="stage-nav">
+        {% if prev_stage %}
+            <a href="{{ request.path }}?stage={{ prev_stage.token|urlencode }}">← {{ prev_stage.name }}</a>
+        {% else %}
+            <span class="disabled">← Anterior</span>
+        {% endif %}
+        <span>Etapa {{ stage_index|add:1 }} de {{ stage_items|length }}: {{ current_stage.name }}</span>
+        {% if next_stage %}
+            <a href="{{ request.path }}?stage={{ next_stage.token|urlencode }}">{{ next_stage.name }} →</a>
+        {% else %}
+            <span class="disabled">Finalizar →</span>
+        {% endif %}
+    </div>
+    <div class="stage-progress">
+        {% for item in stage_items %}
+            {% if item.token == current_stage.token %}
+                <strong>{{ item.name }}</strong>
+            {% else %}
+                {{ item.name }}
+            {% endif %}
+            {% if not forloop.last %} › {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="header-actions">
+        <a href="{% url 'system:client_dashboard' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</div>
+<div class="formulario-card">
+    <div class="draft-banner" id="draftBanner"></div>
+    {% if questions %}
+        <p class="form-legend"><span style="color: rgba(255, 81, 81, 0.9);">*</span> Campos obrigatórios</p>
+    {% endif %}
+    <form method="post" action="{% url 'system:client_save_answer' trip.pk %}" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="stage_token" value="{{ current_stage.token|default:'' }}">
+
+        {% for question in questions %}
+            <div class="form-group" data-ordem="{{ question.order }}" data-rule='{{ question.display_rule|default_if_none:"" }}'>
+                <label for="question_{{ question.pk }}">
+                    {{ question.question }}
+                    {% if question.is_required %}
+                        <span class="obrigatorio">*</span>
+                    {% endif %}
+                </label>
+
+                {% if question.pk in answer_ids %}
+                    {% for question_id, answer in existing_answers.items %}
+                        {% if question_id == question.pk %}
+                        {% if question.field_type == "text" %}
+                            <textarea
+                                id="question_{{ question.pk }}"
+                                name="question_{{ question.pk }}"
+                                {% if question.is_required %}required{% endif %}
+                            >{{ answer.answer_text }}</textarea>
+                        {% elif question.field_type == "date" %}
+                            <input
+                                type="date"
+                                id="question_{{ question.pk }}"
+                                name="question_{{ question.pk }}"
+                                {% if question.is_required %}required{% endif %}
+                                {% if answer.answer_date %}value="{{ answer.answer_date|date:'Y-m-d' }}"{% endif %}
+                            >
+                        {% elif question.field_type == "number" %}
+                            <input
+                                type="number"
+                                id="question_{{ question.pk }}"
+                                name="question_{{ question.pk }}"
+                                step="0.01"
+                                {% if question.is_required %}required{% endif %}
+                                {% if answer.answer_number %}value="{{ answer.answer_number }}"{% endif %}
+                            >
+                        {% elif question.field_type == "boolean" %}
+                            <div class="form-group-radio">
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="question_{{ question.pk }}"
+                                        value="sim"
+                                        {% if answer.answer_boolean %}checked{% endif %}
+                                        {% if question.is_required %}required{% endif %}
+                                    >
+                                    Sim
+                                </label>
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="question_{{ question.pk }}"
+                                        value="nao"
+                                        {% if answer.answer_boolean == False %}checked{% endif %}
+                                        {% if question.is_required %}required{% endif %}
+                                    >
+                                    Não
+                                </label>
+                            </div>
+                        {% elif question.field_type == "select" %}
+                            <select
+                                id="question_{{ question.pk }}"
+                                name="question_{{ question.pk }}"
+                                {% if question.is_required %}required{% endif %}
+                            >
+                                <option value="">Selecione uma opção</option>
+                                {% for option in question.options.all %}
+                                    {% if option.is_active %}
+                                        <option value="{{ option.pk }}" {% if answer.answer_select and answer.answer_select.pk == option.pk %}selected{% endif %}>
+                                            {{ option.text }}
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    {% if question.field_type == "text" %}
+                        <textarea
+                            id="question_{{ question.pk }}"
+                            name="question_{{ question.pk }}"
+                            {% if question.is_required %}required{% endif %}
+                        ></textarea>
+                    {% elif question.field_type == "date" %}
+                        <input
+                            type="date"
+                            id="question_{{ question.pk }}"
+                            name="question_{{ question.pk }}"
+                            {% if question.is_required %}required{% endif %}
+                        >
+                    {% elif question.field_type == "number" %}
+                        <input
+                            type="number"
+                            id="question_{{ question.pk }}"
+                            name="question_{{ question.pk }}"
+                            step="0.01"
+                            {% if question.is_required %}required{% endif %}
+                        >
+                    {% elif question.field_type == "boolean" %}
+                        <div class="form-group-radio">
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="question_{{ question.pk }}"
+                                    value="sim"
+                                    {% if question.is_required %}required{% endif %}
+                                >
+                                Sim
+                            </label>
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="question_{{ question.pk }}"
+                                    value="nao"
+                                    {% if question.is_required %}required{% endif %}
+                                >
+                                Não
+                            </label>
+                        </div>
+                    {% elif question.field_type == "select" %}
+                        <select
+                            id="question_{{ question.pk }}"
+                            name="question_{{ question.pk }}"
+                            {% if question.is_required %}required{% endif %}
+                        >
+                            <option value="">Selecione uma opção</option>
+                            {% for option in question.options.all %}
+                                {% if option.is_active %}
+                                    <option value="{{ option.pk }}">{{ option.text }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <div class="form-actions">
+            {% if next_stage %}
+                <button type="submit" name="next_action" value="save" class="btn-submit">Salvar</button>
+                <button type="submit" name="next_action" value="next" class="btn-submit">Salvar e Avançar</button>
+            {% else %}
+                <button type="submit" name="next_action" value="save" class="btn-submit">Salvar</button>
+                <button type="submit" name="next_action" value="finish" class="btn-submit">Salvar e Finalizar</button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<script>
+(function() {
+    var ordemParaPk = {};
+    document.querySelectorAll('.form-group[data-ordem]').forEach(function(el) {
+        var match = el.querySelector('[id^="question_"]');
+        if (match) {
+            var pk = match.id.replace('question_', '');
+            ordemParaPk[parseInt(el.dataset.order)] = pk;
+        }
+    });
+
+    function atualizarVisibilidade() {
+        var estado = {};
+        Object.keys(ordemParaPk).forEach(function(ordem) {
+            var pk = ordemParaPk[ordem];
+            var radios = document.querySelectorAll('input[name="question_' + pk + '"]');
+            var select = document.querySelector('select[name="question_' + pk + '"]');
+            var textInput = document.querySelector('input[type="text"][name="question_' + pk + '"]');
+            if (radios.length > 0) {
+                var checked = document.querySelector('input[name="question_' + pk + '"]:checked');
+                estado[parseInt(ordem)] = checked ? checked.value : null;
+            } else if (select && select.value) {
+                var selectedText = select.options[select.selectedIndex].text;
+                estado[parseInt(ordem)] = selectedText;
+            } else if (textInput && textInput.value) {
+                estado[parseInt(ordem)] = textInput.value;
+            }
+        });
+
+        document.querySelectorAll('.form-group[data-rule]').forEach(function(el) {
+            var ruleStr = el.dataset.rule;
+            if (!ruleStr) return;
+            try { var rule = JSON.parse(ruleStr); } catch(e) { return; }
+            if (rule.type !== 'show_if') return;
+            var triggerOrdem = parseInt(rule.question_order);
+            var valoresEsperados = Array.isArray(rule.value) ? rule.value : [rule.value];
+            var triggerValue = estado[triggerOrdem];
+            var visivel = valoresEsperados.indexOf(triggerValue) !== -1;
+            el.style.display = visivel ? '' : 'none';
+        });
+    }
+
+    document.querySelectorAll('input, select').forEach(function(el) {
+        el.addEventListener('change', atualizarVisibilidade);
+        el.addEventListener('input', atualizarVisibilidade);
+    });
+
+    atualizarVisibilidade();
+})();
+</script>
+
+<script>
+(function() {
+    /* ── Resiliência offline: rascunho em localStorage + retry ── */
+    var viagemId = '{{ trip.pk }}';
+    var stageToken = '{{ current_stage.token|default:"all" }}';
+    var draftKey = 'visary_draft_' + viagemId + '_' + stageToken;
+    var form = document.querySelector('.formulario-card form');
+    if (!form) return;
+
+    /* ── Banner de status ── */
+    var banner = document.getElementById('draftBanner');
+
+    function showBanner(msg, isError) {
+        banner.textContent = msg;
+        banner.className = 'draft-banner ' + (isError ? 'draft-banner--error' : 'draft-banner--success');
+        banner.style.display = 'block';
+    }
+
+    /* ── Detectar se a página veio de um submit bem-sucedido ── */
+    var successMsg = document.querySelector('.messages .success');
+    if (successMsg) {
+        localStorage.removeItem(draftKey);
+        return;
+    }
+
+    /* ── Serializar campos do formulário ── */
+    function serializeForm() {
+        var data = {};
+        form.querySelectorAll('input, select, textarea').forEach(function(el) {
+            if (!el.name || el.name === 'csrfmiddlewaretoken' || el.name === 'stage_token' || el.name === 'next_action') return;
+            if (el.type === 'radio') {
+                if (el.checked) data[el.name] = el.value;
+            } else {
+                data[el.name] = el.value;
+            }
+        });
+        return data;
+    }
+
+    /* ── Restaurar rascunho do localStorage ── */
+    function restoreDraft() {
+        var raw = localStorage.getItem(draftKey);
+        if (!raw) return;
+        try { var data = JSON.parse(raw); } catch(e) { return; }
+        var restored = false;
+        Object.keys(data).forEach(function(name) {
+            var val = data[name];
+            var radios = form.querySelectorAll('input[name="' + name + '"][type="radio"]');
+            if (radios.length > 0) {
+                radios.forEach(function(r) { r.checked = (r.value === val); });
+                restored = true;
+            } else {
+                var el = form.querySelector('[name="' + name + '"]');
+                if (el && !el.value && val) { el.value = val; restored = true; }
+            }
+        });
+        if (restored) showBanner('Rascunho restaurado automaticamente.');
+    }
+
+    restoreDraft();
+
+    /* ── Auto-save debounced ── */
+    var saveTimer;
+    function debouncedSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function() {
+            localStorage.setItem(draftKey, JSON.stringify(serializeForm()));
+        }, 500);
+    }
+    form.addEventListener('input', debouncedSave);
+    form.addEventListener('change', debouncedSave);
+
+    /* ── Interceptar submit com fetch + retry ── */
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var clickedBtn = document.activeElement;
+        var formData = new FormData(form);
+        if (clickedBtn && clickedBtn.name && clickedBtn.value) {
+            formData.set(clickedBtn.name, clickedBtn.value);
+        }
+
+        var btns = form.querySelectorAll('button[type="submit"]');
+        btns.forEach(function(b) { b.disabled = true; });
+
+        function attempt(n, delay) {
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                redirect: 'follow',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(function(resp) {
+                if (resp.ok || resp.redirected) {
+                    localStorage.removeItem(draftKey);
+                    window.location.href = resp.url || form.action;
+                } else {
+                    throw new Error('Status ' + resp.status);
+                }
+            }).catch(function(err) {
+                if (n < 3) {
+                    showBanner('Sem conexão. Tentando novamente em ' + (delay / 1000) + 's...', true);
+                    setTimeout(function() { attempt(n + 1, delay * 2); }, delay);
+                } else {
+                    showBanner('Não foi possível enviar. Suas respostas estão salvas localmente. Tente novamente quando a conexão voltar.', true);
+                    btns.forEach(function(b) { b.disabled = false; });
+                }
+            });
+        }
+        localStorage.setItem(draftKey, JSON.stringify(serializeForm()));
+        showBanner('Enviando...', false);
+        attempt(0, 2000);
+    });
+})();
+</script>
+{% endblock %}

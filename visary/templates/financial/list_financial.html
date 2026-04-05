@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Listar Financeiro{% endblock %}
+
+{% block body_class %}listagem-page{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    <style>
+    .card {
+        overflow-x: auto;
+    }
+
+    .card .table-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: min(68vh, 720px);
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
+    @media (min-width: 1120px) {
+        body.listagem-page {
+            overflow: hidden;
+        }
+
+        body.listagem-page .app-main {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.listagem-page .page-header,
+        body.listagem-page .filtros-card,
+        body.listagem-page .kpi-grid {
+            flex-shrink: 0;
+        }
+
+        body.listagem-page .card:last-of-type {
+            flex: 1;
+            min-height: 0;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.listagem-page .card:last-of-type .table-wrapper {
+            flex: 1;
+            min-height: 0;
+            max-height: none;
+        }
+    }
+
+    thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--card-bg);
+        backdrop-filter: blur(4px);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 100%;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    th,
+    td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-principal {
+        background: rgba(86, 244, 156, 0.18);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-dependente {
+        background: rgba(255, 193, 7, 0.18);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .name-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .name-cell__name {
+        font-weight: 500;
+        color: rgba(245, 245, 245, 0.92);
+        line-height: 1.3;
+    }
+
+    .name-cell__sub {
+        font-size: 0.75rem;
+        color: rgba(245, 245, 245, 0.5);
+        line-height: 1.2;
+    }
+
+    .row-dependente td:first-child {
+        padding-left: 24px;
+        border-left: 2px solid rgba(255, 193, 7, 0.25);
+    }
+
+    .status-badge.pendente {
+        background: rgba(255, 193, 7, 0.2);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .status-badge.pago {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .status-badge.cancelado {
+        background: rgba(244, 67, 54, 0.2);
+        color: rgba(244, 67, 54, 0.95);
+        border: 1px solid rgba(244, 67, 54, 0.4);
+    }
+
+    .empty-state {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        color: rgba(245, 245, 245, 0.72);
+        text-align: center;
+    }
+
+    .table-wrapper::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(86, 244, 156, 0.4);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: rgba(86, 244, 156, 0.6);
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+
+    .filtros-card header h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 16px 0;
+    }
+
+    .filtros-form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .filtros-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    }
+
+    .filtros-form label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .filtros-form input,
+    .filtros-form select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .filtros-form input:focus,
+    .filtros-form select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    .filtros-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    .filtros-actions .btn { width: auto; }
+
+    @media (max-width: 768px) {
+        table {
+            font-size: 0.85rem;
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+        }
+
+        .filtros-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .filtros-actions {
+            flex-direction: column;
+        }
+
+        .filtros-actions .btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
+
+    </style>
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Listar Registros Financeiros</h1>
+        <p>Visualize e gerencie todos os registros financeiros.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_financial' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="filtros-card">
+    <header>
+        <h2>Filtros</h2>
+    </header>
+    <form method="get" action="{% url 'system:list_financial' %}" class="filtros-form">
+        <div class="filtros-grid">
+            <div>
+                <label for="cliente">Cliente</label>
+                <input type="text" id="cliente" name="client" value="{{ filters_dict.client }}" placeholder="Nome ou e-mail" list="datalist-clientes">
+            </div>
+            <div>
+                <label for="assessor">Assessor</label>
+                <input type="text" id="advisor" name="advisor" value="{{ filters_dict.advisor }}" placeholder="Nome ou e-mail">
+            </div>
+            <div>
+                <label for="status">Status</label>
+                <select id="status" name="status">
+                    <option value="">Todos</option>
+                    <option value="pendente" {% if filters_dict.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                    <option value="pago" {% if filters_dict.status == 'pago' %}selected{% endif %}>Pago</option>
+                    <option value="cancelado" {% if filters_dict.status == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                </select>
+            </div>
+            <div>
+                <label for="data_inicio">Data Inicio</label>
+                <input type="date" id="data_inicio" name="date_start" value="{{ filters_dict.date_start }}">
+            </div>
+            <div>
+                <label for="data_fim">Data Fim</label>
+                <input type="date" id="data_fim" name="date_end" value="{{ filters_dict.date_end }}">
+            </div>
+        </div>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:list_financial' %}" class="btn btn-outline">Limpar Filtros</a>
+        </div>
+    </form>
+</section>
+<datalist id="datalist-clientes">
+    {% for client in clientes %}
+        <option value="{{ client.full_name }}">
+    {% endfor %}
+</datalist>
+
+<section class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Assessor Responsável</th>
+                <th>Valor</th>
+                <th>Data do Pagamento</th>
+                <th>Status</th>
+                <th>Criado em</th>
+                <th style="width:120px;">Ações</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for record in records %}
+                <tr>
+                    <td>
+                        {% if record.client %}
+                            <div class="nome-cell">
+                                <span class="nome-cell__name">{{ record.client.full_name }}</span>
+                            </div>
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                    <td>{{ record.assigned_advisor.name }}</td>
+                    <td>R$ {{ record.amount|floatformat:2 }}</td>
+                    <td>
+                        {% if record.payment_date %}
+                            {{ record.payment_date|date:"d/m/Y" }}
+                        {% else %}
+                            <span style="color: rgba(245, 245, 245, 0.5);">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="status-badge {{ record.status }}">
+                            {{ record.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ record.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            {% if record.status == 'pendente' %}
+                                <a href="{% url 'system:settle_financial' record.pk %}" class="btn btn-primary btn-small">Dar Baixa</a>
+                            {% else %}
+                                <a href="{% url 'system:settle_financial' record.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        Nenhum registro financeiro encontrado.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+

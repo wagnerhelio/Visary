@@ -1,7 +1,3 @@
-   
-                                           
-   
-
 import json
 import logging
 import re
@@ -19,199 +15,177 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods
 
-from system.forms import ClienteConsultoriaForm
+from system.forms import ConsultancyClientForm
 from system.models import (
-    CampoEtapaCliente,
-    ClienteConsultoria,
-    ClienteViagem,
-    EtapaCadastroCliente,
-    FormularioVisto,
-    Lembrete,
-    Processo,
-    RespostaFormulario,
-    Viagem,
+    ClientRegistrationStep,
+    ClientStepField,
+    ConsultancyClient,
+    FormAnswer,
+    Process,
+    Reminder,
+    Trip,
+    TripClient,
+    VisaForm,
 )
-from system.models.financial_models import Financeiro, StatusFinanceiro
+from system.models.financial_models import FinancialRecord, FinancialStatus
 from system.services.legacy_markers import extract_legacy_meta, strip_legacy_meta, upsert_legacy_meta
-from system.services.cep import buscar_endereco_por_cep
+from system.services.cep import fetch_address_by_zip
 from system.services.passport_ocr import PassportExtractionError, extract_passport_data_from_document
-from system.models import UsuarioConsultoria
+from system.models import ConsultancyUser
 
 User = get_user_model()
 
-                                                      
 logger = logging.getLogger(__name__)
 
 
-class DependentesNaoValidosError(Exception):
-    pass                                                                                      
+class InvalidDependentsError(Exception):
+    pass
 
 
-def _ordenar_clientes_por_grupo_familiar(clientes):
-    return sorted(clientes, key=lambda cliente: (cliente.nome_completo, cliente.pk))
+def _sort_clients_by_family_group(clients):
+    return sorted(clients, key=lambda c: (c.full_name, c.pk))
 
 
-def _aplicar_filtros_clientes(clientes, request, incluir_assessor=False):
-                                                                                                   
-    filtros = {
-        "nome": request.GET.get("nome", "").strip(),
-        "status_financeiro": request.GET.get("status_financeiro", "").strip(),
+def _apply_client_filters(clients, request, include_advisor=False):
+    filters = {
+        "name": request.GET.get("name", "").strip(),
+        "financial_status": request.GET.get("financial_status", "").strip(),
     }
-    
-    if incluir_assessor:
-        filtros["assessor"] = request.GET.get("assessor", "").strip()
-    
-    if filtros["nome"]:
-        clientes = clientes.filter(nome__icontains=filtros["nome"])
-    if incluir_assessor and filtros.get("assessor"):
+
+    if include_advisor:
+        filters["advisor"] = request.GET.get("advisor", "").strip()
+
+    if filters["name"]:
+        clients = clients.filter(first_name__icontains=filters["name"])
+    if include_advisor and filters.get("advisor"):
         with suppress(ValueError, TypeError):
-            clientes = clientes.filter(assessor_responsavel_id=int(filtros["assessor"]))
-    if filtros["status_financeiro"]:
-        if filtros["status_financeiro"] == "pendente":
-            clientes = clientes.filter(registros_financeiros__status=StatusFinanceiro.PENDENTE).distinct()
-        elif filtros["status_financeiro"] == "pago":
-            clientes = clientes.filter(registros_financeiros__status=StatusFinanceiro.PAGO).distinct()
-        elif filtros["status_financeiro"] == "cancelado":
-            clientes = clientes.filter(registros_financeiros__status=StatusFinanceiro.CANCELADO).distinct()
-        elif filtros["status_financeiro"] == "sem_registros":
-            clientes = clientes.annotate(
-                total_registros=Count("registros_financeiros")
+            clients = clients.filter(assigned_advisor_id=int(filters["advisor"]))
+    if filters["financial_status"]:
+        if filters["financial_status"] == "pendente":
+            clients = clients.filter(financial_records__status=FinancialStatus.PENDING).distinct()
+        elif filters["financial_status"] == "pago":
+            clients = clients.filter(financial_records__status=FinancialStatus.PAID).distinct()
+        elif filters["financial_status"] == "cancelado":
+            clients = clients.filter(financial_records__status=FinancialStatus.CANCELLED).distinct()
+        elif filters["financial_status"] == "sem_registros":
+            clients = clients.annotate(
+                total_registros=Count("financial_records")
             ).filter(total_registros=0)
-    
-    return clientes, filtros
+
+    return clients, filters
 
 
-def _obter_status_financeiro_cliente(cliente: ClienteConsultoria) -> str:
-    registros = Financeiro.objects.filter(cliente=cliente)
-    if not registros.exists():
+def _get_client_financial_status(client: ConsultancyClient) -> str:
+    records = FinancialRecord.objects.filter(client=client)
+    if not records.exists():
         return "Sem registros"
-    tem_pendente = registros.filter(status=StatusFinanceiro.PENDENTE).exists()
-    tem_pago = registros.filter(status=StatusFinanceiro.PAGO).exists()
-    tem_cancelado = registros.filter(status=StatusFinanceiro.CANCELADO).exists()
-    return "Pendente" if tem_pendente else "Pago" if tem_pago else "Cancelado" if tem_cancelado else "Sem registros"
+    has_pending = records.filter(status=FinancialStatus.PENDING).exists()
+    has_paid = records.filter(status=FinancialStatus.PAID).exists()
+    has_cancelled = records.filter(status=FinancialStatus.CANCELLED).exists()
+    return "Pendente" if has_pending else "Pago" if has_paid else "Cancelado" if has_cancelled else "Sem registros"
 
 
-def _obter_tipo_visto_cliente(viagem, cliente):
-                                                                                                            
-    with suppress(ClienteViagem.DoesNotExist):
-        cliente_viagem = ClienteViagem.objects.select_related('tipo_visto__formulario').get(
-            viagem=viagem, cliente=cliente
+def _get_client_visa_type(trip, client):
+    with suppress(TripClient.DoesNotExist):
+        trip_client = TripClient.objects.select_related('visa_type__form').get(
+            trip=trip, client=client
         )
-        if cliente_viagem.tipo_visto:
-            return cliente_viagem.tipo_visto
-    return viagem.tipo_visto
+        if trip_client.visa_type:
+            return trip_client.visa_type
+    return trip.visa_type
 
 
-def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
-                                                                               
-    if not tipo_visto or not hasattr(tipo_visto, 'pk') or not tipo_visto.pk:
+def _get_form_by_visa_type(visa_type, active_only=True):
+    if not visa_type or not hasattr(visa_type, 'pk') or not visa_type.pk:
         return None
     try:
-        if apenas_ativo:
-            return FormularioVisto.objects.select_related('tipo_visto').get(
-                tipo_visto_id=tipo_visto.pk,
-                ativo=True
+        if active_only:
+            return VisaForm.objects.select_related('visa_type').get(
+                visa_type_id=visa_type.pk,
+                is_active=True
             )
-        return FormularioVisto.objects.select_related('tipo_visto').get(
-            tipo_visto_id=tipo_visto.pk
+        return VisaForm.objects.select_related('visa_type').get(
+            visa_type_id=visa_type.pk
         )
-    except FormularioVisto.DoesNotExist:
+    except VisaForm.DoesNotExist:
         return None
 
 
-def _obter_status_formulario_cliente(cliente: ClienteConsultoria) -> dict:
-       
-                                                                                 
-    
-                              
-                                                                            
-                                           
-                                           
-                                                    
-       
-                                                                    
-                                                   
-    viagens = cliente.viagens.select_related(
-        'tipo_visto__formulario'
+def _get_client_form_status(client: ConsultancyClient) -> dict:
+    trips = client.trips.select_related(
+        'visa_type__form'
     ).prefetch_related(
-        'tipo_visto__formulario__perguntas'
-    ).order_by('-data_prevista_viagem')
-    
-    if not viagens.exists():
+        'visa_type__form__questions'
+    ).order_by('-planned_departure_date')
+
+    if not trips.exists():
         return {
             "status": "Sem formulário",
-            "total_perguntas": 0,
-            "total_respostas": 0,
+            "total_questions": 0,
+            "total_answers": 0,
             "completo": False,
         }
-    
-                                                                    
-    melhor_status = None
-    melhor_info = None
-    
-    for viagem in viagens:
-                                                  
-        tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
-        
-        if not tipo_visto_cliente:
+
+    best_status = None
+    best_info = None
+
+    for trip in trips:
+        client_visa_type = _get_client_visa_type(trip, client)
+
+        if not client_visa_type:
             continue
-        
-                                                         
-        formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=True)
-        
-        if not formulario:
+
+        form = _get_form_by_visa_type(client_visa_type, active_only=True)
+
+        if not form:
             continue
-        
-                                                              
-        total_perguntas = formulario.perguntas.filter(ativo=True).count()
-        total_respostas = RespostaFormulario.objects.filter(
-            viagem=viagem,
-            cliente=cliente
+
+        total_questions = form.questions.filter(is_active=True).count()
+        total_answers = FormAnswer.objects.filter(
+            trip=trip,
+            client=client
         ).count()
-        
-        completo = total_respostas == total_perguntas if total_perguntas > 0 else False
-        
+
+        complete = total_answers == total_questions if total_questions > 0 else False
+
         info = {
-            "total_perguntas": total_perguntas,
-            "total_respostas": total_respostas,
-            "completo": completo,
+            "total_questions": total_questions,
+            "total_answers": total_answers,
+            "completo": complete,
         }
-        
-                                                        
-        if completo:
+
+        if complete:
             status = "Completo"
-        elif total_respostas > 0:
+        elif total_answers > 0:
             status = "Parcial"
         else:
             status = "Não preenchido"
-        
+
         info["status"] = status
-        
-                                                                                   
-        if not melhor_info:
-            melhor_info = info
-            melhor_status = status
-        elif status == "Completo" and melhor_status != "Completo":
-            melhor_info = info
-            melhor_status = status
-        elif status == "Parcial" and melhor_status == "Não preenchido":
-            melhor_info = info
-            melhor_status = status
-    
-    if melhor_info:
-        return melhor_info
-    
-                                              
+
+        if not best_info:
+            best_info = info
+            best_status = status
+        elif status == "Completo" and best_status != "Completo":
+            best_info = info
+            best_status = status
+        elif status == "Parcial" and best_status == "Não preenchido":
+            best_info = info
+            best_status = status
+
+    if best_info:
+        return best_info
+
     return {
         "status": "Sem formulário",
-        "total_perguntas": 0,
-        "total_respostas": 0,
+        "total_questions": 0,
+        "total_answers": 0,
         "completo": False,
     }
 
 
-def _legacy_meta_from_cliente(cliente: ClienteConsultoria) -> dict:
-    meta = extract_legacy_meta(cliente.observacoes)
+def _legacy_meta_from_client(client: ConsultancyClient) -> dict:
+    meta = extract_legacy_meta(client.notes)
     if not meta.get("imported"):
         return {"imported": False, "status": "", "issues": []}
     return {
@@ -221,54 +195,49 @@ def _legacy_meta_from_cliente(cliente: ClienteConsultoria) -> dict:
     }
 
 
-def listar_clientes(user: User) -> QuerySet[ClienteConsultoria]:
-       
-                                                                 
-                                                                        
-       
-
-    queryset = ClienteConsultoria.objects.select_related(
-        "assessor_responsavel",
-        "criado_por",
-        "assessor_responsavel__perfil",
-        "parceiro_indicador",
-    ).order_by("-criado_em")
+def list_clients(user: User) -> QuerySet[ConsultancyClient]:
+    queryset = ConsultancyClient.objects.select_related(
+        "assigned_advisor",
+        "created_by",
+        "assigned_advisor__profile",
+        "referring_partner",
+    ).order_by("-created_at")
 
     if user.is_superuser or user.is_staff:
         return queryset
 
-    consultor = obter_consultor_usuario(user)
+    consultant = get_user_consultant(user)
 
-    if not consultor:
+    if not consultant:
         return queryset.none()
 
-    consultor_id = consultor.pk
+    consultant_id = consultant.pk
     return queryset.filter(
-        Q(assessor_responsavel_id=consultor_id)
+        Q(assigned_advisor_id=consultant_id)
     ).distinct()
 
 
-def listar_clientes_com_escopo_total(user: User) -> QuerySet[ClienteConsultoria]:
-    queryset = ClienteConsultoria.objects.select_related(
-        "assessor_responsavel",
-        "criado_por",
-        "assessor_responsavel__perfil",
-        "parceiro_indicador",
-    ).order_by("-criado_em")
+def _list_clients_full_scope(user: User) -> QuerySet[ConsultancyClient]:
+    queryset = ConsultancyClient.objects.select_related(
+        "assigned_advisor",
+        "created_by",
+        "assigned_advisor__profile",
+        "referring_partner",
+    ).order_by("-created_at")
     return queryset
 
 
-def usuario_pode_gerenciar_todos(user: User, consultor: UsuarioConsultoria | None) -> bool:
-    if not consultor:
+def user_can_manage_all(user: User, consultant: ConsultancyUser | None) -> bool:
+    if not consultant:
         return bool(user.is_superuser or user.is_staff)
 
-    perfil = consultor.perfil
-    is_admin_profile = (perfil.nome or "").strip().lower() == "administrador"
+    profile = consultant.profile
+    is_admin_profile = (profile.name or "").strip().lower() == "administrador"
     has_full_crud = (
-        perfil.pode_criar
-        and perfil.pode_visualizar
-        and perfil.pode_atualizar
-        and perfil.pode_excluir
+        profile.can_create
+        and profile.can_view
+        and profile.can_update
+        and profile.can_delete
     )
 
     return (
@@ -279,438 +248,326 @@ def usuario_pode_gerenciar_todos(user: User, consultor: UsuarioConsultoria | Non
     )
 
 
-def usuario_tem_acesso_modulo(user: User, consultor: UsuarioConsultoria | None, nome_modulo: str) -> bool:
-    if usuario_pode_gerenciar_todos(user, consultor):
+def user_has_module_access(user: User, consultant: ConsultancyUser | None, module_name: str) -> bool:
+    if user_can_manage_all(user, consultant):
         return True
-    if not consultor:
+    if not consultant:
         return False
-    return consultor.perfil.modulos.filter(nome=nome_modulo).exists()
+    return consultant.profile.modules.filter(name=module_name).exists()
 
 
-def usuario_pode_editar_cliente(user: User, consultor: UsuarioConsultoria | None, cliente) -> bool:
-    if usuario_pode_gerenciar_todos(user, consultor):
+def user_can_edit_client(user: User, consultant: ConsultancyUser | None, client) -> bool:
+    if user_can_manage_all(user, consultant):
         return True
-    if consultor and getattr(cliente, "assessor_responsavel_id", None) == consultor.pk:
+    if consultant and getattr(client, "assigned_advisor_id", None) == consultant.pk:
         return True
-    criado_por_id = getattr(cliente, "criado_por_id", None)
-    return criado_por_id is not None and criado_por_id == getattr(user, "id", None)
+    created_by_id = getattr(client, "created_by_id", None)
+    return created_by_id is not None and created_by_id == getattr(user, "id", None)
 
 
-def obter_consultor_usuario(user: User) -> UsuarioConsultoria | None:
-                                                                                              
+def get_user_consultant(user: User) -> ConsultancyUser | None:
     if not user or not user.username:
         return None
-    
-                                                                                          
-    consultor = (
-        UsuarioConsultoria.objects.select_related("perfil")
-        .filter(email__iexact=user.username.strip(), ativo=True)
+
+    consultant = (
+        ConsultancyUser.objects.select_related("profile")
+        .filter(email__iexact=user.username.strip(), is_active=True)
         .first()
     )
-    
-                                                                             
-    if not consultor and user.email:
-        consultor = (
-            UsuarioConsultoria.objects.select_related("perfil")
-            .filter(email__iexact=user.email.strip(), ativo=True)
+
+    if not consultant and user.email:
+        consultant = (
+            ConsultancyUser.objects.select_related("profile")
+            .filter(email__iexact=user.email.strip(), is_active=True)
             .first()
         )
-    
-    return consultor
+
+    return consultant
 
 
 @login_required
-def excluir_cliente(request, pk: int):
+def delete_client(request, pk: int):
     if request.method != "POST":
         raise PermissionDenied
 
-    cliente = get_object_or_404(
-        ClienteConsultoria.objects.select_related("assessor_responsavel"),
+    client = get_object_or_404(
+        ConsultancyClient.objects.select_related("assigned_advisor"),
         pk=pk,
     )
 
-    consultor = obter_consultor_usuario(request.user)
+    consultant = get_user_consultant(request.user)
 
-    if not usuario_pode_gerenciar_todos(request.user, consultor):
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    cliente.delete()
-    messages.success(request, f"{cliente.nome_completo} excluído com sucesso.")
-    return redirect("system:listar_clientes_view")
+    client.delete()
+    messages.success(request, f"{client.full_name} excluído com sucesso.")
+    return redirect("system:list_clients_view")
 
 
 @login_required
-def home_clientes(request):
-                                                             
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    perfil_usuario = consultor.perfil.nome if consultor and consultor.perfil else ("Administrador" if request.user.is_superuser else None)
-    
-    base_qs = ClienteConsultoria.objects.select_related(
-        "assessor_responsavel",
-        "criado_por",
-        "assessor_responsavel__perfil",
-        "parceiro_indicador",
-    ).prefetch_related("viagens").order_by("-criado_em")
+def home_clients(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if pode_gerenciar_todos:
-        meus_clientes = listar_clientes(request.user)
-    elif consultor:
-        meus_clientes = base_qs.filter(
-            Q(assessor_responsavel=consultor)
+    user_profile = consultant.profile.name if consultant and consultant.profile else ("Administrador" if request.user.is_superuser else None)
+
+    base_qs = ConsultancyClient.objects.select_related(
+        "assigned_advisor",
+        "created_by",
+        "assigned_advisor__profile",
+        "referring_partner",
+    ).prefetch_related("trips").order_by("-created_at")
+
+    if can_manage_all:
+        my_clients = list_clients(request.user)
+    elif consultant:
+        my_clients = base_qs.filter(
+            Q(assigned_advisor=consultant)
         ).distinct()
     else:
-        meus_clientes = base_qs.none()
+        my_clients = base_qs.none()
 
-    meus_clientes, filtros = _aplicar_filtros_clientes(meus_clientes, request, incluir_assessor=False)
+    my_clients, filters = _apply_client_filters(my_clients, request, include_advisor=False)
 
-    def _build_item(cliente):
-        status_financeiro = _obter_status_financeiro_cliente(cliente)
-        status_formulario = _obter_status_formulario_cliente(cliente)
-        legacy_meta = _legacy_meta_from_cliente(cliente)
+    def _build_item(client):
+        financial_status = _get_client_financial_status(client)
+        form_status = _get_client_form_status(client)
+        legacy_meta = _legacy_meta_from_client(client)
         return {
-            "cliente": cliente,
-            "status_financeiro": status_financeiro,
-            "status_formulario": status_formulario["status"],
-            "total_perguntas": status_formulario["total_perguntas"],
-            "total_respostas": status_formulario["total_respostas"],
-            "completo": status_formulario["completo"],
-            "pode_editar": usuario_pode_editar_cliente(request.user, consultor, cliente),
+            "client": client,
+            "financial_status": financial_status,
+            "form_status": form_status["status"],
+            "total_questions": form_status["total_questions"],
+            "total_answers": form_status["total_answers"],
+            "completo": form_status["completo"],
+            "can_edit": user_can_edit_client(request.user, consultant, client),
             "legacy_meta": legacy_meta,
         }
 
-    clientes_ordenados = _ordenar_clientes_por_grupo_familiar(meus_clientes)
-    clientes_com_status = [_build_item(cliente) for cliente in clientes_ordenados]
+    sorted_clients = _sort_clients_by_family_group(my_clients)
+    clients_with_status = [_build_item(c) for c in sorted_clients]
 
-    progressos = []
-    for c in meus_clientes:
-        for proc in Processo.objects.filter(cliente=c):
-            progressos.append({
-                'cliente_pk': c.pk,
-                'processo_pk': proc.pk,
-                'progresso': proc.progresso_percentual,
+    progress_list = []
+    for c in my_clients:
+        for proc in Process.objects.filter(client=c):
+            progress_list.append({
+                'client_pk': c.pk,
+                'process_pk': proc.pk,
+                'progresso': proc.progress_percentage,
             })
 
-    assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
+    advisors = ConsultancyUser.objects.filter(is_active=True).order_by("name")
 
-    total_clientes_kpi = len(clientes_com_status)
-    total_dependentes_kpi = ClienteViagem.objects.filter(
-        cliente_id__in=[item["cliente"].pk for item in clientes_com_status],
-        papel="dependente",
-    ).values("cliente_id").distinct().count()
-    total_financeiro_pendente_kpi = sum(
-        1 for item in clientes_com_status if item["status_financeiro"] == "Pendente"
+    total_clients_kpi = len(clients_with_status)
+    total_dependents_kpi = TripClient.objects.filter(
+        client_id__in=[item["client"].pk for item in clients_with_status],
+        role="dependent",
+    ).values("client_id").distinct().count()
+    total_pending_kpi = sum(
+        1 for item in clients_with_status if item["financial_status"] == "Pendente"
     )
-    total_financeiro_pago_kpi = sum(
-        1 for item in clientes_com_status if item["status_financeiro"] == "Pago"
+    total_paid_kpi = sum(
+        1 for item in clients_with_status if item["financial_status"] == "Pago"
     )
-    total_financeiro_cancelado_kpi = sum(
-        1 for item in clientes_com_status if item["status_financeiro"] == "Cancelado"
+    total_cancelled_kpi = sum(
+        1 for item in clients_with_status if item["financial_status"] == "Cancelado"
     )
-    total_financeiro_sem_registros_kpi = sum(
-        1 for item in clientes_com_status if item["status_financeiro"] == "Sem registros"
+    total_no_records_kpi = sum(
+        1 for item in clients_with_status if item["financial_status"] == "Sem registros"
     )
 
-    return render(request, "client/home_clientes.html", {
-        "total_clientes": total_clientes_kpi,
-        "total_dependentes": total_dependentes_kpi,
-        "total_financeiro_pendente": total_financeiro_pendente_kpi,
-        "total_financeiro_pago": total_financeiro_pago_kpi,
-        "total_financeiro_cancelado": total_financeiro_cancelado_kpi,
-        "total_financeiro_sem_registros": total_financeiro_sem_registros_kpi,
-        "clientes_com_status": clientes_com_status,
-        "perfil_usuario": perfil_usuario,
-        "pode_excluir_clientes": pode_gerenciar_todos,
-        "filtros": filtros,
-        "assessores": assessores,
-        "progressos": progressos,
+    return render(request, "client/home_clients.html", {
+        "total_clients": total_clients_kpi,
+        "total_dependents": total_dependents_kpi,
+        "total_financial_pending": total_pending_kpi,
+        "total_financial_paid": total_paid_kpi,
+        "total_financial_cancelled": total_cancelled_kpi,
+        "total_financial_no_records": total_no_records_kpi,
+        "clients_with_status": clients_with_status,
+        "user_profile": user_profile,
+        "pode_delete_clients": can_manage_all,
+        "filters_dict": filters,
+        "advisors": advisors,
+        "progressos": progress_list,
     })
 
 
 @login_required
-def listar_clientes_view(request):
-                                                          
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-                                                        
-    clientes = listar_clientes_com_escopo_total(request.user).prefetch_related("dependentes", "viagens")
-    
-                                                    
-    clientes, filtros = _aplicar_filtros_clientes(clientes, request, incluir_assessor=True)
-    
-    def _build_item(cliente):
-        status_financeiro = _obter_status_financeiro_cliente(cliente)
-        status_formulario = _obter_status_formulario_cliente(cliente)
-        legacy_meta = _legacy_meta_from_cliente(cliente)
+def list_clients_view(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    clients = _list_clients_full_scope(request.user).prefetch_related("dependents", "trips")
+
+    clients, filters = _apply_client_filters(clients, request, include_advisor=True)
+
+    def _build_item(client):
+        financial_status = _get_client_financial_status(client)
+        form_status = _get_client_form_status(client)
+        legacy_meta = _legacy_meta_from_client(client)
         return {
-            "cliente": cliente,
-            "status_financeiro": status_financeiro,
-            "status_formulario": status_formulario["status"],
-            "total_perguntas": status_formulario["total_perguntas"],
-            "total_respostas": status_formulario["total_respostas"],
-            "completo": status_formulario["completo"],
-            "pode_editar": usuario_pode_editar_cliente(request.user, consultor, cliente),
+            "client": client,
+            "financial_status": financial_status,
+            "form_status": form_status["status"],
+            "total_questions": form_status["total_questions"],
+            "total_answers": form_status["total_answers"],
+            "completo": form_status["completo"],
+            "can_edit": user_can_edit_client(request.user, consultant, client),
             "legacy_meta": legacy_meta,
         }
 
-    clientes_ordenados = _ordenar_clientes_por_grupo_familiar(clientes)
-    clientes_com_status = [_build_item(cliente) for cliente in clientes_ordenados]
+    sorted_clients = _sort_clients_by_family_group(clients)
+    clients_with_status = [_build_item(c) for c in sorted_clients]
 
-    progressos = []
-    for c in clientes:
-        for proc in Processo.objects.filter(cliente=c):
-            progressos.append({
-                'cliente_pk': c.pk,
-                'processo_pk': proc.pk,
-                'progresso': proc.progresso_percentual,
+    progress_list = []
+    for c in clients:
+        for proc in Process.objects.filter(client=c):
+            progress_list.append({
+                'client_pk': c.pk,
+                'process_pk': proc.pk,
+                'progresso': proc.progress_percentage,
             })
 
-    total_clientes_kpi = len(clientes_com_status)
-    total_dependentes_kpi = ClienteViagem.objects.filter(
-        cliente_id__in=[item["cliente"].pk for item in clientes_com_status],
-        papel="dependente",
-    ).values("cliente_id").distinct().count()
-    total_financeiro_pendente_kpi = sum(
-        1 for item in clientes_com_status if item["status_financeiro"] == "Pendente"
+    total_clients_kpi = len(clients_with_status)
+    total_dependents_kpi = TripClient.objects.filter(
+        client_id__in=[item["client"].pk for item in clients_with_status],
+        role="dependent",
+    ).values("client_id").distinct().count()
+    total_pending_kpi = sum(
+        1 for item in clients_with_status if item["financial_status"] == "Pendente"
     )
-    total_financeiro_pago_kpi = sum(
-        1 for item in clientes_com_status if item["status_financeiro"] == "Pago"
+    total_paid_kpi = sum(
+        1 for item in clients_with_status if item["financial_status"] == "Pago"
     )
-    total_financeiro_cancelado_kpi = sum(
-        1 for item in clientes_com_status if item["status_financeiro"] == "Cancelado"
+    total_cancelled_kpi = sum(
+        1 for item in clients_with_status if item["financial_status"] == "Cancelado"
     )
-    total_financeiro_sem_registros_kpi = sum(
-        1 for item in clientes_com_status if item["status_financeiro"] == "Sem registros"
+    total_no_records_kpi = sum(
+        1 for item in clients_with_status if item["financial_status"] == "Sem registros"
     )
-    
-    return render(request, "client/listar_clientes.html", {
-        "clientes_com_status": clientes_com_status,
-        "assessores": UsuarioConsultoria.objects.filter(ativo=True).order_by("nome"),
-        "perfil_usuario": consultor.perfil.nome if consultor and consultor.perfil else None,
-        "pode_excluir_clientes": pode_gerenciar_todos,
-        "filtros": filtros,
-        "progressos": progressos,
-        "total_clientes": total_clientes_kpi,
-        "total_dependentes": total_dependentes_kpi,
-        "total_financeiro_pendente": total_financeiro_pendente_kpi,
-        "total_financeiro_pago": total_financeiro_pago_kpi,
-        "total_financeiro_cancelado": total_financeiro_cancelado_kpi,
-        "total_financeiro_sem_registros": total_financeiro_sem_registros_kpi,
+
+    return render(request, "client/list_clients.html", {
+        "clients_with_status": clients_with_status,
+        "advisors": ConsultancyUser.objects.filter(is_active=True).order_by("name"),
+        "user_profile": consultant.profile.name if consultant and consultant.profile else None,
+        "pode_delete_clients": can_manage_all,
+        "filters_dict": filters,
+        "progressos": progress_list,
+        "total_clients": total_clients_kpi,
+        "total_dependents": total_dependents_kpi,
+        "total_financial_pending": total_pending_kpi,
+        "total_financial_paid": total_paid_kpi,
+        "total_financial_cancelled": total_cancelled_kpi,
+        "total_financial_no_records": total_no_records_kpi,
     })
 
 
-                                                                              
-                                                                   
-                                                                              
-
-def _obter_etapa_atual(etapas, etapa_id: str | None) -> EtapaCadastroCliente:
-       
-                                                                            
-    
-         
-                                                
-                                                 
-    
-            
-                                                                                   
-       
-    etapa_atual = etapas.first()
-    if etapa_id:
-        with suppress(ValueError, EtapaCadastroCliente.DoesNotExist):
-            etapa_atual = etapas.get(pk=int(etapa_id))
-    return etapa_atual
+def _get_current_step(steps, step_id: str | None) -> ClientRegistrationStep:
+    current_step = steps.first()
+    if step_id:
+        with suppress(ValueError, ClientRegistrationStep.DoesNotExist):
+            current_step = steps.get(pk=int(step_id))
+    return current_step
 
 
-def _obter_dados_temporarios_sessao(request) -> dict:
-       
-                                                                
-    
-                                                                                    
-                                                                             
-    
-         
-                                         
-    
-            
-                                                                
-       
-    return request.session.get("cliente_dados_temporarios", {})
+def _get_session_temp_data(request) -> dict:
+    return request.session.get("client_temp_data", {})
 
 
-def _serializar_dados_para_sessao(dados: dict, preservar_confirmar_senha: bool = False) -> dict:
-       
-                                                 
-    
-                                                                                 
-                         
-    
-         
-                                                           
-                                                                                            
-    
-            
-                                               
-       
-    dados_serializados = {}
-    for campo, valor in dados.items():
-                                                                              
-        if campo == 'confirmar_senha' and not preservar_confirmar_senha:
+def _serialize_data_for_session(data: dict, preserve_confirm_password: bool = False) -> dict:
+    serialized = {}
+    for field, value in data.items():
+        if field == 'confirm_password' and not preserve_confirm_password:
             continue
-        elif hasattr(valor, 'pk'):
-            dados_serializados[campo] = valor.pk
-        elif hasattr(valor, 'id'):
-            dados_serializados[campo] = valor.id
-        elif isinstance(valor, (date, datetime)):
-            dados_serializados[campo] = valor.isoformat()
+        elif hasattr(value, 'pk'):
+            serialized[field] = value.pk
+        elif hasattr(value, 'id'):
+            serialized[field] = value.id
+        elif isinstance(value, (date, datetime)):
+            serialized[field] = value.isoformat()
         else:
-            dados_serializados[campo] = valor
-    
-    return dados_serializados
+            serialized[field] = value
+
+    return serialized
 
 
-def _salvar_dados_temporarios_sessao(request, dados: dict):
-       
-                                                 
-    
-                                                                                 
-                                                      
-    
-         
-                                         
-                                                     
-       
-    dados_serializados = _serializar_dados_para_sessao(dados)
-    request.session["cliente_dados_temporarios"] = dados_serializados
+def _save_session_temp_data(request, data: dict):
+    serialized = _serialize_data_for_session(data)
+    request.session["client_temp_data"] = serialized
     request.session.modified = True
 
 
-def _limpar_dados_temporarios_sessao(request):
-       
-                                          
-    
-                                                
-    
-         
-                                         
-       
-    if "cliente_dados_temporarios" in request.session:
-        request.session.pop("cliente_dados_temporarios", None)
-                                                                                  
-                                                           
+def _clear_session_temp_data(request):
+    if "client_temp_data" in request.session:
+        request.session.pop("client_temp_data", None)
     request.session.modified = True
 
 
-def _converter_valor_campo(instancia, campo_nome: str, valor):
-       
-                                                                                 
-    
-                                                                                 
-    
-         
-                                                                  
-                                           
-                                                 
-    
-            
-                                                                      
-       
-    if not hasattr(instancia, campo_nome):
-        return valor
-    
+def _convert_field_value(instance, field_name: str, value):
+    if not hasattr(instance, field_name):
+        return value
+
     with suppress(AttributeError, TypeError):
-        field = instancia._meta.get_field(campo_nome)
-                                                  
-        if hasattr(field, 'remote_field') and field.remote_field and valor:
-                                            
-            if valor == '' or valor is None:
+        field = instance._meta.get_field(field_name)
+        if hasattr(field, 'remote_field') and field.remote_field and value:
+            if value == '' or value is None:
                 return None
             related_model = field.remote_field.model
             with suppress(related_model.DoesNotExist, ValueError):
-                                                         
-                pk_value = int(valor) if isinstance(valor, str) and valor.isdigit() else valor
+                pk_value = int(value) if isinstance(value, str) and value.isdigit() else value
                 return related_model.objects.get(pk=pk_value)
-                                                  
-        elif isinstance(field, (models.DateField, models.DateTimeField)) and isinstance(valor, str):
+        elif isinstance(field, (models.DateField, models.DateTimeField)) and isinstance(value, str):
             with suppress(ValueError, AttributeError):
                 if isinstance(field, models.DateTimeField):
-                    if 'T' in valor or ' ' in valor:
-                        return datetime.fromisoformat(valor.replace('Z', '+00:00'))
-                    return datetime.combine(date.fromisoformat(valor), datetime.min.time())
-                return date.fromisoformat(valor)
-    
-    return valor
+                    if 'T' in value or ' ' in value:
+                        return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                    return datetime.combine(date.fromisoformat(value), datetime.min.time())
+                return date.fromisoformat(value)
+
+    return value
 
 
-def _aplicar_dados_ao_cliente(cliente, dados: dict, campos_excluidos: set = None):
-       
-                                                                        
-    
-         
-                                                
-                                                        
-                                                                   
-       
-    if campos_excluidos is None:
-        campos_excluidos = {'confirmar_senha'}
-    
-    for campo_nome, valor in dados.items():
-        if campo_nome in campos_excluidos or not hasattr(cliente, campo_nome):
+def _apply_data_to_client(client, data: dict, excluded_fields: set = None):
+    if excluded_fields is None:
+        excluded_fields = {'confirm_password'}
+
+    for field_name, value in data.items():
+        if field_name in excluded_fields or not hasattr(client, field_name):
             continue
-        
-                                                                              
-        if campo_nome == 'cliente_principal':
+
+        if field_name == 'primary_client':
             continue
-        
-                                                                                     
+
         with suppress(AttributeError, TypeError):
-            field = cliente._meta.get_field(campo_nome)
-            if hasattr(field, 'remote_field') and field.remote_field and (valor == '' or valor is None):
-                                                                                                  
+            field = client._meta.get_field(field_name)
+            if hasattr(field, 'remote_field') and field.remote_field and (value == '' or value is None):
                 continue
-        
-        valor_convertido = _converter_valor_campo(cliente, campo_nome, valor)
-        setattr(cliente, campo_nome, valor_convertido)
+
+        converted_value = _convert_field_value(client, field_name, value)
+        setattr(client, field_name, converted_value)
 
 
-def _adicionar_log_debug(request, mensagem: str, nivel: str = "info"):
-       
-                                            
-    
-                                                                                    
-                                                           
-    
-         
-                                         
-                                       
-                                                                 
-       
+def _add_debug_log(request, message: str, level: str = "info"):
     timestamp = datetime.now().strftime('%H:%M:%S')
-    log_msg = f"[{timestamp}] {mensagem}"
-    
-                              
-    log_level = getattr(logging, nivel.upper(), logging.INFO)
+    log_msg = f"[{timestamp}] {message}"
+
+    log_level = getattr(logging, level.upper(), logging.INFO)
     logger.log(log_level, log_msg)
-    
-                                                            
+
     if 'debug_logs_json' not in request.session:
         request.session['debug_logs_json'] = []
     request.session['debug_logs_json'].append({
         'timestamp': timestamp,
-        'message': mensagem,
-        'level': nivel
+        'message': message,
+        'level': level
     })
-                                      
     if len(request.session['debug_logs_json']) > 20:
         request.session['debug_logs_json'] = request.session['debug_logs_json'][-20:]
     request.session.modified = True
 
 
 def _mask_value_for_log(field_name: str, value) -> str:
-       
-                                                       
-       
     if value is None:
         return ""
 
@@ -718,7 +575,7 @@ def _mask_value_for_log(field_name: str, value) -> str:
     if raw == "":
         return ""
 
-    if field_name in ("senha", "confirmar_senha"):
+    if field_name in ("password", "confirm_password"):
         return "***"
 
     if field_name == "cpf":
@@ -729,7 +586,7 @@ def _mask_value_for_log(field_name: str, value) -> str:
             return f"***{digits[-4:]}"
         return "***"
 
-    if field_name in ("telefone", "telefone_secundario"):
+    if field_name in ("phone", "secondary_phone"):
         digits = re.sub(r"\D", "", raw)
         if len(digits) >= 4:
             return f"***{digits[-4:]}"
@@ -742,43 +599,41 @@ def _mask_value_for_log(field_name: str, value) -> str:
             return f"{local_mask}@{domain}"
         return "***"
 
-    if field_name == "cep":
+    if field_name == "zip_code":
         digits = re.sub(r"\D", "", raw)
         if len(digits) >= 8:
             return f"{digits[:5]}-***"
         return "***"
 
-    if field_name == "bairro":
+    if field_name == "district":
         if len(raw) <= 12:
             return raw
         return f"{raw[:7]}...{raw[-3:]}"
 
-    if field_name == "numero":
+    if field_name == "street_number":
         digits = re.sub(r"\D", "", raw)
         if len(digits) >= 3:
             return f"***{digits[-3:]}"
         return "***"
 
-    if field_name == "complemento":
+    if field_name == "complement":
         if len(raw) <= 10:
             return raw
         return f"{raw[:6]}..."
 
-    if field_name in ("numero_passaporte", "passaporte_numero"):
+    if field_name == "passport_number":
         digits = re.sub(r"\D", "", raw)
         if len(digits) >= 3:
             return f"***{digits[-3:]}"
         return "***"
 
-    if field_name == "data_nascimento":
-                                                                          
-                                      
+    if field_name == "birth_date":
         parts = raw.split("-")
         if len(parts) == 3 and parts[0].isdigit():
             return parts[0]
         return "***"
 
-    if field_name == "logradouro":
+    if field_name == "street":
         if len(raw) <= 14:
             return raw
         return f"{raw[:10]}...{raw[-4:]}"
@@ -786,16 +641,13 @@ def _mask_value_for_log(field_name: str, value) -> str:
     return raw
 
 
-def _resumo_campos_para_log(cleaned_data: dict, max_items: int = 10) -> str:
-       
-                                                         
-       
+def _summarize_fields_for_log(cleaned_data: dict, max_items: int = 10) -> str:
     if not cleaned_data:
-        return "sem_campos"
+        return "no_fields"
 
     parts: list[str] = []
     for field_name, value in cleaned_data.items():
-        if field_name == "confirmar_senha":
+        if field_name == "confirm_password":
             continue
 
         if value is None:
@@ -803,7 +655,6 @@ def _resumo_campos_para_log(cleaned_data: dict, max_items: int = 10) -> str:
         if isinstance(value, str) and value.strip() == "":
             continue
 
-                                                  
         if hasattr(value, "pk"):
             value = getattr(value, "pk")
         elif hasattr(value, "id") and not hasattr(value, "pk"):
@@ -817,1821 +668,1428 @@ def _resumo_campos_para_log(cleaned_data: dict, max_items: int = 10) -> str:
         if len(parts) >= max_items:
             break
 
-    return ", ".join(parts) if parts else "sem_campos"
+    return ", ".join(parts) if parts else "no_fields"
 
 
-def _validar_resumo_etapa(etapa_atual, dados_atualizados: dict, form_cleaned_data: dict) -> list[str]:
-       
-                                                                          
-                                        
-       
+def _validate_step_summary(current_step, updated_data: dict, form_cleaned_data: dict) -> list[str]:
     warnings: list[str] = []
 
-    if getattr(etapa_atual, "campo_booleano", None):
-        flag = etapa_atual.campo_booleano
-        if dados_atualizados.get(flag) is not True:
+    if getattr(current_step, "boolean_field", None):
+        flag = current_step.boolean_field
+        if updated_data.get(flag) is not True:
             warnings.append(f"flag_sessao_nao_setada({flag})")
 
-    cep = dados_atualizados.get("cep")
-    cep_str = str(cep).strip() if cep is not None else ""
-    if cep_str:
-        addr_fields = ["logradouro", "bairro", "cidade", "uf"]
-                                                                                  
-        addr_fields_enviados = [f for f in addr_fields if f in (form_cleaned_data or {})]
-        if addr_fields_enviados:
-            missing = [f for f in addr_fields_enviados if not str(dados_atualizados.get(f, "")).strip()]
+    zip_code = updated_data.get("zip_code")
+    zip_str = str(zip_code).strip() if zip_code is not None else ""
+    if zip_str:
+        addr_fields = ["street", "district", "city", "state"]
+        addr_fields_sent = [f for f in addr_fields if f in (form_cleaned_data or {})]
+        if addr_fields_sent:
+            missing = [f for f in addr_fields_sent if not str(updated_data.get(f, "")).strip()]
             if missing:
                 warnings.append(f"cep_sem_endereco({','.join(missing)})")
 
-    tipo_passaporte = dados_atualizados.get("tipo_passaporte")
-    if str(tipo_passaporte).strip().lower() == "outro":
-        if not str(dados_atualizados.get("tipo_passaporte_outro", "")).strip():
+    passport_type = updated_data.get("passport_type")
+    if str(passport_type).strip().lower() == "outro":
+        if not str(updated_data.get("passport_type_other", "")).strip():
             warnings.append("tipo_passaporte_outro_ausente")
 
     return warnings
 
 
-def _log_resumo_etapa_finalizada(request, etapa_atual, form_cleaned_data: dict, dados_atualizados: dict) -> None:
-       
-                                                                                    
-       
-    resumo_campos = _resumo_campos_para_log(form_cleaned_data)
-    warnings = _validar_resumo_etapa(etapa_atual, dados_atualizados, form_cleaned_data)
+def _log_completed_step_summary(request, current_step, form_cleaned_data: dict, updated_data: dict) -> None:
+    field_summary = _summarize_fields_for_log(form_cleaned_data)
+    warnings = _validate_step_summary(current_step, updated_data, form_cleaned_data)
 
-    concluida_flag = None
-    if getattr(etapa_atual, "campo_booleano", None):
-        concluida_flag = dados_atualizados.get(etapa_atual.campo_booleano) is True
+    completed_flag = None
+    if getattr(current_step, "boolean_field", None):
+        completed_flag = updated_data.get(current_step.boolean_field) is True
 
-    mensagem = (
-        f"✅ Etapa finalizada (sessao) etapa='{etapa_atual.nome}' "
-        f"id={etapa_atual.pk} campo_booleano_concluido={concluida_flag} campos={resumo_campos}"
+    msg = (
+        f"Etapa finalizada (sessao) etapa='{current_step.name}' "
+        f"id={current_step.pk} campo_booleano_concluido={completed_flag} campos={field_summary}"
     )
 
     if warnings:
-        logger.warning(mensagem + f" | avisos={';'.join(warnings)}")
+        logger.warning(msg + f" | avisos={';'.join(warnings)}")
     else:
-        logger.info(mensagem)
+        logger.info(msg)
 
-                                                      
-    _adicionar_log_debug(request, f"Etapa finalizada: {etapa_atual.nome}")
+    _add_debug_log(request, f"Etapa finalizada: {current_step.name}")
 
 
-def _criar_cliente_da_sessao(request) -> ClienteConsultoria | None:
-       
-                                                                                     
-    
-                                                                                 
-    
-         
-                                         
-    
-            
-                                                                                   
-       
-    dados_temporarios = _obter_dados_temporarios_sessao(request)
-    if not dados_temporarios:
+def _create_client_from_session(request) -> ConsultancyClient | None:
+    temp_data = _get_session_temp_data(request)
+    if not temp_data:
         return None
-    
+
     try:
-        cliente = ClienteConsultoria()
-        _aplicar_dados_ao_cliente(cliente, dados_temporarios)
-        return cliente
+        client = ConsultancyClient()
+        _apply_data_to_client(client, temp_data)
+        return client
     except Exception:
         return None
 
 
-def _configurar_campos_formulario(form, etapa_atual):
-    campos_etapa_dict = {
-        campo.nome_campo: campo
-        for campo in CampoEtapaCliente.objects.filter(
-            etapa=etapa_atual, ativo=True
-        ).order_by("ordem", "nome_campo")
+def _configure_form_fields(form, current_step):
+    step_fields_dict = {
+        field_cfg.field_name: field_cfg
+        for field_cfg in ClientStepField.objects.filter(
+            step=current_step, is_active=True
+        ).order_by("order", "field_name")
     }
-    campos_para_remover = []
+    fields_to_remove = []
     for field_name, field in form.fields.items():
-        campo_config = campos_etapa_dict.get(field_name)
-        if campo_config:
-            field.required = campo_config.obrigatorio
+        field_cfg = step_fields_dict.get(field_name)
+        if field_cfg:
+            field.required = field_cfg.is_required
         else:
-            campos_para_remover.append(field_name)
-    for field_name in campos_para_remover:
+            fields_to_remove.append(field_name)
+    for field_name in fields_to_remove:
         del form.fields[field_name]
 
 
-def _salvar_etapa_na_sessao(form, etapa_atual, request):
-    campos_etapa = set(
-        CampoEtapaCliente.objects.filter(
-            etapa=etapa_atual, ativo=True
-        ).values_list("nome_campo", flat=True)
+def _save_step_to_session(form, current_step, request):
+    step_field_names = set(
+        ClientStepField.objects.filter(
+            step=current_step, is_active=True
+        ).values_list("field_name", flat=True)
     )
-    if 'senha' in campos_etapa:
-        campos_etapa.add('confirmar_senha')
+    if 'password' in step_field_names:
+        step_field_names.add('confirm_password')
 
-    dados_existentes = _obter_dados_temporarios_sessao(request)
-    dados_atualizados = dados_existentes.copy()
+    existing_data = _get_session_temp_data(request)
+    updated_data = existing_data.copy()
 
-    for campo, valor in form.cleaned_data.items():
-        if campo not in campos_etapa:
+    for field, value in form.cleaned_data.items():
+        if field not in step_field_names:
             continue
-        if hasattr(valor, 'pk'):
-            dados_atualizados[campo] = valor.pk
+        if hasattr(value, 'pk'):
+            updated_data[field] = value.pk
         else:
-            dados_atualizados[campo] = valor
+            updated_data[field] = value
 
-    if etapa_atual.campo_booleano:
-        dados_atualizados[etapa_atual.campo_booleano] = True
+    if current_step.boolean_field:
+        updated_data[current_step.boolean_field] = True
 
-    _salvar_dados_temporarios_sessao(request, dados_atualizados)
-    _log_resumo_etapa_finalizada(request, etapa_atual, form.cleaned_data, dados_atualizados)
+    _save_session_temp_data(request, updated_data)
+    _log_completed_step_summary(request, current_step, form.cleaned_data, updated_data)
 
 
-def _avancar_para_proxima_etapa(etapa_atual, etapas, request_path, request):
-       
-                                                                
-    
-         
-                                               
-                                           
-                                                 
-                                           
-    
-            
-                                                                           
-       
-    if proxima_etapa := etapas.filter(ordem__gt=etapa_atual.ordem).first():
-        messages.success(request, f"Etapa '{etapa_atual.nome}' concluída!")
-        return redirect(f"{request_path}?etapa_id={proxima_etapa.pk}")
-    
-                                                         
-    if etapa_atual.campo_booleano == 'etapa_membros':
-        messages.success(request, f"Etapa '{etapa_atual.nome}' concluída! Você pode adicionar dependentes abaixo.")
-        return redirect(f"{request_path}?etapa_id={etapa_atual.pk}")
-    
+def _advance_to_next_step(current_step, steps, request_path, request):
+    if next_step := steps.filter(order__gt=current_step.order).first():
+        messages.success(request, f"Etapa '{current_step.name}' concluída!")
+        return redirect(f"{request_path}?stage_id={next_step.pk}")
+
+    if current_step.boolean_field == 'step_members':
+        messages.success(request, f"Etapa '{current_step.name}' concluída! Você pode adicionar dependentes abaixo.")
+        return redirect(f"{request_path}?stage_id={current_step.pk}")
+
     return None
 
 
-def _criar_dependente_do_banco(
-    dados_dependente: dict,
-    cliente_principal: ClienteConsultoria,
+def _create_dependent_from_db(
+    dependent_data: dict,
+    primary_client: ConsultancyClient,
     user,
-) -> tuple[ClienteConsultoria | None, str | None]:
-       
-                                                                               
-    
-         
-                                                            
-                                                       
-                                      
-    
-            
-                                                                   
-       
-    nome_dependente = dados_dependente.get('nome', 'Desconhecido')
-    cpf_dependente = dados_dependente.get('cpf', '')
+) -> tuple[ConsultancyClient | None, str | None]:
+    dependent_name = dependent_data.get('first_name', 'Desconhecido')
+    dependent_cpf = dependent_data.get('cpf', '')
 
     try:
-        logger.info(f"📝 Criando dependente: {nome_dependente} (cpf: {cpf_dependente}) para cliente principal: {cliente_principal.nome}")
+        logger.info(f"Criando dependente: {dependent_name} (cpf: {dependent_cpf}) para cliente principal: {primary_client.first_name}")
 
-        if cpf_dependente:
-            cpf_digits = "".join(c for c in cpf_dependente if c.isdigit())
-            cpf_fmt = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}" if len(cpf_digits) == 11 else cpf_dependente
+        if dependent_cpf:
+            cpf_digits = "".join(c for c in dependent_cpf if c.isdigit())
+            cpf_fmt = f"{cpf_digits[:3]}.{cpf_digits[3:6]}.{cpf_digits[6:9]}-{cpf_digits[9:]}" if len(cpf_digits) == 11 else dependent_cpf
             digits_only = cpf_digits
-            if cliente_existente := ClienteConsultoria.objects.filter(cpf__in=[digits_only, cpf_fmt]).first():
-                if cliente_existente.pk != cliente_principal.pk and cliente_existente.cliente_principal_id != cliente_principal.pk:
-                    logger.error(f"❌ CPF {cpf_dependente} já está em uso por outro cliente: {cliente_existente.nome}")
+            if existing_client := ConsultancyClient.objects.filter(cpf__in=[digits_only, cpf_fmt]).first():
+                if existing_client.pk != primary_client.pk and existing_client.primary_client_id != primary_client.pk:
+                    logger.error(f"CPF {dependent_cpf} já está em uso por outro cliente: {existing_client.first_name}")
                     return None, "Este CPF já está cadastrado."
 
-                                                                                                             
-        usar_dados_principal = dados_dependente.get('usar_dados_cliente_principal', False)
-        
-                                                                              
-        if 'senha' in dados_dependente and dados_dependente.get('senha') and 'confirmar_senha' not in dados_dependente:
-            dados_dependente['confirmar_senha'] = dados_dependente['senha']
-            logger.info("🔧 Adicionando confirmar_senha aos dados do dependente (usando valor da senha)")
-        
-        form_dependente = ClienteConsultoriaForm(data=dados_dependente, instance=None, user=user, cliente_principal=cliente_principal, usar_dados_principal=usar_dados_principal)
-        if not form_dependente.is_valid():
-                                                                        
-            erro_msg = None
-            if "cpf" in form_dependente.errors and form_dependente.errors["cpf"]:
-                erro_msg = form_dependente.errors["cpf"][0]
-            elif form_dependente.errors:
-                _, erros = next(iter(form_dependente.errors.items()))
-                erro_msg = erros[0] if erros else None
+        use_primary_data = dependent_data.get('use_primary_data', False)
 
-            logger.error(f"❌ Formulário de dependente inválido para {nome_dependente}: {form_dependente.errors}")
-            return None, erro_msg or "Falha ao validar os dados do dependente."
-        
-        dependente = form_dependente.save(commit=False)
-        
-                                                                       
-                                                        
-        dependente.cliente_principal_id = cliente_principal.pk
-        dependente.assessor_responsavel = cliente_principal.assessor_responsavel
-        dependente.parceiro_indicador = cliente_principal.parceiro_indicador
-        dependente.criado_por = user
-        
-        logger.info(f"🔗 Vinculando dependente {nome_dependente} ao cliente principal {cliente_principal.nome} (ID: {cliente_principal.pk})")
-        
-                                                                                          
-        dados_dependente_sem_principal = {k: v for k, v in dados_dependente.items() if k != 'cliente_principal'}
-        _aplicar_dados_ao_cliente(dependente, dados_dependente_sem_principal)
-        
-                                                                                      
-        if dados_dependente.get('usar_dados_endereco_cliente_principal', False):
-            dependente.cep = cliente_principal.cep
-            dependente.logradouro = cliente_principal.logradouro
-            dependente.numero = cliente_principal.numero
-            dependente.complemento = cliente_principal.complemento
-            dependente.bairro = cliente_principal.bairro
-            dependente.cidade = cliente_principal.cidade
-            dependente.uf = cliente_principal.uf
+        if 'password' in dependent_data and dependent_data.get('password') and 'confirm_password' not in dependent_data:
+            dependent_data['confirm_password'] = dependent_data['password']
+            logger.info("Adicionando confirm_password aos dados do dependente (usando valor da senha)")
 
-                                                                                
-        if dependente.cliente_principal_id != cliente_principal.pk:
-            logger.error("❌ ERRO CRÍTICO: cliente_principal foi sobrescrito! Corrigindo...")
-            dependente.cliente_principal_id = cliente_principal.pk
-        
-                                                                                         
-        if usar_dados_principal:
-                                                                                           
-            dependente.email = ""
-            dependente.senha = ""
+        dependent_form = ConsultancyClientForm(data=dependent_data, instance=None, user=user, primary_client=primary_client, use_primary_data=use_primary_data)
+        if not dependent_form.is_valid():
+            error_msg = None
+            if "cpf" in dependent_form.errors and dependent_form.errors["cpf"]:
+                error_msg = dependent_form.errors["cpf"][0]
+            elif dependent_form.errors:
+                _, errors = next(iter(dependent_form.errors.items()))
+                error_msg = errors[0] if errors else None
+
+            logger.error(f"Formulário de dependente inválido para {dependent_name}: {dependent_form.errors}")
+            return None, error_msg or "Falha ao validar os dados do dependente."
+
+        dependent = dependent_form.save(commit=False)
+
+        dependent.primary_client_id = primary_client.pk
+        dependent.assigned_advisor = primary_client.assigned_advisor
+        dependent.referring_partner = primary_client.referring_partner
+        dependent.created_by = user
+
+        logger.info(f"Vinculando dependente {dependent_name} ao cliente principal {primary_client.first_name} (ID: {primary_client.pk})")
+
+        data_without_primary = {k: v for k, v in dependent_data.items() if k != 'primary_client'}
+        _apply_data_to_client(dependent, data_without_primary)
+
+        if dependent_data.get('use_primary_address', False):
+            dependent.zip_code = primary_client.zip_code
+            dependent.street = primary_client.street
+            dependent.street_number = primary_client.street_number
+            dependent.complement = primary_client.complement
+            dependent.district = primary_client.district
+            dependent.city = primary_client.city
+            dependent.state = primary_client.state
+
+        if dependent.primary_client_id != primary_client.pk:
+            logger.error("ERRO: primary_client foi sobrescrito! Corrigindo...")
+            dependent.primary_client_id = primary_client.pk
+
+        if use_primary_data:
+            dependent.email = ""
+            dependent.password = ""
         else:
-                                                                               
-                                                                     
-            dependente.email = dados_dependente.get("email", "") or ""
-            if senha_raw := dados_dependente.get("senha"):
-                dependente.set_password(senha_raw)
-        
-                                                       
-        primeira_etapa = EtapaCadastroCliente.objects.filter(ativo=True).order_by("ordem").first()
-        if primeira_etapa and primeira_etapa.campo_booleano:
-            setattr(dependente, primeira_etapa.campo_booleano, True)
-        
-                         
-        dependente.save()
-        
-                                             
-        dependente_refreshed = ClienteConsultoria.objects.get(pk=dependente.pk)
-        if dependente_refreshed.cliente_principal_id != cliente_principal.pk:
-            logger.error(f"❌ ERRO CRÍTICO: Dependente {nome_dependente} não está vinculado após salvar! cliente_principal_id={dependente_refreshed.cliente_principal_id}")
+            dependent.email = dependent_data.get("email", "") or ""
+            if raw_password := dependent_data.get("password"):
+                dependent.set_password(raw_password)
+
+        first_step = ClientRegistrationStep.objects.filter(is_active=True).order_by("order").first()
+        if first_step and first_step.boolean_field:
+            setattr(dependent, first_step.boolean_field, True)
+
+        dependent.save()
+
+        refreshed_dependent = ConsultancyClient.objects.get(pk=dependent.pk)
+        if refreshed_dependent.primary_client_id != primary_client.pk:
+            logger.error(f"ERRO: Dependente {dependent_name} não está vinculado após salvar! primary_client_id={refreshed_dependent.primary_client_id}")
             return None, "Erro interno ao vincular dependente ao principal."
-        
-        logger.info(f"✅ Dependente {nome_dependente} salvo com sucesso (ID: {dependente.pk}, cliente_principal_id: {dependente.cliente_principal_id})")
-        return dependente, None
+
+        logger.info(f"Dependente {dependent_name} salvo com sucesso (ID: {dependent.pk}, primary_client_id: {dependent.primary_client_id})")
+        return dependent, None
     except Exception as e:
-        logger.error(f"❌ Erro ao salvar dependente {nome_dependente}: {str(e)}", exc_info=True)
+        logger.error(f"Erro ao salvar dependente {dependent_name}: {str(e)}", exc_info=True)
         return None, str(e)
 
 
-def _marcar_etapas_concluidas(cliente: ClienteConsultoria, dados_temporarios: dict):
-                                                                                   
-    etapas_booleanas = ['etapa_dados_pessoais', 'etapa_endereco', 'etapa_passaporte', 'etapa_membros']
-    for campo_booleano in etapas_booleanas:
-        if dados_temporarios.get(campo_booleano):
-            setattr(cliente, campo_booleano, True)
+def _mark_completed_steps(client: ConsultancyClient, temp_data: dict):
+    boolean_fields = ['step_personal_data', 'step_address', 'step_passport', 'step_members']
+    for boolean_field in boolean_fields:
+        if temp_data.get(boolean_field):
+            setattr(client, boolean_field, True)
 
 
-def _processar_dependentes_temporarios(request, cliente: ClienteConsultoria) -> int:
-       
-                                                       
-    
-         
-                                         
-                                             
-    
-            
-                                                     
-       
-    dependentes_temporarios = request.session.get("dependentes_temporarios", [])
-    if not dependentes_temporarios:
-        logger.info(f"ℹ️ Nenhum dependente temporário encontrado na sessão para cliente {cliente.nome_completo}")
+def _process_temp_dependents(request, client: ConsultancyClient) -> int:
+    temp_dependents = request.session.get("temp_dependents", [])
+    if not temp_dependents:
+        logger.info(f"Nenhum dependente temporário encontrado na sessão para cliente {client.full_name}")
         return 0
-    
-    logger.info(f"📦 Processando {len(dependentes_temporarios)} dependente(s) temporário(s) para cliente {cliente.nome_completo}")
-    dependentes_salvos = 0
-    dependentes_com_erro: list[str] = []
-    
-    for idx, dados_dependente in enumerate(dependentes_temporarios):
-        nome = dados_dependente.get('nome', 'Desconhecido')
-        cpf = dados_dependente.get('cpf', '')
 
-        logger.info(f"🔄 Processando dependente {idx + 1}/{len(dependentes_temporarios)}: {nome} (cpf: {cpf})")
-        logger.info(f"📋 Dados do dependente: {dados_dependente}")
+    logger.info(f"Processando {len(temp_dependents)} dependente(s) temporário(s) para cliente {client.full_name}")
+    saved_count = 0
+    failed_names: list[str] = []
 
-        if not nome:
-            logger.error(f"❌ Dependente {idx + 1} não tem nome - pulando")
-            dependentes_com_erro.append(f"Dependente {idx + 1} (sem nome)")
+    for idx, dependent_data in enumerate(temp_dependents):
+        name = dependent_data.get('first_name', 'Desconhecido')
+        cpf = dependent_data.get('cpf', '')
+
+        logger.info(f"Processando dependente {idx + 1}/{len(temp_dependents)}: {name} (cpf: {cpf})")
+        logger.info(f"Dados do dependente: {dependent_data}")
+
+        if not name:
+            logger.error(f"Dependente {idx + 1} não tem nome - pulando")
+            failed_names.append(f"Dependente {idx + 1} (sem nome)")
             continue
 
         if not cpf:
-            logger.error(f"❌ Dependente {nome} não tem CPF - pulando (CPF é obrigatório e único)")
-            dependentes_com_erro.append(f"{nome} (sem CPF)")
+            logger.error(f"Dependente {name} não tem CPF - pulando (CPF é obrigatório e único)")
+            failed_names.append(f"{name} (sem CPF)")
             continue
-        
-                                    
+
         try:
-            dependente, erro_msg = _criar_dependente_do_banco(dados_dependente, cliente, request.user)
-            if dependente:
-                dependentes_salvos += 1
-                                                                       
-                dependente.refresh_from_db()
-                if dependente.cliente_principal_id == cliente.pk:
-                    logger.info(f"✅ Dependente {nome} salvo com sucesso (ID: {dependente.pk}, cliente_principal_id: {dependente.cliente_principal_id})")
+            dependent, error_msg = _create_dependent_from_db(dependent_data, client, request.user)
+            if dependent:
+                saved_count += 1
+                dependent.refresh_from_db()
+                if dependent.primary_client_id == client.pk:
+                    logger.info(f"Dependente {name} salvo com sucesso (ID: {dependent.pk}, primary_client_id: {dependent.primary_client_id})")
                 else:
-                    logger.error(f"❌ ERRO CRÍTICO: Dependente {nome} não está vinculado corretamente! cliente_principal_id={dependente.cliente_principal_id}, esperado={cliente.pk}")
-                                     
-                    dependente.cliente_principal_id = cliente.pk
-                    dependente.save(update_fields=['cliente_principal'])
-                    logger.info(f"✅ Relacionamento corrigido para dependente {nome}")
+                    logger.error(f"ERRO: Dependente {name} não está vinculado corretamente! primary_client_id={dependent.primary_client_id}, esperado={client.pk}")
+                    dependent.primary_client_id = client.pk
+                    dependent.save(update_fields=['primary_client'])
+                    logger.info(f"Relacionamento corrigido para dependente {name}")
             else:
-                dependentes_com_erro.append(nome)
-                logger.error(f"❌ Falha ao salvar dependente: {nome}")
-                if erro_msg:
-                    messages.error(request, f"Dependente '{nome}': {erro_msg}")
+                failed_names.append(name)
+                logger.error(f"Falha ao salvar dependente: {name}")
+                if error_msg:
+                    messages.error(request, f"Dependente '{name}': {error_msg}")
                 else:
-                    messages.error(request, f"Dependente '{nome}': Falha ao salvar.")
-                _adicionar_log_debug(request, f"Erro ao salvar dependente: {nome} ({erro_msg})")
+                    messages.error(request, f"Dependente '{name}': Falha ao salvar.")
+                _add_debug_log(request, f"Erro ao salvar dependente: {name} ({error_msg})")
         except Exception as e:
-            dependentes_com_erro.append(nome)
-            logger.error(f"❌ Exceção ao salvar dependente {nome}: {str(e)}", exc_info=True)
-            _adicionar_log_debug(request, f"Exceção ao salvar dependente {nome}: {str(e)}")
-    
-                                              
-                                                                           
-                                                               
-    if dependentes_com_erro:
-        logger.warning(f"⚠️ {len(dependentes_com_erro)} dependente(s) não foram salvos: {', '.join(dependentes_com_erro)}")
-        raise DependentesNaoValidosError("Falha ao salvar dependentes. Verifique os erros e tente novamente.")
+            failed_names.append(name)
+            logger.error(f"Exceção ao salvar dependente {name}: {str(e)}", exc_info=True)
+            _add_debug_log(request, f"Exceção ao salvar dependente {name}: {str(e)}")
 
-    request.session.pop("dependentes_temporarios", None)
+    if failed_names:
+        logger.warning(f"{len(failed_names)} dependente(s) não foram salvos: {', '.join(failed_names)}")
+        raise InvalidDependentsError("Falha ao salvar dependentes. Verifique os erros e tente novamente.")
 
-    logger.info(f"📊 Total de dependentes salvos: {dependentes_salvos}/{len(dependentes_temporarios)}")
-    return dependentes_salvos
+    request.session.pop("temp_dependents", None)
+
+    logger.info(f"Total de dependentes salvos: {saved_count}/{len(temp_dependents)}")
+    return saved_count
 
 
-def _recuperar_assessor_dos_dados_temporarios(dados_temporarios: dict) -> UsuarioConsultoria | None:
-                                                                                 
-    if not (assessor_id_temp := dados_temporarios.get('assessor_responsavel')):
+def _recover_advisor_from_temp_data(temp_data: dict) -> ConsultancyUser | None:
+    if not (advisor_id_temp := temp_data.get('assigned_advisor')):
         return None
-    
+
     try:
-        if isinstance(assessor_id_temp, str) and assessor_id_temp.strip():
-            assessor_id_temp = int(assessor_id_temp)
-        elif not isinstance(assessor_id_temp, int):
+        if isinstance(advisor_id_temp, str) and advisor_id_temp.strip():
+            advisor_id_temp = int(advisor_id_temp)
+        elif not isinstance(advisor_id_temp, int):
             return None
-        
-        return UsuarioConsultoria.objects.filter(pk=assessor_id_temp, ativo=True).first()
+
+        return ConsultancyUser.objects.filter(pk=advisor_id_temp, is_active=True).first()
     except (ValueError, TypeError) as e:
-        logger.warning(f"⚠️ Erro ao converter assessor_responsavel dos dados temporários: {e}")
+        logger.warning(f"Erro ao converter assigned_advisor dos dados temporários: {e}")
         return None
 
 
-def _definir_assessor_com_log(cliente: ClienteConsultoria, assessor: UsuarioConsultoria, origem: str) -> None:
-                                                      
-    cliente.assessor_responsavel = assessor
-    logger.info(f"✅ Assessor {origem}: {assessor.nome} (ID: {assessor.pk})")
+def _set_advisor_with_log(client: ConsultancyClient, advisor: ConsultancyUser, source: str) -> None:
+    client.assigned_advisor = advisor
+    logger.info(f"Assessor {source}: {advisor.name} (ID: {advisor.pk})")
 
 
-def _garantir_assessor_responsavel(cliente: ClienteConsultoria, dados_temporarios: dict, user) -> None:
-                                                                       
-    if cliente.assessor_responsavel_id:
+def _ensure_assigned_advisor(client: ConsultancyClient, temp_data: dict, user) -> None:
+    if client.assigned_advisor_id:
         return
-    
-    if assessor := _recuperar_assessor_dos_dados_temporarios(dados_temporarios):
-        _definir_assessor_com_log(cliente, assessor, "recuperado dos dados temporários")
+
+    if advisor := _recover_advisor_from_temp_data(temp_data):
+        _set_advisor_with_log(client, advisor, "recuperado dos dados temporários")
         return
-    
-    if consultor := obter_consultor_usuario(user):
-        _definir_assessor_com_log(cliente, consultor, "definido a partir do usuário logado")
+
+    if consultant := get_user_consultant(user):
+        _set_advisor_with_log(client, consultant, "definido a partir do usuário logado")
         return
-    
-    logger.error(f"❌ Não foi possível determinar o assessor. Dados temporários: assessor_responsavel={dados_temporarios.get('assessor_responsavel')}")
+
+    logger.error(f"Não foi possível determinar o assessor. Dados temporários: assigned_advisor={temp_data.get('assigned_advisor')}")
     raise ValueError("Não foi possível determinar o assessor responsável. Por favor, selecione um assessor na primeira etapa.")
 
 
-def _processar_e_logar_dependentes(request, cliente: ClienteConsultoria) -> int:
-                                                                       
-    logger.info("🔍 Verificando dependentes temporários na sessão antes de processar...")
-    dependentes_temporarios_antes = request.session.get("dependentes_temporarios", [])
-    logger.info(f"📋 Dependentes temporários encontrados na sessão: {len(dependentes_temporarios_antes)}")
-    if dependentes_temporarios_antes:
-        logger.info(f"📋 Conteúdo dos dependentes temporários: {dependentes_temporarios_antes}")
-    
-    dependentes_salvos = _processar_dependentes_temporarios(request, cliente)
-    
-    if dependentes_salvos > 0:
-        logger.info(f"✅ {dependentes_salvos} dependente(s) vinculado(s) ao cliente {cliente.nome_completo}")
-        _adicionar_log_debug(request, f"{dependentes_salvos} dependente(s) vinculado(s) ao cliente")
+def _process_and_log_dependents(request, client: ConsultancyClient) -> int:
+    logger.info("Verificando dependentes temporários na sessão antes de processar...")
+    temp_dependents_before = request.session.get("temp_dependents", [])
+    logger.info(f"Dependentes temporários encontrados na sessão: {len(temp_dependents_before)}")
+    if temp_dependents_before:
+        logger.info(f"Conteúdo dos dependentes temporários: {temp_dependents_before}")
+
+    saved_count = _process_temp_dependents(request, client)
+
+    if saved_count > 0:
+        logger.info(f"{saved_count} dependente(s) vinculado(s) ao cliente {client.full_name}")
+        _add_debug_log(request, f"{saved_count} dependente(s) vinculado(s) ao cliente")
     else:
-        logger.warning(f"⚠️ Nenhum dependente foi salvo para o cliente {cliente.nome_completo}")
-        if dependentes_temporarios_antes:
-            logger.error(f"❌ Havia {len(dependentes_temporarios_antes)} dependente(s) na sessão, mas nenhum foi salvo!")
-    
-    return dependentes_salvos
+        logger.warning(f"Nenhum dependente foi salvo para o cliente {client.full_name}")
+        if temp_dependents_before:
+            logger.error(f"Havia {len(temp_dependents_before)} dependente(s) na sessão, mas nenhum foi salvo!")
+
+    return saved_count
 
 
-def _validar_dados_temporarios(dados_temporarios: dict | None) -> None:
-                                                   
-    if not dados_temporarios:
+def _validate_temp_data(temp_data: dict | None) -> None:
+    if not temp_data:
         raise ValueError("Dados não encontrados na sessão. Por favor, inicie o cadastro novamente.")
 
 
-def _criar_e_configurar_cliente(dados_temporarios: dict, user) -> ClienteConsultoria:
-                                                                      
-    cliente = ClienteConsultoria()
-    _aplicar_dados_ao_cliente(cliente, dados_temporarios)
-    cliente.criado_por = user
-    _garantir_assessor_responsavel(cliente, dados_temporarios, user)
-    return cliente
+def _create_and_configure_client(temp_data: dict, user) -> ConsultancyClient:
+    client = ConsultancyClient()
+    _apply_data_to_client(client, temp_data)
+    client.created_by = user
+    _ensure_assigned_advisor(client, temp_data, user)
+    return client
 
 
-def _configurar_senha_e_etapas(cliente: ClienteConsultoria, dados_temporarios: dict) -> None:
-                                                         
-    if senha := dados_temporarios.get('senha'):
-        cliente.set_password(senha)
-    _marcar_etapas_concluidas(cliente, dados_temporarios)
+def _configure_password_and_steps(client: ConsultancyClient, temp_data: dict) -> None:
+    if raw_password := temp_data.get('password'):
+        client.set_password(raw_password)
+    _mark_completed_steps(client, temp_data)
 
 
-def _salvar_e_logar_cliente(request, cliente: ClienteConsultoria) -> None:
-                                                              
+def _save_and_log_client(request, client: ConsultancyClient) -> None:
     with transaction.atomic():
-        cliente.save()
-        dependentes_salvos = _processar_e_logar_dependentes(request, cliente)
+        client.save()
+        saved_dependents = _process_and_log_dependents(request, client)
 
-    etapas_confirmadas = {}
-    for campo_booleano in ("etapa_dados_pessoais", "etapa_endereco", "etapa_passaporte", "etapa_membros"):
-        if hasattr(cliente, campo_booleano):
-            etapas_confirmadas[campo_booleano] = bool(getattr(cliente, campo_booleano))
+    confirmed_steps = {}
+    for boolean_field in ("step_personal_data", "step_address", "step_passport", "step_members"):
+        if hasattr(client, boolean_field):
+            confirmed_steps[boolean_field] = bool(getattr(client, boolean_field))
 
     logger.info(
-        f"✅ Cliente '{cliente.nome_completo}' salvo no banco (ID: {cliente.pk}) "
-        f"dependentes_salvos={dependentes_salvos} etapas_confirmadas={etapas_confirmadas}"
+        f"Cliente '{client.full_name}' salvo no banco (ID: {client.pk}) "
+        f"dependentes_salvos={saved_dependents} etapas_confirmadas={confirmed_steps}"
     )
-    _adicionar_log_debug(request, f"Cliente '{cliente.nome_completo}' salvo no banco (ID: {cliente.pk})")
+    _add_debug_log(request, f"Cliente '{client.full_name}' salvo no banco (ID: {client.pk})")
     request.session.modified = True
 
 
-def _criar_cliente_do_banco(request) -> ClienteConsultoria:
-       
-                                                                          
-    
-                                                                                
-                                                                                     
-                              
-    
-         
-                                                                       
-    
-            
-                                                  
-    
-           
-                                                             
-    
-          
-                                                                         
-       
-    dados_temporarios = _obter_dados_temporarios_sessao(request)
-    _validar_dados_temporarios(dados_temporarios)
-    
-    cliente = _criar_e_configurar_cliente(dados_temporarios, request.user)
-    _configurar_senha_e_etapas(cliente, dados_temporarios)
-    _salvar_e_logar_cliente(request, cliente)
-    
-    return cliente
+def _create_client_from_db(request) -> ConsultancyClient:
+    temp_data = _get_session_temp_data(request)
+    _validate_temp_data(temp_data)
+
+    client = _create_and_configure_client(temp_data, request.user)
+    _configure_password_and_steps(client, temp_data)
+    _save_and_log_client(request, client)
+
+    return client
 
 
-def _obter_ids_clientes_com_dependentes(cliente: ClienteConsultoria) -> list:
-                                                             
-    clientes_ids = [cliente.pk]
-    dependentes = ClienteConsultoria.objects.filter(cliente_principal=cliente)
-    clientes_ids.extend(dependentes.values_list('pk', flat=True))
-    return clientes_ids
+def _get_client_ids_with_dependents(client: ConsultancyClient) -> list:
+    client_ids = [client.pk]
+    dependents = ConsultancyClient.objects.filter(primary_client=client)
+    client_ids.extend(dependents.values_list('pk', flat=True))
+    return client_ids
 
 
-def _criar_redirect_viagem_com_clientes(request, cliente: ClienteConsultoria):
-                                                                        
-    logger.info(f"🚀 Redirecionando para criar viagem com cliente {cliente.nome_completo} (ID: {cliente.pk})")
-                                                         
-    clientes_ids = _obter_ids_clientes_com_dependentes(cliente)
-    redirect_url = f"{reverse('system:criar_viagem')}?clientes={','.join(map(str, clientes_ids))}"
-    logger.info(f"✅ Redirect para criar viagem: {redirect_url}")
-    _adicionar_log_debug(request, f"Redirecionando para criar viagem com {len(clientes_ids)} cliente(s)")
+def _create_trip_redirect_with_clients(request, client: ConsultancyClient):
+    logger.info(f"Redirecionando para criar viagem com cliente {client.full_name} (ID: {client.pk})")
+    client_ids = _get_client_ids_with_dependents(client)
+    redirect_url = f"{reverse('system:create_trip')}?clientes={','.join(map(str, client_ids))}"
+    logger.info(f"Redirect para criar viagem: {redirect_url}")
+    _add_debug_log(request, f"Redirecionando para criar viagem com {len(client_ids)} cliente(s)")
     return redirect(redirect_url)
 
 
-def _finalizar_cadastro_cliente(request, cliente: ClienteConsultoria, criar_viagem: bool = False):
-       
-                                                                                         
-    
-                
-                                                 
-                                
-                                                                                        
-    
-         
-                                         
-                                                  
-                                                                                          
-    
-            
-                                                         
-    
-          
-                                                                      
-       
-                                                                        
-                                                                  
-    flag_key = f'cadastro_finalizado_{cliente.pk}'
+def _finalize_client_registration(request, client: ConsultancyClient, create_trip: bool = False):
+    flag_key = f'cadastro_finalizado_{client.pk}'
     if request.session.get(flag_key, False):
-                                                                                                      
-        logger.info(f"⚠️ Tentativa de finalizar cadastro duplicada para cliente {cliente.pk} - redirecionando sem mensagem")
-        if criar_viagem:
-                                                                 
-            clientes_ids = _obter_ids_clientes_com_dependentes(cliente)
-            return redirect(f"{reverse('system:criar_viagem')}?clientes={','.join(map(str, clientes_ids))}")
-        return redirect("system:home_clientes")
-    
-                                                                                                                  
+        logger.info(f"Tentativa de finalizar cadastro duplicada para cliente {client.pk} - redirecionando sem mensagem")
+        if create_trip:
+            client_ids = _get_client_ids_with_dependents(client)
+            return redirect(f"{reverse('system:create_trip')}?clientes={','.join(map(str, client_ids))}")
+        return redirect("system:home_clients")
+
     request.session[flag_key] = True
     request.session.modified = True
-    
-                                                                
-    num_dependentes = ClienteConsultoria.objects.filter(cliente_principal=cliente).count()
-    
-                            
-    _adicionar_log_debug(request, f"Cadastro finalizado com sucesso! Cliente: {cliente.nome_completo}, Dependentes: {num_dependentes}")
-    
-                                                                           
-    if "cliente_dados_temporarios" in request.session:
-        request.session.pop("cliente_dados_temporarios", None)
-    if "dependentes_temporarios" in request.session:
-        request.session.pop("dependentes_temporarios", None)
-                                                         
+
+    num_dependents = ConsultancyClient.objects.filter(primary_client=client).count()
+
+    _add_debug_log(request, f"Cadastro finalizado com sucesso! Cliente: {client.full_name}, Dependentes: {num_dependents}")
+
+    if "client_temp_data" in request.session:
+        request.session.pop("client_temp_data", None)
+    if "temp_dependents" in request.session:
+        request.session.pop("temp_dependents", None)
     request.session.modified = True
-    
-                                                           
-    if num_dependentes > 0:
+
+    if num_dependents > 0:
         messages.success(
-            request, 
-            f"✅ Cadastro finalizado com sucesso! Cliente '{cliente.nome_completo}' e {num_dependentes} dependente(s) foram cadastrados. O cliente foi salvo no sistema e está disponível na lista de clientes."
+            request,
+            f"Cadastro finalizado com sucesso! Cliente '{client.full_name}' e {num_dependents} dependente(s) foram cadastrados. O cliente foi salvo no sistema e está disponível na lista de clientes."
         )
     else:
         messages.success(
-            request, 
-            f"✅ Cadastro finalizado com sucesso! Cliente '{cliente.nome_completo}' foi cadastrado. O cliente foi salvo no sistema e está disponível na lista de clientes."
+            request,
+            f"Cadastro finalizado com sucesso! Cliente '{client.full_name}' foi cadastrado. O cliente foi salvo no sistema e está disponível na lista de clientes."
         )
-    
-                                                              
+
     request.session.modified = True
-    
-                                                                                            
-    if criar_viagem:
-        return _criar_redirect_viagem_com_clientes(request, cliente)
-    
-                                        
-    redirect_url_name = "system:home_clientes"
-    _adicionar_log_debug(request, f"Redirecionando para: {redirect_url_name}")
+
+    if create_trip:
+        return _create_trip_redirect_with_clients(request, client)
+
+    redirect_url_name = "system:home_clients"
+    _add_debug_log(request, f"Redirecionando para: {redirect_url_name}")
     logger.info(f"Finalizando cadastro - criando redirect para: {redirect_url_name}")
-    
-                                         
+
     redirect_response = redirect(redirect_url_name)
-    
-                                                     
+
     if hasattr(redirect_response, 'url'):
-        logger.info(f"✅ Redirect criado com sucesso - URL: {redirect_response.url}")
-        _adicionar_log_debug(request, f"Redirect criado - URL: {redirect_response.url}")
+        logger.info(f"Redirect criado com sucesso - URL: {redirect_response.url}")
+        _add_debug_log(request, f"Redirect criado - URL: {redirect_response.url}")
     else:
-        logger.warning(f"⚠️ Redirect criado mas sem atributo 'url' - Tipo: {type(redirect_response)}")
-        _adicionar_log_debug(request, f"Redirect criado - Tipo: {type(redirect_response)}", "warning")
-    
+        logger.warning(f"Redirect criado mas sem atributo 'url' - Tipo: {type(redirect_response)}")
+        _add_debug_log(request, f"Redirect criado - Tipo: {type(redirect_response)}", "warning")
+
     return redirect_response
 
 
-def _preparar_contexto(etapas, etapa_atual, campos_etapa, form, cliente, consultor):
-                                                           
-    etapas_lista = list(etapas)
-    etapa_index = next(
-        (i for i, e in enumerate(etapas_lista) if e.pk == etapa_atual.pk), 0
+def _prepare_context(steps, current_step, step_fields, form, client, consultant):
+    steps_list = list(steps)
+    step_index = next(
+        (i for i, s in enumerate(steps_list) if s.pk == current_step.pk), 0
     )
-    etapa_anterior = etapas_lista[etapa_index - 1] if etapa_index > 0 else None
-    proxima_etapa = (
-        etapas_lista[etapa_index + 1]
-        if etapa_index < len(etapas_lista) - 1
+    previous_step = steps_list[step_index - 1] if step_index > 0 else None
+    next_step = (
+        steps_list[step_index + 1]
+        if step_index < len(steps_list) - 1
         else None
     )
-    
+
     return {
         "form": form,
-        "etapa_atual": etapa_atual,
-        "etapas": etapas_lista,
-        "etapa_anterior": etapa_anterior,
-        "proxima_etapa": proxima_etapa,
-        "campos_etapa": campos_etapa,
-        "cliente": cliente,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "current_stage": current_step,
+        "stages": steps_list,
+        "previous_stage": previous_step,
+        "next_stage": next_step,
+        "stage_fields": step_fields,
+        "client": client,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
 
-def _exibir_erros_formulario(request, form, campos_etapa_nomes, prefixo="", etapa_nome: str | None = None):
-                                                                         
-    if "senha" in campos_etapa_nomes:
-        campos_etapa_nomes.add("confirmar_senha")
+def _show_form_errors(request, form, step_field_names, prefix="", step_name: str | None = None):
+    if "password" in step_field_names:
+        step_field_names.add("confirm_password")
 
-                                                                    
-    if etapa_nome:
-        erros_resumidos: list[str] = []
+    if step_name:
+        error_summaries: list[str] = []
         for field_name, errors in form.errors.items():
-            if field_name in campos_etapa_nomes and errors:
-                erros_resumidos.append(f"{field_name}={str(errors[0])[:120]}")
-        if erros_resumidos:
-            logger.warning(f"❌ Form invalido (etapa='{etapa_nome}') erros={', '.join(erros_resumidos)}")
-    
+            if field_name in step_field_names and errors:
+                error_summaries.append(f"{field_name}={str(errors[0])[:120]}")
+        if error_summaries:
+            logger.warning(f"Form invalido (etapa='{step_name}') erros={', '.join(error_summaries)}")
+
     for field_name, errors in form.errors.items():
-        if field_name in campos_etapa_nomes:
+        if field_name in step_field_names:
             field_label = form.fields[field_name].label if field_name in form.fields else field_name
             for error in errors:
-                messages.error(request, f"{prefixo}{field_label}: {error}")
+                messages.error(request, f"{prefix}{field_label}: {error}")
 
-def _obter_assessor_id_dependente(request, cliente, dados_temporarios):
-                                                                 
-    assessor_id = None
-    
-                                                    
-    if hasattr(cliente, 'assessor_responsavel_id') and cliente.assessor_responsavel_id:
-        assessor_id = cliente.assessor_responsavel_id
-                                                 
-    elif dados_temporarios and (assessor_valor := dados_temporarios.get('assessor_responsavel')):
-                                          
+
+def _get_dependent_advisor_id(request, client, temp_data):
+    advisor_id = None
+
+    if hasattr(client, 'assigned_advisor_id') and client.assigned_advisor_id:
+        advisor_id = client.assigned_advisor_id
+    elif temp_data and (advisor_value := temp_data.get('assigned_advisor')):
         try:
-            assessor_id = int(assessor_valor) if isinstance(assessor_valor, str) else assessor_valor
+            advisor_id = int(advisor_value) if isinstance(advisor_value, str) else advisor_value
         except (ValueError, TypeError):
-            assessor_id = None
-    
-                                                       
-    if not assessor_id:
-        if consultor := obter_consultor_usuario(request.user):
-            assessor_id = consultor.pk
-    
-    return assessor_id
+            advisor_id = None
+
+    if not advisor_id:
+        if consultant := get_user_consultant(request.user):
+            advisor_id = consultant.pk
+
+    return advisor_id
 
 
-def _preparar_dados_iniciais_dependente(request, assessor_id):
-                                                                 
-    dependente_editando_dados = request.session.get('dependente_editando_dados')
-    dados_iniciais = None
-    usar_dados_principal_edit = False
-    
-    if dependente_editando_dados:
-                                                    
-        dados_iniciais = dependente_editando_dados.copy()
-        usar_dados_principal_edit = dependente_editando_dados.get('usar_dados_cliente_principal', False)
-        logger.info(f"📝 Carregando dados do dependente para edição: {dados_iniciais.get('nome', 'Desconhecido')}")
-                                                                                    
-        if assessor_id and ('assessor_responsavel' not in dados_iniciais or not dados_iniciais.get('assessor_responsavel')):
-            dados_iniciais['assessor_responsavel'] = assessor_id
-    elif assessor_id:
-                                                                      
-        dados_iniciais = {'assessor_responsavel': assessor_id}
-    
-    return dados_iniciais, usar_dados_principal_edit
+def _prepare_initial_dependent_data(request, advisor_id):
+    editing_data = request.session.get('editing_dependent_data')
+    initial_data = None
+    use_primary_data_edit = False
+
+    if editing_data:
+        initial_data = editing_data.copy()
+        use_primary_data_edit = editing_data.get('use_primary_data', False)
+        logger.info(f"Carregando dados do dependente para edição: {initial_data.get('first_name', 'Desconhecido')}")
+        if advisor_id and ('assigned_advisor' not in initial_data or not initial_data.get('assigned_advisor')):
+            initial_data['assigned_advisor'] = advisor_id
+    elif advisor_id:
+        initial_data = {'assigned_advisor': advisor_id}
+
+    return initial_data, use_primary_data_edit
 
 
-def _preencher_campos_endereco_dependente(form_dependente, cliente, dados_temporarios):
-                                                                  
-    campos_endereco = ['cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'uf']
-    for campo in campos_endereco:
-        if campo in form_dependente.fields:
-                                                            
-            if hasattr(cliente, campo) and (valor := getattr(cliente, campo)):
-                form_dependente.fields[campo].initial = valor
-                                                         
-            elif dados_temporarios and (valor := dados_temporarios.get(campo)):
-                form_dependente.fields[campo].initial = valor
+def _fill_dependent_address_fields(dependent_form, client, temp_data):
+    address_fields = ['zip_code', 'street', 'street_number', 'complement', 'district', 'city', 'state']
+    for field in address_fields:
+        if field in dependent_form.fields:
+            if hasattr(client, field) and (value := getattr(client, field)):
+                dependent_form.fields[field].initial = value
+            elif temp_data and (value := temp_data.get(field)):
+                dependent_form.fields[field].initial = value
 
 
-def _configurar_campos_formulario_dependente(form_dependente, primeira_etapa, etapas):
-                                                                          
-    if not etapas:
-                                              
-        _configurar_campos_formulario(form_dependente, primeira_etapa)
+def _configure_dependent_form_fields(dependent_form, first_step, steps):
+    if not steps:
+        _configure_form_fields(dependent_form, first_step)
         return
-    
-                                                                  
-    etapas_dependente = etapas.filter(ativo=True).exclude(campo_booleano='etapa_membros').order_by("ordem")
-    campos_dependente = set()
-    for etapa in etapas_dependente:
-        campos_etapa = CampoEtapaCliente.objects.filter(etapa=etapa, ativo=True).exclude(nome_campo="parceiro_indicador")
-        campos_dependente.update(campos_etapa.values_list("nome_campo", flat=True))
-    
-                                                                     
-    campos_primeira_etapa_dict = {
-        campo.nome_campo: campo
-        for campo in CampoEtapaCliente.objects.filter(etapa=primeira_etapa, ativo=True)
+
+    dependent_steps = steps.filter(is_active=True).exclude(boolean_field='step_members').order_by("order")
+    dependent_field_names = set()
+    for step in dependent_steps:
+        step_fields = ClientStepField.objects.filter(step=step, is_active=True).exclude(field_name="referring_partner")
+        dependent_field_names.update(step_fields.values_list("field_name", flat=True))
+
+    first_step_fields_dict = {
+        field_cfg.field_name: field_cfg
+        for field_cfg in ClientStepField.objects.filter(step=first_step, is_active=True)
     }
 
-    for field_name, field in form_dependente.fields.items():
-                                                     
-                                                                
-        if campo_config := campos_primeira_etapa_dict.get(field_name):
-            field.required = campo_config.obrigatorio
-        elif field_name in campos_dependente:
-                                                        
+    for field_name, field in dependent_form.fields.items():
+        if field_cfg := first_step_fields_dict.get(field_name):
+            field.required = field_cfg.is_required
+        elif field_name in dependent_field_names:
             field.required = False
 
 
-def _criar_formulario_dependente(request, cliente, primeira_etapa, etapas=None):
-       
-                                                            
-    
-                     
-                                     
-                                                                
-                                         
-       
-                                                                           
-    cliente_principal = cliente if isinstance(cliente, ClienteConsultoria) and cliente.is_principal else None
-    
-                                           
-    dados_temporarios = _obter_dados_temporarios_sessao(request)
-    assessor_id = _obter_assessor_id_dependente(request, cliente, dados_temporarios)
-    
-                             
-    dados_iniciais, usar_dados_principal_edit = _preparar_dados_iniciais_dependente(request, assessor_id)
-    
-                      
-    form_dependente = ClienteConsultoriaForm(
+def _create_dependent_form(request, client, first_step, steps=None):
+    primary_client = client if isinstance(client, ConsultancyClient) and client.is_primary else None
+
+    temp_data = _get_session_temp_data(request)
+    advisor_id = _get_dependent_advisor_id(request, client, temp_data)
+
+    initial_data, use_primary_data_edit = _prepare_initial_dependent_data(request, advisor_id)
+
+    dependent_form = ConsultancyClientForm(
         data=None,
-        initial=dados_iniciais,
+        initial=initial_data,
         user=request.user,
-        cliente_principal=cliente_principal,
-        usar_dados_principal=usar_dados_principal_edit
+        primary_client=primary_client,
+        use_primary_data=use_primary_data_edit
     )
-    
-                                                                     
-    if assessor_id:
-        form_dependente.fields["assessor_responsavel"].initial = assessor_id
-    
-                                                            
-    if "parceiro_indicador" in form_dependente.fields:
-        del form_dependente.fields["parceiro_indicador"]
-    
-                                  
-    _preencher_campos_endereco_dependente(form_dependente, cliente, dados_temporarios)
-    
-                                     
-    _configurar_campos_formulario_dependente(form_dependente, primeira_etapa, etapas)
-    
-    return form_dependente
 
-def _remover_parceiro_indicador(form):
-                                                                
-    if "parceiro_indicador" in form.fields:
-        del form.fields["parceiro_indicador"]
+    if advisor_id:
+        dependent_form.fields["assigned_advisor"].initial = advisor_id
+
+    if "referring_partner" in dependent_form.fields:
+        del dependent_form.fields["referring_partner"]
+
+    _fill_dependent_address_fields(dependent_form, client, temp_data)
+
+    _configure_dependent_form_fields(dependent_form, first_step, steps)
+
+    return dependent_form
 
 
-def _tornar_senha_opcional(form):
-                                                        
-    if 'senha' in form.fields:
-        form.fields['senha'].required = False
-    if 'confirmar_senha' in form.fields:
-        form.fields['confirmar_senha'].required = False
+def _remove_referring_partner(form):
+    if "referring_partner" in form.fields:
+        del form.fields["referring_partner"]
 
 
-def _preparar_formulario_dependente_post(request, primeira_etapa, etapas=None, cliente_principal=None):
-                                                                  
-    usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
-    
-                                                                     
-    form = ClienteConsultoriaForm(
+def _make_password_optional(form):
+    if 'password' in form.fields:
+        form.fields['password'].required = False
+    if 'confirm_password' in form.fields:
+        form.fields['confirm_password'].required = False
+
+
+def _prepare_dependent_post_form(request, first_step, steps=None, primary_client=None):
+    use_primary_data = request.POST.get('use_primary_data') == 'on'
+
+    form = ConsultancyClientForm(
         data=request.POST,
         user=request.user,
-        cliente_principal=cliente_principal,
-        usar_dados_principal=usar_dados_principal
+        primary_client=primary_client,
+        use_primary_data=use_primary_data
     )
-    _remover_parceiro_indicador(form)
+    _remove_referring_partner(form)
 
-                                                                   
-    if usar_dados_principal:
-        _tornar_senha_opcional(form)
-    
-                                     
-    _configurar_campos_formulario_dependente(form, primeira_etapa, etapas)
-    
-                                                                                                
-    if usar_dados_principal:
-        _tornar_senha_opcional(form)
-    
+    if use_primary_data:
+        _make_password_optional(form)
+
+    _configure_dependent_form_fields(form, first_step, steps)
+
+    if use_primary_data:
+        _make_password_optional(form)
+
     return form
 
 
-def _salvar_dependente(form, cliente_principal, primeira_etapa, user, usar_dados_principal=False):
-                                                             
-    dependente = form.save(commit=False)
-    dependente.cliente_principal = cliente_principal
-    dependente.assessor_responsavel = cliente_principal.assessor_responsavel
-                                                                  
-    dependente.parceiro_indicador = cliente_principal.parceiro_indicador
-    if not dependente.criado_por_id:
-        dependente.criado_por = user
+def _save_dependent(form, primary_client, first_step, user, use_primary_data=False):
+    dependent = form.save(commit=False)
+    dependent.primary_client = primary_client
+    dependent.assigned_advisor = primary_client.assigned_advisor
+    dependent.referring_partner = primary_client.referring_partner
+    if not dependent.created_by_id:
+        dependent.created_by = user
 
-                                                                                   
-    if usar_dados_principal:
-        dependente.email = ""
-        dependente.senha = ""
-    
-    dependente.save()
-    
-                                                   
-    if primeira_etapa.campo_booleano:
-        setattr(dependente, primeira_etapa.campo_booleano, True)
-        dependente.save(update_fields=[primeira_etapa.campo_booleano])
+    if use_primary_data:
+        dependent.email = ""
+        dependent.password = ""
+
+    dependent.save()
+
+    if first_step.boolean_field:
+        setattr(dependent, first_step.boolean_field, True)
+        dependent.save(update_fields=[first_step.boolean_field])
 
 
-def _armazenar_dependente_temporario_na_sessao(request, dados_dependente: dict):
-       
-                                                
-    
-                                                                            
-                                                       
-    
-         
-                                         
-                                                                                      
-    
-          
-                                                             
-       
-    nome_dependente = dados_dependente.get('nome', 'Desconhecido')
-    logger.info(f"💾 Armazenando dependente temporário na sessão: {nome_dependente}")
-    logger.info(f"📋 Dados do dependente antes de serializar: {dados_dependente}")
-    
-    dependentes_temporarios = request.session.get("dependentes_temporarios", [])
-    logger.info(f"📋 Dependentes temporários existentes na sessão: {len(dependentes_temporarios)}")
-    
-                                                                                      
-    dados_serializados = _serializar_dados_para_sessao(dados_dependente, preservar_confirmar_senha=True)
-    logger.info(f"📋 Dados serializados: {dados_serializados}")
-    
-    dependentes_temporarios.append(dados_serializados)
-    request.session["dependentes_temporarios"] = dependentes_temporarios
+def _store_temp_dependent_in_session(request, dependent_data: dict):
+    dependent_name = dependent_data.get('first_name', 'Desconhecido')
+    logger.info(f"Armazenando dependente temporário na sessão: {dependent_name}")
+    logger.info(f"Dados do dependente antes de serializar: {dependent_data}")
+
+    temp_dependents = request.session.get("temp_dependents", [])
+    logger.info(f"Dependentes temporários existentes na sessão: {len(temp_dependents)}")
+
+    serialized = _serialize_data_for_session(dependent_data, preserve_confirm_password=True)
+    logger.info(f"Dados serializados: {serialized}")
+
+    temp_dependents.append(serialized)
+    request.session["temp_dependents"] = temp_dependents
     request.session.modified = True
-    
-    logger.info(f"✅ Dependente {nome_dependente} armazenado na sessão. Total na sessão: {len(dependentes_temporarios)}")
-    
+
+    logger.info(f"Dependente {dependent_name} armazenado na sessão. Total na sessão: {len(temp_dependents)}")
+
     if 'debug_logs' not in request.session:
         request.session['debug_logs'] = []
     request.session['debug_logs'].append(
-        f"[{datetime.now().strftime('%H:%M:%S')}] Dependente '{dados_serializados.get('nome')}' adicionado temporariamente (será salvo ao finalizar)"
+        f"[{datetime.now().strftime('%H:%M:%S')}] Dependente '{serialized.get('first_name')}' adicionado temporariamente (será salvo ao finalizar)"
     )
     request.session.modified = True
 
 
-def _processar_dependente_valido(request, form_dependente_post, etapa_atual):
-                                                             
-    logger.info("✅ Formulário de dependente válido. Armazenando na sessão...")
-    
-    dados_dependente = form_dependente_post.cleaned_data.copy()
-    
-                                                                             
-    usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
-    dados_dependente['usar_dados_cliente_principal'] = usar_dados_principal
+def _process_valid_dependent(request, dependent_post_form, current_step):
+    logger.info("Formulário de dependente válido. Armazenando na sessão...")
+
+    dependent_data = dependent_post_form.cleaned_data.copy()
+
+    use_primary_data = request.POST.get('use_primary_data') == 'on'
+    dependent_data['use_primary_data'] = use_primary_data
     logger.info(
-        "ℹ️ Dependente configurado para %s a conta do cliente principal",
-        "usar" if usar_dados_principal else "não usar",
+        "Dependente configurado para %s a conta do cliente principal",
+        "usar" if use_primary_data else "não usar",
     )
 
-                                                                                    
-    usar_dados_endereco_principal = request.POST.get('usar_dados_endereco_cliente_principal') == 'on'
-    if usar_dados_endereco_principal:
-        dados_dependente['usar_dados_endereco_cliente_principal'] = True
-        logger.info("ℹ️ Dependente configurado para usar endereço do cliente principal")
-    
-                                                        
-    dependente_editando_index = request.session.get('dependente_editando_index')
-    if dependente_editando_index is not None:
-                                        
-        dependentes_temporarios = request.session.get("dependentes_temporarios", [])
-        if 0 <= dependente_editando_index < len(dependentes_temporarios):
-            dados_serializados = _serializar_dados_para_sessao(dados_dependente, preservar_confirmar_senha=True)
-            dependentes_temporarios[dependente_editando_index] = dados_serializados
-            request.session["dependentes_temporarios"] = dependentes_temporarios
-                                    
-            request.session.pop('dependente_editando_index', None)
-            request.session.pop('dependente_editando_dados', None)
+    use_primary_address = request.POST.get('use_primary_address') == 'on'
+    if use_primary_address:
+        dependent_data['use_primary_address'] = True
+        logger.info("Dependente configurado para usar endereço do cliente principal")
+
+    editing_index = request.session.get('editing_dependent_index')
+    if editing_index is not None:
+        temp_dependents = request.session.get("temp_dependents", [])
+        if 0 <= editing_index < len(temp_dependents):
+            serialized = _serialize_data_for_session(dependent_data, preserve_confirm_password=True)
+            temp_dependents[editing_index] = serialized
+            request.session["temp_dependents"] = temp_dependents
+            request.session.pop('editing_dependent_index', None)
+            request.session.pop('editing_dependent_data', None)
             request.session.modified = True
-            nome_dependente = dados_dependente.get('nome', 'Desconhecido')
-            messages.success(request, f"{nome_dependente} atualizado. Será salvo ao finalizar o cadastro.")
-            logger.info(f"✅ Dependente {nome_dependente} atualizado com sucesso. Redirecionando...")
-            return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
-    
-                               
-    _armazenar_dependente_temporario_na_sessao(request, dados_dependente)
-    nome_dependente = dados_dependente.get('nome', 'Desconhecido')
-    messages.success(request, f"{nome_dependente} adicionado. Será salvo ao finalizar o cadastro.")
-    logger.info(f"✅ Dependente {nome_dependente} adicionado com sucesso. Redirecionando...")
-    return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
+            dependent_name = dependent_data.get('first_name', 'Desconhecido')
+            messages.success(request, f"{dependent_name} atualizado. Será salvo ao finalizar o cadastro.")
+            logger.info(f"Dependente {dependent_name} atualizado com sucesso. Redirecionando...")
+            return redirect(f"{request.path}?stage_id={current_step.pk}")
 
-def _obter_cliente_principal_dependente(dados_temporarios, cliente_temporario, usar_dados_principal):
-                                                                    
-    cliente_principal = None
-    
-    if dados_temporarios and 'cliente_principal_id' in dados_temporarios:
-        cliente_principal_id = dados_temporarios['cliente_principal_id']
-        with suppress(ClienteConsultoria.DoesNotExist):
-            cliente_principal = ClienteConsultoria.objects.get(pk=cliente_principal_id)
-    elif cliente_temporario and isinstance(cliente_temporario, ClienteConsultoria) and cliente_temporario.is_principal:
-        cliente_principal = cliente_temporario
-    
-                                                                                
-    if usar_dados_principal and not cliente_principal and cliente_temporario:
-        cliente_principal = cliente_temporario
-    
-    return cliente_principal
+    _store_temp_dependent_in_session(request, dependent_data)
+    dependent_name = dependent_data.get('first_name', 'Desconhecido')
+    messages.success(request, f"{dependent_name} adicionado. Será salvo ao finalizar o cadastro.")
+    logger.info(f"Dependente {dependent_name} adicionado com sucesso. Redirecionando...")
+    return redirect(f"{request.path}?stage_id={current_step.pk}")
 
 
-def _garantir_assessor_no_formulario(form_dependente_post, cliente_temporario, dados_temporarios, cliente_principal, request, primeira_etapa):
-                                                                         
-    if form_dependente_post.data.get('assessor_responsavel'):
-        return form_dependente_post
-    
-                                                               
-    assessor_id = _obter_assessor_id_dependente(request, cliente_temporario, dados_temporarios)
-    
-    if not assessor_id:
-        return form_dependente_post
-    
-                                                
+def _get_primary_client_for_dependent(temp_data, temp_client, use_primary_data):
+    primary_client = None
+
+    if temp_data and 'primary_client_id' in temp_data:
+        primary_client_id = temp_data['primary_client_id']
+        with suppress(ConsultancyClient.DoesNotExist):
+            primary_client = ConsultancyClient.objects.get(pk=primary_client_id)
+    elif temp_client and isinstance(temp_client, ConsultancyClient) and temp_client.is_primary:
+        primary_client = temp_client
+
+    if use_primary_data and not primary_client and temp_client:
+        primary_client = temp_client
+
+    return primary_client
+
+
+def _ensure_advisor_in_form(dependent_post_form, temp_client, temp_data, primary_client, request, first_step):
+    if dependent_post_form.data.get('assigned_advisor'):
+        return dependent_post_form
+
+    advisor_id = _get_dependent_advisor_id(request, temp_client, temp_data)
+
+    if not advisor_id:
+        return dependent_post_form
+
     from django.http import QueryDict
-    if isinstance(form_dependente_post.data, QueryDict):
-        form_data = form_dependente_post.data.copy()
-        form_data['assessor_responsavel'] = str(assessor_id)
-        usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
-        form_dependente_post = ClienteConsultoriaForm(
+    if isinstance(dependent_post_form.data, QueryDict):
+        form_data = dependent_post_form.data.copy()
+        form_data['assigned_advisor'] = str(advisor_id)
+        use_primary_data = request.POST.get('use_primary_data') == 'on'
+        dependent_post_form = ConsultancyClientForm(
             data=form_data,
             user=request.user,
-            cliente_principal=cliente_principal,
-            usar_dados_principal=usar_dados_principal
+            primary_client=primary_client,
+            use_primary_data=use_primary_data
         )
-        _remover_parceiro_indicador(form_dependente_post)
-        _configurar_campos_formulario(form_dependente_post, primeira_etapa)
-    
-    return form_dependente_post
+        _remove_referring_partner(dependent_post_form)
+        _configure_form_fields(dependent_post_form, first_step)
+
+    return dependent_post_form
 
 
-def _processar_cadastro_dependente(request, etapa_atual, cliente_temporario, etapas):
-       
-                                                             
-    
-                                                                            
-                                                                           
-                                                   
-    
-         
-                                           
-                                                                        
-                                                                   
-                                           
-    
-            
-                                                                           
-                                         
-                                                 
-       
-    if not (primeira_etapa := etapas.filter(ativo=True).order_by("ordem").first()):
+def _process_dependent_registration(request, current_step, temp_client, steps):
+    if not (first_step := steps.filter(is_active=True).order_by("order").first()):
         return None, None
-    
-                                                 
-    dados_temporarios = _obter_dados_temporarios_sessao(request)
-    usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
-    cliente_principal = _obter_cliente_principal_dependente(dados_temporarios, cliente_temporario, usar_dados_principal)
-    
-                         
-    form_dependente_post = _preparar_formulario_dependente_post(
-        request, primeira_etapa, etapas, cliente_principal=cliente_principal
-    )
-    
-                                                       
-    form_dependente_post = _garantir_assessor_no_formulario(
-        form_dependente_post, cliente_temporario, dados_temporarios, cliente_principal, request, primeira_etapa
-    )
-    
-                         
-    campos_primeira_etapa = CampoEtapaCliente.objects.filter(
-        etapa=primeira_etapa, ativo=True
-    ).exclude(nome_campo="parceiro_indicador").order_by("ordem", "nome_campo")
-    
-    if form_dependente_post.is_valid():
-                                                                                  
-                                                                                           
-        dependentes_temporarios = request.session.get("dependentes_temporarios", [])
-        dependente_editando_index = request.session.get("dependente_editando_index")
 
-        cpf_novo = form_dependente_post.cleaned_data.get("cpf", "") or ""
-        cpf_novo_digits = "".join(c for c in str(cpf_novo) if c.isdigit())
+    temp_data = _get_session_temp_data(request)
+    use_primary_data = request.POST.get('use_primary_data') == 'on'
+    primary_client = _get_primary_client_for_dependent(temp_data, temp_client, use_primary_data)
 
-        for idx, dependente_tmp in enumerate(dependentes_temporarios):
-            cpf_existente = (dependente_tmp or {}).get("cpf", "") or ""
-            cpf_existente_digits = "".join(c for c in str(cpf_existente) if c.isdigit())
-            if not cpf_existente_digits:
+    dependent_post_form = _prepare_dependent_post_form(
+        request, first_step, steps, primary_client=primary_client
+    )
+
+    dependent_post_form = _ensure_advisor_in_form(
+        dependent_post_form, temp_client, temp_data, primary_client, request, first_step
+    )
+
+    first_step_fields = ClientStepField.objects.filter(
+        step=first_step, is_active=True
+    ).exclude(field_name="referring_partner").order_by("order", "field_name")
+
+    if dependent_post_form.is_valid():
+        temp_dependents = request.session.get("temp_dependents", [])
+        editing_index = request.session.get("editing_dependent_index")
+
+        new_cpf = dependent_post_form.cleaned_data.get("cpf", "") or ""
+        new_cpf_digits = "".join(c for c in str(new_cpf) if c.isdigit())
+
+        for idx, dep_tmp in enumerate(temp_dependents):
+            existing_cpf = (dep_tmp or {}).get("cpf", "") or ""
+            existing_cpf_digits = "".join(c for c in str(existing_cpf) if c.isdigit())
+            if not existing_cpf_digits:
                 continue
-            if cpf_existente_digits == cpf_novo_digits:
-                                                                    
-                if dependente_editando_index is not None and idx == dependente_editando_index:
+            if existing_cpf_digits == new_cpf_digits:
+                if editing_index is not None and idx == editing_index:
                     continue
-                form_dependente_post.add_error("cpf", "Este CPF já está cadastrado.")
-                return None, form_dependente_post
+                dependent_post_form.add_error("cpf", "Este CPF já está cadastrado.")
+                return None, dependent_post_form
 
-        return _processar_dependente_valido(request, form_dependente_post, etapa_atual), None
-    
-                  
-    logger.error(f"❌ Formulário de dependente inválido: {form_dependente_post.errors}")
-    campos_etapa_nomes = set(campos_primeira_etapa.values_list("nome_campo", flat=True))
-    _exibir_erros_formulario(
+        return _process_valid_dependent(request, dependent_post_form, current_step), None
+
+    logger.error(f"Formulário de dependente inválido: {dependent_post_form.errors}")
+    step_field_names = set(first_step_fields.values_list("field_name", flat=True))
+    _show_form_errors(
         request,
-        form_dependente_post,
-        campos_etapa_nomes,
-        prefixo="Dependente - ",
-        etapa_nome=f"Dependente - {etapa_atual.nome}",
+        dependent_post_form,
+        step_field_names,
+        prefix="Dependente - ",
+        step_name=f"Dependente - {current_step.name}",
     )
-    return None, form_dependente_post
+    return None, dependent_post_form
 
 
-def _preparar_contexto_dependentes(request, etapa_atual, cliente_temporario, etapas, contexto, form_dependente):
-       
-                                                                        
-    
-                                                                                           
-    
-         
-                                         
-                                                                        
-                                                                   
-                                           
-                                                         
-                                                                       
-       
-    if not (primeira_etapa := etapas.filter(ativo=True).order_by("ordem").first()):
+def _prepare_dependents_context(request, current_step, temp_client, steps, context, dependent_form):
+    if not (first_step := steps.filter(is_active=True).order_by("order").first()):
         return
-    
-    campos_primeira_etapa = CampoEtapaCliente.objects.filter(
-        etapa=primeira_etapa, ativo=True
-    ).exclude(nome_campo="parceiro_indicador").order_by("ordem", "nome_campo")
-    
-                                                                                               
-    if form_dependente is None:
-        form_dependente = _criar_formulario_dependente(request, cliente_temporario, primeira_etapa, etapas)
-    
-                                             
-    dependentes_temporarios = request.session.get("dependentes_temporarios", [])
-    
-                                                                                             
-    etapas_dependente = etapas.filter(ativo=True).exclude(campo_booleano='etapa_membros').order_by("ordem")
-    campos_dependente = []
-    for etapa in etapas_dependente:
-        campos_etapa = CampoEtapaCliente.objects.filter(
-            etapa=etapa, ativo=True
-        ).exclude(nome_campo="parceiro_indicador").order_by("ordem", "nome_campo")
-        campos_dependente.extend(campos_etapa)
-    
-                                                                            
-    dependente_editando_dados = request.session.get('dependente_editando_dados')
-    
-                                                                                           
-    assessor_id = None
-    if cliente_temporario and hasattr(cliente_temporario, 'assessor_responsavel_id') and cliente_temporario.assessor_responsavel_id:
-        assessor_id = cliente_temporario.assessor_responsavel_id
+
+    first_step_fields = ClientStepField.objects.filter(
+        step=first_step, is_active=True
+    ).exclude(field_name="referring_partner").order_by("order", "field_name")
+
+    if dependent_form is None:
+        dependent_form = _create_dependent_form(request, temp_client, first_step, steps)
+
+    temp_dependents = request.session.get("temp_dependents", [])
+
+    dependent_steps = steps.filter(is_active=True).exclude(boolean_field='step_members').order_by("order")
+    dependent_fields = []
+    for step in dependent_steps:
+        step_fields = ClientStepField.objects.filter(
+            step=step, is_active=True
+        ).exclude(field_name="referring_partner").order_by("order", "field_name")
+        dependent_fields.extend(step_fields)
+
+    editing_data = request.session.get('editing_dependent_data')
+
+    advisor_id = None
+    if temp_client and hasattr(temp_client, 'assigned_advisor_id') and temp_client.assigned_advisor_id:
+        advisor_id = temp_client.assigned_advisor_id
     else:
-                                            
-        dados_temporarios = _obter_dados_temporarios_sessao(request)
-        if dados_temporarios and (assessor_valor := dados_temporarios.get('assessor_responsavel')):
-                                              
+        temp_data = _get_session_temp_data(request)
+        if temp_data and (advisor_value := temp_data.get('assigned_advisor')):
             try:
-                assessor_id = int(assessor_valor) if isinstance(assessor_valor, str) else assessor_valor
+                advisor_id = int(advisor_value) if isinstance(advisor_value, str) else advisor_value
             except (ValueError, TypeError):
-                assessor_id = None
-                                                   
-        if not assessor_id:
-            if consultor := obter_consultor_usuario(request.user):
-                assessor_id = consultor.pk
-    
-    contexto['primeira_etapa'] = primeira_etapa
-    contexto['campos_primeira_etapa'] = campos_primeira_etapa
-    contexto['campos_dependente'] = campos_dependente                                                          
-    contexto['etapas_dependente'] = etapas_dependente                           
-    contexto['form_dependente'] = form_dependente
-    contexto['dependentes_temporarios'] = dependentes_temporarios                        
-    contexto['dependentes'] = []                                                 
-    contexto['dependente_editando_dados'] = dependente_editando_dados                                                 
-    contexto['assessor_id'] = assessor_id                                      
+                advisor_id = None
+        if not advisor_id:
+            if consultant := get_user_consultant(request.user):
+                advisor_id = consultant.pk
+
+    context['first_stage'] = first_step
+    context['first_stage_fields'] = first_step_fields
+    context['dependent_fields'] = dependent_fields
+    context['dependent_steps'] = dependent_steps
+    context['dependent_form'] = dependent_form
+    context['temp_dependents'] = temp_dependents
+    context['dependentes'] = []
+    context['editing_dependent_data'] = editing_data
+    context['advisor_id'] = advisor_id
 
 
-def _processar_cancelamento_cadastro(request):
-       
-                                                   
-    
-                                                                       
-    
-         
-                                         
-    
-            
-                                                                        
-    
-          
-                                                     
-       
-                            
-    _adicionar_log_debug(request, "Cadastro cancelado pelo usuário")
-    
-                              
-    _limpar_dados_temporarios_sessao(request)
-    
-                                    
-    if "dependentes_temporarios" in request.session:
-        request.session.pop("dependentes_temporarios", None)
-    
-                                 
-    keys_to_remove = [key for key in request.session.keys() if key.startswith('cadastro_finalizado_')]
+def _process_registration_cancellation(request):
+    _add_debug_log(request, "Cadastro cancelado pelo usuário")
+
+    _clear_session_temp_data(request)
+
+    if "temp_dependents" in request.session:
+        request.session.pop("temp_dependents", None)
+
+    keys_to_remove = [key for key in request.session.keys() if key.startswith('registration_completed_')]
     for key in keys_to_remove:
         request.session.pop(key, None)
-    
+
     request.session.modified = True
     messages.info(request, "Cadastro cancelado.")
-    return redirect("system:home_clientes")
+    return redirect("system:home_clients")
 
 
-def _processar_remover_dependente(request, etapa_atual):
-       
-                                                             
-    
-                                                                       
-                                    
-    
-         
-                                         
-                                                                        
-    
-            
-                                                                 
-       
+def _process_remove_dependent(request, current_step):
     try:
-        dependente_index = int(request.POST.get("dependente_index", -1))
+        dependent_index = int(request.POST.get("dependent_index", -1))
     except (ValueError, TypeError):
-        dependente_index = -1
-    
-    if dependente_index < 0:
+        dependent_index = -1
+
+    if dependent_index < 0:
         messages.error(request, "Índice de dependente inválido.")
-        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
-    
-    dependentes_temporarios = request.session.get("dependentes_temporarios", [])
-    
-    if dependente_index >= len(dependentes_temporarios):
+        return redirect(f"{request.path}?stage_id={current_step.pk}")
+
+    temp_dependents = request.session.get("temp_dependents", [])
+
+    if dependent_index >= len(temp_dependents):
         messages.error(request, "Dependente não encontrado.")
-        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
-    
-    dependente_removido = dependentes_temporarios[dependente_index]
-    nome_dependente = dependente_removido.get('nome', 'Desconhecido')
-    
-                                   
-    dependentes_temporarios.pop(dependente_index)
-    request.session["dependentes_temporarios"] = dependentes_temporarios
+        return redirect(f"{request.path}?stage_id={current_step.pk}")
+
+    removed_dependent = temp_dependents[dependent_index]
+    dependent_name = removed_dependent.get('first_name', 'Desconhecido')
+
+    temp_dependents.pop(dependent_index)
+    request.session["temp_dependents"] = temp_dependents
     request.session.modified = True
-    
-    logger.info(f"🗑️ Dependente temporário removido: {nome_dependente} (índice {dependente_index})")
-    _adicionar_log_debug(request, f"Dependente '{nome_dependente}' removido temporariamente")
-    messages.success(request, f"{nome_dependente} removido da lista de membros.")
-    
-    return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
+
+    logger.info(f"Dependente temporário removido: {dependent_name} (índice {dependent_index})")
+    _add_debug_log(request, f"Dependente '{dependent_name}' removido temporariamente")
+    messages.success(request, f"{dependent_name} removido da lista de membros.")
+
+    return redirect(f"{request.path}?stage_id={current_step.pk}")
 
 
-def _processar_editar_dependente(request, etapa_atual):
-       
-                                                            
-    
-                                                             
-    
-         
-                                         
-                                                                        
-    
-            
-                                                                                                    
-       
+def _process_edit_dependent(request, current_step):
     try:
-        dependente_index = int(request.POST.get("dependente_index", -1))
+        dependent_index = int(request.POST.get("dependent_index", -1))
     except (ValueError, TypeError):
-        dependente_index = -1
-    
-    if dependente_index < 0:
+        dependent_index = -1
+
+    if dependent_index < 0:
         messages.error(request, "Índice de dependente inválido.")
-        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
-    
-    dependentes_temporarios = request.session.get("dependentes_temporarios", [])
-    
-    if dependente_index >= len(dependentes_temporarios):
+        return redirect(f"{request.path}?stage_id={current_step.pk}")
+
+    temp_dependents = request.session.get("temp_dependents", [])
+
+    if dependent_index >= len(temp_dependents):
         messages.error(request, "Dependente não encontrado.")
-        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
-    
-    dependente_para_editar = dependentes_temporarios[dependente_index]
-    nome_dependente = dependente_para_editar.get('nome', 'Desconhecido')
-    
-                                                                         
-    request.session['dependente_editando_index'] = dependente_index
-    request.session['dependente_editando_dados'] = dependente_para_editar
+        return redirect(f"{request.path}?stage_id={current_step.pk}")
+
+    dependent_to_edit = temp_dependents[dependent_index]
+    dependent_name = dependent_to_edit.get('first_name', 'Desconhecido')
+
+    request.session['editing_dependent_index'] = dependent_index
+    request.session['editing_dependent_data'] = dependent_to_edit
     request.session.modified = True
-    
-    logger.info(f"✏️ Editando dependente {nome_dependente} (índice {dependente_index})")
-    messages.info(request, f"Editando {nome_dependente}. Modifique os dados e clique em 'Salvar Alterações' para atualizar.")
-    return redirect(f"{request.path}?etapa_id={etapa_atual.pk}&editando_dependente=true")
+
+    logger.info(f"Editando dependente {dependent_name} (índice {dependent_index})")
+    messages.info(request, f"Editando {dependent_name}. Modifique os dados e clique em 'Salvar Alterações' para atualizar.")
+    return redirect(f"{request.path}?stage_id={current_step.pk}&editing_dependent=true")
 
 
-def _preparar_dados_iniciais_formulario(request, cliente_temporario):
+def _prepare_initial_form_data(request, temp_client):
     if request.POST:
         return None
-    dados_iniciais = {}
-    ocr_data = request.session.get("passport_ocr_cliente", {})
+    initial_data = {}
+    ocr_data = request.session.get("passport_ocr_client", {})
     if ocr_data:
-        dados_iniciais.update({k: v for k, v in ocr_data.items() if v})
-    if cliente_temporario:
-        if dados_temporarios := _obter_dados_temporarios_sessao(request):
-            temp = dados_temporarios.copy()
-            temp.pop('confirmar_senha', None)
-            dados_iniciais.update({k: v for k, v in temp.items() if v})
-    return dados_iniciais or None
+        initial_data.update({k: v for k, v in ocr_data.items() if v})
+    if temp_client:
+        if temp_data := _get_session_temp_data(request):
+            temp = temp_data.copy()
+            temp.pop('confirm_password', None)
+            initial_data.update({k: v for k, v in temp.items() if v})
+    return initial_data or None
 
 
-def _extrair_assessor_id_sessao(dados_iniciais):
-                                                                            
-    if 'assessor_responsavel' not in dados_iniciais:
+def _extract_advisor_id_from_session(initial_data):
+    if 'assigned_advisor' not in initial_data:
         return None
-    
-    assessor_valor = dados_iniciais['assessor_responsavel']
-    if not assessor_valor:
+
+    advisor_value = initial_data['assigned_advisor']
+    if not advisor_value:
         return None
-    
-    if hasattr(assessor_valor, 'pk'):
-        return assessor_valor.pk
-    if isinstance(assessor_valor, str) and assessor_valor.isdigit():
-        return int(assessor_valor)
-    return assessor_valor if isinstance(assessor_valor, int) else None
+
+    if hasattr(advisor_value, 'pk'):
+        return advisor_value.pk
+    if isinstance(advisor_value, str) and advisor_value.isdigit():
+        return int(advisor_value)
+    return advisor_value if isinstance(advisor_value, int) else None
 
 
-def _criar_formulario_get(request, etapa_atual, dados_iniciais):
-                                                                  
-    form = ClienteConsultoriaForm(data=dados_iniciais, instance=None, user=request.user)
-    
-    assessor_id_sessao = _extrair_assessor_id_sessao(dados_iniciais) if dados_iniciais else None
-    
-    if assessor_id_sessao and dados_iniciais:
-        dados_iniciais['assessor_responsavel'] = assessor_id_sessao
-        form = ClienteConsultoriaForm(data=dados_iniciais, instance=None, user=request.user)
-        form.fields["assessor_responsavel"].initial = assessor_id_sessao
-    
-    _configurar_campos_formulario(form, etapa_atual)
+def _create_get_form(request, current_step, initial_data):
+    form = ConsultancyClientForm(data=initial_data, instance=None, user=request.user)
+
+    advisor_id_session = _extract_advisor_id_from_session(initial_data) if initial_data else None
+
+    if advisor_id_session and initial_data:
+        initial_data['assigned_advisor'] = advisor_id_session
+        form = ConsultancyClientForm(data=initial_data, instance=None, user=request.user)
+        form.fields["assigned_advisor"].initial = advisor_id_session
+
+    _configure_form_fields(form, current_step)
     return form
 
 
-def _limpar_flags_finalizacao(request):
-                                                                                                                         
-    etapa_id = request.GET.get("etapa_id")
-                                                                                                                  
-                                                            
-    if not etapa_id and request.method == "GET" and not request.GET.get("clientes"):
-        keys_to_remove = [key for key in request.session.keys() if key.startswith('cadastro_finalizado_')]
+def _clear_finalization_flags(request):
+    step_id = request.GET.get("stage_id")
+    if not step_id and request.method == "GET" and not request.GET.get("clients"):
+        keys_to_remove = [key for key in request.session.keys() if key.startswith('registration_completed_')]
         for key in keys_to_remove:
             request.session.pop(key, None)
 
 
-def _preparar_contexto_final(request, etapa_atual, cliente_temporario, etapas, contexto, form_dependente, tem_cep_na_etapa, tem_senha_na_etapa):
-                                                               
-    contexto['tem_cep_na_etapa'] = tem_cep_na_etapa
-    contexto['tem_senha_na_etapa'] = tem_senha_na_etapa
-    
+def _prepare_final_context(request, current_step, temp_client, steps, context, dependent_form, has_zip_in_step, has_password_in_step):
+    context['has_zip_in_stage'] = has_zip_in_step
+    context['has_password_in_stage'] = has_password_in_step
+
     debug_logs_json = request.session.get('debug_logs_json', [])
-    contexto['debug_logs_json'] = json.dumps(debug_logs_json)
-    
-    dados_temporarios = _obter_dados_temporarios_sessao(request)
-    contexto['dados_temporarios'] = dados_temporarios
-    
-    if etapa_atual.campo_booleano == 'etapa_membros' and cliente_temporario:
-        _preparar_contexto_dependentes(
-            request, etapa_atual, cliente_temporario, etapas, contexto, form_dependente
+    context['debug_logs_json'] = json.dumps(debug_logs_json)
+
+    temp_data = _get_session_temp_data(request)
+    context['temp_data'] = temp_data
+
+    if current_step.boolean_field == 'step_members' and temp_client:
+        _prepare_dependents_context(
+            request, current_step, temp_client, steps, context, dependent_form
         )
-    
-    return contexto
+
+    return context
 
 
-def _criar_formulario_cliente(request, etapa_atual, dados_iniciais=None):
-                                                 
-                                                                                       
-    initial_data = {}
+def _create_client_form(request, current_step, initial_data=None):
+    initial_dict = {}
     if request.POST:
-        dados_temporarios = _obter_dados_temporarios_sessao(request)
-        if dados_temporarios and 'assessor_responsavel' in dados_temporarios:
-            assessor_id = dados_temporarios.get('assessor_responsavel')
-                                                     
-            if assessor_id and (not request.POST.get('assessor_responsavel') or request.POST.get('assessor_responsavel') == ''):
-                initial_data['assessor_responsavel'] = assessor_id
-    
-    form = ClienteConsultoriaForm(
-        data=request.POST or dados_iniciais,
-        initial=initial_data or None,
+        temp_data = _get_session_temp_data(request)
+        if temp_data and 'assigned_advisor' in temp_data:
+            advisor_id = temp_data.get('assigned_advisor')
+            if advisor_id and (not request.POST.get('assigned_advisor') or request.POST.get('assigned_advisor') == ''):
+                initial_dict['assigned_advisor'] = advisor_id
+
+    form = ConsultancyClientForm(
+        data=request.POST or initial_data,
+        initial=initial_dict or None,
         instance=None,
         user=request.user
     )
-    _configurar_campos_formulario(form, etapa_atual)
+    _configure_form_fields(form, current_step)
     return form
 
 
-def _validar_etapa_anterior(etapa_atual, etapas, request):
-                                                   
-    if etapa_atual.ordem <= 1 or _obter_dados_temporarios_sessao(request):
+def _validate_previous_step(current_step, steps, request):
+    if current_step.order <= 1 or _get_session_temp_data(request):
         return None
-    primeira_etapa = etapas.first()
-    messages.error(request, f"Complete a etapa '{primeira_etapa.nome}' primeiro.")
-    return redirect(f"{request.path}?etapa_id={primeira_etapa.pk}")
+    first_step = steps.first()
+    messages.error(request, f"Complete a etapa '{first_step.name}' primeiro.")
+    return redirect(f"{request.path}?stage_id={first_step.pk}")
 
 
-def _criar_e_validar_cliente_do_banco(request) -> ClienteConsultoria:
-                                                              
-    logger.info("📝 Criando cliente do banco...")
-    cliente = _criar_cliente_do_banco(request)
-    logger.info(f"✅ Cliente criado com sucesso: {cliente.nome_completo} (ID: {cliente.pk})")
-    
-                                                           
-    if not cliente.assessor_responsavel_id:
-        logger.warning("⚠️ assessor_responsavel não definido, tentando definir...")
-        if consultor := obter_consultor_usuario(request.user):
-            cliente.assessor_responsavel = consultor
-            cliente.save(update_fields=['assessor_responsavel'])
-            logger.info(f"✅ assessor_responsavel definido: {consultor.nome}")
+def _create_and_validate_client_from_db(request) -> ConsultancyClient:
+    logger.info("Criando cliente do banco...")
+    client = _create_client_from_db(request)
+    logger.info(f"Cliente criado com sucesso: {client.full_name} (ID: {client.pk})")
+
+    if not client.assigned_advisor_id:
+        logger.warning("assigned_advisor não definido, tentando definir...")
+        if consultant := get_user_consultant(request.user):
+            client.assigned_advisor = consultant
+            client.save(update_fields=['assigned_advisor'])
+            logger.info(f"assigned_advisor definido: {consultant.name}")
         else:
             raise ValueError("Não foi possível determinar o assessor responsável. Por favor, selecione um assessor na primeira etapa.")
-    
-    return cliente
+
+    return client
 
 
-def _processar_finalizacao_etapa_membros(request, etapa_atual, etapas, criar_viagem=False):
-                                                               
-    logger.info(f"🔄 _processar_finalizacao_etapa_membros chamada - criar_viagem={criar_viagem}")
-    
-    if dados_temporarios := _obter_dados_temporarios_sessao(request):
-        dados_temporarios['etapa_membros'] = True
-        _salvar_dados_temporarios_sessao(request, dados_temporarios)
+def _process_members_step_finalization(request, current_step, steps, create_trip=False):
+    logger.info(f"_process_members_step_finalization chamada - create_trip={create_trip}")
 
-                                                                        
-        dependentes_temporarios = request.session.get("dependentes_temporarios", [])
+    if temp_data := _get_session_temp_data(request):
+        temp_data['step_members'] = True
+        _save_session_temp_data(request, temp_data)
+
+        temp_dependents = request.session.get("temp_dependents", [])
         logger.info(
-            f"🧾 Finalizacao etapa_membros (sessao) - dependentes_temporarios={len(dependentes_temporarios)} "
-            f"flag_etapa_membros=True"
+            f"Finalizacao step_members (sessao) - dependentes_temporarios={len(temp_dependents)} "
+            f"flag_step_members=True"
         )
-        
+
         try:
-            cliente = _criar_e_validar_cliente_do_banco(request)
-            logger.info(f"🚀 Finalizando cadastro e redirecionando (criar_viagem={criar_viagem})...")
-            return _finalizar_cadastro_cliente(request, cliente, criar_viagem)
-        except DependentesNaoValidosError:
-                                                                                                  
-                                                                     
-            return redirect(f"{request.path}?etapa_id={etapa_atual.pk}")
+            client = _create_and_validate_client_from_db(request)
+            logger.info(f"Finalizando cadastro e redirecionando (create_trip={create_trip})...")
+            return _finalize_client_registration(request, client, create_trip)
+        except InvalidDependentsError:
+            return redirect(f"{request.path}?stage_id={current_step.pk}")
         except Exception as e:
-            logger.error(f"❌ Erro ao finalizar cadastro: {str(e)}", exc_info=True)
+            logger.error(f"Erro ao finalizar cadastro: {str(e)}", exc_info=True)
             messages.error(request, str(e))
-            _adicionar_log_debug(request, f"Erro ao finalizar cadastro: {str(e)}", "error")
-            primeira_etapa = etapas.first()
-            return redirect(f"{request.path}?etapa_id={primeira_etapa.pk}")
-    
-    primeira_etapa = etapas.first()
-    logger.error("❌ Dados temporários não encontrados na sessão")
+            _add_debug_log(request, f"Erro ao finalizar cadastro: {str(e)}", "error")
+            first_step = steps.first()
+            return redirect(f"{request.path}?stage_id={first_step.pk}")
+
+    first_step = steps.first()
+    logger.error("Dados temporários não encontrados na sessão")
     messages.error(request, "Dados não encontrados. Por favor, inicie o cadastro novamente.")
-    _adicionar_log_debug(request, "Tentativa de finalizar sem dados temporários na sessão", "error")
-    return redirect(f"{request.path}?etapa_id={primeira_etapa.pk}")
+    _add_debug_log(request, "Tentativa de finalizar sem dados temporários na sessão", "error")
+    return redirect(f"{request.path}?stage_id={first_step.pk}")
 
 
-def _processar_finalizacao_outras_etapas(request, form, etapa_atual, campos_etapa_nomes, criar_viagem=False):
-                                                                
+def _process_other_steps_finalization(request, form, current_step, step_field_names, create_trip=False):
     if not form.is_valid():
-        _exibir_erros_formulario(request, form, campos_etapa_nomes, etapa_nome=etapa_atual.nome)
+        _show_form_errors(request, form, step_field_names, step_name=current_step.name)
         return None
-    
-    _salvar_etapa_na_sessao(form, etapa_atual, request)
-    
+
+    _save_step_to_session(form, current_step, request)
+
     try:
-        cliente = _criar_cliente_do_banco(request)
-        redirect_response = _finalizar_cadastro_cliente(request, cliente, criar_viagem)
-        _adicionar_log_debug(request, f"Redirect de finalização retornado: {redirect_response}")
+        client = _create_client_from_db(request)
+        redirect_response = _finalize_client_registration(request, client, create_trip)
+        _add_debug_log(request, f"Redirect de finalização retornado: {redirect_response}")
         return redirect_response
     except ValueError as e:
         messages.error(request, str(e))
-        _adicionar_log_debug(request, f"Erro ao finalizar cadastro: {str(e)}", "error")
-        return redirect("system:home_clientes")
+        _add_debug_log(request, f"Erro ao finalizar cadastro: {str(e)}", "error")
+        return redirect("system:home_clients")
 
 
-def _processar_finalizacao(request, form, etapa_atual, etapas, campos_etapa_nomes, form_dependente=None, criar_viagem=False):
-                                           
-    if etapa_atual.campo_booleano == 'etapa_membros':
-        redirect_response = _processar_finalizacao_etapa_membros(request, etapa_atual, etapas, criar_viagem)
-        _adicionar_log_debug(request, f"Finalização etapa_membros - Redirect retornado: {redirect_response is not None}")
+def _process_finalization(request, form, current_step, steps, step_field_names, dependent_form=None, create_trip=False):
+    if current_step.boolean_field == 'step_members':
+        redirect_response = _process_members_step_finalization(request, current_step, steps, create_trip)
+        _add_debug_log(request, f"Finalização step_members - Redirect retornado: {redirect_response is not None}")
         if redirect_response:
             return redirect_response, None, None
-                                                                                
-        return None, form, form_dependente
-    
-    redirect_response = _processar_finalizacao_outras_etapas(request, form, etapa_atual, campos_etapa_nomes, criar_viagem)
-    _adicionar_log_debug(request, f"Finalização outras etapas - Redirect retornado: {redirect_response is not None}")
+        return None, form, dependent_form
+
+    redirect_response = _process_other_steps_finalization(request, form, current_step, step_field_names, create_trip)
+    _add_debug_log(request, f"Finalização outras etapas - Redirect retornado: {redirect_response is not None}")
     if redirect_response:
         return redirect_response, None, None
-    
-                                                                                          
-    return None, form, form_dependente
+
+    return None, form, dependent_form
 
 
-def _processar_avancar_etapa(request, form, etapa_atual, etapas):
-                                             
-                                                                                           
-    if etapa_atual.campo_booleano == 'etapa_membros':
-        _adicionar_log_debug(request, "Etapa 'Adicionar Membros' - permanecendo na mesma página para adicionar dependentes")
-        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}"), None, None
-    
-    _salvar_etapa_na_sessao(form, etapa_atual, request)
-    
-    if redirect_response := _avancar_para_proxima_etapa(etapa_atual, etapas, request.path, request):
+def _process_advance_step(request, form, current_step, steps):
+    if current_step.boolean_field == 'step_members':
+        _add_debug_log(request, "Etapa 'Adicionar Membros' - permanecendo na mesma página para adicionar dependentes")
+        return redirect(f"{request.path}?stage_id={current_step.pk}"), None, None
+
+    _save_step_to_session(form, current_step, request)
+
+    if redirect_response := _advance_to_next_step(current_step, steps, request.path, request):
         return redirect_response, None, None
-    
-                                                        
-    _adicionar_log_debug(request, "Não há próxima etapa após avançar - finalizando cadastro automaticamente")
+
+    _add_debug_log(request, "Não há próxima etapa após avançar - finalizando cadastro automaticamente")
     try:
-        cliente = _criar_cliente_do_banco(request)
-        return _finalizar_cadastro_cliente(request, cliente), None, None
+        client = _create_client_from_db(request)
+        return _finalize_client_registration(request, client), None, None
     except ValueError as e:
         messages.error(request, str(e))
-        _adicionar_log_debug(request, f"Erro ao finalizar cadastro: {str(e)}", "error")
-        return redirect("system:home_clientes"), None, None
+        _add_debug_log(request, f"Erro ao finalizar cadastro: {str(e)}", "error")
+        return redirect("system:home_clients"), None, None
 
 
-def _log_finalizar_cadastro(request, etapa_atual):
+def _log_finalize_registration(request, current_step):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    logger.info(f"Finalizar cadastro clicado - usuario={request.user.username} etapa={etapa_atual.nome} ts={timestamp}")
+    logger.info(f"Finalizar cadastro clicado - usuario={request.user.username} etapa={current_step.name} ts={timestamp}")
 
 
-def _processar_post_cadastro_cliente(request, etapa_atual, etapas, campos_etapa_nomes):
-       
-                                                    
-    
-                                                                     
-                                                    
-                                                     
-                                                    
-                                                     
-    
-         
-                                           
-                                               
-                                           
-                                                                 
-    
-            
-                                                                                                          
-                                                        
-                                                                                   
-                                                          
-    
-          
-                                                                
-       
-    acao = request.POST.get("acao", "salvar")
+def _process_post_client_registration(request, current_step, steps, step_field_names):
+    action = request.POST.get("action") or request.POST.get("acao", "save")
     form_type = request.POST.get("form_type", "")
-    _adicionar_log_debug(request, f"POST recebido - Ação: {acao}, Form Type: {form_type}, Etapa: {etapa_atual.nome}")
-    
-    if acao in ("finalizar", "finalizar_e_criar_viagem"):
-        _log_finalizar_cadastro(request, etapa_atual)
-    
-                            
-    if acao == "cancelar":
-        return _processar_cancelamento_cadastro(request), None, None
-    
-                                     
-    if acao == "remover_dependente" and etapa_atual.campo_booleano == 'etapa_membros':
-        return _processar_remover_dependente(request, etapa_atual), None, None
-    
-    if acao == "editar_dependente":
-        if etapa_atual.campo_booleano == 'etapa_membros':
-            return _processar_editar_dependente(request, etapa_atual), None, None
+    _add_debug_log(request, f"POST recebido - Ação: {action}, Form Type: {form_type}, Etapa: {current_step.name}")
+
+    if action in ("finalize", "finalizar", "finalize_and_create_trip", "finalizar_e_create_trip"):
+        _log_finalize_registration(request, current_step)
+
+    if action in ("cancel", "cancelar"):
+        return _process_registration_cancellation(request), None, None
+
+    if action == "remove_dependent" and current_step.boolean_field == 'step_members':
+        return _process_remove_dependent(request, current_step), None, None
+
+    if action == "edit_dependent":
+        if current_step.boolean_field == 'step_members':
+            return _process_edit_dependent(request, current_step), None, None
         messages.error(request, "Ação inválida para esta etapa.")
-        return redirect(f"{request.path}?etapa_id={etapa_atual.pk}"), None, None
-    
-                                                    
-    form_dependente = None
-    cliente_temporario = _criar_cliente_da_sessao(request)
-    
+        return redirect(f"{request.path}?stage_id={current_step.pk}"), None, None
+
+    dependent_form = None
+    temp_client = _create_client_from_session(request)
+
     if (
-        etapa_atual.campo_booleano == 'etapa_membros' 
-        and cliente_temporario 
-        and form_type == "dependente"
+        current_step.boolean_field == 'step_members'
+        and temp_client
+        and form_type == "dependent"
     ):
-        redirect_response, form_dependente_result = _processar_cadastro_dependente(
-            request, etapa_atual, cliente_temporario, etapas
+        redirect_response, dependent_form_result = _process_dependent_registration(
+            request, current_step, temp_client, steps
         )
         if redirect_response:
             return redirect_response, None, None
-        if form_dependente_result:
-            form_dependente = form_dependente_result
-    
-                                 
-    dados_iniciais = _preparar_dados_iniciais_formulario(request, cliente_temporario)
-    form = _criar_formulario_cliente(request, etapa_atual, dados_iniciais)
-    
-                            
-    if redirect_response := _validar_etapa_anterior(etapa_atual, etapas, request):
+        if dependent_form_result:
+            dependent_form = dependent_form_result
+
+    initial_data = _prepare_initial_form_data(request, temp_client)
+    form = _create_client_form(request, current_step, initial_data)
+
+    if redirect_response := _validate_previous_step(current_step, steps, request):
         return redirect_response, None, None
 
-                                                                                     
-                                                                                     
-                                                                     
     if (
-        etapa_atual.campo_booleano == "etapa_membros"
-        and form_type == "dependente"
-        and form_dependente is not None
-        and form_dependente.errors
+        current_step.boolean_field == "step_members"
+        and form_type == "dependent"
+        and dependent_form is not None
+        and dependent_form.errors
     ):
-        return None, form, form_dependente
-    
-                                                                               
-    if acao in ("finalizar", "finalizar_e_criar_viagem"):
-        criar_viagem = (acao == "finalizar_e_criar_viagem")
-        _adicionar_log_debug(request, f"Ação '{acao}' detectada - processando finalização (criar_viagem={criar_viagem})")
-        redirect_result = _processar_finalizacao(request, form, etapa_atual, etapas, campos_etapa_nomes, form_dependente, criar_viagem)
+        return None, form, dependent_form
+
+    if action in ("finalize", "finalizar", "finalize_and_create_trip", "finalizar_e_create_trip"):
+        create_trip = action in ("finalize_and_create_trip", "finalizar_e_create_trip")
+        _add_debug_log(request, f"Ação '{action}' detectada - processando finalização (create_trip={create_trip})")
+        redirect_result = _process_finalization(request, form, current_step, steps, step_field_names, dependent_form, create_trip)
         return redirect_result
-    
-                                                                                      
-    proxima_etapa = etapas.filter(ordem__gt=etapa_atual.ordem).first()
-    if not proxima_etapa and etapa_atual.campo_booleano != 'etapa_membros':
-        _adicionar_log_debug(request, "Última etapa detectada sem botão finalizar - processando finalização automaticamente")
+
+    next_step = steps.filter(order__gt=current_step.order).first()
+    if not next_step and current_step.boolean_field != 'step_members':
+        _add_debug_log(request, "Última etapa detectada sem botão finalizar - processando finalização automaticamente")
         if form.is_valid():
-            _salvar_etapa_na_sessao(form, etapa_atual, request)
+            _save_step_to_session(form, current_step, request)
             try:
-                cliente = _criar_cliente_do_banco(request)
-                return _finalizar_cadastro_cliente(request, cliente), None, None
+                client = _create_client_from_db(request)
+                return _finalize_client_registration(request, client), None, None
             except ValueError as e:
                 messages.error(request, str(e))
-                _adicionar_log_debug(request, f"Erro ao finalizar cadastro: {str(e)}", "error")
-                return redirect("system:home_clientes"), None, None
-    
-                                                                       
+                _add_debug_log(request, f"Erro ao finalizar cadastro: {str(e)}", "error")
+                return redirect("system:home_clients"), None, None
+
     if form.is_valid():
-        return _processar_avancar_etapa(request, form, etapa_atual, etapas)
-    
-                                          
-    _exibir_erros_formulario(request, form, campos_etapa_nomes, etapa_nome=etapa_atual.nome)
-    return None, form, form_dependente
+        return _process_advance_step(request, form, current_step, steps)
+
+    _show_form_errors(request, form, step_field_names, step_name=current_step.name)
+    return None, form, dependent_form
 
 
 @login_required
-def cadastrar_cliente_view(request):
-       
-                                                                       
-    
-                                                
-                                     
-                              
-                                                                    
-                                                         
-                                                 
-    
-          
-                                                          
-                                                                                 
-    
-         
-                            
-    
-            
-                                                              
-       
-    logger.info(f"View cadastrar_cliente_view chamada - Método: {request.method}, URL: {request.path}")
-    
-    consultor = obter_consultor_usuario(request.user)
-    _limpar_flags_finalizacao(request)
-    
-    etapas = EtapaCadastroCliente.objects.filter(ativo=True).order_by("ordem", "nome")
-    if not etapas.exists():
+def register_client_view(request):
+    logger.info(f"View register_client_view chamada - Método: {request.method}, URL: {request.path}")
+
+    consultant = get_user_consultant(request.user)
+    _clear_finalization_flags(request)
+
+    steps = ClientRegistrationStep.objects.filter(is_active=True).order_by("order", "name")
+    if not steps.exists():
         messages.error(request, "Nenhuma etapa configurada. Configure as etapas primeiro.")
-        return redirect("system:home_clientes")
-    
-    etapa_id = request.GET.get("etapa_id")
-    etapa_atual = _obter_etapa_atual(etapas, etapa_id)
-    
-    campos_etapa = CampoEtapaCliente.objects.filter(
-        etapa=etapa_atual, ativo=True
-    ).order_by("ordem", "nome_campo")
-    
-    campos_etapa_nomes = {campo.nome_campo for campo in campos_etapa}
-    tem_cep_na_etapa = 'cep' in campos_etapa_nomes
-    tem_senha_na_etapa = 'senha' in campos_etapa_nomes
-    
+        return redirect("system:home_clients")
+
+    step_id = request.GET.get("stage_id")
+    current_step = _get_current_step(steps, step_id)
+
+    step_fields = ClientStepField.objects.filter(
+        step=current_step, is_active=True
+    ).order_by("order", "field_name")
+
+    step_field_names = {f.field_name for f in step_fields}
+    has_zip_in_step = 'zip_code' in step_field_names
+    has_password_in_step = 'password' in step_field_names
+
     if request.method == "POST":
-        redirect_response, form, form_dependente = _processar_post_cadastro_cliente(
-            request, etapa_atual, etapas, campos_etapa_nomes
+        redirect_response, form, dependent_form = _process_post_client_registration(
+            request, current_step, steps, step_field_names
         )
         if redirect_response:
             logger.info(f"Redirect recebido: {redirect_response.url if hasattr(redirect_response, 'url') else redirect_response}")
             return redirect_response
     else:
-        cliente_temporario = _criar_cliente_da_sessao(request)
-        dados_iniciais = _preparar_dados_iniciais_formulario(request, cliente_temporario)
-        form = _criar_formulario_get(request, etapa_atual, dados_iniciais)
-        form_dependente = None
-    
-    cliente_temporario = _criar_cliente_da_sessao(request)
-    contexto = _preparar_contexto(
-        etapas, etapa_atual, campos_etapa, form, cliente_temporario, consultor
+        temp_client = _create_client_from_session(request)
+        initial_data = _prepare_initial_form_data(request, temp_client)
+        form = _create_get_form(request, current_step, initial_data)
+        dependent_form = None
+
+    temp_client = _create_client_from_session(request)
+    context = _prepare_context(
+        steps, current_step, step_fields, form, temp_client, consultant
     )
-    contexto = _preparar_contexto_final(
-        request, etapa_atual, cliente_temporario, etapas, contexto, form_dependente,
-        tem_cep_na_etapa, tem_senha_na_etapa
+    context = _prepare_final_context(
+        request, current_step, temp_client, steps, context, dependent_form,
+        has_zip_in_step, has_password_in_step
     )
-    
-    return render(request, "client/cadastrar_cliente.html", contexto)
+
+    return render(request, "client/register_client.html", context)
 
 
 @login_required
-def visualizar_cliente(request, pk: int):
-                                                                                   
-    consultor = obter_consultor_usuario(request.user)
-    cliente = get_object_or_404(
-        ClienteConsultoria.objects.select_related(
-            "assessor_responsavel",
-            "assessor_responsavel__perfil",
+def view_client(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    client = get_object_or_404(
+        ConsultancyClient.objects.select_related(
+            "assigned_advisor",
+            "assigned_advisor__profile",
         ),
         pk=pk,
     )
 
-    pode_visualizar = usuario_pode_gerenciar_todos(request.user, consultor) or (
-        consultor and cliente.assessor_responsavel_id == consultor.pk
-        or cliente.criado_por == request.user
+    can_view = user_can_manage_all(request.user, consultant) or (
+        consultant and client.assigned_advisor_id == consultant.pk
+        or client.created_by == request.user
     )
 
-    if not pode_visualizar:
+    if not can_view:
         raise PermissionDenied
 
-    viagens = Viagem.objects.filter(
-        clientes=cliente
+    trips = Trip.objects.filter(
+        clients=client
     ).select_related(
-        "pais_destino",
-        "tipo_visto",
-        "assessor_responsavel",
-    ).prefetch_related("clientes").order_by("-data_prevista_viagem")
-    
-                                 
-    processos = Processo.objects.filter(
-        cliente=cliente
-    ).select_related(
-        "viagem",
-        "viagem__pais_destino",
-        "viagem__tipo_visto",
-        "assessor_responsavel",
-    ).prefetch_related("etapas", "etapas__status").order_by("-criado_em")
-    
-                                             
-    registros_financeiros = Financeiro.objects.filter(
-        cliente=cliente
-    ).select_related(
-        "viagem",
-        "assessor_responsavel",
-    ).order_by("-criado_em")
-    
-                       
-    status_financeiro = _obter_status_financeiro_cliente(cliente)
-    
-    lembretes = Lembrete.objects.filter(cliente=cliente).select_related("criado_por").order_by("concluido", "-criado_em")
+        "destination_country",
+        "visa_type",
+        "assigned_advisor",
+    ).prefetch_related("clients").order_by("-planned_departure_date")
 
-    clientes_vinculados = []
-    if cliente.cliente_principal:
-        principal = ClienteConsultoria.objects.select_related("assessor_responsavel").get(pk=cliente.cliente_principal_id)
-        clientes_vinculados.append({"cliente": principal, "relacao": "Principal"})
-        for dep in principal.dependentes.select_related("assessor_responsavel").exclude(pk=cliente.pk):
-            clientes_vinculados.append({"cliente": dep, "relacao": "Dependente"})
+    processes = Process.objects.filter(
+        client=client
+    ).select_related(
+        "trip",
+        "trip__destination_country",
+        "trip__visa_type",
+        "assigned_advisor",
+    ).prefetch_related("stages", "stages__status").order_by("-created_at")
+
+    financial_records = FinancialRecord.objects.filter(
+        client=client
+    ).select_related(
+        "trip",
+        "assigned_advisor",
+    ).order_by("-created_at")
+
+    financial_status = _get_client_financial_status(client)
+
+    reminders = Reminder.objects.filter(client=client).select_related("created_by").order_by("completed", "-created_at")
+
+    linked_clients = []
+    if client.primary_client:
+        principal = ConsultancyClient.objects.select_related("assigned_advisor").get(pk=client.primary_client_id)
+        linked_clients.append({"client": principal, "relacao": "Principal"})
+        for dep in principal.dependents.select_related("assigned_advisor").exclude(pk=client.pk):
+            linked_clients.append({"client": dep, "relacao": "Dependente"})
     else:
-        for dep in cliente.dependentes.select_related("assessor_responsavel").all():
-            clientes_vinculados.append({"cliente": dep, "relacao": "Dependente"})
+        for dep in client.dependents.select_related("assigned_advisor").all():
+            linked_clients.append({"client": dep, "relacao": "Dependente"})
 
-    contexto = {
-        "cliente": cliente,
-        "viagens": viagens,
-        "processos": processos,
-        "registros_financeiros": registros_financeiros,
-        "status_financeiro": status_financeiro,
-        "observacoes_limpa": strip_legacy_meta(cliente.observacoes),
-        "legacy_meta": _legacy_meta_from_cliente(cliente),
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": usuario_pode_gerenciar_todos(request.user, consultor),
-        "pode_editar": pode_visualizar,
-        "lembretes": lembretes,
-        "clientes_vinculados": clientes_vinculados,
+    context = {
+        "client": client,
+        "trips": trips,
+        "processes": processes,
+        "financial_records": financial_records,
+        "financial_status": financial_status,
+        "clean_notes": strip_legacy_meta(client.notes),
+        "legacy_meta": _legacy_meta_from_client(client),
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": user_can_manage_all(request.user, consultant),
+        "can_edit": can_view,
+        "reminders": reminders,
+        "linked_clients": linked_clients,
     }
 
-    return render(request, "client/visualizar_cliente.html", contexto)
+    return render(request, "client/view_client.html", context)
 
 
 @login_required
-def editar_cliente_view(request, pk: int):
-                                                   
-    consultor = obter_consultor_usuario(request.user)
-    cliente = get_object_or_404(
-        ClienteConsultoria.objects.select_related(
-            "assessor_responsavel",
+def edit_client_view(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    client = get_object_or_404(
+        ConsultancyClient.objects.select_related(
+            "assigned_advisor",
         ),
         pk=pk,
     )
 
-    pode_editar = usuario_pode_gerenciar_todos(request.user, consultor) or (
-        consultor and cliente.assessor_responsavel_id == consultor.pk
-        or cliente.criado_por == request.user
+    can_edit = user_can_manage_all(request.user, consultant) or (
+        consultant and client.assigned_advisor_id == consultant.pk
+        or client.created_by == request.user
     )
-    
-    if not pode_editar:
+
+    if not can_edit:
         raise PermissionDenied
 
     if request.method == "POST":
-        legacy_meta = extract_legacy_meta(cliente.observacoes)
-        form = ClienteConsultoriaForm(data=request.POST, user=request.user, instance=cliente)
-        form.fields["senha"].required = False
-        form.fields["confirmar_senha"].required = False
-        
+        legacy_meta = extract_legacy_meta(client.notes)
+        form = ConsultancyClientForm(data=request.POST, user=request.user, instance=client)
+        form.fields["password"].required = False
+        form.fields["confirm_password"].required = False
+
         if form.is_valid():
-                                                                          
-            cliente_atualizado = form.save()
+            updated_client = form.save()
             if legacy_meta.get("imported"):
-                cliente_atualizado.observacoes = upsert_legacy_meta(
-                    cliente_atualizado.observacoes,
+                updated_client.notes = upsert_legacy_meta(
+                    updated_client.notes,
                     legacy_meta,
                 )
-                cliente_atualizado.save(update_fields=["observacoes", "atualizado_em"])
-            messages.success(request, f"{cliente_atualizado.nome} atualizado com sucesso.")
-            return redirect("system:listar_clientes_view")
+                updated_client.save(update_fields=["notes", "updated_at"])
+            messages.success(request, f"{updated_client.first_name} atualizado com sucesso.")
+            return redirect("system:list_clients_view")
         messages.error(request, "Não foi possível atualizar o cliente. Verifique os campos.")
     else:
-        form = ClienteConsultoriaForm(user=request.user, instance=cliente)
-                                       
-        form.fields["senha"].required = False
-        form.fields["senha"].widget.attrs["placeholder"] = "Deixe em branco para manter a senha atual"
-        form.fields["confirmar_senha"].required = False
-        form.fields["confirmar_senha"].widget.attrs["placeholder"] = "Deixe em branco para manter a senha atual"
-                                            
-        if cliente.parceiro_indicador:
-            form.fields["parceiro_indicador"].initial = cliente.parceiro_indicador.pk
-        if "observacoes" in form.fields:
-            form.fields["observacoes"].initial = strip_legacy_meta(cliente.observacoes)
+        form = ConsultancyClientForm(user=request.user, instance=client)
+        form.fields["password"].required = False
+        form.fields["password"].widget.attrs["placeholder"] = "Deixe em branco para manter a senha atual"
+        form.fields["confirm_password"].required = False
+        form.fields["confirm_password"].widget.attrs["placeholder"] = "Deixe em branco para manter a senha atual"
+        if client.referring_partner:
+            form.fields["referring_partner"].initial = client.referring_partner.pk
+        if "notes" in form.fields:
+            form.fields["notes"].initial = strip_legacy_meta(client.notes)
 
-    contexto = {
+    context = {
         "form": form,
-        "cliente": cliente,
-        "legacy_meta": _legacy_meta_from_cliente(cliente),
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "client": client,
+        "legacy_meta": _legacy_meta_from_client(client),
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "client/editar_cliente.html", contexto)
+    return render(request, "client/edit_client.html", context)
 
 
 @login_required
 @require_GET
-def api_buscar_cep(request):
-                                                    
-    cep = request.GET.get("cep", "").strip()
+def api_search_zip(request):
+    zip_code = request.GET.get("zip_code", "").strip()
 
-    if not cep:
+    if not zip_code:
         return JsonResponse({"error": "Informe um CEP."}, status=400)
 
     try:
-        endereco = buscar_endereco_por_cep(cep)
-        return JsonResponse(endereco)
+        address = fetch_address_by_zip(zip_code)
+        return JsonResponse(address)
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=400)
 
 
 @login_required
 @require_GET
-def api_dados_cliente(request):
-                                                                      
-    cliente_id = request.GET.get("cliente_id")
+def api_client_data(request):
+    client_id = request.GET.get("client_id")
 
-    if not cliente_id:
+    if not client_id:
         return JsonResponse({"error": "ID do cliente não informado."}, status=400)
 
     try:
-        cliente = ClienteConsultoria.objects.get(pk=cliente_id)
-        data_base = cliente.criado_em.date().isoformat()
+        client = ConsultancyClient.objects.get(pk=client_id)
+        base_date = client.created_at.date().isoformat()
         response_data = {
-            "data_base": data_base,
-            "cliente": {
-                "nome": cliente.nome_completo,
+            "base_date": base_date,
+            "client": {
+                "name": client.full_name,
             },
         }
         return JsonResponse(response_data)
-    except ClienteConsultoria.DoesNotExist:
+    except ConsultancyClient.DoesNotExist:
         return JsonResponse({"error": "Cliente não encontrado."}, status=404)
 
 
@@ -2646,19 +2104,19 @@ def _mask_passport_for_log(passport_number: str | None) -> str:
 
 @login_required
 @require_http_methods(["POST"])
-def api_extrair_passaporte(request):
-    documento = request.FILES.get("documento")
-    if not documento:
+def api_extract_passport(request):
+    document = request.FILES.get("documento")
+    if not document:
         return JsonResponse({"success": False, "error": "Envie um documento para extração."}, status=400)
 
-    if documento.size > 10 * 1024 * 1024:
+    if document.size > 10 * 1024 * 1024:
         return JsonResponse({"success": False, "error": "Arquivo muito grande. Limite de 10MB."}, status=400)
 
-    target = request.POST.get("target", "cliente").strip().lower() or "cliente"
+    target = request.POST.get("target", "client").strip().lower() or "client"
     persist_in_session = request.POST.get("persist_in_session", "false").lower() == "true"
 
     try:
-        extraction = extract_passport_data_from_document(documento)
+        extraction = extract_passport_data_from_document(document)
     except PassportExtractionError as exc:
         return JsonResponse({"success": False, "error": str(exc)}, status=400)
     except Exception:
@@ -2669,223 +2127,207 @@ def api_extrair_passaporte(request):
     warnings = extraction.get("warnings", [])
     if persist_in_session:
         request.session[f"passport_ocr_{target}"] = fields
-        if target == "cliente":
-            dados_temp = request.session.get("cliente_dados_temporarios", {})
-            dados_temp.update({k: v for k, v in fields.items() if v})
-            request.session["cliente_dados_temporarios"] = dados_temp
+        if target == "client":
+            temp_data = request.session.get("client_temp_data", {})
+            temp_data.update({k: v for k, v in fields.items() if v})
+            request.session["client_temp_data"] = temp_data
         request.session.modified = True
 
     logger.info(
         "OCR passaporte concluído target=%s numero=%s campos=%s",
         target,
-        _mask_passport_for_log(fields.get("numero_passaporte")),
+        _mask_passport_for_log(fields.get("passport_number")),
         ",".join(sorted(fields.keys())),
     )
     return JsonResponse({"success": True, "fields": fields, "warnings": warnings})
 
 
 @login_required
-def cadastrar_dependente(request, pk: int):
-                                                                                                          
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    cliente_principal = get_object_or_404(ClienteConsultoria, pk=pk)
-    
-                         
-    if not pode_gerenciar_todos and (not consultor or cliente_principal.assessor_responsavel_id != consultor.pk):
+def register_dependent(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    primary_client = get_object_or_404(ConsultancyClient, pk=pk)
+
+    if not can_manage_all and (not consultant or primary_client.assigned_advisor_id != consultant.pk):
         raise PermissionDenied("Você não tem permissão para gerenciar este cliente.")
-    
-                                             
-    primeira_etapa = EtapaCadastroCliente.objects.filter(ativo=True).order_by("ordem").first()
-    if not primeira_etapa:
+
+    first_step = ClientRegistrationStep.objects.filter(is_active=True).order_by("order").first()
+    if not first_step:
         messages.error(request, "Nenhuma etapa configurada. Configure as etapas primeiro.")
-        return redirect("system:home_clientes")
-    
-    campos_etapa = CampoEtapaCliente.objects.filter(
-        etapa=primeira_etapa, ativo=True
-    ).exclude(nome_campo="parceiro_indicador").order_by("ordem", "nome_campo")
-    
+        return redirect("system:home_clients")
+
+    step_fields = ClientStepField.objects.filter(
+        step=first_step, is_active=True
+    ).exclude(field_name="referring_partner").order_by("order", "field_name")
+
     if request.method == "POST":
-        if (acao := request.POST.get("acao", "salvar")) == "finalizar":
+        if (action := request.POST.get("action") or request.POST.get("acao", "save")) in ("finalize", "finalizar"):
             messages.success(request, "Cadastro de dependentes finalizado.")
-            return redirect("system:home_clientes")
-        
-                                                               
-        etapas = EtapaCadastroCliente.objects.filter(ativo=True).order_by("ordem")
-                                                                              
-        form = _preparar_formulario_dependente_post(request, primeira_etapa, etapas, cliente_principal=cliente_principal)
-        
+            return redirect("system:home_clients")
+
+        steps = ClientRegistrationStep.objects.filter(is_active=True).order_by("order")
+        form = _prepare_dependent_post_form(request, first_step, steps, primary_client=primary_client)
+
         if form.is_valid():
-            usar_dados_principal = request.POST.get('usar_dados_cliente_principal') == 'on'
-            _salvar_dependente(form, cliente_principal, primeira_etapa, request.user, usar_dados_principal=usar_dados_principal)
-            messages.success(request, f"{form.cleaned_data['nome']} cadastrado como dependente com sucesso.")
-            return redirect("system:cadastrar_dependente", pk=cliente_principal.pk)
-        
-                                                       
-        campos_etapa_nomes = set(campos_etapa.values_list("nome_campo", flat=True))
-        _exibir_erros_formulario(
+            use_primary_data = request.POST.get('use_primary_data') == 'on'
+            _save_dependent(form, primary_client, first_step, request.user, use_primary_data=use_primary_data)
+            messages.success(request, f"{form.cleaned_data['first_name']} cadastrado como dependente com sucesso.")
+            return redirect("system:register_dependent", pk=primary_client.pk)
+
+        step_field_names = set(step_fields.values_list("field_name", flat=True))
+        _show_form_errors(
             request,
             form,
-            campos_etapa_nomes,
-            etapa_nome=f"Dependente - {primeira_etapa.nome}",
+            step_field_names,
+            step_name=f"Dependente - {first_step.name}",
         )
     else:
-                                                               
-        etapas = EtapaCadastroCliente.objects.filter(ativo=True).order_by("ordem")
-        form = _criar_formulario_dependente(request, cliente_principal, primeira_etapa, etapas)
-    
-                                                                                          
-    assessor_id = None
-    if cliente_principal.assessor_responsavel:
-        assessor_id = cliente_principal.assessor_responsavel.pk
-    elif consultor:
-        assessor_id = consultor.pk
-    
-    contexto = {
-        "cliente_principal": cliente_principal,
+        steps = ClientRegistrationStep.objects.filter(is_active=True).order_by("order")
+        form = _create_dependent_form(request, primary_client, first_step, steps)
+
+    advisor_id = None
+    if primary_client.assigned_advisor:
+        advisor_id = primary_client.assigned_advisor.pk
+    elif consultant:
+        advisor_id = consultant.pk
+
+    context = {
+        "primary_client": primary_client,
         "form": form,
-        "etapa_atual": primeira_etapa,
-        "campos_etapa": campos_etapa,
-        "dependentes": cliente_principal.dependentes.all().order_by("nome"),
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "assessor_id": assessor_id,
+        "current_stage": first_step,
+        "stage_fields": step_fields,
+        "dependents": primary_client.dependents.all().order_by("first_name"),
+        "user_profile": consultant.profile.name if consultant else None,
+        "advisor_id": advisor_id,
     }
-    
-    return render(request, "client/cadastrar_dependente.html", contexto)
+
+    return render(request, "client/register_dependent.html", context)
 
 
 @login_required
-def adicionar_dependente(request, pk: int):
-                                                        
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def add_dependent(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    cliente_principal = get_object_or_404(ClienteConsultoria, pk=pk)
+    primary_client = get_object_or_404(ConsultancyClient, pk=pk)
 
-                         
-    if not pode_gerenciar_todos and (not consultor or cliente_principal.assessor_responsavel_id != consultor.pk):
+    if not can_manage_all and (not consultant or primary_client.assigned_advisor_id != consultant.pk):
         raise PermissionDenied("Você não tem permissão para gerenciar este cliente.")
 
     if request.method == "POST":
-        if dependente_id := request.POST.get("dependente_id"):
+        if dependent_id := request.POST.get("dependent_id"):
             try:
-                dependente = ClienteConsultoria.objects.get(pk=dependente_id)
-                                                           
-                if dependente.cliente_principal:
+                dependent = ConsultancyClient.objects.get(pk=dependent_id)
+                if dependent.primary_client:
                     messages.error(request, "Este cliente já é dependente de outro cliente.")
-                elif dependente.pk == cliente_principal.pk:
+                elif dependent.pk == primary_client.pk:
                     messages.error(request, "Um cliente não pode ser dependente de si mesmo.")
                 else:
-                    dependente.cliente_principal = cliente_principal
-                    dependente.save()
-                    messages.success(request, f"{dependente.nome} adicionado como dependente.")
-                    return redirect("system:editar_cliente", pk=cliente_principal.pk)
-            except ClienteConsultoria.DoesNotExist:
+                    dependent.primary_client = primary_client
+                    dependent.save()
+                    messages.success(request, f"{dependent.first_name} adicionado como dependente.")
+                    return redirect("system:edit_client", pk=primary_client.pk)
+            except ConsultancyClient.DoesNotExist:
                 messages.error(request, "Cliente não encontrado.")
 
-                                                                                             
-    clientes_disponiveis = ClienteConsultoria.objects.filter(
-        cliente_principal__isnull=True
-    ).exclude(pk=cliente_principal.pk).order_by("nome")
+    available_clients = ConsultancyClient.objects.filter(
+        primary_client__isnull=True
+    ).exclude(pk=primary_client.pk).order_by("first_name")
 
-    contexto = {
-        "cliente_principal": cliente_principal,
-        "clientes_disponiveis": clientes_disponiveis,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+    context = {
+        "primary_client": primary_client,
+        "available_clients": available_clients,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "client/adicionar_dependente.html", contexto)
+    return render(request, "client/add_dependent.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def remover_dependente(request, pk: int, dependente_id: int):
-                                                       
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def remove_dependent(request, pk: int, dependent_id: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    cliente_principal = get_object_or_404(ClienteConsultoria, pk=pk)
-    dependente = get_object_or_404(ClienteConsultoria, pk=dependente_id)
+    primary_client = get_object_or_404(ConsultancyClient, pk=pk)
+    dependent = get_object_or_404(ConsultancyClient, pk=dependent_id)
 
-                         
-    if not pode_gerenciar_todos and (not consultor or cliente_principal.assessor_responsavel_id != consultor.pk):
+    if not can_manage_all and (not consultant or primary_client.assigned_advisor_id != consultant.pk):
         raise PermissionDenied("Você não tem permissão para gerenciar este cliente.")
 
-                                                                           
-    if dependente.cliente_principal != cliente_principal:
+    if dependent.primary_client != primary_client:
         messages.error(request, "Este cliente não é dependente do cliente selecionado.")
-        return redirect("system:editar_cliente", pk=cliente_principal.pk)
+        return redirect("system:edit_client", pk=primary_client.pk)
 
-    dependente_nome = dependente.nome
-    dependente.cliente_principal = None
-    dependente.save()
+    dependent_name = dependent.first_name
+    dependent.primary_client = None
+    dependent.save()
 
-    messages.success(request, f"{dependente_nome} removido como dependente.")
-    return redirect("system:editar_cliente", pk=cliente_principal.pk)
+    messages.success(request, f"{dependent_name} removido como dependente.")
+    return redirect("system:edit_client", pk=primary_client.pk)
 
 
 @login_required
 @require_http_methods(["POST"])
-def criar_lembrete(request, cliente_id: int):
-    consultor = obter_consultor_usuario(request.user)
-    cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)
+def create_reminder(request, client_id: int):
+    consultant = get_user_consultant(request.user)
+    client = get_object_or_404(ConsultancyClient, pk=client_id)
 
-    pode = usuario_pode_gerenciar_todos(request.user, consultor) or (
-        consultor and cliente.assessor_responsavel_id == consultor.pk
+    allowed = user_can_manage_all(request.user, consultant) or (
+        consultant and client.assigned_advisor_id == consultant.pk
     )
-    if not pode:
+    if not allowed:
         raise PermissionDenied
 
-    texto = request.POST.get("texto", "").strip()
-    data_lembrete = request.POST.get("data_lembrete") or None
+    text = (request.POST.get("text") or request.POST.get("texto", "")).strip()
+    reminder_date = request.POST.get("reminder_date") or None
 
-    if not texto:
+    if not text:
         messages.error(request, "O texto do lembrete é obrigatório.")
-        return redirect("system:visualizar_cliente", pk=cliente_id)
+        return redirect("system:view_client", pk=client_id)
 
-    Lembrete.objects.create(
-        cliente=cliente,
-        texto=texto,
-        data_lembrete=data_lembrete,
-        criado_por=consultor,
+    Reminder.objects.create(
+        client=client,
+        text=text,
+        reminder_date=reminder_date,
+        created_by=consultant,
     )
     messages.success(request, "Lembrete adicionado.")
-    return redirect("system:visualizar_cliente", pk=cliente_id)
+    return redirect("system:view_client", pk=client_id)
 
 
 @login_required
 @require_http_methods(["POST"])
-def toggle_lembrete(request, pk: int):
-    consultor = obter_consultor_usuario(request.user)
-    lembrete = get_object_or_404(Lembrete.objects.select_related("cliente"), pk=pk)
-    cliente = lembrete.cliente
+def toggle_reminder(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    reminder = get_object_or_404(Reminder.objects.select_related("client"), pk=pk)
+    client = reminder.client
 
-    pode = usuario_pode_gerenciar_todos(request.user, consultor) or (
-        consultor and cliente.assessor_responsavel_id == consultor.pk
+    allowed = user_can_manage_all(request.user, consultant) or (
+        consultant and client.assigned_advisor_id == consultant.pk
     )
-    if not pode:
+    if not allowed:
         raise PermissionDenied
 
-    lembrete.concluido = not lembrete.concluido
-    lembrete.save(update_fields=["concluido"])
-    return redirect("system:visualizar_cliente", pk=cliente.pk)
+    reminder.completed = not reminder.completed
+    reminder.save(update_fields=["completed"])
+    return redirect("system:view_client", pk=client.pk)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_lembrete(request, pk: int):
-    consultor = obter_consultor_usuario(request.user)
-    lembrete = get_object_or_404(Lembrete.objects.select_related("cliente"), pk=pk)
-    cliente = lembrete.cliente
+def delete_reminder(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    reminder = get_object_or_404(Reminder.objects.select_related("client"), pk=pk)
+    client = reminder.client
 
-    pode = usuario_pode_gerenciar_todos(request.user, consultor) or (
-        consultor and cliente.assessor_responsavel_id == consultor.pk
+    allowed = user_can_manage_all(request.user, consultant) or (
+        consultant and client.assigned_advisor_id == consultant.pk
     )
-    if not pode:
+    if not allowed:
         raise PermissionDenied
 
-    lembrete.delete()
+    reminder.delete()
     messages.success(request, "Lembrete excluído.")
-    return redirect("system:visualizar_cliente", pk=cliente.pk)
-
+    return redirect("system:view_client", pk=client.pk)

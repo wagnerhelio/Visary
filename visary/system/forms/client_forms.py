@@ -1,23 +1,17 @@
-   
-                                                    
-   
-
 from __future__ import annotations
 
 import contextlib
-from typing import Optional
 
 from django import forms
 from django.contrib.auth import get_user_model
 
-from system.models import ClienteConsultoria, Partner
-from system.models import UsuarioConsultoria
+from system.models import ConsultancyClient, ConsultancyUser, Partner
 
 User = get_user_model()
 
 
-class ClienteConsultoriaForm(forms.ModelForm):
-    confirmar_senha = forms.CharField(
+class ConsultancyClientForm(forms.ModelForm):
+    confirm_password = forms.CharField(
         label="Confirme a senha",
         widget=forms.PasswordInput(
             attrs={
@@ -32,49 +26,46 @@ class ClienteConsultoriaForm(forms.ModelForm):
     )
 
     class Meta:
-        model = ClienteConsultoria
+        model = ConsultancyClient
         fields = (
-            "assessor_responsavel",
-            "nome",
-            "sobrenome",
+            "assigned_advisor",
+            "first_name",
+            "last_name",
             "cpf",
-            "data_nascimento",
-            "nacionalidade",
-            "telefone",
-            "telefone_secundario",
+            "birth_date",
+            "nationality",
+            "phone",
+            "secondary_phone",
             "email",
-            "senha",
-            "parceiro_indicador",
-            "cep",
-            "logradouro",
-            "numero",
-            "complemento",
-            "bairro",
-            "cidade",
-            "uf",
-            "tipo_passaporte",
-            "tipo_passaporte_outro",
-            "numero_passaporte",
-            "pais_emissor_passaporte",
-            "data_emissao_passaporte",
-            "valido_ate_passaporte",
-            "autoridade_passaporte",
-            "cidade_emissao_passaporte",
-            "passaporte_roubado",
-            "observacoes",
+            "password",
+            "referring_partner",
+            "zip_code",
+            "street",
+            "street_number",
+            "complement",
+            "district",
+            "city",
+            "state",
+            "passport_type",
+            "passport_type_other",
+            "passport_number",
+            "passport_issuing_country",
+            "passport_issue_date",
+            "passport_expiry_date",
+            "passport_authority",
+            "passport_issuing_city",
+            "passport_stolen",
+            "notes",
         )
         widgets = {
-            "assessor_responsavel": forms.Select(attrs={"class": "input"}),
-            "parceiro_indicador": forms.Select(
-                attrs={
-                    "class": "input",
-                    "data-partner-select": "true",
-                }
+            "assigned_advisor": forms.Select(attrs={"class": "input"}),
+            "referring_partner": forms.Select(
+                attrs={"class": "input", "data-partner-select": "true"}
             ),
-            "nome": forms.TextInput(
+            "first_name": forms.TextInput(
                 attrs={"placeholder": "Nome", "autocomplete": "given-name"}
             ),
-            "sobrenome": forms.TextInput(
+            "last_name": forms.TextInput(
                 attrs={"placeholder": "Sobrenome", "autocomplete": "family-name"}
             ),
             "cpf": forms.TextInput(
@@ -85,20 +76,17 @@ class ClienteConsultoriaForm(forms.ModelForm):
                     "autocomplete": "off",
                 }
             ),
-            "data_nascimento": forms.DateInput(
-                attrs={
-                    "type": "date",
-                    "placeholder": "dd/mm/aaaa",
-                },
+            "birth_date": forms.DateInput(
+                attrs={"type": "date", "placeholder": "dd/mm/aaaa"},
                 format="%Y-%m-%d",
             ),
-            "nacionalidade": forms.TextInput(
+            "nationality": forms.TextInput(
                 attrs={"placeholder": "Nacionalidade", "autocomplete": "country-name"}
             ),
-            "telefone": forms.TextInput(
+            "phone": forms.TextInput(
                 attrs={"placeholder": "Telefone principal", "autocomplete": "tel"}
             ),
-            "telefone_secundario": forms.TextInput(
+            "secondary_phone": forms.TextInput(
                 attrs={"placeholder": "Telefone secundário", "autocomplete": "tel"}
             ),
             "email": forms.EmailInput(
@@ -110,7 +98,7 @@ class ClienteConsultoriaForm(forms.ModelForm):
                     "data-bwignore": "true",
                 }
             ),
-            "senha": forms.PasswordInput(
+            "password": forms.PasswordInput(
                 attrs={
                     "autocomplete": "new-password",
                     "placeholder": "Senha de acesso do cliente",
@@ -120,7 +108,7 @@ class ClienteConsultoriaForm(forms.ModelForm):
                     "data-form-type": "other",
                 }
             ),
-            "cep": forms.TextInput(
+            "zip_code": forms.TextInput(
                 attrs={
                     "placeholder": "00000-000",
                     "maxlength": "9",
@@ -128,22 +116,22 @@ class ClienteConsultoriaForm(forms.ModelForm):
                     "autocomplete": "postal-code",
                 }
             ),
-            "logradouro": forms.TextInput(
+            "street": forms.TextInput(
                 attrs={"placeholder": "Rua, Avenida, etc.", "autocomplete": "street-address"}
             ),
-            "numero": forms.TextInput(
+            "street_number": forms.TextInput(
                 attrs={"placeholder": "Número", "autocomplete": "off"}
             ),
-            "complemento": forms.TextInput(
+            "complement": forms.TextInput(
                 attrs={"placeholder": "Apto, Bloco, etc.", "autocomplete": "off"}
             ),
-            "bairro": forms.TextInput(
+            "district": forms.TextInput(
                 attrs={"placeholder": "Bairro", "autocomplete": "address-level2"}
             ),
-            "cidade": forms.TextInput(
+            "city": forms.TextInput(
                 attrs={"placeholder": "Cidade", "autocomplete": "address-level1"}
             ),
-            "uf": forms.TextInput(
+            "state": forms.TextInput(
                 attrs={
                     "placeholder": "UF",
                     "maxlength": "2",
@@ -151,38 +139,32 @@ class ClienteConsultoriaForm(forms.ModelForm):
                     "autocomplete": "address-level1",
                 }
             ),
-            "tipo_passaporte": forms.Select(attrs={"class": "input"}),
-            "tipo_passaporte_outro": forms.TextInput(
+            "passport_type": forms.Select(attrs={"class": "input"}),
+            "passport_type_other": forms.TextInput(
                 attrs={"placeholder": "Especifique o tipo de passaporte"}
             ),
-            "numero_passaporte": forms.TextInput(
+            "passport_number": forms.TextInput(
                 attrs={"placeholder": "Número do passaporte válido"}
             ),
-            "pais_emissor_passaporte": forms.TextInput(
+            "passport_issuing_country": forms.TextInput(
                 attrs={"placeholder": "País que emitiu o passaporte"}
             ),
-            "data_emissao_passaporte": forms.DateInput(
-                attrs={
-                    "type": "date",
-                    "placeholder": "dd/mm/aaaa",
-                },
+            "passport_issue_date": forms.DateInput(
+                attrs={"type": "date", "placeholder": "dd/mm/aaaa"},
                 format="%Y-%m-%d",
             ),
-            "valido_ate_passaporte": forms.DateInput(
-                attrs={
-                    "type": "date",
-                    "placeholder": "dd/mm/aaaa",
-                },
+            "passport_expiry_date": forms.DateInput(
+                attrs={"type": "date", "placeholder": "dd/mm/aaaa"},
                 format="%Y-%m-%d",
             ),
-            "autoridade_passaporte": forms.TextInput(
+            "passport_authority": forms.TextInput(
                 attrs={"placeholder": "Autoridade emissora"}
             ),
-            "cidade_emissao_passaporte": forms.TextInput(
+            "passport_issuing_city": forms.TextInput(
                 attrs={"placeholder": "Cidade onde foi emitido"}
             ),
-            "passaporte_roubado": forms.CheckboxInput(),
-            "observacoes": forms.Textarea(
+            "passport_stolen": forms.CheckboxInput(),
+            "notes": forms.Textarea(
                 attrs={
                     "rows": 3,
                     "placeholder": "Informações adicionais sobre o atendimento",
@@ -190,201 +172,151 @@ class ClienteConsultoriaForm(forms.ModelForm):
             ),
         }
 
-    def __init__(self, *args, user: Optional[User] = None, cliente_principal=None, usar_dados_principal: bool = False, **kwargs) -> None:
-                                                                                                          
-        initial_dict = kwargs.get('initial', {}) if 'initial' in kwargs else {}
-        initial_assessor = initial_dict.get('assessor_responsavel') if initial_dict else None
-                                                                             
-        if initial_assessor:
+    def __init__(self, *args, user=None, primary_client=None, use_primary_data=False, **kwargs):
+        initial_dict = kwargs.get("initial", {})
+        initial_advisor = initial_dict.get("assigned_advisor") if initial_dict else None
+        if initial_advisor:
             try:
-                initial_assessor = int(initial_assessor) if isinstance(initial_assessor, str) else initial_assessor
+                initial_advisor = int(initial_advisor) if isinstance(initial_advisor, str) else initial_advisor
             except (ValueError, TypeError):
-                initial_assessor = None
-        else:
-            initial_assessor = None
-        
+                initial_advisor = None
+
         super().__init__(*args, **kwargs)
         self._user = user
-        self.cliente_principal = cliente_principal
-        self.usar_dados_principal = usar_dados_principal                                             
-        
-                                                                                                                  
-        if usar_dados_principal:
-            if 'senha' in self.fields:
-                self.fields['senha'].required = False
-                self.fields['senha'].widget.attrs['data-usar-dados-principal'] = 'true'
-            if 'confirmar_senha' in self.fields:
-                self.fields['confirmar_senha'].required = False
-                self.fields['confirmar_senha'].widget.attrs['data-usar-dados-principal'] = 'true'
-        
-        self.fields["assessor_responsavel"].queryset = (
-            UsuarioConsultoria.objects.filter(ativo=True)
-            .order_by("nome")
-            .select_related("perfil")
-        )
-        
-                                    
-        self.fields["parceiro_indicador"].queryset = Partner.objects.filter(ativo=True).order_by("nome_empresa", "nome_responsavel")
-        self.fields["parceiro_indicador"].required = False
-        self.fields["parceiro_indicador"].empty_label = "Nenhum parceiro"
-        
-                                          
-        self.fields["tipo_passaporte"].required = False
-        self.fields["tipo_passaporte"].choices = [
-            ("", "Selecione o tipo de passaporte"),
-            ("comum", "Passaporte Comum/Regular"),
-            ("diplomatico", "Passaporte Diplomático"),
-            ("servico", "Passaporte de Serviço"),
-            ("outro", "Outro"),
-        ]
-        self.fields["tipo_passaporte_outro"].required = False
+        self._primary_client = primary_client
+        self._use_primary_data = use_primary_data
 
+        if use_primary_data:
+            for field_name in ("password", "confirm_password"):
+                if field_name in self.fields:
+                    self.fields[field_name].required = False
+                    self.fields[field_name].widget.attrs["data-use-primary-data"] = "true"
+
+        self._setup_advisor_queryset(initial_advisor)
+        self._setup_partner_queryset()
+        self._setup_passport_fields()
         self.fields["email"].required = False
 
-                                                                                  
-                                                                      
-                                                                                                           
-        if user is not None and not self.instance.pk:                                             
-                                                                                                                        
-            campo_initial = self.fields["assessor_responsavel"].initial
-            
-                                                                                                                     
-            if not initial_assessor and not campo_initial:
-                consultor = (
-                    UsuarioConsultoria.objects.filter(email__iexact=user.email, ativo=True)
-                    .order_by("-atualizado_em")
-                    .first()
-                )
-                if consultor:
-                                                                                              
-                                                                          
-                    if cliente_principal is None:
-                        self.fields["assessor_responsavel"].initial = consultor.pk
-                                                                           
-            elif initial_assessor:
-                self.fields["assessor_responsavel"].initial = initial_assessor
-    
+    def _setup_advisor_queryset(self, initial_advisor):
+        self.fields["assigned_advisor"].queryset = (
+            ConsultancyUser.objects.filter(is_active=True)
+            .order_by("name")
+            .select_related("profile")
+        )
+        if self._user and not self.instance.pk and not initial_advisor:
+            consultant = (
+                ConsultancyUser.objects.filter(email__iexact=self._user.email, is_active=True)
+                .order_by("-updated_at")
+                .first()
+            )
+            if consultant and self._primary_client is None:
+                self.fields["assigned_advisor"].initial = consultant.pk
+        elif initial_advisor:
+            self.fields["assigned_advisor"].initial = initial_advisor
+
+    def _setup_partner_queryset(self):
+        self.fields["referring_partner"].queryset = (
+            Partner.objects.filter(is_active=True).order_by("company_name", "contact_name")
+        )
+        self.fields["referring_partner"].required = False
+        self.fields["referring_partner"].empty_label = "Nenhum parceiro"
+
+    def _setup_passport_fields(self):
+        self.fields["passport_type"].required = False
+        self.fields["passport_type"].choices = [
+            ("", "Selecione o tipo de passaporte"),
+            ("regular", "Passaporte Comum/Regular"),
+            ("diplomatic", "Passaporte Diplomático"),
+            ("service", "Passaporte de Serviço"),
+            ("other", "Outro"),
+        ]
+        self.fields["passport_type_other"].required = False
+
     def full_clean(self):
-                                                                                                       
-                                                                                                  
-        if self.usar_dados_principal:
-            if 'senha' in self.fields:
-                self.fields['senha'].required = False
-            if 'confirmar_senha' in self.fields:
-                self.fields['confirmar_senha'].required = False
+        if self._use_primary_data:
+            for field_name in ("password", "confirm_password"):
+                if field_name in self.fields:
+                    self.fields[field_name].required = False
         super().full_clean()
 
-    def clean_confirmar_senha(self):
-                                                                                    
-        if self.usar_dados_principal:
+    def clean_confirm_password(self):
+        if self._use_primary_data:
             return ""
-        
-        senha = self.cleaned_data.get("senha", "")
-        confirmar = self.cleaned_data.get("confirmar_senha", "")
-
-                                                       
-        if not senha and not confirmar and self.instance.pk:
-            return confirmar
-
-        if senha and confirmar and senha != confirmar:
+        password = self.cleaned_data.get("password", "")
+        confirm = self.cleaned_data.get("confirm_password", "")
+        if not password and not confirm and self.instance.pk:
+            return confirm
+        if password and confirm and password != confirm:
             raise forms.ValidationError("As senhas informadas não conferem.")
+        return confirm
 
-        return confirmar
-
-    def clean_senha(self):
-                                                                                    
-        if self.usar_dados_principal:
+    def clean_password(self):
+        if self._use_primary_data:
             return ""
-        
-        senha = self.cleaned_data.get("senha", "")
-                                                                
-        if not senha and not self.instance.pk:
+        password = self.cleaned_data.get("password", "")
+        if not password and not self.instance.pk:
             raise forms.ValidationError("A senha é obrigatória para novos clientes.")
-        return senha
-    
+        return password
+
     def clean_cpf(self):
         cpf = self.cleaned_data.get("cpf", "")
         digits = "".join(c for c in cpf if c.isdigit())
-
         if len(digits) != 11:
             raise forms.ValidationError("CPF deve conter 11 dígitos.")
-
         if len(set(digits)) == 1:
             raise forms.ValidationError("CPF inválido.")
-
-        def _calcular_digito(parcial: str) -> int:
-            peso = len(parcial) + 1
-            soma = sum(int(d) * (peso - i) for i, d in enumerate(parcial))
-            resto = soma % 11
-            return 0 if resto < 2 else 11 - resto
-
-        if _calcular_digito(digits[:9]) != int(digits[9]):
-            raise forms.ValidationError("CPF inválido.")
-        if _calcular_digito(digits[:10]) != int(digits[10]):
-            raise forms.ValidationError("CPF inválido.")
-
-                                                                
-        digits_only = digits
-        cpf_formatado = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
-
-                                                                        
-                                                        
-        queryset = ClienteConsultoria.objects.filter(cpf__in=[digits_only, cpf_formatado])
+        self._validate_cpf_digits(digits)
+        formatted = f"{digits[:3]}.{digits[3:6]}.{digits[6:9]}-{digits[9:]}"
+        queryset = ConsultancyClient.objects.filter(cpf__in=[digits, formatted])
         if self.instance.pk:
             queryset = queryset.exclude(pk=self.instance.pk)
         if queryset.exists():
             raise forms.ValidationError("Este CPF já está cadastrado.")
+        return digits
 
-        return digits_only
+    def _validate_cpf_digits(self, digits):
+        def calc_digit(partial):
+            weight = len(partial) + 1
+            total = sum(int(d) * (weight - i) for i, d in enumerate(partial))
+            remainder = total % 11
+            return 0 if remainder < 2 else 11 - remainder
+
+        if calc_digit(digits[:9]) != int(digits[9]):
+            raise forms.ValidationError("CPF inválido.")
+        if calc_digit(digits[:10]) != int(digits[10]):
+            raise forms.ValidationError("CPF inválido.")
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
         if not email:
             return email
-
-        queryset = ClienteConsultoria.objects.filter(email=email)
+        queryset = ConsultancyClient.objects.filter(email=email)
         if self.instance.pk:
             queryset = queryset.exclude(pk=self.instance.pk)
-
         if queryset.exists():
-            cliente_existente = queryset.first()
+            existing = queryset.first()
             raise forms.ValidationError(
-                f"Este email já está em uso por outro cliente: {cliente_existente.nome_completo}."
+                f"Este email já está em uso por outro cliente: {existing.full_name}."
             )
-
         return email
-    
-    def clean_tipo_passaporte_outro(self):
-        tipo_passaporte = self.cleaned_data.get("tipo_passaporte")
-        tipo_passaporte_outro = self.cleaned_data.get("tipo_passaporte_outro")
-        
-                                                                             
-        if tipo_passaporte == "outro" and not tipo_passaporte_outro:
+
+    def clean_passport_type_other(self):
+        passport_type = self.cleaned_data.get("passport_type")
+        passport_type_other = self.cleaned_data.get("passport_type_other")
+        if passport_type == "other" and not passport_type_other:
             raise forms.ValidationError("Especifique o tipo de passaporte quando selecionar 'Outro'.")
-        
-        return tipo_passaporte_outro
+        return passport_type_other
 
-    def save(self, commit: bool = True) -> ClienteConsultoria:
-        cliente = super().save(commit=False)
-        
-                                                         
-        if senha := self.cleaned_data.get("senha"):
-                                        
-            cliente.set_password(senha)
-                                                                 
-        elif cliente.pk:
-                                                             
-            with contextlib.suppress(ClienteConsultoria.DoesNotExist):
-                cliente_atual = ClienteConsultoria.objects.get(pk=cliente.pk)
-                cliente.senha = cliente_atual.senha
-                                                             
-                                                      
-
-        if self._user and not cliente.criado_por_id:
-            cliente.criado_por = self._user
-
+    def save(self, commit=True):
+        client = super().save(commit=False)
+        if password := self.cleaned_data.get("password"):
+            client.set_password(password)
+        elif client.pk:
+            with contextlib.suppress(ConsultancyClient.DoesNotExist):
+                current = ConsultancyClient.objects.get(pk=client.pk)
+                client.password = current.password
+        if self._user and not client.created_by_id:
+            client.created_by = self._user
         if commit:
-            cliente.save()
-
-        return cliente
-
+            client.save()
+        return client

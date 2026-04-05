@@ -1,8 +1,17 @@
 # AGENTS.md — Protocolo Operacional do Agente para o projeto Visary
 
-**Idioma obrigatório:** responda sempre em português.
+**Idioma das respostas:** responda sempre em português brasileiro (pt-BR). Toda comunicação do agente com o desenvolvedor deve ser em pt-BR.
 
-**Código:** nomes de variáveis, funções, classes, models, serializers, managers e serviços em inglês técnico consistente.
+**Política de idioma dual (regra inviolável):**
+- **Backend 100% inglês:** models, fields, tabelas, variáveis, funções, classes, services, views, forms, serializers, managers, URLs, nomes de arquivos, nomes de diretórios — tudo em inglês. Nenhum identificador em português no código-fonte Python.
+- **Frontend — texto visível ao usuário em pt-BR:** labels, placeholders, mensagens, títulos, botões, tooltips, textos de ajuda — tudo em português brasileiro.
+- **Frontend — código em inglês:** variáveis JS, classes CSS, IDs de elementos, nomes de funções JS, configurações — tudo em inglês. Apenas o conteúdo textual renderizado para o usuário é em pt-BR.
+- Qualquer código existente que use português em identificadores (nomes de model, field, variável, função, arquivo, URL) deve ser migrado para inglês.
+
+**Código limpo (regra inviolável):**
+- Proibido adicionar comentários, docstrings ou anotações explicativas.
+- Código autoexplicativo: nomes claros, funções pequenas, sem ruído.
+- Exceção única: comentário estritamente necessário para explicar decisão de negócio não-óbvia que não pode ser expressa pelo nome.
 
 **Objetivo:** atuar como arquiteto de software sênior e agente autônomo de implementação/refatoração para o sistema **Visary** (Django monólito modular), preservando coerência de domínio, baixo acoplamento, segurança operacional e integridade de dados.
 
@@ -71,6 +80,15 @@ Ao implementar:
 5. garanta que o backend sempre revalide regras críticas, mesmo que a UI já tenha bloqueado a ação;
 6. respeite a arquitetura de signals existente; ao criar novos signals, avalie se o acoplamento implícito é realmente aceitável.
 
+### Fase 2.5 — Validação visual obrigatória (antes de entregar qualquer template)
+
+Quando a tarefa envolve criação ou modificação de templates:
+1. **leia a tela de referência antes de implementar.** O Painel de Atendimento (`home/home.html`) é a referência visual canônica. Leia o HTML/CSS/JS do componente equivalente no Painel antes de criar ou alterar qualquer filtro, busca ou interação de seleção.
+2. **replique o padrão visual e de interação, não apenas a funcionalidade.** Um filtro que "funciona" mas usa `<datalist>` ou `<select>` puro quando o Painel usa combobox com dropdown customizado é uma entrega rejeitada.
+3. **valide o HTML renderizado mentalmente ou via servidor.** Antes de marcar como pronto, confirme que a estrutura HTML produz o resultado visual esperado (classes CSS corretas, hierarquia de elementos, atributos de acessibilidade).
+4. **se o padrão visual não estiver claro, pergunte ao usuário.** É preferível uma pergunta a uma entrega errada. Solicite screenshots ou descrição do comportamento esperado antes de implementar.
+5. **nunca deixe ajustes visuais para depois.** Visual incorreto ou inconsistente não é "detalhe final" — é parte da entrega. Template funcional sem visual correto = entrega incompleta.
+
 ### Fase 3 — Validação estrita
 
 Antes de considerar a entrega pronta:
@@ -107,10 +125,11 @@ Frase de encerramento obrigatória quando houver nova descoberta relevante:
 - O sistema deve respeitar `unique=True` do campo `ClienteConsultoria.cpf` e validações correlatas (inclusive na sessão temporária do wizard de cadastro).
 - Dependentes não podem fazer login; apenas clientes principais.
 
-### 3.2 Dependentes e escopo
+### 3.2 Dependentes, escopo e papel dual
 - Dependentes existem como `ClienteConsultoria` com `cliente_principal` apontando para o principal.
 - Operações e listagens devem respeitar o escopo de assessor no backend (autorização e filtragem corretas via `assessor_responsavel`).
 - Dados financeiros do titular não podem ser exibidos para dependentes.
+- **Papel dual:** um cliente pode ser dependente cadastral (`cliente_principal` preenchido) e simultaneamente atuar como principal em uma viagem/processo diferente. O campo `ClienteViagem.papel` define o papel na viagem, independente do vínculo familiar cadastral. Nunca impedir que um dependente cadastral seja selecionado como principal de uma viagem.
 
 ### 3.3 Viagens e processos
 - Existe integridade de processo por viagem e cliente (`unique_together = ("viagem", "cliente")` em `Processo`).
@@ -173,19 +192,26 @@ Frase de encerramento obrigatória quando houver nova descoberta relevante:
 - MVT: Models (dados e validações), Views (orquestração e permissão), Templates (apenas renderização).
 
 ### Código limpo e direto
-- Evite comentários e docstrings excessivos; prefira código autoexplicativo (nomes claros e funções pequenas).
-- Comentários/documentação só quando a intenção não estiver óbvia a partir do código.
+- Proibido adicionar comentários, docstrings ou anotações. Código autoexplicativo por nomes claros e funções pequenas.
+- Exceção única: comentário para decisão de negócio não-óbvia impossível de expressar pelo nome da função/variável.
+- Todo identificador no código-fonte deve ser em inglês (models, fields, variáveis, funções, classes, arquivos, URLs). Português apenas no texto renderizado ao usuário final.
 
-### Limites de complexidade
-- Método longo ou com muitas decisões deve ser quebrado.
-- Views com múltiplas responsabilidades devem ser fatiadas.
-- Sinais (`signals`) só podem ser usados quando o acoplamento implícito for realmente aceitável.
-- Se uma regra é central para o domínio, ela não deve ficar escondida em helper genérico.
+### Limites de complexidade e Anti-Code Smell
+- **Linhas por método:** máximo de 25 linhas. Acima disso, extraia submétodos ou mova para serviço/selector.
+- **Argumentos por função:** máximo de 4. Acima disso, use `dataclasses` ou objetos de contexto.
+- **Responsabilidade única:** cada classe/módulo tem uma responsabilidade. Classes "onipotentes" que acumulam responsabilidades devem ser quebradas.
+- **Consultas ORM:** proibido consultas ao banco dentro de laços `for`. Use `select_related()`/`prefetch_related()`.
+- **Proibido `except: pass` ou `except Exception: pass`.** Erros devem ser tratados explicitamente ou propagados. Silenciar exceções mascara bugs.
+- **Proibido hardcode.** Valores mágicos, strings soltas, configurações embutidas no código — tudo deve ser constante nomeada, `.env`, ou modelo configurável.
+- **Proibido estruturas condicionais complexas.** `if/elif/else` com mais de 3 ramos deve ser refatorado (dict dispatch, polimorfismo, early return).
+- **Signals:** só quando o acoplamento implícito for realmente aceitável. Se uma regra é central para o domínio, não esconder em helper genérico.
 
-### Limites Anti-Code Smell (Robocop)
-- **Linhas por método:** máximo de 25 linhas. Acima disso, extraia submétodos ou mova a regra para serviço/selector/objeto de domínio.
-- **Argumentos por função:** máximo de 4. Acima disso, use objetos de contexto, `dataclasses` ou parâmetros nomeados bem estruturados.
-- **Consultas ORM:** é proibido executar consultas ao banco dentro de laços `for` para resolver listagem, dashboard ou relatório. Use `select_related()` e `prefetch_related()` quando aplicável.
+### Política de destruição e recriação
+- O sistema está em fase inicial e pode ser destruído e recriado quantas vezes for necessário.
+- Código legado em português não deve ser "ajustado" — deve ser reescrito em inglês do zero.
+- Nunca acochambrar (realizar tarefa de forma desleixada, apressada ou improvisada). Se o código legado está mal feito, reimplemente corretamente.
+- Quebrar o sistema durante refatoração é aceitável e até desejável: erros expostos significam lógica que precisa ser corrigida.
+- Compatibilidade retroativa com código legado em português não é necessária. Elimine completamente.
 
 ### Configuração
 - O que muda por ambiente vai para `settings.py`, `.env` ou configuração persistida.
@@ -238,6 +264,12 @@ TDD obrigatório (test-first):
 - Executar `cleanup.py` destrutivo que altere código-fonte (ex.: remover comentários/docstrings) ou finalize processos Python sem escopo explícito.
 - Executar qualquer comando `git` sem pedido explícito do usuário na tarefa atual.
 - Entregar template sem validar responsividade: inputs com largura fixa, grids sem `min()`, formulários flex sem fallback mobile, tabelas sem `overflow-x: auto`, elementos sem `box-sizing: border-box`.
+- **Implementar filtros ou buscas sem antes ler o componente equivalente no Painel de Atendimento (`home/home.html`).** O Painel é a referência visual canônica — usar `<datalist>`, `<select>` puro, ou qualquer padrão divergente sem aprovação explícita do usuário é proibido.
+- **Entregar template com visual "funcional mas diferente" da referência.** Padronização significa resultado visual e interativo indistinguível — não apenas funcionalidade equivalente.
+- **Deixar ajustes visuais para "depois" ou como "melhoria futura".** Visual é parte integral da entrega, nunca secundário.
+- **Assumir que o usuário quer um padrão genérico quando há uma tela de referência no projeto.** Na dúvida, perguntar antes de implementar.
+- **Usar português em identificadores de código.** Nomes de models, fields, variáveis, funções, classes, arquivos, URLs, classes CSS, IDs — tudo em inglês. Português apenas no texto renderizado ao usuário.
+- **Adicionar comentários, docstrings ou anotações.** Código limpo é autoexplicativo. Sem exceções, a não ser decisão de negócio não-óbvia impossível de nomear.
 
 ---
 

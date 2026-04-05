@@ -206,19 +206,19 @@
         min-width: 38px;
     }
 
-    .nome-cell {
+    .name-cell {
         display: flex;
         flex-direction: column;
         gap: 2px;
     }
 
-    .nome-cell__name {
+    .name-cell__name {
         font-weight: 500;
         color: rgba(245, 245, 245, 0.92);
         font-size: 0.88rem;
     }
 
-    .nome-cell__sub {
+    .name-cell__sub {
         font-size: 0.68rem;
         color: rgba(245, 245, 245, 0.5);
     }
@@ -478,7 +478,7 @@
 <section class="page-header">
     <div>
         <h1>Area do Parceiro</h1>
-        <p>Bem-vindo, {{ partner_nome|default:"Parceiro" }}. Acompanhe seus clientes, formularios e processos.</p>
+        <p>Bem-vindo, {{ partner_name|default:"Parceiro" }}. Acompanhe seus clientes, formularios e processos.</p>
     </div>
 </section>
 {% endblock %}
@@ -502,28 +502,28 @@
                 <button type="button" class="btn-buscar" onclick="buscarCliente()">Buscar</button>
                 <div class="dropdown-list" id="filtro-cliente-dropdown">
                     <div class="dropdown-item" data-value="" onclick="selecionarClienteDropdown(this)">Todos os Clientes</div>
-                    {% for cliente in filtro_clientes %}
-                    <div class="dropdown-item" data-value="{{ cliente.pk }}" data-principal-pk="{% if cliente.principal_pk %}{{ cliente.principal_pk }}{% endif %}" onclick="selecionarClienteDropdown(this)">{{ cliente.nome_completo }}</div>
+                    {% for item in client_filter_options %}
+                    <div class="dropdown-item" data-value="{{ client.pk }}" data-principal-pk="{% if client.principal_pk %}{{ client.principal_pk }}{% endif %}" onclick="selecionarClienteDropdown(this)">{{ client.full_name }}</div>
                     {% endfor %}
                 </div>
-                <select id="filtro-cliente" name="cliente" onchange="aplicarFiltrosPainel()" style="display:none;">
+                <select id="filtro-cliente" name="client" onchange="aplicarFiltrosPainel()" style="display:none;">
                     <option value="">Todos os Clientes</option>
-                    {% for cliente in filtro_clientes %}
-                    <option value="{{ cliente.pk }}" data-principal-pk="{% if cliente.principal_pk %}{{ cliente.principal_pk }}{% endif %}" {% if filtros_painel.cliente == cliente.pk|stringformat:"s" %}selected{% endif %}>{{ cliente.nome_completo }}</option>
+                    {% for item in client_filter_options %}
+                    <option value="{{ client.pk }}" data-principal-pk="{% if client.principal_pk %}{{ client.principal_pk }}{% endif %}" {% if panel_filters.client == cliente.pk|stringformat:"s" %}selected{% endif %}>{{ client.full_name }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <select id="filtro-visto" name="visto" onchange="aplicarFiltrosPainel()">
+            <select id="filtro-visto" name="visa_type" onchange="aplicarFiltrosPainel()">
                 <option value="">Todos os Vistos</option>
-                {% for visto in filtro_vistos %}
-                <option value="{{ visto.pk }}" {% if filtros_painel.visto == visto.pk|stringformat:"s" %}selected{% endif %}>{{ visto.nome }}</option>
+                {% for item in visa_filter_options %}
+                <option value="{{ visto.pk }}" {% if panel_filters.visa_type == visto.pk|stringformat:"s" %}selected{% endif %}>{{ visto.name }}</option>
                 {% endfor %}
             </select>
-            <select id="filtro-formulario" name="formulario" onchange="aplicarFiltrosPainel()">
+            <select id="filtro-formulario" name="visa_form_obj" onchange="aplicarFiltrosPainel()">
                 <option value="">Todos Formularios</option>
-                <option value="completo" {% if filtros_painel.formulario == 'completo' %}selected{% endif %}>Completo</option>
-                <option value="parcial" {% if filtros_painel.formulario == 'parcial' %}selected{% endif %}>Parcial</option>
-                <option value="nao-preenchido" {% if filtros_painel.formulario == 'nao-preenchido' %}selected{% endif %}>Nao preenchido</option>
+                <option value="completo" {% if panel_filters.visa_form_obj == 'completo' %}selected{% endif %}>Completo</option>
+                <option value="parcial" {% if panel_filters.visa_form_obj == 'parcial' %}selected{% endif %}>Parcial</option>
+                <option value="nao-preenchido" {% if panel_filters.visa_form_obj == 'nao-preenchido' %}selected{% endif %}>Nao preenchido</option>
             </select>
             <button type="button" class="painel-filtros__reset" onclick="limparFiltrosPainel()">Limpar Filtros</button>
         </div>
@@ -539,27 +539,27 @@
         </div>
         <div class="stats-row">
             <div class="stat-card">
-                <div class="stat-card__value">{{ total_clientes }}</div>
+                <div class="stat-card__value">{{ total_clients }}</div>
                 <div class="stat-card__label">Carteira de clientes</div>
             </div>
             <div class="stat-card">
-                <div class="stat-card__value">{{ total_dependentes }}</div>
+                <div class="stat-card__value">{{ total_dependents }}</div>
                 <div class="stat-card__label">Dependentes</div>
             </div>
             <div class="stat-card">
-                <div class="stat-card__value">{{ total_viagens_proximas }}</div>
+                <div class="stat-card__value">{{ total_upcoming_trips }}</div>
                 <div class="stat-card__label">Viagens proximas (30d)</div>
             </div>
             <div class="stat-card">
-                <div class="stat-card__value">{{ total_processos_andamento }}</div>
+                <div class="stat-card__value">{{ total_ongoing_processes }}</div>
                 <div class="stat-card__label">Processos em andamento</div>
             </div>
             <div class="stat-card">
-                <div class="stat-card__value">{{ total_formularios_pendentes }}</div>
+                <div class="stat-card__value">{{ total_pending_forms }}</div>
                 <div class="stat-card__label">Formularios pendentes</div>
             </div>
             <div class="stat-card">
-                <div class="stat-card__value">{{ total_viagens_concluidas }}</div>
+                <div class="stat-card__value">{{ total_completed_trips }}</div>
                 <div class="stat-card__label">Viagens concluidas</div>
             </div>
         </div>
@@ -569,8 +569,8 @@
         <div class="painel-section__header">
             <div>
                 <h2>Formularios Pendentes</h2>
-                <p>{{ total_formularios_pendentes }} pendente(s)</p>
-                <p class="painel-section__note">Exibindo ate {{ dashboard_limite }} formularios vinculados aos seus clientes.</p>
+                <p>{{ total_pending_forms }} pendente(s)</p>
+                <p class="painel-section__note">Exibindo ate {{ dashboard_limit }} formularios vinculados aos seus clientes.</p>
             </div>
         </div>
         <div class="table-wrapper">
@@ -585,27 +585,27 @@
                 </tr>
             </thead>
             <tbody>
-                {% if formularios_pendentes %}
-                {% for item in formularios_pendentes %}
+                {% if visa_form_objs_pendentes %}
+                {% for item in pending_forms %}
                 <tr>
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ item.cliente_info.cliente.nome_completo }}</span>
+                            <span class="nome-cell__name">{{ item.client_info.client.full_name }}</span>
                         </div>
                     </td>
-                    <td>{{ item.viagem.pais_destino.nome }}</td>
-                    <td>{{ item.cliente_info.tipo_visto.nome }}</td>
+                    <td>{{ item.trip.destination_country.name }}</td>
+                    <td>{{ item.client_info.visa_type.name }}</td>
                     <td class="progress-cell">
                         <div class="progress-bar-cell">
                             <div class="progress-bar-cell__bar">
-                                <div class="progress-bar-cell__fill" style="width: {% widthratio item.cliente_info.total_respostas item.cliente_info.total_perguntas 100 %}%;"></div>
+                                <div class="progress-bar-cell__fill" style="width: {% widthratio item.client_info.total_answers item.client_info.total_questions 100 %}%;"></div>
                             </div>
-                            <span class="progress-bar-cell__label">{% widthratio item.cliente_info.total_respostas item.cliente_info.total_perguntas 100 %}%</span>
+                            <span class="progress-bar-cell__label">{% widthratio item.client_info.total_answers item.client_info.total_questions 100 %}%</span>
                         </div>
-                        <div class="nome-cell__sub">{{ item.cliente_info.total_respostas }}/{{ item.cliente_info.total_perguntas }}</div>
+                        <div class="nome-cell__sub">{{ item.client_info.total_answers }}/{{ item.client_info.total_questions }}</div>
                     </td>
                     <td>
-                        <a href="{% url 'system:parceiro_visualizar_cliente' item.cliente_info.cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                        <a href="{% url 'system:partner_view_client' item.client_info.client.pk %}" class="btn btn-primary btn-small">Visualizar</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -623,8 +623,8 @@
         <div class="painel-section__header">
             <div>
                 <h2>Formularios Preenchidos</h2>
-                <p>{{ total_formularios_preenchidos }} preenchido(s)</p>
-                <p class="painel-section__note">Exibindo ate {{ dashboard_limite }} formularios vinculados aos seus clientes.</p>
+                <p>{{ total_completed_forms }} preenchido(s)</p>
+                <p class="painel-section__note">Exibindo ate {{ dashboard_limit }} formularios vinculados aos seus clientes.</p>
             </div>
         </div>
         <div class="table-wrapper">
@@ -639,21 +639,21 @@
                 </tr>
             </thead>
             <tbody>
-                {% if formularios_preenchidos %}
-                {% for item in formularios_preenchidos %}
+                {% if visa_form_objs_preenchidos %}
+                {% for item in completed_forms %}
                 <tr>
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ item.cliente_info.cliente.nome_completo }}</span>
+                            <span class="nome-cell__name">{{ item.client_info.client.full_name }}</span>
                         </div>
                     </td>
-                    <td>{{ item.viagem.pais_destino.nome }}</td>
-                    <td>{{ item.cliente_info.tipo_visto.nome }}</td>
+                    <td>{{ item.trip.destination_country.name }}</td>
+                    <td>{{ item.client_info.visa_type.name }}</td>
                     <td>
                         <span class="badge badge-completo">&#10003; Completo</span>
                     </td>
                     <td>
-                        <a href="{% url 'system:parceiro_visualizar_cliente' item.cliente_info.cliente.pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                        <a href="{% url 'system:partner_view_client' item.client_info.client.pk %}" class="btn btn-outline btn-small">Visualizar</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -667,13 +667,13 @@
         </div>
     </section>
 
-    {% if processos %}
+    {% if process_objs %}
     <section class="painel-section" id="sec-processos">
         <div class="painel-section__header">
             <div>
                 <h2>Meus Processos</h2>
-                <p>{{ processos|length }} processo(s)</p>
-                <p class="painel-section__note">Exibindo ate {{ dashboard_limite }} processos dos seus clientes.</p>
+                <p>{{ processes|length }} processo(s)</p>
+                <p class="painel-section__note">Exibindo ate {{ dashboard_limit }} processos dos seus clientes.</p>
             </div>
         </div>
         <div class="table-wrapper">
@@ -689,27 +689,27 @@
                 </tr>
             </thead>
             <tbody>
-                {% for processo in processos %}
+                {% for process_obj in processes %}
                 <tr>
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ processo.cliente.nome_completo }}</span>
+                            <span class="nome-cell__name">{{ process_obj.client.full_name }}</span>
                         </div>
                     </td>
-                    <td>{{ processo.viagem.pais_destino.nome }}</td>
-                    <td>{{ processo.viagem.tipo_visto.nome }}</td>
+                    <td>{{ process_obj.trip.destination_country.name }}</td>
+                    <td>{{ process_obj.trip.visa_type.name }}</td>
                     <td class="progress-cell">
                         <div class="progress-bar-cell">
                             <div class="progress-bar-cell__bar">
-                                <div class="progress-bar-cell__fill" style="width: {{ processo.progresso_percentual }}%;"></div>
+                                <div class="progress-bar-cell__fill" style="width: {{ process_obj.progress_percentage }}%;"></div>
                             </div>
-                            <span class="progress-bar-cell__label">{{ processo.progresso_percentual }}%</span>
+                            <span class="progress-bar-cell__label">{{ process_obj.progress_percentage }}%</span>
                         </div>
-                        <div class="nome-cell__sub">{{ processo.etapas_concluidas }}/{{ processo.total_etapas }} etapas</div>
+                        <div class="nome-cell__sub">{{ process_obj.completed_stages }}/{{ process_obj.total_stages }} etapas</div>
                     </td>
-                    <td>{{ processo.assessor_responsavel.nome }}</td>
+                    <td>{{ process_obj.assigned_advisor.name }}</td>
                     <td>
-                        <a href="{% url 'system:parceiro_visualizar_cliente' processo.cliente.pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                        <a href="{% url 'system:partner_view_client' process_obj.client.pk %}" class="btn btn-outline btn-small">Visualizar</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -719,13 +719,13 @@
     </section>
     {% endif %}
 
-    {% if clientes_com_status %}
+    {% if clients_com_status %}
     <section class="painel-section" id="sec-clientes">
         <div class="painel-section__header">
             <div>
                 <h2>Meus Clientes</h2>
-                <p>{{ clientes_com_status|length }} cliente(s)</p>
-                <p class="painel-section__note">Exibindo os {{ dashboard_limite }} clientes mais recentes.</p>
+                <p>{{ clients_with_status|length }} cliente(s)</p>
+                <p class="painel-section__note">Exibindo os {{ dashboard_limit }} clientes mais recentes.</p>
             </div>
         </div>
         <div class="table-wrapper">
@@ -740,41 +740,41 @@
                 </tr>
             </thead>
             <tbody>
-                {% for item in clientes_com_status %}
+                {% for item in clients_with_status %}
                 <tr>
                     <td>
                         <div class="nome-cell">
-                            <span class="nome-cell__name">{{ item.cliente.nome_completo }}</span>
+                            <span class="nome-cell__name">{{ item.client.full_name }}</span>
                         </div>
                     </td>
                     <td>
-                        {% if item.status_financeiro == "Pendente" %}
+                        {% if item.financial_status == "Pendente" %}
                             <span class="badge badge-pendente">Pendente</span>
-                        {% elif item.status_financeiro == "Pago" %}
+                        {% elif item.financial_status == "Pago" %}
                             <span class="badge badge-pago">Pago</span>
-                        {% elif item.status_financeiro == "Cancelado" %}
+                        {% elif item.financial_status == "Cancelado" %}
                             <span class="badge badge-cancelado">Cancelado</span>
                         {% else %}
                             <span class="badge badge-sem">Sem registros</span>
                         {% endif %}
                     </td>
                     <td>
-                        {% if item.status_formulario == "Completo" %}
+                        {% if item.form_status == "Completo" %}
                             <span class="badge badge-completo">&#10003; Completo</span>
-                        {% elif item.status_formulario == "Parcial" %}
+                        {% elif item.form_status == "Parcial" %}
                             <span class="badge badge-parcial">Parcial</span>
-                            {% if item.total_perguntas > 0 %}
-                                <div class="nome-cell__sub">{{ item.total_respostas }}/{{ item.total_perguntas }}</div>
+                            {% if item.total_questions > 0 %}
+                                <div class="nome-cell__sub">{{ item.total_answers }}/{{ item.total_questions }}</div>
                             {% endif %}
-                        {% elif item.status_formulario == "Nao preenchido" %}
+                        {% elif item.form_status == "Nao preenchido" %}
                             <span class="badge badge-nao-preenchido">Nao preenchido</span>
                         {% else %}
                             <span class="badge badge-sem">Sem formulario</span>
                         {% endif %}
                     </td>
-                    <td>{{ item.cliente.telefone }}</td>
+                    <td>{{ item.client.phone }}</td>
                     <td>
-                        <a href="{% url 'system:parceiro_visualizar_cliente' item.cliente.pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                        <a href="{% url 'system:partner_view_client' item.client.pk %}" class="btn btn-outline btn-small">Visualizar</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -784,13 +784,13 @@
     </section>
     {% endif %}
 
-    {% if viagens_dashboard %}
+    {% if dashboard_trips %}
     <section class="painel-section" id="sec-viagens">
         <div class="painel-section__header">
             <div>
                 <h2>Minhas Viagens</h2>
-                <p>{{ viagens_dashboard|length }} viagem(ns)</p>
-                <p class="painel-section__note">Exibindo ate {{ dashboard_limite }} viagens dos seus clientes.</p>
+                <p>{{ dashboard_trips|length }} viagem(ns)</p>
+                <p class="painel-section__note">Exibindo ate {{ dashboard_limit }} viagens dos seus clientes.</p>
             </div>
         </div>
         <div class="table-wrapper">
@@ -806,19 +806,19 @@
                 </tr>
             </thead>
             <tbody>
-                {% for viagem in viagens_dashboard %}
+                {% for item in dashboard_trips %}
                 <tr>
-                    <td>{{ viagem.pais_destino.nome }}</td>
-                    <td>{{ viagem.tipo_visto.nome }}</td>
-                    <td>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</td>
-                    <td>{{ viagem.data_prevista_retorno|date:"d/m/Y" }}</td>
+                    <td>{{ trip.destination_country.name }}</td>
+                    <td>{{ trip.visa_type.name }}</td>
+                    <td>{{ trip.planned_departure_date|date:"d/m/Y" }}</td>
+                    <td>{{ trip.planned_return_date|date:"d/m/Y" }}</td>
                     <td>
-                        {% with clientes=viagem.clientes.all %}
-                            {% if clientes %}
+                        {% with clients=trip.clients.all %}
+                            {% if clients %}
                                 <div class="family-stack">
-                                    {% for cliente in clientes %}
+                                    {% for client in clientes %}
                                         <div class="family-member">
-                                            <span class="family-member__name">{{ cliente.nome_completo }}</span>
+                                            <span class="family-member__name">{{ client.full_name }}</span>
                                         </div>
                                     {% endfor %}
                                 </div>
@@ -828,7 +828,7 @@
                         {% endwith %}
                     </td>
                     <td>
-                        <a href="{% url 'system:parceiro_visualizar_cliente' viagem.clientes.first.pk %}" class="btn btn-outline btn-small">Ver Cliente</a>
+                        <a href="{% url 'system:partner_view_client' trip.clients.first.pk %}" class="btn btn-outline btn-small">Ver Cliente</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -838,7 +838,7 @@
     </section>
     {% endif %}
 
-    {% if not clientes_com_status and not processos and not formularios_pendentes and not formularios_preenchidos and not viagens_dashboard %}
+    {% if not clients_with_status and not processos and not pending_forms and not completed_forms and not dashboard_trips %}
     <section class="painel-section">
         <div class="empty-state">
             Nenhum dado encontrado para os criterios atuais.

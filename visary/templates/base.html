@@ -435,22 +435,22 @@
             padding-left: 18px !important;
         }
 
-        tr.row-dependente td:first-child .nome-cell,
-        .registro-item.row-dependente .nome-cell {
+        tr.row-dependente td:first-child .name-cell,
+        .registro-item.row-dependente .name-cell {
             padding: 6px 10px;
             border-radius: 10px;
             background: linear-gradient(90deg, rgba(255, 193, 7, 0.16), rgba(255, 193, 7, 0.06));
         }
 
-        tr.row-dependente td:first-child .nome-cell__name,
-        .registro-item.row-dependente .nome-cell__name {
+        tr.row-dependente td:first-child .name-cell__name,
+        .registro-item.row-dependente .name-cell__name {
             display: inline-block;
             position: relative;
             padding-left: 14px;
         }
 
-        tr.row-dependente td:first-child .nome-cell__name::before,
-        .registro-item.row-dependente .nome-cell__name::before {
+        tr.row-dependente td:first-child .name-cell__name::before,
+        .registro-item.row-dependente .name-cell__name::before {
             content: "";
             position: absolute;
             left: 0;
@@ -463,15 +463,15 @@
             border-bottom-left-radius: 6px;
         }
 
-        tr.row-dependente td:first-child .nome-cell__sub,
-        .registro-item.row-dependente .nome-cell__sub {
+        tr.row-dependente td:first-child .name-cell__sub,
+        .registro-item.row-dependente .name-cell__sub {
             display: inline-flex;
             align-items: center;
             gap: 6px;
         }
 
-        tr.row-dependente td:first-child .nome-cell__sub::before,
-        .registro-item.row-dependente .nome-cell__sub::before {
+        tr.row-dependente td:first-child .name-cell__sub::before,
+        .registro-item.row-dependente .name-cell__sub::before {
             content: "";
             width: 10px;
             height: 1px;
@@ -631,7 +631,7 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
     {% block body %}
-        {% if request.user.is_authenticated or request.session.cliente_id or request.session.partner_id %}
+        {% if request.user.is_authenticated or request.session.client_id or request.session.partner_id %}
             {% include 'partials/_sidebar.html' %}
 
             <main class="app-main">
@@ -642,9 +642,9 @@
 
                 {% block app_header %}{% endblock %}
 
-                {% if mensagens_filtradas %}
+                {% if filtered_messages %}
                     <ul class="messages">
-                        {% for message in mensagens_filtradas %}
+                        {% for message in filtered_messages %}
                             <li class="{{ message.tags }}">{{ message }}</li>
                         {% endfor %}
                     </ul>

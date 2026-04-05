@@ -2,7 +2,7 @@ import re
 import unicodedata
 from decimal import Decimal, InvalidOperation
 
-from system.models import OpcaoSelecao, RespostaFormulario
+from system.models import FormAnswer, SelectOption
 
 
 def normalize_text(value):
@@ -12,102 +12,97 @@ def normalize_text(value):
     return re.sub(r"[^a-z0-9]+", " ", text).strip()
 
 
-def _prefill_raw_value(pergunta, cliente):
-    q = normalize_text(pergunta.pergunta)
+def _prefill_raw_value(question, client):
+    q = normalize_text(question.question)
     values = [
-        ("cpf", cliente.cpf),
-        ("email", cliente.email),
-        ("telefone secundario", cliente.telefone_secundario),
-        ("telefone", cliente.telefone),
-        ("cep", cliente.cep),
-        ("logradouro", cliente.logradouro),
-        ("endereco", cliente.logradouro),
-        ("numero", cliente.numero),
-        ("complemento", cliente.complemento),
-        ("bairro", cliente.bairro),
-        ("cidade emissao", cliente.cidade_emissao_passaporte),
-        ("cidade", cliente.cidade),
-        ("estado", cliente.uf),
-        ("uf", cliente.uf),
-        ("data de nascimento", cliente.data_nascimento),
-        ("nacionalidade", cliente.nacionalidade),
-        ("sobrenome", cliente.sobrenome),
-        ("nome completo", cliente.nome_completo),
-        ("nome", cliente.nome),
-        ("tipo de passaporte", cliente.tipo_passaporte_outro or cliente.tipo_passaporte),
-        ("numero do passaporte", cliente.numero_passaporte),
-        ("pais emissor", cliente.pais_emissor_passaporte),
-        ("data emissao", cliente.data_emissao_passaporte),
-        ("data validade", cliente.valido_ate_passaporte),
-        ("valido ate", cliente.valido_ate_passaporte),
-        ("autoridade", cliente.autoridade_passaporte),
-        ("orgao emissor", cliente.autoridade_passaporte),
+        ("cpf", client.cpf),
+        ("email", client.email),
+        ("telefone secundario", client.secondary_phone),
+        ("telefone", client.phone),
+        ("cep", client.zip_code),
+        ("logradouro", client.street),
+        ("endereco", client.street),
+        ("numero", client.street_number),
+        ("complemento", client.complement),
+        ("bairro", client.district),
+        ("cidade emissao", client.passport_issuing_city),
+        ("cidade", client.city),
+        ("estado", client.state),
+        ("uf", client.state),
+        ("data de nascimento", client.birth_date),
+        ("nacionalidade", client.nationality),
+        ("sobrenome", client.last_name),
+        ("nome completo", client.full_name),
+        ("nome", client.first_name),
+        ("tipo de passaporte", client.passport_type_other or client.passport_type),
+        ("numero do passaporte", client.passport_number),
+        ("pais emissor", client.passport_issuing_country),
+        ("data emissao", client.passport_issue_date),
+        ("data validade", client.passport_expiry_date),
+        ("valido ate", client.passport_expiry_date),
+        ("autoridade", client.passport_authority),
+        ("orgao emissor", client.passport_authority),
     ]
     for key, value in values:
         if key in q and value not in (None, ""):
             return value
     if "passaporte roubado" in q:
-        return "sim" if cliente.passaporte_roubado else "nao"
+        return "sim" if client.passport_stolen else "nao"
     return None
 
 
-def _assign_prefill_value(resposta, pergunta, raw_value):
-    resposta.resposta_texto = ""
-    resposta.resposta_data = None
-    resposta.resposta_numero = None
-    resposta.resposta_booleano = None
-    resposta.resposta_selecao = None
+def _assign_prefill_value(answer, question, raw_value):
+    answer.answer_text = ""
+    answer.answer_date = None
+    answer.answer_number = None
+    answer.answer_boolean = None
+    answer.answer_select = None
 
-    if pergunta.tipo_campo == "texto":
-        resposta.resposta_texto = str(raw_value)
+    if question.field_type == "text":
+        answer.answer_text = str(raw_value)
         return True
-
-    if pergunta.tipo_campo == "data":
+    if question.field_type == "date":
         if hasattr(raw_value, "year"):
-            resposta.resposta_data = raw_value
+            answer.answer_date = raw_value
             return True
         return False
-
-    if pergunta.tipo_campo == "numero":
+    if question.field_type == "number":
         try:
-            resposta.resposta_numero = Decimal(str(raw_value))
+            answer.answer_number = Decimal(str(raw_value))
             return True
         except (InvalidOperation, ValueError):
             return False
-
-    if pergunta.tipo_campo == "booleano":
+    if question.field_type == "boolean":
         token = normalize_text(raw_value)
         if token in {"sim", "true", "1", "yes"}:
-            resposta.resposta_booleano = True
+            answer.answer_boolean = True
             return True
         if token in {"nao", "false", "0", "no"}:
-            resposta.resposta_booleano = False
+            answer.answer_boolean = False
             return True
         return False
-
-    if pergunta.tipo_campo == "selecao":
+    if question.field_type == "select":
         target = normalize_text(raw_value)
-        for opcao in OpcaoSelecao.objects.filter(pergunta=pergunta, ativo=True).order_by("ordem"):
-            if normalize_text(opcao.texto) == target:
-                resposta.resposta_selecao = opcao
+        for option in SelectOption.objects.filter(question=question, is_active=True).order_by("order"):
+            if normalize_text(option.text) == target:
+                answer.answer_select = option
                 return True
         return False
-
     return False
 
 
-def prefill_form_answers(viagem, cliente, perguntas, respostas_existentes):
+def prefill_form_answers(trip, client, questions, existing_answers):
     updated = False
-    for pergunta in perguntas:
-        if pergunta.pk in respostas_existentes:
+    for question in questions:
+        if question.pk in existing_answers:
             continue
-        raw_value = _prefill_raw_value(pergunta, cliente)
+        raw_value = _prefill_raw_value(question, client)
         if raw_value in (None, ""):
             continue
-        resposta = RespostaFormulario(viagem=viagem, cliente=cliente, pergunta=pergunta)
-        if not _assign_prefill_value(resposta, pergunta, raw_value):
+        answer = FormAnswer(trip=trip, client=client, question=question)
+        if not _assign_prefill_value(answer, question, raw_value):
             continue
-        resposta.save()
-        respostas_existentes[pergunta.pk] = resposta
+        answer.save()
+        existing_answers[question.pk] = answer
         updated = True
-    return updated, respostas_existentes
+    return updated, existing_answers

@@ -1,405 +1,291 @@
-   
-                                           
-   
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
-from system.forms import ModuloForm, PerfilForm, UsuarioConsultoriaForm
-from system.models import Modulo, Perfil, UsuarioConsultoria
-from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos
+from system.forms import ConsultancyUserForm, ModuleForm, ProfileForm
+from system.models import ConsultancyUser, Module, Profile
+from system.views.client_views import get_user_consultant, user_can_manage_all
 
 
 @login_required
-def home_administracao(request):
-                                                  
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def home_admin(request):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-                  
-    total_usuarios = UsuarioConsultoria.objects.count()
-    total_perfis = Perfil.objects.count()
-    total_modulos = Modulo.objects.count()
-    usuarios_ativos = UsuarioConsultoria.objects.filter(ativo=True).count()
-
-    contexto = {
-        "total_usuarios": total_usuarios,
-        "total_perfis": total_perfis,
-        "total_modulos": total_modulos,
-        "usuarios_ativos": usuarios_ativos,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+    context = {
+        "total_users": ConsultancyUser.objects.count(),
+        "total_profiles": Profile.objects.count(),
+        "total_modules": Module.objects.count(),
+        "active_users": ConsultancyUser.objects.filter(is_active=True).count(),
+        "user_profile": consultant.profile.name if consultant else None,
     }
+    return render(request, "admin/home_admin.html", context)
 
-    return render(request, "admin/home_administracao.html", contexto)
-
-
-                                          
 
 @login_required
-def listar_usuarios(request):
-                                  
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def list_users(request):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    usuarios = UsuarioConsultoria.objects.select_related("perfil").order_by("nome")
-
-             
-    nome_filter = request.GET.get("nome", "")
+    users = ConsultancyUser.objects.select_related("profile").order_by("name")
+    name_filter = request.GET.get("name", "")
     email_filter = request.GET.get("email", "")
-    perfil_filter = request.GET.get("perfil", "")
-    ativo_filter = request.GET.get("ativo", "")
+    profile_filter = request.GET.get("profile_obj", "")
+    active_filter = request.GET.get("active", "")
 
-    if nome_filter:
-        usuarios = usuarios.filter(nome__icontains=nome_filter)
-
+    if name_filter:
+        users = users.filter(name__icontains=name_filter)
     if email_filter:
-        usuarios = usuarios.filter(email__icontains=email_filter)
+        users = users.filter(email__icontains=email_filter)
+    if profile_filter:
+        users = users.filter(profile_id=profile_filter)
+    if active_filter != "":
+        users = users.filter(is_active=active_filter == "true")
 
-    if perfil_filter:
-        usuarios = usuarios.filter(perfil_id=perfil_filter)
-
-    if ativo_filter != "":
-        usuarios = usuarios.filter(ativo=ativo_filter == "true")
-
-    perfis = Perfil.objects.filter(ativo=True).order_by("nome")
-
-    contexto = {
-        "usuarios": usuarios,
-        "perfis": perfis,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "filtros": {
-            "nome": nome_filter,
-            "email": email_filter,
-            "perfil": perfil_filter,
-            "ativo": ativo_filter,
-        },
+    context = {
+        "users_list": users,
+        "profiles": Profile.objects.filter(is_active=True).order_by("name"),
+        "user_profile": consultant.profile.name if consultant else None,
+        "filters_dict": {"name": name_filter, "email": email_filter, "profile_obj": profile_filter, "active": active_filter},
     }
-
-    return render(request, "admin/usuarios/listar_usuarios.html", contexto)
+    return render(request, "admin/usuarios/list_users.html", context)
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def criar_usuario(request):
-                               
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def create_user(request):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
     if request.method == "POST":
-        form = UsuarioConsultoriaForm(data=request.POST)
+        form = ConsultancyUserForm(data=request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, "Usuário criado com sucesso.")
-            return redirect("system:listar_usuarios")
+            return redirect("system:list_users")
         messages.error(request, "Não foi possível criar o usuário. Verifique os campos.")
     else:
-        form = UsuarioConsultoriaForm()
+        form = ConsultancyUserForm()
 
-    contexto = {
-        "form": form,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-    }
-
-    return render(request, "admin/usuarios/criar_usuario.html", contexto)
+    context = {"form": form, "user_profile": consultant.profile.name if consultant else None}
+    return render(request, "admin/usuarios/create_user.html", context)
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def editar_usuario(request, pk: int):
-                                     
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def edit_user(request, pk):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    usuario = get_object_or_404(UsuarioConsultoria.objects.select_related("perfil"), pk=pk)
+    user_obj = get_object_or_404(ConsultancyUser.objects.select_related("profile"), pk=pk)
 
     if request.method == "POST":
-        form = UsuarioConsultoriaForm(data=request.POST, instance=usuario)
+        form = ConsultancyUserForm(data=request.POST, instance=user_obj)
         if form.is_valid():
             form.save()
             messages.success(request, "Usuário atualizado com sucesso.")
-            return redirect("system:listar_usuarios")
+            return redirect("system:list_users")
         messages.error(request, "Não foi possível atualizar o usuário. Verifique os campos.")
     else:
-        form = UsuarioConsultoriaForm(instance=usuario)
+        form = ConsultancyUserForm(instance=user_obj)
 
-    contexto = {
-        "form": form,
-        "usuario": usuario,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-    }
-
-    return render(request, "admin/usuarios/editar_usuario.html", contexto)
+    context = {"form": form, "user_obj": user_obj, "user_profile": consultant.profile.name if consultant else None}
+    return render(request, "admin/usuarios/edit_user.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_usuario(request, pk: int):
-                            
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def delete_user(request, pk):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    usuario = get_object_or_404(UsuarioConsultoria, pk=pk)
-    nome_usuario = usuario.nome
-    usuario.delete()
+    user_obj = get_object_or_404(ConsultancyUser, pk=pk)
+    user_name = user_obj.name
+    user_obj.delete()
+    messages.success(request, f"Usuário {user_name} excluído com sucesso.")
+    return redirect("system:list_users")
 
-    messages.success(request, f"Usuário {nome_usuario} excluído com sucesso.")
-    return redirect("system:listar_usuarios")
-
-
-                                                   
 
 @login_required
-def listar_perfis(request):
-                                           
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def list_profiles(request):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    perfis = Perfil.objects.prefetch_related("modulos", "usuarios").order_by("nome")
+    profiles = Profile.objects.prefetch_related("modules", "users").order_by("name")
+    name_filter = request.GET.get("name", "")
+    active_filter = request.GET.get("active", "")
 
-             
-    nome_filter = request.GET.get("nome", "")
-    ativo_filter = request.GET.get("ativo", "")
+    if name_filter:
+        profiles = profiles.filter(name__icontains=name_filter)
+    if active_filter != "":
+        profiles = profiles.filter(is_active=active_filter == "true")
 
-    if nome_filter:
-        perfis = perfis.filter(nome__icontains=nome_filter)
-
-    if ativo_filter != "":
-        perfis = perfis.filter(ativo=ativo_filter == "true")
-
-    contexto = {
-        "perfis": perfis,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "filtros": {
-            "nome": nome_filter,
-            "ativo": ativo_filter,
-        },
+    context = {
+        "profiles": profiles,
+        "user_profile": consultant.profile.name if consultant else None,
+        "filters_dict": {"name": name_filter, "active": active_filter},
     }
-
-    return render(request, "admin/perfis/listar_perfis.html", contexto)
+    return render(request, "admin/perfis/list_profiles.html", context)
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def criar_perfil(request):
-                                        
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def create_profile(request):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
     if request.method == "POST":
-        form = PerfilForm(data=request.POST)
+        form = ProfileForm(data=request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, "Perfil criado com sucesso.")
-            return redirect("system:listar_perfis")
+            return redirect("system:list_profiles")
         messages.error(request, "Não foi possível criar o perfil. Verifique os campos.")
     else:
-        form = PerfilForm()
+        form = ProfileForm()
 
-    contexto = {
-        "form": form,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-    }
-
-    return render(request, "admin/perfis/criar_perfil.html", contexto)
+    context = {"form": form, "user_profile": consultant.profile.name if consultant else None}
+    return render(request, "admin/perfis/create_profile.html", context)
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def editar_perfil(request, pk: int):
-                                              
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def edit_profile(request, pk):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    perfil = get_object_or_404(Perfil.objects.prefetch_related("modulos", "usuarios"), pk=pk)
+    profile = get_object_or_404(Profile.objects.prefetch_related("modules", "users"), pk=pk)
 
     if request.method == "POST":
-        form = PerfilForm(data=request.POST, instance=perfil)
+        form = ProfileForm(data=request.POST, instance=profile)
         if form.is_valid():
             form.save()
             messages.success(request, "Perfil atualizado com sucesso.")
-            return redirect("system:listar_perfis")
+            return redirect("system:list_profiles")
         messages.error(request, "Não foi possível atualizar o perfil. Verifique os campos.")
     else:
-        form = PerfilForm(instance=perfil)
+        form = ProfileForm(instance=profile)
 
-    contexto = {
-        "form": form,
-        "perfil": perfil,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-    }
-
-    return render(request, "admin/perfis/editar_perfil.html", contexto)
+    context = {"form": form, "profile_obj": profile, "user_profile": consultant.profile.name if consultant else None}
+    return render(request, "admin/perfis/edit_profile.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_perfil(request, pk: int):
-                                     
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def delete_profile(request, pk):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    perfil = get_object_or_404(Perfil, pk=pk)
-    nome_perfil = perfil.nome
+    profile = get_object_or_404(Profile, pk=pk)
+    profile_name = profile.name
 
-                                                 
-    if perfil.usuarios.exists():
+    if profile.users.exists():
         messages.error(
             request,
-            f"Não é possível excluir o perfil {nome_perfil} pois existem usuários vinculados a ele.",
+            f"Não é possível excluir o perfil {profile_name} pois existem usuários vinculados a ele.",
         )
-        return redirect("system:listar_perfis")
+        return redirect("system:list_profiles")
 
-    perfil.delete()
-    messages.success(request, f"Perfil {nome_perfil} excluído com sucesso.")
-    return redirect("system:listar_perfis")
+    profile.delete()
+    messages.success(request, f"Perfil {profile_name} excluído com sucesso.")
+    return redirect("system:list_profiles")
 
-
-                                         
 
 @login_required
-def listar_modulos(request):
-                                 
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def list_modules(request):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    modulos = Modulo.objects.prefetch_related("perfis").order_by("ordem", "nome")
+    modules = Module.objects.prefetch_related("profiles").order_by("order", "name")
+    name_filter = request.GET.get("name", "")
+    active_filter = request.GET.get("active", "")
 
-             
-    nome_filter = request.GET.get("nome", "")
-    ativo_filter = request.GET.get("ativo", "")
+    if name_filter:
+        modules = modules.filter(name__icontains=name_filter)
+    if active_filter != "":
+        modules = modules.filter(is_active=active_filter == "true")
 
-    if nome_filter:
-        modulos = modulos.filter(nome__icontains=nome_filter)
-
-    if ativo_filter != "":
-        modulos = modulos.filter(ativo=ativo_filter == "true")
-
-    contexto = {
-        "modulos": modulos,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "filtros": {
-            "nome": nome_filter,
-            "ativo": ativo_filter,
-        },
+    context = {
+        "modules": modules,
+        "user_profile": consultant.profile.name if consultant else None,
+        "filters_dict": {"name": name_filter, "active": active_filter},
     }
-
-    return render(request, "admin/modulos/listar_modulos.html", contexto)
+    return render(request, "admin/modulos/list_modules.html", context)
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def criar_modulo(request):
-                              
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def create_module(request):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
     if request.method == "POST":
-        form = ModuloForm(data=request.POST)
+        form = ModuleForm(data=request.POST)
         if form.is_valid():
             form.save()
             messages.success(request, "Módulo criado com sucesso.")
-            return redirect("system:listar_modulos")
+            return redirect("system:list_modules")
         messages.error(request, "Não foi possível criar o módulo. Verifique os campos.")
     else:
-        form = ModuloForm()
+        form = ModuleForm()
 
-    contexto = {
-        "form": form,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-    }
-
-    return render(request, "admin/modulos/criar_modulo.html", contexto)
+    context = {"form": form, "user_profile": consultant.profile.name if consultant else None}
+    return render(request, "admin/modulos/create_module.html", context)
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def editar_modulo(request, pk: int):
-                                    
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def edit_module(request, pk):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    modulo = get_object_or_404(Modulo.objects.prefetch_related("perfis"), pk=pk)
+    module = get_object_or_404(Module.objects.prefetch_related("profiles"), pk=pk)
 
     if request.method == "POST":
-        form = ModuloForm(data=request.POST, instance=modulo)
+        form = ModuleForm(data=request.POST, instance=module)
         if form.is_valid():
             form.save()
             messages.success(request, "Módulo atualizado com sucesso.")
-            return redirect("system:listar_modulos")
+            return redirect("system:list_modules")
         messages.error(request, "Não foi possível atualizar o módulo. Verifique os campos.")
     else:
-        form = ModuloForm(instance=modulo)
+        form = ModuleForm(instance=module)
 
-    contexto = {
-        "form": form,
-        "modulo": modulo,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-    }
-
-    return render(request, "admin/modulos/editar_modulo.html", contexto)
+    context = {"form": form, "module_obj": module, "user_profile": consultant.profile.name if consultant else None}
+    return render(request, "admin/modulos/edit_module.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_modulo(request, pk: int):
-                           
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-
-    if not pode_gerenciar_todos:
+def delete_module(request, pk):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    modulo = get_object_or_404(Modulo, pk=pk)
-    nome_modulo = modulo.nome
+    module = get_object_or_404(Module, pk=pk)
+    module_name = module.name
 
-                                               
-    if modulo.perfis.exists():
+    if module.profiles.exists():
         messages.error(
             request,
-            f"Não é possível excluir o módulo {nome_modulo} pois existem perfis vinculados a ele.",
+            f"Não é possível excluir o módulo {module_name} pois existem perfis vinculados a ele.",
         )
-        return redirect("system:listar_modulos")
+        return redirect("system:list_modules")
 
-    modulo.delete()
-    messages.success(request, f"Módulo {nome_modulo} excluído com sucesso.")
-    return redirect("system:listar_modulos")
-
+    module.delete()
+    messages.success(request, f"Módulo {module_name} excluído com sucesso.")
+    return redirect("system:list_modules")

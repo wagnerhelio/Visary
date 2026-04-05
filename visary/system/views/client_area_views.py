@@ -1,124 +1,113 @@
-   
-                                                   
-   
-
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from system.models import (
-    ClienteConsultoria,
-    ClienteViagem,
-    RespostaFormulario,
-    Viagem,
+    ConsultancyClient,
+    FormAnswer,
+    Trip,
+    TripClient,
 )
-from system.views.travel_views import _obter_formulario_por_tipo_visto, _obter_tipo_visto_cliente
+from system.views.travel_views import _get_form_by_visa_type, _get_client_visa_type
 from system.services.form_stages import build_stage_items, filter_questions_by_stage, resolve_stage_token
 from system.services.form_prefill import prefill_form_answers
-from system.services.form_responses import build_pergunta_estado, pergunta_e_visivel, processar_respostas_formulario
+from system.services.form_responses import build_question_state, is_question_visible, process_form_answers
 
 
-def _get_cliente_from_session(request):
-                                                    
-    cliente_id = request.session.get("cliente_id")
-    if not cliente_id:
+def _get_client_from_session(request):
+    client_id = request.session.get("client_id")
+    if not client_id:
         return None
     try:
-        return ClienteConsultoria.objects.get(pk=cliente_id)
-    except ClienteConsultoria.DoesNotExist:
+        return ConsultancyClient.objects.get(pk=client_id)
+    except ConsultancyClient.DoesNotExist:
         return None
 
 
-def _obter_formulario_cliente(viagem, cliente):
-                                                                         
-                                              
-    tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
-    
-                                                     
-    return _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=False)
+def _get_client_form(trip, client):
+    client_visa_type = _get_client_visa_type(trip, client)
+    return _get_form_by_visa_type(client_visa_type, only_active=False)
 
 
-def cliente_dashboard(request):
-                                                      
-    cliente = _get_cliente_from_session(request)
-    if not cliente:
+def client_dashboard(request):
+    client = _get_client_from_session(request)
+    if not client:
         messages.error(request, "Você precisa fazer login para acessar esta página.")
         return redirect("login")
 
-    # Busca todas as viagens do cliente (qualquer papel) + viagens onde é principal (inclui dependentes)
-    viagens_ids_proprias = ClienteViagem.objects.filter(
-        cliente=cliente
-    ).values_list("viagem_id", flat=True)
+    own_trip_ids = TripClient.objects.filter(
+        client=client
+    ).values_list("trip_id", flat=True)
 
-    viagens_ids_dependentes = ClienteViagem.objects.filter(
-        cliente_principal_viagem=cliente
-    ).values_list("viagem_id", flat=True)
+    dependent_trip_ids = TripClient.objects.filter(
+        trip_primary_client=client
+    ).values_list("trip_id", flat=True)
 
-    todos_viagens_ids = set(viagens_ids_proprias) | set(viagens_ids_dependentes)
+    all_trip_ids = set(own_trip_ids) | set(dependent_trip_ids)
 
-    viagens = (
-        Viagem.objects.filter(pk__in=todos_viagens_ids)
-        .select_related("pais_destino", "tipo_visto", "assessor_responsavel")
-        .prefetch_related("tipo_visto__formulario", "clientes")
+    trips = (
+        Trip.objects.filter(pk__in=all_trip_ids)
+        .select_related("destination_country", "visa_type", "assigned_advisor")
+        .prefetch_related("visa_type__form", "clients")
         .distinct()
-        .order_by("-data_prevista_viagem")
+        .order_by("-planned_departure_date")
     )
 
-    contexto = {
-        "cliente": cliente,
-        "viagens": viagens,
+    context = {
+        "client": client,
+        "trips": trips,
     }
 
-    return render(request, "client_area/dashboard.html", contexto)
+    return render(request, "client_area/dashboard.html", context)
 
 
-def cliente_visualizar_formulario(request, viagem_id: int):
-    cliente = _get_cliente_from_session(request)
-    if not cliente:
+def client_view_form(request, trip_id: int):
+    client = _get_client_from_session(request)
+    if not client:
         messages.error(request, "Você precisa fazer login para acessar esta página.")
         return redirect("login")
 
-    viagem = get_object_or_404(
-        Viagem.objects.select_related("tipo_visto__formulario"), pk=viagem_id
+    trip = get_object_or_404(
+        Trip.objects.select_related("visa_type__form"), pk=trip_id
     )
 
-    cliente_na_viagem = ClienteViagem.objects.filter(viagem=viagem, cliente=cliente).exists()
-    dependente_na_viagem = ClienteViagem.objects.filter(
-        viagem=viagem, cliente_principal_viagem=cliente
-    ).exists() if not cliente_na_viagem else False
+    client_in_trip = TripClient.objects.filter(trip=trip, client=client).exists()
+    dependent_in_trip = TripClient.objects.filter(
+        trip=trip, trip_primary_client=client
+    ).exists() if not client_in_trip else False
 
-    if not (cliente_na_viagem or dependente_na_viagem):
+    if not (client_in_trip or dependent_in_trip):
         raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
 
-    formulario = _obter_formulario_cliente(viagem, cliente)
+    visa_form = _get_client_form(trip, client)
 
-    if not formulario or not formulario.ativo:
+    if not visa_form or not visa_form.is_active:
         messages.warning(
             request,
             "Este tipo de visto ainda não possui um formulário cadastrado ou o formulário está inativo.",
         )
-        return redirect("system:cliente_dashboard")
+        return redirect("system:client_dashboard")
 
-    perguntas = (
-        formulario.perguntas.filter(ativo=True)
-        .prefetch_related("opcoes")
-        .order_by("ordem", "pergunta")
+    questions = (
+        visa_form.questions.filter(is_active=True)
+        .prefetch_related("options")
+        .order_by("order", "question")
     )
 
-    respostas_list = RespostaFormulario.objects.filter(
-        viagem=viagem, cliente=cliente
-    ).select_related("resposta_selecao")
-    
-    respostas_existentes = {r.pergunta_id: r for r in respostas_list}
+    answers_list = FormAnswer.objects.filter(
+        trip=trip, client=client
+    ).select_related("answer_select")
 
-    prefill_form_answers(viagem, cliente, perguntas, respostas_existentes)
+    existing_answers = {r.question_id: r for r in answers_list}
 
-    stage_items = build_stage_items(formulario)
-    stage_token = request.GET.get("etapa")
+    prefill_form_answers(trip, client, questions, existing_answers)
+
+    stage_items = build_stage_items(visa_form)
+    stage_token = request.GET.get("stage")
     current_stage = resolve_stage_token(stage_items, stage_token)
-    stage_perguntas = filter_questions_by_stage(perguntas, current_stage)
-    stage_perguntas_list = list(stage_perguntas)
+    stage_questions = filter_questions_by_stage(questions, current_stage)
+    stage_questions_list = list(stage_questions)
 
     stage_index = 0
     if current_stage and stage_items:
@@ -130,16 +119,16 @@ def cliente_visualizar_formulario(request, viagem_id: int):
     next_stage = stage_items[stage_index + 1] if stage_index + 1 < len(stage_items) else None
     prev_stage = stage_items[stage_index - 1] if stage_index > 0 else None
 
-    respostas_ids = list(respostas_existentes.keys())
+    answer_ids = list(existing_answers.keys())
 
-    contexto = {
-        "cliente": cliente,
-        "viagem": viagem,
-        "formulario": formulario,
-        "perguntas": stage_perguntas_list,
-        "all_perguntas": perguntas,
-        "respostas_existentes": respostas_existentes,
-        "respostas_ids": respostas_ids,
+    context = {
+        "client": client,
+        "trip": trip,
+        "visa_form_obj": visa_form,
+        "questions": stage_questions_list,
+        "all_questions": questions,
+        "existing_answers": existing_answers,
+        "answer_ids": answer_ids,
         "stage_items": stage_items,
         "current_stage": current_stage,
         "next_stage": next_stage,
@@ -147,55 +136,57 @@ def cliente_visualizar_formulario(request, viagem_id: int):
         "stage_index": stage_index,
     }
 
-    return render(request, "client_area/visualizar_formulario.html", contexto)
+    return render(request, "client_area/view_form.html", context)
 
 
-def cliente_salvar_resposta(request, viagem_id: int):
-    cliente = _get_cliente_from_session(request)
-    if not cliente:
+def client_save_answer(request, trip_id: int):
+    client = _get_client_from_session(request)
+    if not client:
         messages.error(request, "Você precisa fazer login para acessar esta página.")
         return redirect("login")
 
-    viagem = get_object_or_404(
-        Viagem.objects.select_related("tipo_visto__formulario"), pk=viagem_id
+    trip = get_object_or_404(
+        Trip.objects.select_related("visa_type__form"), pk=trip_id
     )
 
-    if cliente not in viagem.clientes.all():
+    if client not in trip.clients.all():
         raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
 
     if request.method != "POST":
-        return redirect("system:cliente_visualizar_formulario", viagem_id=viagem_id)
+        return redirect("system:client_view_form", trip_id=trip_id)
 
-    formulario = _obter_formulario_cliente(viagem, cliente)
-    if not formulario:
+    visa_form = _get_client_form(trip, client)
+    if not visa_form:
         messages.error(request, "Formulário não encontrado.")
-        return redirect("system:cliente_dashboard")
+        return redirect("system:client_dashboard")
 
-    perguntas = (
-        formulario.perguntas.filter(ativo=True)
-        .prefetch_related("opcoes")
+    questions = (
+        visa_form.questions.filter(is_active=True)
+        .prefetch_related("options")
     )
 
-    respostas_existentes = {
-        r.pergunta_id: r for r in RespostaFormulario.objects.filter(viagem=viagem, cliente=cliente).select_related("resposta_selecao")
+    existing_answers = {
+        r.question_id: r for r in FormAnswer.objects.filter(
+            trip=trip, client=client
+        ).select_related("answer_select")
     }
 
-    stage_items = build_stage_items(formulario)
-    stage_token = request.POST.get("etapa_token")
+    stage_items = build_stage_items(visa_form)
+    stage_token = request.POST.get("stage_token")
     current_stage = resolve_stage_token(stage_items, stage_token)
-    perguntas_etapa = list(filter_questions_by_stage(perguntas, current_stage))
+    stage_questions = list(filter_questions_by_stage(questions, current_stage))
 
-    respostas_salvas, erros = processar_respostas_formulario(
-        request.POST, viagem, cliente, perguntas_etapa, respostas_existentes
+    saved_count, errors = process_form_answers(
+        request.POST, trip, client, stage_questions, existing_answers
     )
 
-    if erros:
-        for erro in erros:
-            messages.error(request, erro)
+    if errors:
+        for error in errors:
+            messages.error(request, error)
     else:
         messages.success(
             request,
-            f"Etapa '{current_stage['nome'] if current_stage else 'Atual'}' salva com sucesso! {respostas_salvas} resposta(s) registrada(s).",
+            f"Etapa '{current_stage['name'] if current_stage else 'Atual'}' salva com sucesso! {saved_count} resposta(s) registrada(s).",
         )
 
     next_action = request.POST.get("next_action")
@@ -206,11 +197,10 @@ def cliente_salvar_resposta(request, viagem_id: int):
                 next_stage = stage_items[i + 1]
                 break
         if next_stage:
-            return redirect(f"{reverse('system:cliente_visualizar_formulario', args=[viagem_id])}?etapa={next_stage['token'].replace(':', '%3A')}")
-        return redirect("system:cliente_visualizar_formulario", viagem_id=viagem_id)
+            return redirect(f"{reverse('system:client_view_form', args=[trip_id])}?stage={next_stage['token'].replace(':', '%3A')}")
+        return redirect("system:client_view_form", trip_id=trip_id)
     elif next_action == "finish":
-        return redirect("system:cliente_visualizar_formulario", viagem_id=viagem_id)
+        return redirect("system:client_view_form", trip_id=trip_id)
     else:
-        stage_param = f"?etapa={current_stage['token'].replace(':', '%3A')}" if current_stage else ""
-        return redirect(f"{reverse('system:cliente_visualizar_formulario', args=[viagem_id])}{stage_param}")
-
+        stage_param = f"?stage={current_stage['token'].replace(':', '%3A')}" if current_stage else ""
+        return redirect(f"{reverse('system:client_view_form', args=[trip_id])}{stage_param}")

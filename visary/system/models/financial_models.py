@@ -1,152 +1,134 @@
-   
-                                
-   
+import logging
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.utils import timezone
 
-from .permission_models import UsuarioConsultoria
-from .travel_models import Viagem
+from .permission_models import ConsultancyUser
+from .travel_models import Trip
 
-
-class StatusFinanceiro(models.TextChoices):
-                                                       
-
-    PENDENTE = "pendente", "Pendente"
-    PAGO = "pago", "Pago"
-    CANCELADO = "cancelado", "Cancelado"
+logger = logging.getLogger("visary.financial")
 
 
-class Financeiro(models.Model):
-                                                     
+class FinancialStatus(models.TextChoices):
+    PENDING = "pending", "Pendente"
+    PAID = "paid", "Pago"
+    CANCELLED = "cancelled", "Cancelado"
 
-    viagem = models.ForeignKey(
-        Viagem,
+
+class FinancialRecord(models.Model):
+    trip = models.ForeignKey(
+        Trip,
         on_delete=models.CASCADE,
-        related_name="registros_financeiros",
+        related_name="financial_records",
         verbose_name="Viagem",
     )
-    cliente = models.ForeignKey(
-        "system.ClienteConsultoria",
+    client = models.ForeignKey(
+        "system.ConsultancyClient",
         on_delete=models.PROTECT,
-        related_name="registros_financeiros",
+        related_name="financial_records",
         verbose_name="Cliente",
         null=True,
         blank=True,
     )
-    assessor_responsavel = models.ForeignKey(
-        UsuarioConsultoria,
+    assigned_advisor = models.ForeignKey(
+        ConsultancyUser,
         on_delete=models.PROTECT,
-        related_name="registros_financeiros",
+        related_name="financial_records",
         verbose_name="Assessor responsável",
     )
-    valor = models.DecimalField(
+    amount = models.DecimalField(
         "Valor",
         max_digits=10,
         decimal_places=2,
         default=0.00,
     )
-    data_pagamento = models.DateField(
+    payment_date = models.DateField(
         "Data do pagamento",
         null=True,
         blank=True,
-        help_text="Data em que o pagamento foi recebido",
     )
     status = models.CharField(
         "Status",
         max_length=20,
-        choices=StatusFinanceiro.choices,
-        default=StatusFinanceiro.PENDENTE,
+        choices=FinancialStatus.choices,
+        default=FinancialStatus.PENDING,
     )
-    observacoes = models.TextField("Observações", blank=True)
-    criado_por = models.ForeignKey(
+    notes = models.TextField("Observações", blank=True)
+    created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name="registros_financeiros_criados",
+        related_name="created_financial_records",
         verbose_name="Criado por",
     )
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ("-criado_em",)
+        ordering = ("-created_at",)
         verbose_name = "Registro Financeiro"
         verbose_name_plural = "Registros Financeiros"
-        unique_together = [("viagem", "cliente")]
+        unique_together = [("trip", "client")]
 
-    def __str__(self) -> str:
-        cliente_nome = self.cliente.nome_completo if self.cliente else "N/A"
-        return f"{cliente_nome} - {self.valor} - {self.get_status_display()}"
-
-
-import logging
-
-from django.db import transaction
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.utils import timezone
-
-logger = logging.getLogger("visary.financial")
+    def __str__(self):
+        client_name = self.client.full_name if self.client else "N/A"
+        return f"{client_name} - {self.amount} - {self.get_status_display()}"
 
 
-@receiver(post_save, sender=Financeiro)
-def propagate_payment_to_dependents(sender, instance: Financeiro, created: bool, **kwargs):
-    """Propaga status PAGO do cliente principal para dependentes na mesma viagem (viagem-scoped)."""
-    from .travel_models import ClienteViagem
+@receiver(post_save, sender=FinancialRecord)
+def propagate_payment_to_dependents(sender, instance, created, **kwargs):
+    from .travel_models import TripClient
 
-    if created:
-        return
-    if instance.status != StatusFinanceiro.PAGO:
+    if created or instance.status != FinancialStatus.PAID:
         return
 
-    principal = instance.cliente
-    if principal is None:
-        return
-
-    viagem = instance.viagem
-    if viagem is None:
+    principal = instance.client
+    if principal is None or instance.trip is None:
         return
 
     try:
-        cv_principal = ClienteViagem.objects.get(viagem=viagem, cliente=principal)
-    except ClienteViagem.DoesNotExist:
-        return
-    if cv_principal.papel != "principal":
+        tc_principal = TripClient.objects.get(trip=instance.trip, client=principal)
+    except TripClient.DoesNotExist:
         return
 
-    deps_cv = ClienteViagem.objects.filter(
-        viagem=viagem,
-        cliente_principal_viagem=principal,
-        papel="dependente",
-    ).select_related("cliente")
+    if tc_principal.role != "primary":
+        return
 
-    deps_list = list(deps_cv)
+    dependent_tcs = TripClient.objects.filter(
+        trip=instance.trip,
+        trip_primary_client=principal,
+        role="dependent",
+    ).select_related("client")
+
+    deps_list = list(dependent_tcs)
     if not deps_list:
         return
 
     logger.info(
         "Propagando PAGO do principal '%s' (pk=%s) para %d dependente(s), viagem pk=%s",
-        principal.nome_completo, principal.pk, len(deps_list), viagem.pk,
+        principal.full_name, principal.pk, len(deps_list), instance.trip.pk,
     )
 
     with transaction.atomic():
-        for cv_dep in deps_list:
-            dep = cv_dep.cliente
+        for tc_dep in deps_list:
+            dep = tc_dep.client
             try:
-                f_dep = Financeiro.objects.select_for_update().get(
-                    cliente=dep, viagem=viagem
+                f_dep = FinancialRecord.objects.select_for_update().get(
+                    client=dep, trip=instance.trip
                 )
-            except Financeiro.DoesNotExist:
+            except FinancialRecord.DoesNotExist:
                 logger.warning(
                     "Registro financeiro não encontrado para dependente '%s' (pk=%s), viagem pk=%s",
-                    dep.nome_completo, dep.pk, viagem.pk,
+                    dep.full_name, dep.pk, instance.trip.pk,
                 )
                 continue
-            if f_dep.status != StatusFinanceiro.PAGO:
-                f_dep.status = StatusFinanceiro.PAGO
-                f_dep.atualizado_em = timezone.now()
-                f_dep.save(update_fields=["status", "atualizado_em"])
+            if f_dep.status != FinancialStatus.PAID:
+                f_dep.status = FinancialStatus.PAID
+                f_dep.updated_at = timezone.now()
+                f_dep.save(update_fields=["status", "updated_at"])
                 logger.info(
                     "Dependente '%s' (pk=%s) marcado como PAGO, viagem pk=%s",
-                    dep.nome_completo, dep.pk, viagem.pk,
+                    dep.full_name, dep.pk, instance.trip.pk,
                 )

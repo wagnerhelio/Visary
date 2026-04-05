@@ -1,193 +1,161 @@
-   
-                                          
-   
-
 from django.conf import settings
 from django.db import models
 
-from .permission_models import UsuarioConsultoria
+from .permission_models import ConsultancyUser
 
 
-class StatusProcesso(models.Model):
-                                          
-
-    tipo_visto = models.ForeignKey(
-        "system.TipoVisto",
+class ProcessStatus(models.Model):
+    visa_type = models.ForeignKey(
+        "system.VisaType",
         on_delete=models.SET_NULL,
-        related_name="status_processos",
+        related_name="process_statuses",
         verbose_name="Tipo de Visto",
-        help_text="Tipo de visto ao qual este status está vinculado (opcional - deixe em branco para usar em todos os tipos)",
         null=True,
         blank=True,
     )
-    nome = models.CharField("Nome do Status", max_length=100)
-    prazo_padrao_dias = models.PositiveIntegerField(
+    name = models.CharField("Nome do Status", max_length=100)
+    default_deadline_days = models.PositiveIntegerField(
         "Prazo Padrão (dias)",
         default=0,
-        help_text="Prazo padrão em dias para este status",
     )
-    ordem = models.PositiveIntegerField(
-        "Ordem",
-        default=0,
-        help_text="Ordem de exibição do status",
-    )
-    ativo = models.BooleanField("Ativo", default=True)
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    order = models.PositiveIntegerField("Ordem", default=0)
+    is_active = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ("ordem", "nome")
+        ordering = ("order", "name")
         verbose_name = "Status de Processo"
         verbose_name_plural = "Status de Processos"
 
-    def __str__(self) -> str:
-        if self.tipo_visto:
-            return f"{self.tipo_visto.nome} - {self.nome}"
-        return self.nome
+    def __str__(self):
+        if self.visa_type:
+            return f"{self.visa_type.name} - {self.name}"
+        return self.name
 
 
-class Processo(models.Model):
-                                                             
-
-    viagem = models.ForeignKey(
-        "system.Viagem",
+class Process(models.Model):
+    trip = models.ForeignKey(
+        "system.Trip",
         on_delete=models.CASCADE,
-        related_name="processos",
+        related_name="processes",
         verbose_name="Viagem",
     )
-    cliente = models.ForeignKey(
-        "system.ClienteConsultoria",
+    client = models.ForeignKey(
+        "system.ConsultancyClient",
         on_delete=models.CASCADE,
-        related_name="processos",
+        related_name="processes",
         verbose_name="Cliente",
     )
-    observacoes = models.TextField("Observações", blank=True)
-    assessor_responsavel = models.ForeignKey(
-        UsuarioConsultoria,
+    notes = models.TextField("Observações", blank=True)
+    assigned_advisor = models.ForeignKey(
+        ConsultancyUser,
         on_delete=models.PROTECT,
-        related_name="processos_assessorados",
+        related_name="advised_processes",
         verbose_name="Assessor responsável",
     )
-    criado_por = models.ForeignKey(
+    created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name="processos_criados",
+        related_name="created_processes",
         verbose_name="Criado por",
     )
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ("-criado_em",)
+        ordering = ("-created_at",)
         verbose_name = "Processo"
         verbose_name_plural = "Processos"
-        unique_together = [("viagem", "cliente")]
+        unique_together = [("trip", "client")]
 
-    def __str__(self) -> str:
-        return f"{self.cliente.nome_completo} - {self.viagem}"
-
-    @property
-    def etapas_concluidas(self):
-                                                    
-        return self.etapas.filter(concluida=True).count()
+    def __str__(self):
+        return f"{self.client.full_name} - {self.trip}"
 
     @property
-    def total_etapas(self):
-                                                    
-        return self.etapas.count()
+    def completed_stages(self):
+        return self.stages.filter(completed=True).count()
 
     @property
-    def progresso_percentual(self):
-        
-        if self.total_etapas == 0:
+    def total_stages(self):
+        return self.stages.count()
+
+    @property
+    def progress_percentage(self):
+        if self.total_stages == 0:
             return 0
-        if self.etapas.filter(status__nome__iexact="Processo finalizado", concluida=True).exists():
+        if self.stages.filter(status__name__iexact="Processo finalizado", completed=True).exists():
             return 100
-        if self.etapas.filter(status__nome__iexact="Processo cancelado", concluida=True).exists():
+        if self.stages.filter(status__name__iexact="Processo cancelado", completed=True).exists():
             return 100
-        return int((self.etapas_concluidas / self.total_etapas) * 100)
+        return int((self.completed_stages / self.total_stages) * 100)
 
 
-class ViagemStatusProcesso(models.Model):
-                                                                                             
-
-    viagem = models.ForeignKey(
-        "system.Viagem",
+class TripProcessStatus(models.Model):
+    trip = models.ForeignKey(
+        "system.Trip",
         on_delete=models.CASCADE,
-        related_name="status_disponiveis",
+        related_name="available_statuses",
         verbose_name="Viagem",
     )
     status = models.ForeignKey(
-        StatusProcesso,
+        ProcessStatus,
         on_delete=models.CASCADE,
-        related_name="viagens_relacionadas",
+        related_name="related_trips",
         verbose_name="Status (Etapa)",
     )
-    ativo = models.BooleanField("Ativo", default=True)
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    is_active = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        unique_together = ("viagem", "status")
-        ordering = ("status__ordem", "status__nome")
+        unique_together = ("trip", "status")
+        ordering = ("status__order", "status__name")
         verbose_name = "Etapa de Viagem"
         verbose_name_plural = "Etapas de Viagem"
 
-    def __str__(self) -> str:
-        return f"{self.viagem} - {self.status}"
+    def __str__(self):
+        return f"{self.trip} - {self.status}"
 
 
-class EtapaProcesso(models.Model):
-                                            
-
-    processo = models.ForeignKey(
-        Processo,
+class ProcessStage(models.Model):
+    process = models.ForeignKey(
+        Process,
         on_delete=models.CASCADE,
-        related_name="etapas",
+        related_name="stages",
         verbose_name="Processo",
     )
     status = models.ForeignKey(
-        StatusProcesso,
+        ProcessStatus,
         on_delete=models.PROTECT,
-        related_name="etapas_processo",
+        related_name="process_stages",
         verbose_name="Status (Etapa)",
     )
-    concluida = models.BooleanField("Concluída", default=False)
-    prazo_dias = models.PositiveIntegerField(
-        "Prazo (dias)",
-        default=0,
-        help_text="Prazo em dias para conclusão desta etapa",
-    )
-    data_conclusao = models.DateField(
+    completed = models.BooleanField("Concluída", default=False)
+    deadline_days = models.PositiveIntegerField("Prazo (dias)", default=0)
+    completion_date = models.DateField(
         "Data de Conclusão",
         null=True,
         blank=True,
-        help_text="Data em que a etapa foi concluída",
     )
-    observacoes = models.TextField("Observações", blank=True)
-    ordem = models.PositiveIntegerField(
-        "Ordem",
-        default=0,
-        help_text="Ordem de exibição da etapa",
-    )
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    notes = models.TextField("Observações", blank=True)
+    order = models.PositiveIntegerField("Ordem", default=0)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ("ordem", "status__nome")
+        ordering = ("order", "status__name")
         verbose_name = "Etapa do Processo"
         verbose_name_plural = "Etapas do Processo"
-        unique_together = [("processo", "status")]
+        unique_together = [("process", "status")]
 
-    def __str__(self) -> str:
-        status_texto = "✓" if self.concluida else "○"
-        return f"{status_texto} {self.status.nome} - {self.processo}"
+    def __str__(self):
+        icon = "✓" if self.completed else "○"
+        return f"{icon} {self.status.name} - {self.process}"
 
-    def calcular_data_finalizacao(self):
-                                                                                            
-        if not self.prazo_dias or self.prazo_dias == 0:
+    def calculate_deadline_date(self):
+        if not self.deadline_days:
             return None
         from datetime import timedelta
-        data_base = self.processo.cliente.criado_em.date()
-        return data_base + timedelta(days=self.prazo_dias)
-
+        base_date = self.process.client.created_at.date()
+        return base_date + timedelta(days=self.deadline_days)

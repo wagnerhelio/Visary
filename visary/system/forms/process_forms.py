@@ -1,417 +1,276 @@
-   
-                                              
-   
-
 import logging
 
 from django import forms
 from django.contrib.auth.models import User
 
-from system.models import ClienteViagem, EtapaProcesso, Processo, ViagemStatusProcesso
-from system.models import UsuarioConsultoria
+from system.models import (
+    ConsultancyClient,
+    ConsultancyUser,
+    Process,
+    ProcessStage,
+    ProcessStatus,
+    Trip,
+    TripClient,
+    TripProcessStatus,
+)
 
 logger = logging.getLogger(__name__)
 
 
-class ProcessoForm(forms.ModelForm):
-                                               
-
+class ProcessForm(forms.ModelForm):
     class Meta:
-        model = Processo
-        fields = (
-            "viagem",
-            "cliente",
-            "observacoes",
-            "assessor_responsavel",
-        )
+        model = Process
+        fields = ("trip", "client", "notes", "assigned_advisor")
         widgets = {
-            "viagem": forms.Select(attrs={"class": "input"}),
-            "cliente": forms.Select(attrs={"class": "input"}),
-            "observacoes": forms.Textarea(
-                attrs={
-                    "class": "input",
-                    "rows": 3,
-                }
-            ),
-            "assessor_responsavel": forms.Select(attrs={"class": "input"}),
+            "trip": forms.Select(attrs={"class": "input"}),
+            "client": forms.Select(attrs={"class": "input"}),
+            "notes": forms.Textarea(attrs={"class": "input", "rows": 3}),
+            "assigned_advisor": forms.Select(attrs={"class": "input"}),
         }
 
-    etapas_selecionadas = forms.MultipleChoiceField(
+    selected_stages = forms.MultipleChoiceField(
         required=False,
         widget=forms.CheckboxSelectMultiple,
         label="Etapas do Processo",
-        help_text="Selecione as etapas que deseja incluir no processo"
     )
 
-    def __init__(self, *args, user: User | None = None, cliente_id: int | None = None, viagem_id: int | None = None, **kwargs) -> None:
+    def __init__(self, *args, user=None, client_id=None, trip_id=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._user = user
-        self._viagem_id = viagem_id
-        
-                                                                                                
-        viagem_id_para_etapas = viagem_id
-        if not viagem_id_para_etapas and self.data:
-                                            
-            viagem_id_post = self.data.get('viagem') or self.data.get('viagem_hidden')
-            if viagem_id_post:
+        self._trip_id = trip_id
+
+        trip_id_for_stages = self._resolve_trip_id(trip_id)
+        self._setup_stage_choices(trip_id_for_stages)
+        self._setup_trip_queryset(client_id)
+        self._setup_client_queryset(client_id, trip_id)
+        self._setup_advisor_queryset(user)
+
+    def _resolve_trip_id(self, trip_id):
+        if trip_id:
+            return trip_id
+        if self.data:
+            raw = self.data.get("trip") or self.data.get("trip_hidden")
+            if raw:
                 try:
-                    viagem_id_para_etapas = int(viagem_id_post)
+                    return int(raw)
                 except (ValueError, TypeError):
-                    logger.warning("viagem_hidden/viagem inválido em ProcessoForm.__init__: %r", viagem_id_post)
-        
-        if viagem_id_para_etapas:
-            from system.models import ViagemStatusProcesso
-            status_vinculados = ViagemStatusProcesso.objects.filter(
-                viagem_id=viagem_id_para_etapas,
-                ativo=True
-            ).select_related('status').order_by('status__ordem', 'status__nome')
-            
-            choices = [(vs.status.pk, vs.status.nome) for vs in status_vinculados]
-            self.fields['etapas_selecionadas'].choices = choices
-            self.fields['etapas_selecionadas'].widget = forms.CheckboxSelectMultiple()
-                                                                                 
-            if not self.instance.pk and not self.data:
-                self.fields['etapas_selecionadas'].initial = [str(pk) for pk, _ in choices]
-        else:
-            self.fields['etapas_selecionadas'].widget = forms.HiddenInput()
-            self.fields['etapas_selecionadas'].choices = []
+                    logger.warning("trip_hidden/trip inválido: %r", raw)
+        return None
 
-                                
-        from system.models import Viagem, ClienteConsultoria
+    def _setup_stage_choices(self, trip_id):
+        if not trip_id:
+            self.fields["selected_stages"].widget = forms.HiddenInput()
+            self.fields["selected_stages"].choices = []
+            return
+        statuses = (
+            TripProcessStatus.objects.filter(trip_id=trip_id, is_active=True)
+            .select_related("status")
+            .order_by("status__order", "status__name")
+        )
+        choices = [(vs.status.pk, vs.status.name) for vs in statuses]
+        self.fields["selected_stages"].choices = choices
+        self.fields["selected_stages"].widget = forms.CheckboxSelectMultiple()
+        if not self.instance.pk and not self.data:
+            self.fields["selected_stages"].initial = [str(pk) for pk, _ in choices]
 
-        viagens_queryset = Viagem.objects.select_related(
-            "pais_destino", "tipo_visto"
-        ).order_by("-data_prevista_viagem")
-        
-                                                                                     
-        if cliente_id:
-            try:
-                cliente = ClienteConsultoria.objects.get(pk=cliente_id)
-                                                                                                      
-                viagens_queryset = viagens_queryset.filter(
-                    clientes=cliente
-                ).distinct()
-            except ClienteConsultoria.DoesNotExist:
-                logger.warning("ClienteConsultoria não encontrado em ProcessoForm.__init__: cliente_id=%r", cliente_id)
-        
-        self.fields["viagem"].queryset = viagens_queryset
-        
-                                                     
-        def label_from_instance_viagem(obj):
-                                                                                     
-            pais = obj.pais_destino.nome if obj.pais_destino else "N/A"
-            tipo_visto = obj.tipo_visto.nome if obj.tipo_visto else "N/A"
-            data_viagem = obj.data_prevista_viagem.strftime('%d/%m/%Y') if obj.data_prevista_viagem else "N/A"
-            return f"{pais} - {tipo_visto} - {data_viagem}"
-        
-        self.fields["viagem"].label_from_instance = label_from_instance_viagem
+    def _setup_trip_queryset(self, client_id):
+        trips_qs = Trip.objects.select_related(
+            "destination_country", "visa_type"
+        ).order_by("-planned_departure_date")
 
-                                 
-        clientes_queryset = ClienteConsultoria.objects.all().order_by("nome")
-        
-                                                                             
-        viagem_obj = None
-        if viagem_id:
+        if client_id:
             try:
-                viagem_obj = Viagem.objects.get(pk=viagem_id)
-                                                
-                clientes_na_viagem = viagem_obj.clientes.all()
-                
-                clientes_ids = set(clientes_na_viagem.values_list('pk', flat=True))
-                viagens_com_clientes = ClienteViagem.objects.filter(
-                    cliente_id__in=clientes_ids
-                ).values_list("viagem_id", flat=True).distinct()
-                clientes_relacionados = ClienteViagem.objects.filter(
-                    viagem_id__in=viagens_com_clientes
-                ).values_list("cliente_id", flat=True)
-                clientes_ids.update(clientes_relacionados)
-                
-                clientes_queryset = clientes_queryset.filter(
-                    pk__in=clientes_ids
-                ).distinct()
-            except Viagem.DoesNotExist:
-                logger.warning("Viagem não encontrada em ProcessoForm.__init__: viagem_id=%r", viagem_id)
-        
-        self.fields["cliente"].queryset = clientes_queryset
-        
-                                                           
-        if cliente_id and not self.instance.pk:
+                client = ConsultancyClient.objects.get(pk=client_id)
+                trips_qs = trips_qs.filter(clients=client).distinct()
+            except ConsultancyClient.DoesNotExist:
+                logger.warning("ConsultancyClient não encontrado: client_id=%r", client_id)
+
+        self.fields["trip"].queryset = trips_qs
+        self.fields["trip"].label_from_instance = self._trip_label
+
+        if self._trip_id and not self.instance.pk:
             try:
-                self.fields["cliente"].initial = int(cliente_id)
-            except (ValueError, TypeError):
-                logger.warning("Falha ao converter cliente_id=%r em ProcessoForm.__init__", cliente_id)
-        elif viagem_obj and not self.instance.pk and not cliente_id:
-                                                                                          
-                                                     
-            clientes_list = list(clientes_queryset)
-            if len(clientes_list) == 1:
-                                                                       
-                cliente_unico = clientes_list[0]
-                if cliente_unico:
-                    self.fields["cliente"].initial = cliente_unico.pk
-                    self.fields["cliente"].widget.attrs['disabled'] = True
-                    self.fields["cliente"].widget.attrs['style'] = 'opacity: 0.6; cursor: not-allowed;'
-                                                                                           
-                    from django import forms as django_forms
-                    self.fields['cliente_hidden'] = django_forms.IntegerField(
-                        widget=django_forms.HiddenInput(),
-                        initial=cliente_unico.pk,
-                        required=False
-                    )
-        
-        if viagem_id and not self.instance.pk:
-            try:
-                viagem_id_int = int(viagem_id)
-                self.fields["viagem"].initial = viagem_id_int
-                                                                                              
-                self.fields["viagem"].widget.attrs['disabled'] = True
-                self.fields["viagem"].widget.attrs['style'] = 'opacity: 0.6; cursor: not-allowed;'
-                                                                                       
-                from django import forms as django_forms
-                self.fields['viagem_hidden'] = django_forms.IntegerField(
-                    widget=django_forms.HiddenInput(),
-                    initial=viagem_id_int,
-                    required=False
+                trip_id_int = int(self._trip_id)
+                self.fields["trip"].initial = trip_id_int
+                self.fields["trip"].widget.attrs.update(
+                    {"disabled": True, "style": "opacity: 0.6; cursor: not-allowed;"}
+                )
+                self.fields["trip_hidden"] = forms.IntegerField(
+                    widget=forms.HiddenInput(), initial=trip_id_int, required=False
                 )
             except (ValueError, TypeError):
-                logger.warning("Falha ao converter viagem_id=%r em ProcessoForm.__init__", viagem_id)
+                logger.warning("Falha ao converter trip_id=%r", self._trip_id)
 
-                                   
-        self.fields["assessor_responsavel"].queryset = (
-            UsuarioConsultoria.objects.filter(ativo=True).order_by("nome").select_related("perfil")
+    @staticmethod
+    def _trip_label(obj):
+        country = obj.destination_country.name if obj.destination_country else "N/A"
+        visa = obj.visa_type.name if obj.visa_type else "N/A"
+        date = obj.planned_departure_date.strftime("%d/%m/%Y") if obj.planned_departure_date else "N/A"
+        return f"{country} - {visa} - {date}"
+
+    def _setup_client_queryset(self, client_id, trip_id):
+        clients_qs = ConsultancyClient.objects.all().order_by("first_name")
+
+        if trip_id:
+            try:
+                trip_obj = Trip.objects.get(pk=trip_id)
+                client_ids = set(trip_obj.clients.values_list("pk", flat=True))
+                related_trip_ids = TripClient.objects.filter(
+                    client_id__in=client_ids
+                ).values_list("trip_id", flat=True).distinct()
+                related_client_ids = TripClient.objects.filter(
+                    trip_id__in=related_trip_ids
+                ).values_list("client_id", flat=True)
+                client_ids.update(related_client_ids)
+                clients_qs = clients_qs.filter(pk__in=client_ids).distinct()
+            except Trip.DoesNotExist:
+                logger.warning("Trip não encontrada: trip_id=%r", trip_id)
+
+        self.fields["client"].queryset = clients_qs
+
+        if client_id and not self.instance.pk:
+            try:
+                self.fields["client"].initial = int(client_id)
+            except (ValueError, TypeError):
+                logger.warning("Falha ao converter client_id=%r", client_id)
+
+    def _setup_advisor_queryset(self, user):
+        self.fields["assigned_advisor"].queryset = (
+            ConsultancyUser.objects.filter(is_active=True)
+            .order_by("name")
+            .select_related("profile")
         )
-
-                                                                              
-        if user is not None and not user.is_superuser and not user.is_staff:
-            if consultor := (
-                UsuarioConsultoria.objects.filter(email__iexact=user.email, ativo=True)
-                .order_by("-atualizado_em")
+        if user and not user.is_superuser and not user.is_staff:
+            consultant = (
+                ConsultancyUser.objects.filter(email__iexact=user.email, is_active=True)
+                .order_by("-updated_at")
                 .first()
-            ):
-                self.fields["assessor_responsavel"].initial = consultor.pk
+            )
+            if consultant:
+                self.fields["assigned_advisor"].initial = consultant.pk
 
     def full_clean(self):
-                                                                                     
-                                                                      
-        if self.data and hasattr(self, 'fields'):
-                                     
-            if "viagem_hidden" in self.fields and self.data.get("viagem_hidden"):
-                try:
-                    viagem_id = int(self.data.get("viagem_hidden"))
-                    if "viagem" in self.fields and not self.data.get("viagem"):
-                                                                                        
-                        self.data = self.data.copy()
-                        self.data["viagem"] = str(viagem_id)
-                except (ValueError, TypeError):
-                                                                                    
-                    pass
-            
-                                      
-            if "cliente_hidden" in self.fields and self.data.get("cliente_hidden"):
-                try:
-                    cliente_id = int(self.data.get("cliente_hidden"))
-                    if "cliente" in self.fields and not self.data.get("cliente"):
-                                                                                          
-                        self.data = self.data.copy()
-                        self.data["cliente"] = str(cliente_id)
-                except (ValueError, TypeError):
-                                                                                     
-                    pass
-        
+        if self.data and hasattr(self, "fields"):
+            self._inject_hidden_field("trip_hidden", "trip")
+            self._inject_hidden_field("client_hidden", "client")
         super().full_clean()
-    
+
+    def _inject_hidden_field(self, hidden_name, target_name):
+        if hidden_name not in self.fields or not self.data.get(hidden_name):
+            return
+        try:
+            value = int(self.data.get(hidden_name))
+            if target_name in self.fields and not self.data.get(target_name):
+                self.data = self.data.copy()
+                self.data[target_name] = str(value)
+        except (ValueError, TypeError):
+            pass
+
     def clean(self):
         cleaned_data = super().clean()
-                                                                            
-        if not cleaned_data.get("viagem"):
-            viagem_id = None
-                                                   
-            if "viagem_hidden" in self.fields:
-                hidden_val = self.data.get("viagem_hidden")
-                viagem_id = cleaned_data.get("viagem_hidden")
-
-                                                                               
-                                                                                   
-                if not viagem_id:
-                    if hidden_val not in (None, ""):
-                        self.add_error("viagem", "Viagem inválida.")
-                        viagem_id = None
-                    elif self.fields.get("viagem_hidden"):
-                        viagem_id = self.fields.get("viagem_hidden").initial
-            
-            if viagem_id:
-                from system.models import Viagem
-                try:
-                    viagem = Viagem.objects.get(pk=viagem_id)
-                    cleaned_data["viagem"] = viagem
-                except (Viagem.DoesNotExist, ValueError, TypeError, AttributeError):
-                    self.add_error("viagem", "Viagem inválida.")
-        
-                                                                             
-        if not cleaned_data.get("cliente"):
-            cliente_id = None
-                                                   
-            if "cliente_hidden" in self.fields:
-                hidden_val = self.data.get("cliente_hidden")
-                cliente_id = cleaned_data.get("cliente_hidden")
-
-                                                                               
-                                                      
-                if not cliente_id:
-                    if hidden_val not in (None, ""):
-                        self.add_error("cliente", "Cliente inválido.")
-                        cliente_id = None
-                    elif self.fields.get("cliente_hidden"):
-                        cliente_id = self.fields.get("cliente_hidden").initial
-            
-            if cliente_id:
-                from system.models import ClienteConsultoria
-                try:
-                    cliente = ClienteConsultoria.objects.get(pk=cliente_id)
-                    cleaned_data["cliente"] = cliente
-                except (ClienteConsultoria.DoesNotExist, ValueError, TypeError, AttributeError):
-                    self.add_error("cliente", "Cliente inválido.")
-        
-        viagem = cleaned_data.get("viagem")
-        cliente = cleaned_data.get("cliente")
-
-        if viagem and cliente:
-                                                            
-            clientes_na_viagem = viagem.clientes.all()
-            cliente_na_viagem = cliente in clientes_na_viagem
-            
-                                                                                  
-            cliente_com_mesmo_email_na_viagem = False
-            if not cliente_na_viagem and cliente.email:
-                                                                
-                emails_na_viagem = set(clientes_na_viagem.values_list('email', flat=True))
-                emails_na_viagem = {email for email in emails_na_viagem if email}
-                
-                                                                                      
-                if cliente.email in emails_na_viagem:
-                    cliente_com_mesmo_email_na_viagem = True
-            
-            # Verifica se cliente tem vínculo familiar via viagens compartilhadas
-            familia_na_viagem = ClienteViagem.objects.filter(
-                viagem=viagem, cliente_principal_viagem=cliente
-            ).exists() or ClienteViagem.objects.filter(
-                viagem=viagem, cliente=cliente
-            ).exists()
-
-            cliente_valido = cliente_na_viagem or cliente_com_mesmo_email_na_viagem or familia_na_viagem
-            
-            if not cliente_valido:
-                self.add_error(
-                    "cliente",
-                    "O cliente selecionado não está vinculado à viagem escolhida. "
-                    "Por favor, vincule o cliente à viagem antes de criar o processo."
-                )
-
-                                                                        
-            processos_existentes = (
-                Processo.objects.filter(viagem=viagem, cliente=cliente).exclude(
-                    pk=self.instance.pk
-                )
-                if self.instance.pk
-                else Processo.objects.filter(viagem=viagem, cliente=cliente)
-            )
-
-            if processos_existentes.exists():
-                self.add_error(
-                    "cliente",
-                    f"Já existe um processo cadastrado para este cliente nesta viagem."
-                )
-
+        self._resolve_hidden_value(cleaned_data, "trip_hidden", "trip", Trip)
+        self._resolve_hidden_value(cleaned_data, "client_hidden", "client", ConsultancyClient)
+        self._validate_client_trip_link(cleaned_data)
+        self._validate_unique_process(cleaned_data)
         return cleaned_data
 
-    def save(self, commit: bool = True) -> Processo:
-        processo = super().save(commit=False)
-        if self._user and not processo.criado_por_id:
-            processo.criado_por = self._user
+    def _resolve_hidden_value(self, cleaned_data, hidden_name, target_name, model_class):
+        if cleaned_data.get(target_name):
+            return
+        if hidden_name not in self.fields:
+            return
+        hidden_val = self.data.get(hidden_name)
+        obj_id = cleaned_data.get(hidden_name)
+        if not obj_id:
+            if hidden_val not in (None, ""):
+                self.add_error(target_name, f"{target_name.capitalize()} inválido(a).")
+                return
+            field = self.fields.get(hidden_name)
+            obj_id = field.initial if field else None
+        if obj_id:
+            try:
+                cleaned_data[target_name] = model_class.objects.get(pk=obj_id)
+            except (model_class.DoesNotExist, ValueError, TypeError):
+                self.add_error(target_name, f"{target_name.capitalize()} inválido(a).")
 
-        if commit:
-            processo.save()
-                                                                                  
-            self._criar_etapas(processo)
-
-        return processo
-
-    def _criar_etapas(self, processo: Processo) -> None:
-                                                                                        
-        etapas_selecionadas = self.cleaned_data.get('etapas_selecionadas', [])
-        
-        if not etapas_selecionadas:
-                                                                                           
-            status_vinculados = ViagemStatusProcesso.objects.filter(
-                viagem=processo.viagem,
-                ativo=True
-            ).select_related('status').order_by('status__ordem', 'status__nome')
-            
-            for viagem_status in status_vinculados:
-                status = viagem_status.status
-                prazo_dias = status.prazo_padrao_dias if status.prazo_padrao_dias > 0 else 0
-                
-                EtapaProcesso.objects.get_or_create(
-                    processo=processo,
-                    status=status,
-                    defaults={
-                        'prazo_dias': prazo_dias,
-                        'ordem': status.ordem,
-                    }
-                )
-        else:
-                                                 
-            from system.models import StatusProcesso
-            status_ids = [int(sid) for sid in etapas_selecionadas]
-            status_selecionados = StatusProcesso.objects.filter(pk__in=status_ids)
-            
-            for status in status_selecionados:
-                prazo_dias = status.prazo_padrao_dias if status.prazo_padrao_dias > 0 else 0
-                
-                EtapaProcesso.objects.get_or_create(
-                    processo=processo,
-                    status=status,
-                    defaults={
-                        'prazo_dias': prazo_dias,
-                        'ordem': status.ordem,
-                    }
-                )
-
-
-class EtapaProcessoForm(forms.ModelForm):
-                                                       
-
-    class Meta:
-        model = EtapaProcesso
-        fields = (
-            "concluida",
-            "prazo_dias",
-            "data_conclusao",
-            "observacoes",
+    def _validate_client_trip_link(self, cleaned_data):
+        trip = cleaned_data.get("trip")
+        client = cleaned_data.get("client")
+        if not trip or not client:
+            return
+        is_linked = (
+            client in trip.clients.all()
+            or TripClient.objects.filter(trip=trip, trip_primary_client=client).exists()
+            or TripClient.objects.filter(trip=trip, client=client).exists()
         )
+        if not is_linked:
+            self.add_error(
+                "client",
+                "O cliente selecionado não está vinculado à viagem escolhida. "
+                "Por favor, vincule o cliente à viagem antes de criar o processo.",
+            )
+
+    def _validate_unique_process(self, cleaned_data):
+        trip = cleaned_data.get("trip")
+        client = cleaned_data.get("client")
+        if not trip or not client:
+            return
+        qs = Process.objects.filter(trip=trip, client=client)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            self.add_error(
+                "client",
+                "Já existe um processo cadastrado para este cliente nesta viagem.",
+            )
+
+    def save(self, commit=True):
+        process = super().save(commit=False)
+        if self._user and not process.created_by_id:
+            process.created_by = self._user
+        if commit:
+            process.save()
+            self._create_stages(process)
+        return process
+
+    def _create_stages(self, process):
+        selected = self.cleaned_data.get("selected_stages", [])
+        if selected:
+            statuses = ProcessStatus.objects.filter(pk__in=[int(s) for s in selected])
+        else:
+            trip_statuses = (
+                TripProcessStatus.objects.filter(trip=process.trip, is_active=True)
+                .select_related("status")
+                .order_by("status__order", "status__name")
+            )
+            statuses = [ts.status for ts in trip_statuses]
+
+        for status in statuses:
+            ProcessStage.objects.get_or_create(
+                process=process,
+                status=status,
+                defaults={
+                    "deadline_days": status.default_deadline_days or 0,
+                    "order": status.order,
+                },
+            )
+
+
+class ProcessStageForm(forms.ModelForm):
+    class Meta:
+        model = ProcessStage
+        fields = ("completed", "deadline_days", "completion_date", "notes")
         widgets = {
-            "concluida": forms.CheckboxInput(attrs={"class": "input"}),
-            "prazo_dias": forms.NumberInput(
-                attrs={
-                    "class": "input",
-                    "min": "0",
-                    "step": "1",
-                }
+            "completed": forms.CheckboxInput(attrs={"class": "input"}),
+            "deadline_days": forms.NumberInput(
+                attrs={"class": "input", "min": "0", "step": "1"}
             ),
-            "data_conclusao": forms.DateInput(
-                attrs={
-                    "class": "input",
-                    "type": "date",
-                }
+            "completion_date": forms.DateInput(
+                attrs={"class": "input", "type": "date"}
             ),
-            "observacoes": forms.Textarea(
-                attrs={
-                    "class": "input",
-                    "rows": 3,
-                }
-            ),
+            "notes": forms.Textarea(attrs={"class": "input", "rows": 3}),
         }
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["prazo_dias"].required = False
+        self.fields["deadline_days"].required = False

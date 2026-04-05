@@ -1,0 +1,458 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Visualizar Viagem{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    <style>
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .card header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .card h2 {
+        margin: 0;
+        font-size: 1.4rem;
+        color: var(--text-primary);
+    }
+
+    .card p {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .info-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .info-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .info-value {
+        font-size: 0.95rem;
+        color: var(--text-primary);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-primary {
+        background: rgba(86, 244, 156, 0.15);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.35);
+    }
+
+    .badge-warning {
+        background: rgba(255, 193, 7, 0.15);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.35);
+    }
+
+    .badge-danger {
+        background: rgba(244, 67, 54, 0.15);
+        color: rgba(244, 67, 54, 0.95);
+        border: 1px solid rgba(244, 67, 54, 0.35);
+    }
+
+    .badge-gray {
+        background: rgba(158, 158, 158, 0.15);
+        color: rgba(158, 158, 158, 0.95);
+        border: 1px solid rgba(158, 158, 158, 0.35);
+    }
+
+    .cliente-nome {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .cliente-sub {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .progress-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .progress-bar__track {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        height: 8px;
+        overflow: hidden;
+    }
+
+    .progress-bar__fill {
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+
+    .progress-bar__label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        min-width: 45px;
+    }
+
+    .progress-sub {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .btn-tornar-principal {
+        border-color: rgba(255, 193, 7, 0.45);
+        color: rgba(255, 193, 7, 0.95);
+    }
+
+    .btn-tornar-principal:hover {
+        background: rgba(255, 193, 7, 0.1);
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: var(--text-secondary);
+    }
+
+    td {
+        color: var(--text-primary);
+    }
+
+    .empty-state {
+        padding: 32px;
+        text-align: center;
+        color: var(--text-secondary);
+        border: 1px dashed var(--border-soft);
+        border-radius: 12px;
+        font-size: 0.9rem;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 768px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        table {
+            font-size: 0.82rem;
+        }
+
+        th, td {
+            padding: 10px 8px;
+        }
+
+        .actions-cell {
+            flex-direction: column;
+        }
+
+        .badge {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+        }
+    }
+
+    </style>
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Visualizar Viagem</h1>
+        <p>Informações completas da viagem, clientes e processos</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_trips' %}" class="btn btn-outline">Voltar</a>
+        {% if can_edit %}
+            <a href="{% url 'system:edit_trip' trip.pk %}" class="btn btn-primary">Editar</a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<div class="layout-grid">
+    
+    <section class="card">
+        <header>
+            <h2>Informações da Viagem</h2>
+        </header>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">País de Destino</span>
+                <span class="info-value">{{ trip.destination_country.name }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Tipo de Visto</span>
+                <span class="info-value">{{ trip.visa_type.name }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Data Prevista de Viagem</span>
+                <span class="info-value">{{ trip.planned_departure_date|date:"d/m/Y" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Data Prevista de Retorno</span>
+                <span class="info-value">{{ trip.planned_return_date|date:"d/m/Y"|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Valor da Assessoria</span>
+                <span class="info-value">R$ {{ trip.advisory_fee|floatformat:2 }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Assessor Responsável</span>
+                <span class="info-value">{{ trip.assigned_advisor.name }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Data de Criação</span>
+                <span class="info-value">{{ trip.created_at|localtime|date:"d/m/Y H:i" }}</span>
+            </div>
+        </div>
+    </section>
+
+    
+    <section class="card">
+        <header>
+            <h2>Clientes Vinculados</h2>
+            <p>Clientes e status dos formulários</p>
+        </header>
+        {% if clients_com_info %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Tipo de Visto</th>
+                        <th>Status Formulário</th>
+                        <th>Progresso</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in clients_with_info %}
+                    <tr>
+                        <td>
+                            <div class="cliente-nome">
+                                <strong>{{ item.client.full_name }}</strong>
+                                {% if item.role == "primary" %}
+                                    <span class="badge badge-primary">Principal</span>
+                                {% elif item.role == "dependent" %}
+                                    <span class="cliente-sub">
+                                        Dependente{% if item.trip_primary_client %} de {{ item.trip_primary_client.full_name }}{% endif %}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>{{ item.visa_type.name }}</td>
+                        <td>
+                            {% if item.visa_form_obj %}
+                                {% if item.complete %}
+                                    <span class="badge badge-primary">Completo</span>
+                                {% elif item.has_answer %}
+                                    <span class="badge badge-warning">Parcial</span>
+                                {% else %}
+                                    <span class="badge badge-danger">Não preenchido</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge badge-gray">Sem formulário</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.visa_form_obj and item.total_questions > 0 %}
+                                <div class="progress-bar">
+                                    <div class="progress-bar__track">
+                                        <div class="progress-bar__fill" style="width: {% widthratio item.total_answers item.total_questions 100 %}%;"></div>
+                                    </div>
+                                    <span class="progress-bar__label">{{ item.total_answers }}/{{ item.total_questions }}</span>
+                                </div>
+                            {% else %}
+                                <span class="progress-bar__label">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="actions-cell">
+                                {% if item.visa_form_obj %}
+                                    <a href="{% url 'system:view_client_form' trip.pk item.client.pk %}" class="btn btn-outline btn-small">Ver Formulário</a>
+                                {% endif %}
+                                {% if can_edit and item.role == "dependent" %}
+                                    <form method="post" action="{% url 'system:switch_trip_principal' trip.pk item.client.pk %}" onsubmit="return confirm('Deseja tornar {{ item.client.full_name }} o cliente principal desta viagem? O financeiro será transferido automaticamente.');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline btn-small btn-tornar-principal">Tornar Principal</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            Nenhum cliente vinculado a esta viagem.
+        </div>
+        {% endif %}
+    </section>
+
+    
+    <section class="card">
+        <header>
+            <h2>Processos</h2>
+            <p>Processos de visto vinculados à viagem</p>
+        </header>
+        {% if process_objs %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Progresso</th>
+                        <th>Assessor</th>
+                        <th>Criado em</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for process_obj in processes %}
+                    <tr>
+                        <td>
+                            <strong>{{ process_obj.client.full_name }}</strong>
+                        </td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-bar__track">
+                                    <div class="progress-bar__fill" style="width: {{ process_obj.progress_percentage }}%;"></div>
+                                </div>
+                                <span class="progress-bar__label">{{ process_obj.progress_percentage }}%</span>
+                            </div>
+                            <div class="progress-sub">
+                                {{ process_obj.completed_stages }} de {{ process_obj.total_stages }} etapas
+                            </div>
+                        </td>
+                        <td>{{ process_obj.assigned_advisor.name }}</td>
+                        <td>{{ process_obj.created_at|localtime|date:"d/m/Y" }}</td>
+                        <td>
+                            <a href="{% url 'system:edit_process' process_obj.pk %}" class="btn btn-outline btn-small">Ver Processo</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            Nenhum processo vinculado a esta viagem.
+        </div>
+        {% endif %}
+    </section>
+
+    
+    {% if financial_records %}
+    <section class="card">
+        <header>
+            <h2>Registros Financeiros</h2>
+            <p>Registros financeiros vinculados à viagem</p>
+        </header>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th>Data Pagamento</th>
+                        <th>Criado em</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in financial_records %}
+                    <tr>
+                        <td>{{ record.client.full_name|default:"-" }}</td>
+                        <td>R$ {{ record.amount|floatformat:2 }}</td>
+                        <td>
+                            {% if registro.status == "pendente" %}
+                                <span class="badge badge-warning">Pendente</span>
+                            {% elif registro.status == "pago" %}
+                                <span class="badge badge-primary">Pago</span>
+                            {% elif registro.status == "cancelado" %}
+                                <span class="badge badge-danger">Cancelado</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ record.payment_date|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ record.created_at|localtime|date:"d/m/Y" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}
+

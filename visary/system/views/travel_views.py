@@ -1,688 +1,687 @@
-   
-                                        
-   
-
+import logging
 from contextlib import suppress
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.db import models
-from django.db.models import Count
+from django.db import models, transaction
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_http_methods
 
-from decimal import Decimal, InvalidOperation
-
-from django.utils.dateparse import parse_date
-
-from system.forms import PaisDestinoForm, TipoVistoForm, ViagemForm
-from system.models import ClienteConsultoria, ClienteViagem, FormularioVisto, OpcaoSelecao, Partner, PaisDestino, Processo, RespostaFormulario, TipoVisto, Viagem
-from django.db import transaction
-from system.models.financial_models import Financeiro, StatusFinanceiro
-from system.models import UsuarioConsultoria
-from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
-from system.services.form_stages import build_stage_items, filter_questions_by_stage, resolve_stage_token
+from system.forms import DestinationCountryForm, VisaTypeForm, TripForm
+from system.models import (
+    ConsultancyClient,
+    ConsultancyUser,
+    DestinationCountry,
+    FinancialRecord,
+    FinancialStatus,
+    FormAnswer,
+    Partner,
+    Process,
+    Trip,
+    TripClient,
+    VisaForm,
+    VisaType,
+)
 from system.services.form_prefill import prefill_form_answers
-from system.services.form_responses import build_pergunta_estado, pergunta_e_visivel, processar_respostas_formulario, atualizar_resposta_por_tipo as _atualizar_resposta_formulario_svc
+from system.services.form_responses import (
+    update_answer_by_type as _update_answer_by_type_svc,
+    build_question_state,
+    is_question_visible,
+    process_form_answers,
+)
+from system.services.form_stages import (
+    build_stage_items,
+    filter_questions_by_stage,
+    resolve_stage_token,
+)
+from system.views.client_views import (
+    list_clients,
+    get_user_consultant,
+    user_can_manage_all,
+)
+
+logger = logging.getLogger("visary.travel")
+
+_build_question_state = build_question_state
+_is_question_visible = is_question_visible
 
 
-def _limpar_flags_viagens_cadastradas(request):
-                                                               
+def _clear_registered_trip_flags(request):
     if request.method == "GET":
-        keys_to_clean = [key for key in request.session.keys() if key.startswith('viagem_cadastrada_')]
+        keys_to_clean = [
+            key for key in request.session.keys()
+            if key.startswith('trip_registered_')
+        ]
         for key in keys_to_clean:
             request.session.pop(key, None)
         request.session.modified = True
 
 
-def _obter_viagens_com_formularios_nao_preenchidos(viagens):
-                                                                 
-    viagens_com_formulario = []
-    for viagem in viagens:
-        if formulario := _obter_formulario_por_tipo_visto(viagem.tipo_visto, apenas_ativo=True):
-            total_clientes = viagem.clientes.count()
-            if total_clientes > 0:
-                clientes_com_resposta = RespostaFormulario.objects.filter(
-                    viagem=viagem
-                ).values_list("cliente_id", flat=True).distinct().count()
-                clientes_sem_resposta = total_clientes - clientes_com_resposta
-                if clientes_sem_resposta > 0:
-                    viagens_com_formulario.append({
-                        "viagem": viagem,
-                        "total_clientes": total_clientes,
-                        "clientes_sem_resposta": clientes_sem_resposta,
-                    })
-    return viagens_com_formulario
+def _get_trips_with_unfilled_forms(trips):
+    result = []
+    for trip in trips:
+        form_obj = _get_form_by_visa_type(trip.visa_type, active_only=True)
+        if not form_obj:
+            continue
+        total_clients = trip.clients.count()
+        if total_clients <= 0:
+            continue
+        clients_with_answers = FormAnswer.objects.filter(
+            trip=trip
+        ).values_list("client_id", flat=True).distinct().count()
+        clients_without_answers = total_clients - clients_with_answers
+        if clients_without_answers > 0:
+            result.append({
+                "trip": trip,
+                "total_clients": total_clients,
+                "clients_without_answers": clients_without_answers,
+            })
+    return result
 
 
-def _filtrar_mensagens_para_template(request):
-                                                                                       
+def _filter_messages_for_template(request):
     storage = messages.get_messages(request)
-    filtered_messages = []
-    viagem_message_shown = False
+    filtered = []
+    trip_message_shown = False
     seen_texts = set()
-    
+
     for message in storage:
         message_text = str(message)
-                                                     
         if "Viagem cadastrada" in message_text:
-            if not viagem_message_shown:
-                viagem_message_shown = True
-                filtered_messages.append(message)
+            if not trip_message_shown:
+                trip_message_shown = True
+                filtered.append(message)
         elif message_text not in seen_texts:
-                                                   
             seen_texts.add(message_text)
-            filtered_messages.append(message)
-    
-    return filtered_messages
+            filtered.append(message)
+
+    return filtered
 
 
 @login_required
-def home_viagens(request):
-                                                            
-    _limpar_flags_viagens_cadastradas(request)
-    
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-                                                                                                                              
-    clientes_usuario = listar_clientes(request.user)
-    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
-    
-                                                              
-    viagens = Viagem.objects.filter(
-        clientes__pk__in=clientes_ids
+def home_trips(request):
+    _clear_registered_trip_flags(request)
+
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    user_clients = list_clients(request.user)
+    client_ids = list(user_clients.values_list("pk", flat=True))
+
+    trips = Trip.objects.filter(
+        clients__pk__in=client_ids
     ).select_related(
-        "pais_destino",
-        "tipo_visto__formulario",
-        "assessor_responsavel",
-    ).prefetch_related("clientes").distinct().order_by("-data_prevista_viagem")
+        "destination_country",
+        "visa_type__form",
+        "assigned_advisor",
+    ).prefetch_related("clients").distinct().order_by("-planned_departure_date")
 
-    filtros_aplicados = {}
-    viagens = _aplicar_filtros_viagens(viagens, request, filtros_aplicados, incluir_assessor=False)
-    
-    kpis = _montar_kpis_viagens(viagens)
-    viagens_com_info = _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor)
+    applied_filters = {}
+    trips = _apply_trip_filters(trips, request, applied_filters, include_advisor=False)
 
-    viagens_com_formulario = _obter_viagens_com_formularios_nao_preenchidos(viagens[:10])
-    mensagens_filtradas = _filtrar_mensagens_para_template(request)
+    kpis = _build_trip_kpis(trips)
+    trips_with_info = _prepare_trip_info(trips, can_manage_all, consultant)
 
-    paises = PaisDestino.objects.filter(ativo=True).order_by("nome")
-    tipos_visto = TipoVisto.objects.filter(ativo=True).select_related("pais_destino").order_by("pais_destino__nome", "nome")
+    trips_with_forms = _get_trips_with_unfilled_forms(trips[:10])
+    filtered_msgs = _filter_messages_for_template(request)
 
-    contexto = {
-        "total_viagens": viagens.count(),
-        "viagens": viagens[:10],
-        "viagens_com_info": viagens_com_info,
-        "viagens_formularios_nao_preenchidos": viagens_com_formulario,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "mensagens_filtradas": mensagens_filtradas,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "consultor": consultor,
-        "assessores": UsuarioConsultoria.objects.filter(ativo=True).order_by("nome"),
-        "paises": paises,
-        "tipos_visto": tipos_visto,
-        "clientes": clientes_usuario.order_by("nome"),
-        "filtros_aplicados": filtros_aplicados,
-        "parceiros": Partner.objects.filter(ativo=True).order_by("nome_empresa", "nome_responsavel"),
+    countries = DestinationCountry.objects.filter(is_active=True).order_by("name")
+    visa_types = VisaType.objects.filter(
+        is_active=True
+    ).select_related("destination_country").order_by("destination_country__name", "name")
+
+    context = {
+        "total_trips": trips.count(),
+        "trips": trips[:10],
+        "trips_with_info": trips_with_info,
+        "trips_unfilled_forms": trips_with_forms,
+        "user_profile": consultant.profile.name if consultant else None,
+        "filtered_messages": filtered_msgs,
+        "can_manage_all": can_manage_all,
+        "consultant": consultant,
+        "advisors": ConsultancyUser.objects.filter(is_active=True).order_by("name"),
+        "countries": countries,
+        "visa_types": visa_types,
+        "clients": user_clients.order_by("first_name"),
+        "applied_filters_dict": applied_filters,
+        "partners": Partner.objects.filter(
+            is_active=True
+        ).order_by("company_name", "contact_name"),
         **kpis,
     }
 
-    return render(request, "travel/home_viagens.html", contexto)
+    return render(request, "travel/home_trips.html", context)
 
 
 @login_required
-def home_paises_destino(request):
-    consultor = obter_consultor_usuario(request.user)
-    if not usuario_pode_gerenciar_todos(request.user, consultor):
+def home_destination_countries(request):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
-    pode_gerenciar_todos = True
-    
-    paises = PaisDestino.objects.all().order_by("nome")
-    paises, filtros_aplicados = _aplicar_filtros_paises_destino(paises, request)
-    total_paises = paises.count()
-    
-    contexto = {
-        "paises": paises[:10],
-        "total_paises": total_paises,
-        "perfil_usuario": consultor.perfil.nome if consultor else "Administrador",
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtros_aplicados": filtros_aplicados,
+    can_manage_all = True
+
+    countries = DestinationCountry.objects.all().order_by("name")
+    countries, applied_filters = _apply_country_filters(countries, request)
+    total_countries = countries.count()
+
+    context = {
+        "countries": countries[:10],
+        "total_countries": total_countries,
+        "user_profile": consultant.profile.name if consultant else "Administrador",
+        "can_manage_all": can_manage_all,
+        "applied_filters_dict": applied_filters,
     }
-    
-    return render(request, "travel/home_paises_destino.html", contexto)
+
+    return render(request, "travel/home_destination_countries.html", context)
 
 
 @login_required
-def home_tipos_visto(request):
-    consultor = obter_consultor_usuario(request.user)
-    if not usuario_pode_gerenciar_todos(request.user, consultor):
+def home_visa_types(request):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
-    pode_gerenciar_todos = True
-    
-    tipos_visto = TipoVisto.objects.select_related("pais_destino").order_by("pais_destino__nome", "nome")
-    tipos_visto, filtros_aplicados = _aplicar_filtros_tipos_visto(tipos_visto, request)
-    total_tipos = tipos_visto.count()
-    
-    contexto = {
-        "tipos_visto": tipos_visto[:10],
-        "total_tipos": total_tipos,
-        "perfil_usuario": consultor.perfil.nome if consultor else "Administrador",
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtros_aplicados": filtros_aplicados,
-        "paises": PaisDestino.objects.filter(ativo=True).order_by("nome"),
+    can_manage_all = True
+
+    visa_types = VisaType.objects.select_related(
+        "destination_country"
+    ).order_by("destination_country__name", "name")
+    visa_types, applied_filters = _apply_visa_type_filters(visa_types, request)
+    total_types = visa_types.count()
+
+    context = {
+        "visa_types": visa_types[:10],
+        "total_types": total_types,
+        "user_profile": consultant.profile.name if consultant else "Administrador",
+        "can_manage_all": can_manage_all,
+        "applied_filters_dict": applied_filters,
+        "countries": DestinationCountry.objects.filter(is_active=True).order_by("name"),
     }
-    
-    return render(request, "travel/home_tipos_visto.html", contexto)
+
+    return render(request, "travel/home_visa_types.html", context)
 
 
-def _aplicar_filtros_paises_destino(paises, request):
-    filtros = {
-        "busca": request.GET.get("busca", "").strip(),
+def _apply_country_filters(countries, request):
+    filters = {
+        "search": request.GET.get("search", "").strip(),
         "status": request.GET.get("status", "").strip(),
-        "codigo_iso": request.GET.get("codigo_iso", "").strip(),
+        "iso_code": request.GET.get("iso_code", "").strip(),
     }
 
-    if filtros["busca"]:
-        paises = paises.filter(nome__icontains=filtros["busca"])
-    if filtros["status"] == "ativo":
-        paises = paises.filter(ativo=True)
-    elif filtros["status"] == "inativo":
-        paises = paises.filter(ativo=False)
-    if filtros["codigo_iso"]:
-        paises = paises.filter(codigo_iso__icontains=filtros["codigo_iso"])
+    if filters["search"]:
+        countries = countries.filter(name__icontains=filters["search"])
+    if filters["status"] == "ativo":
+        countries = countries.filter(is_active=True)
+    elif filters["status"] == "inativo":
+        countries = countries.filter(is_active=False)
+    if filters["iso_code"]:
+        countries = countries.filter(iso_code__icontains=filters["iso_code"])
 
-    return paises, filtros
+    return countries, filters
 
 
-def _aplicar_filtros_tipos_visto(tipos_visto, request):
-    filtros = {
-        "busca": request.GET.get("busca", "").strip(),
-        "pais": request.GET.get("pais", "").strip(),
+def _apply_visa_type_filters(visa_types, request):
+    filters = {
+        "search": request.GET.get("search", "").strip(),
+        "country": request.GET.get("country", "").strip(),
         "status": request.GET.get("status", "").strip(),
     }
 
-    if filtros["busca"]:
-        tipos_visto = tipos_visto.filter(nome__icontains=filtros["busca"])
-    if filtros["pais"]:
+    if filters["search"]:
+        visa_types = visa_types.filter(name__icontains=filters["search"])
+    if filters["country"]:
         with suppress(ValueError, TypeError):
-            tipos_visto = tipos_visto.filter(pais_destino_id=int(filtros["pais"]))
-    if filtros["status"] == "ativo":
-        tipos_visto = tipos_visto.filter(ativo=True)
-    elif filtros["status"] == "inativo":
-        tipos_visto = tipos_visto.filter(ativo=False)
+            visa_types = visa_types.filter(destination_country_id=int(filters["country"]))
+    if filters["status"] == "ativo":
+        visa_types = visa_types.filter(is_active=True)
+    elif filters["status"] == "inativo":
+        visa_types = visa_types.filter(is_active=False)
 
-    return tipos_visto, filtros
+    return visa_types, filters
 
 
 @login_required
-def criar_pais_destino(request):
-                                                         
-    consultor = obter_consultor_usuario(request.user)
+def create_destination_country(request):
+    consultant = get_user_consultant(request.user)
 
     if request.method == "POST":
-        form = PaisDestinoForm(data=request.POST, user=request.user)
+        form = DestinationCountryForm(data=request.POST, user=request.user)
         if form.is_valid():
-            pais = form.save(commit=False)
-            pais.criado_por = request.user
-            pais.save()
-            messages.success(request, f"País {form.cleaned_data['nome']} cadastrado com sucesso.")
-            return redirect("system:home_paises_destino")
+            country = form.save(commit=False)
+            country.created_by = request.user
+            country.save()
+            messages.success(request, f"País {form.cleaned_data['name']} cadastrado com sucesso.")
+            return redirect("system:home_destination_countries")
         messages.error(request, "Não foi possível cadastrar o país. Verifique os campos.")
     else:
-        form = PaisDestinoForm(user=request.user)
+        form = DestinationCountryForm(user=request.user)
 
-    contexto = {
+    context = {
         "form": form,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "travel/criar_pais_destino.html", contexto)
+    return render(request, "travel/create_destination_country.html", context)
 
 
 @login_required
-def criar_tipo_visto(request):
-                                                       
-    consultor = obter_consultor_usuario(request.user)
+def create_visa_type(request):
+    consultant = get_user_consultant(request.user)
 
     if request.method == "POST":
-        form = TipoVistoForm(data=request.POST, user=request.user)
+        form = VisaTypeForm(data=request.POST, user=request.user)
         if form.is_valid():
-            tipo_visto = form.save(commit=False)
-            tipo_visto.criado_por = request.user
-            tipo_visto.save()
-            messages.success(request, f"Tipo de visto {form.cleaned_data['nome']} cadastrado com sucesso.")
-            return redirect("system:home_tipos_visto")
+            visa_type = form.save(commit=False)
+            visa_type.created_by = request.user
+            visa_type.save()
+            messages.success(
+                request,
+                f"Tipo de visto {form.cleaned_data['name']} cadastrado com sucesso.",
+            )
+            return redirect("system:home_visa_types")
         messages.error(request, "Não foi possível cadastrar o tipo de visto. Verifique os campos.")
     else:
-        form = TipoVistoForm(user=request.user)
+        form = VisaTypeForm(user=request.user)
 
-    contexto = {
+    context = {
         "form": form,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "travel/criar_tipo_visto.html", contexto)
+    return render(request, "travel/create_visa_type.html", context)
 
 
-def _processar_tipos_visto_individuals(viagem, clientes_selecionados, membros_viagem_separada_ids, request):
-                                                                      
-                                                                                                 
-    membros_com_visto_diferente = []
-    
-    for cliente in clientes_selecionados:
-        if cliente.pk in membros_viagem_separada_ids:
+def _process_individual_visa_types(trip, selected_clients, separate_trip_member_ids, request):
+    members_with_different_visa = []
+
+    for client in selected_clients:
+        if client.pk in separate_trip_member_ids:
             continue
-        
-        tipo_visto_cliente = viagem.tipo_visto                                   
-                                                                         
-        if tipo_visto_id := (
-            request.POST.get(f"tipo_visto_dependente_{cliente.pk}") or
-            request.POST.get(f"tipo_visto_cliente_{cliente.pk}")
+
+        client_visa_type = trip.visa_type
+        if visa_type_id := (
+            request.POST.get(f"visa_type_dependent_{client.pk}")
+            or request.POST.get(f"visa_type_client_{client.pk}")
         ):
             with suppress(ValueError, TypeError):
-                if tipo_visto_obj := TipoVisto.objects.filter(pk=int(tipo_visto_id)).first():
-                    tipo_visto_cliente = tipo_visto_obj
-        
-                                                                                           
-                                                                    
-        if tipo_visto_cliente.pk != viagem.tipo_visto.pk:
-            membros_com_visto_diferente.append(cliente.pk)
+                if vt_obj := VisaType.objects.filter(pk=int(visa_type_id)).first():
+                    client_visa_type = vt_obj
+
+        if client_visa_type.pk != trip.visa_type.pk:
+            members_with_different_visa.append(client.pk)
         else:
-                                                                       
-            ClienteViagem.objects.update_or_create(
-                viagem=viagem,
-                cliente=cliente,
-                defaults={"tipo_visto": tipo_visto_cliente}
+            TripClient.objects.update_or_create(
+                trip=trip,
+                client=client,
+                defaults={"visa_type": client_visa_type},
             )
-    
-    return membros_com_visto_diferente
+
+    return members_with_different_visa
 
 
-def _processar_viagens_separadas(viagem, membros_viagem_separada_ids, request):
-                                                                                               
-    if not membros_viagem_separada_ids:
+def _process_separate_trips(trip, separate_member_ids, request):
+    if not separate_member_ids:
         return []
-    
-    viagens_criadas = []
-    
-                                                             
-    ClienteViagem.objects.filter(viagem=viagem, cliente_id__in=membros_viagem_separada_ids).delete()
-    viagem.clientes.remove(*membros_viagem_separada_ids)
-    
-    for cliente_id in membros_viagem_separada_ids:
+
+    created_trips = []
+
+    TripClient.objects.filter(
+        trip=trip, client_id__in=separate_member_ids
+    ).delete()
+    trip.clients.remove(*separate_member_ids)
+
+    for client_id in separate_member_ids:
         with suppress(ValueError, TypeError):
-            cliente_membro = ClienteConsultoria.objects.get(pk=cliente_id)
-            
-                                                    
-            pais_destino_id = request.POST.get(f"pais_destino_dependente_{cliente_id}")
-            tipo_visto_id = request.POST.get(f"tipo_visto_dependente_{cliente_id}")
-            data_viagem = request.POST.get(f"data_viagem_dependente_{cliente_id}")
-            data_retorno = request.POST.get(f"data_retorno_dependente_{cliente_id}")
-            
-                                                                           
-            pais_destino = viagem.pais_destino
-            if pais_destino_id:
+            member_client = ConsultancyClient.objects.get(pk=client_id)
+
+            country_id = request.POST.get(f"destination_country_dependent_{client_id}")
+            visa_type_id = request.POST.get(f"visa_type_dependent_{client_id}")
+            departure_str = request.POST.get(f"departure_date_dependent_{client_id}")
+            return_str = request.POST.get(f"return_date_dependent_{client_id}")
+
+            dest_country = trip.destination_country
+            if country_id:
                 with suppress(ValueError, TypeError):
-                    if pais_obj := PaisDestino.objects.filter(pk=int(pais_destino_id)).first():
-                        pais_destino = pais_obj
-            
-            tipo_visto = viagem.tipo_visto
-            if tipo_visto_id:
+                    if country_obj := DestinationCountry.objects.filter(pk=int(country_id)).first():
+                        dest_country = country_obj
+
+            visa_type = trip.visa_type
+            if visa_type_id:
                 with suppress(ValueError, TypeError):
-                    if tipo_visto_obj := TipoVisto.objects.filter(pk=int(tipo_visto_id)).first():
-                        tipo_visto = tipo_visto_obj
-            
-            data_prevista_viagem = viagem.data_prevista_viagem
-            if data_viagem:
-                from django.utils.dateparse import parse_date
-                if parsed_date := parse_date(data_viagem):
-                    data_prevista_viagem = parsed_date
-            
-            data_prevista_retorno = viagem.data_prevista_retorno
-            if data_retorno:
-                from django.utils.dateparse import parse_date
-                if parsed_date := parse_date(data_retorno):
-                    data_prevista_retorno = parsed_date
-            
-            viagem_separada = Viagem.objects.create(
-                assessor_responsavel=viagem.assessor_responsavel,
-                pais_destino=pais_destino,
-                tipo_visto=tipo_visto,
-                data_prevista_viagem=data_prevista_viagem,
-                data_prevista_retorno=data_prevista_retorno,
-                valor_assessoria=Decimal('0.00'),                                
-                observacoes=f"Viagem separada para {cliente_membro.nome} (membro de {viagem})",
-                criado_por=viagem.criado_por,
+                    if vt_obj := VisaType.objects.filter(pk=int(visa_type_id)).first():
+                        visa_type = vt_obj
+
+            departure_date = trip.planned_departure_date
+            if departure_str:
+                if parsed := parse_date(departure_str):
+                    departure_date = parsed
+
+            return_date = trip.planned_return_date
+            if return_str:
+                if parsed := parse_date(return_str):
+                    return_date = parsed
+
+            separate_trip = Trip.objects.create(
+                assigned_advisor=trip.assigned_advisor,
+                destination_country=dest_country,
+                visa_type=visa_type,
+                planned_departure_date=departure_date,
+                planned_return_date=return_date,
+                advisory_fee=Decimal('0.00'),
+                notes=f"Viagem separada para {member_client.first_name} (membro de {trip})",
+                created_by=trip.created_by,
             )
-            ClienteViagem.objects.create(
-                viagem=viagem_separada,
-                cliente=cliente_membro,
-                tipo_visto=viagem_separada.tipo_visto
+            TripClient.objects.create(
+                trip=separate_trip,
+                client=member_client,
+                visa_type=separate_trip.visa_type,
             )
-            viagens_criadas.append(viagem_separada)
-    
-    return viagens_criadas
+            created_trips.append(separate_trip)
+
+    return created_trips
 
 
-def _organizar_membros_viagem(clientes_ids_list, viagem=None):
-    """Organiza membros para exibição. Se viagem informada, usa papel por viagem."""
-    clientes_objs = ClienteConsultoria.objects.filter(
-        pk__in=clientes_ids_list
-    ).select_related('cliente_principal', 'assessor_responsavel').order_by('nome')
+def _organize_trip_members(client_ids_list, trip=None):
+    client_objs = ConsultancyClient.objects.filter(
+        pk__in=client_ids_list
+    ).select_related('primary_client', 'assigned_advisor').order_by('first_name')
 
-    if viagem:
-        cv_map = {
-            cv.cliente_id: cv
-            for cv in ClienteViagem.objects.filter(viagem=viagem, cliente_id__in=clientes_ids_list)
+    if trip:
+        tc_map = {
+            tc.client_id: tc
+            for tc in TripClient.objects.filter(
+                trip=trip, client_id__in=client_ids_list
+            )
         }
-        membros_data = []
-        for cliente in clientes_objs:
-            cv = cv_map.get(cliente.pk)
-            papel = cv.papel if cv else "dependente"
-            membros_data.append({
-                'cliente': cliente,
-                'tipo': papel,
-                'tipo_visto': cv.tipo_visto if cv else None,
-                'cliente_principal_viagem': cv.cliente_principal_viagem if cv else None,
+        members = []
+        for client in client_objs:
+            tc = tc_map.get(client.pk)
+            role = tc.role if tc else "dependent"
+            members.append({
+                'client': client,
+                'role': role,
+                'visa_type': tc.visa_type if tc else None,
+                'trip_primary_client': tc.trip_primary_client if tc else None,
             })
-        membros_data.sort(key=lambda m: (0 if m['tipo'] == 'principal' else 1, m['cliente'].nome))
-        return membros_data
+        members.sort(key=lambda m: (0 if m['role'] == 'primary' else 1, m['client'].first_name))
+        return members
 
-    membros_data = []
-    for cliente in clientes_objs:
-        membros_data.append({
-            'cliente': cliente,
-            'tipo': 'principal' if cliente.is_principal else 'dependente',
-            'tipo_visto': None,
+    members = []
+    for client in client_objs:
+        members.append({
+            'client': client,
+            'role': 'primary' if client.is_primary else 'dependent',
+            'visa_type': None,
         })
-    membros_data.sort(key=lambda m: (0 if m['tipo'] == 'principal' else 1, m['cliente'].nome))
-    return membros_data
+    members.sort(key=lambda m: (0 if m['role'] == 'primary' else 1, m['client'].first_name))
+    return members
 
 
-def _limpar_flags_cadastro_cliente(request):
-                                                                        
-                                 
-    keys_to_remove = [key for key in request.session.keys() if key.startswith('cadastro_finalizado_')]
+def _clear_client_registration_flags(request):
+    keys_to_remove = [
+        key for key in request.session.keys()
+        if key.startswith('cadastro_finalizado_')
+    ]
     for key in keys_to_remove:
         request.session.pop(key, None)
-    
-                                                                             
-                                                         
-    if not (stored_messages := request.session.get('_messages')):
+
+    stored_messages = request.session.get('_messages')
+    if not stored_messages:
         request.session.modified = True
         return
-    
-                                                                                       
-    filtered_messages = []
-    seen_message_texts = set()
-    
+
+    filtered = []
+    seen_texts = set()
+
     for msg in stored_messages:
-                                                                                           
-        if isinstance(msg, dict):
-            message_text = str(msg.get('message', ''))
-        else:
-                                                    
-            message_text = str(msg)
-        
-                                                                                        
+        message_text = str(msg.get('message', '') if isinstance(msg, dict) else msg)
         message_lower = message_text.lower()
         if any(phrase in message_lower for phrase in [
             "cadastro finalizado com sucesso",
             "cadastro finalizado",
-            "cliente 'teste_principal'"
+            "cliente 'teste_principal'",
         ]):
             continue
-        
-                                                      
-        if message_text not in seen_message_texts:
-            seen_message_texts.add(message_text)
-            filtered_messages.append(msg)
-    
-                                                   
-    if filtered_messages:
-        request.session['_messages'] = filtered_messages
+        if message_text not in seen_texts:
+            seen_texts.add(message_text)
+            filtered.append(msg)
+
+    if filtered:
+        request.session['_messages'] = filtered
     else:
         request.session.pop('_messages', None)
-    
+
     request.session.modified = True
 
 
-def _limpar_mensagens_cadastro_finalizado_storage(request):
-                                                                            
-                                                                     
+def _clear_registration_complete_messages(request):
+    phrases_to_remove = [
+        "cadastro finalizado com sucesso",
+        "cadastro finalizado",
+        "cliente 'teste_principal'",
+    ]
+
     if stored_messages := request.session.get('_messages'):
-        filtered_session_messages = []
-        for msg in stored_messages:
-            if isinstance(msg, dict):
-                message_text = str(msg.get('message', ''))
-            else:
-                message_text = str(msg)
-            message_lower = message_text.lower()
-                                                               
-            phrases_to_remove = [
-                "cadastro finalizado com sucesso",
-                "cadastro finalizado",
-                "cliente 'teste_principal'"
-            ]
-            if all(phrase not in message_lower for phrase in phrases_to_remove):
-                filtered_session_messages.append(msg)
-        
-        if filtered_session_messages:
-            request.session['_messages'] = filtered_session_messages
+        filtered_session = [
+            msg for msg in stored_messages
+            if all(
+                phrase not in str(msg.get('message', '') if isinstance(msg, dict) else msg).lower()
+                for phrase in phrases_to_remove
+            )
+        ]
+
+        if filtered_session:
+            request.session['_messages'] = filtered_session
         else:
             request.session.pop('_messages', None)
         request.session.modified = True
-    
-                                                                     
+
     storage = messages.get_messages(request)
-    filtered_messages_list = []
+    kept_messages = []
     seen_texts = set()
-    
+
     for message in storage:
         message_text = str(message)
         message_lower = message_text.lower()
-                                                         
-        if any(phrase in message_lower for phrase in [
-            "cadastro finalizado com sucesso",
-            "cadastro finalizado",
-            "cliente 'teste_principal'"
-        ]):
+        if any(phrase in message_lower for phrase in phrases_to_remove):
             continue
-                                                      
         if message_text not in seen_texts:
             seen_texts.add(message_text)
-            filtered_messages_list.append(message)
-    
-                                               
+            kept_messages.append(message)
+
     storage.used = True
-    
-                                                
-    for message in filtered_messages_list:
-        messages.add_message(request, message.level, message.message, extra_tags=message.extra_tags)
+
+    for message in kept_messages:
+        messages.add_message(
+            request, message.level, message.message, extra_tags=message.extra_tags
+        )
 
 
-def _preparar_formulario_com_clientes(request, form, clientes_ids_str):
-                                                             
-    if not clientes_ids_str:
+def _prepare_form_with_clients(request, form, client_ids_str):
+    if not client_ids_str:
         return form
-    
-    clientes_ids_list, _ = _preparar_clientes_pre_selecionados(clientes_ids_str)
-    if clientes_ids_list:
-        clientes = ClienteConsultoria.objects.filter(pk__in=clientes_ids_list)
-        if clientes.exists():
-            form.fields["clientes"].initial = [c.pk for c in clientes]
-    
+
+    client_ids_list, _ = _prepare_preselected_clients(client_ids_str)
+    if client_ids_list:
+        clients = ConsultancyClient.objects.filter(pk__in=client_ids_list)
+        if clients.exists():
+            form.fields["clients"].initial = [c.pk for c in clients]
+
     return form
 
 
-def _obter_clientes_e_membros_viagem(request):
-                                                              
-    if request.method == "GET" and (clientes_ids := request.GET.get("clientes", "")):
-        return _preparar_clientes_pre_selecionados(clientes_ids)
+def _get_clients_and_trip_members(request):
+    if request.method == "GET" and (client_ids := request.GET.get("clients", "")):
+        return _prepare_preselected_clients(client_ids)
     return [], []
 
 
-def _processar_post_criar_viagem(request, form):
-                                                             
+def _process_create_trip_post(request, form):
     if not form.is_valid():
         messages.error(request, "Não foi possível cadastrar a viagem. Verifique os campos.")
         return None
-    
-                              
-    acao = request.POST.get("acao", "salvar")
-    
-                                                
-    keys_to_remove = [key for key in request.session.keys() if key.startswith('viagem_cadastrada_')]
+
+    action = request.POST.get("action", "save")
+
+    keys_to_remove = [
+        key for key in request.session.keys()
+        if key.startswith('trip_registered_')
+    ]
     for key in keys_to_remove:
         request.session.pop(key, None)
     request.session.modified = True
-    
-    viagem = form.save()
-    
-                                                                                              
-                                                     
-    clientes_selecionados = form.cleaned_data.get("clientes", [])
-    membros_com_visto_diferente = _processar_tipos_visto_individuals(viagem, clientes_selecionados, [], request)
-    
-                                                                                            
-    viagens_separadas = _processar_viagens_separadas(viagem, membros_com_visto_diferente, request)
-    
-                                                                                     
+
+    trip = form.save()
+
+    selected_clients = form.cleaned_data.get("clients", [])
+    members_with_different_visa = _process_individual_visa_types(
+        trip, selected_clients, [], request
+    )
+
+    separate_trips = _process_separate_trips(trip, members_with_different_visa, request)
+
     if stored_messages := request.session.get('_messages'):
-        filtered = [msg for msg in stored_messages if "Viagem cadastrada" not in str(msg.get('message', '') if isinstance(msg, dict) else msg)]
+        filtered = [
+            msg for msg in stored_messages
+            if "Viagem cadastrada" not in str(
+                msg.get('message', '') if isinstance(msg, dict) else msg
+            )
+        ]
         request.session['_messages'] = filtered or None
         if not filtered:
             request.session.pop('_messages', None)
         request.session.modified = True
-    
-                                                                         
+
     storage = messages.get_messages(request)
     storage.used = True
-    
-                                                             
-    total_viagens = 1 + len(viagens_separadas) if viagens_separadas else 1
-    
-                                                                                                         
-                                                                   
-    if acao == "salvar_e_criar_processo":
-                                                                
-                                                                       
-        todas_viagens_ids = [viagem.pk]
-        if viagens_separadas:
-            todas_viagens_ids.extend([v.pk for v in viagens_separadas])
-        
-                                                                              
-        todos_clientes_ids = set(viagem.clientes.all().values_list('pk', flat=True))
-        for viagem_sep in viagens_separadas:
-            todos_clientes_ids.update(viagem_sep.clientes.all().values_list('pk', flat=True))
-        
-        if todos_clientes_ids:
-            viagens_com_clientes = ClienteViagem.objects.filter(
-                cliente_id__in=list(todos_clientes_ids)
-            ).values_list("viagem_id", flat=True).distinct()
-            clientes_relacionados = ClienteViagem.objects.filter(
-                viagem_id__in=viagens_com_clientes
-            ).values_list("cliente_id", flat=True)
-            todos_clientes_ids.update(clientes_relacionados)
-        
-                                                                     
-        if len(todos_clientes_ids) == 1:
-            cliente_id = list(todos_clientes_ids)[0]
-                                                     
-            cliente_obj = ClienteConsultoria.objects.get(pk=cliente_id)
-            viagem_cliente = None
-            if cliente_obj in viagem.clientes.all():
-                viagem_cliente = viagem
-            else:
-                for viagem_sep in viagens_separadas:
-                    if cliente_obj in viagem_sep.clientes.all():
-                        viagem_cliente = viagem_sep
-                        break
-            
-            if viagem_cliente:
-                return redirect(f"{reverse('system:criar_processo')}?cliente_id={cliente_id}&viagem_id={viagem_cliente.pk}")
-        
-                                                                                
-                                                               
-        return redirect(f"{reverse('system:criar_processo')}?viagem_id={viagem.pk}")
-    
-                                                                      
-    if total_viagens > 1:
-        messages.success(request, f"{total_viagens} viagens cadastradas com sucesso.")
+
+    total_trips = 1 + len(separate_trips) if separate_trips else 1
+
+    if action == "save_and_create_process":
+        return _redirect_after_create_trip_to_process(trip, separate_trips)
+
+    if total_trips > 1:
+        messages.success(request, f"{total_trips} viagens cadastradas com sucesso.")
     else:
         messages.success(request, "Viagem cadastrada com sucesso.")
-    
-    return redirect("system:home_viagens")
+
+    return redirect("system:home_trips")
 
 
-def _preparar_clientes_pre_selecionados(clientes_ids_str):
-                                                                        
-    clientes_ids_list = []
+def _redirect_after_create_trip_to_process(trip, separate_trips):
+    all_trip_ids = [trip.pk]
+    if separate_trips:
+        all_trip_ids.extend([t.pk for t in separate_trips])
+
+    all_client_ids = set(trip.clients.all().values_list('pk', flat=True))
+    for sep_trip in separate_trips:
+        all_client_ids.update(sep_trip.clients.all().values_list('pk', flat=True))
+
+    if all_client_ids:
+        trips_with_clients = TripClient.objects.filter(
+            client_id__in=list(all_client_ids)
+        ).values_list("trip_id", flat=True).distinct()
+        related_clients = TripClient.objects.filter(
+            trip_id__in=trips_with_clients
+        ).values_list("client_id", flat=True)
+        all_client_ids.update(related_clients)
+
+    if len(all_client_ids) == 1:
+        client_id = list(all_client_ids)[0]
+        client_obj = ConsultancyClient.objects.get(pk=client_id)
+        client_trip = None
+        if client_obj in trip.clients.all():
+            client_trip = trip
+        else:
+            for sep_trip in separate_trips:
+                if client_obj in sep_trip.clients.all():
+                    client_trip = sep_trip
+                    break
+
+        if client_trip:
+            return redirect(
+                f"{reverse('system:create_process')}"
+                f"?client_id={client_id}&trip_id={client_trip.pk}"
+            )
+
+    return redirect(f"{reverse('system:create_process')}?trip_id={trip.pk}")
+
+
+def _prepare_preselected_clients(client_ids_str):
+    client_ids_list = []
     with suppress(ValueError, TypeError):
-        clientes_ids_list = [int(id.strip()) for id in clientes_ids_str.split(",") if id.strip()]
-    
-    if not clientes_ids_list:
+        client_ids_list = [
+            int(id_str.strip())
+            for id_str in client_ids_str.split(",")
+            if id_str.strip()
+        ]
+
+    if not client_ids_list:
         return [], []
-    
-    membros_viagem = _organizar_membros_viagem(clientes_ids_list)
-    return list(clientes_ids_list), membros_viagem
+
+    trip_members = _organize_trip_members(client_ids_list)
+    return list(client_ids_list), trip_members
 
 
-def _preparar_contexto_criar_viagem(form, consultor, clientes_pre_selecionados, membros_viagem):
-                                                             
-    tipos_visto_disponiveis = TipoVisto.objects.filter(ativo=True).select_related("pais_destino").order_by("pais_destino__nome", "nome")
-    
+def _prepare_create_trip_context(form, consultant, preselected_clients, trip_members):
+    available_visa_types = VisaType.objects.filter(
+        is_active=True
+    ).select_related("destination_country").order_by("destination_country__name", "name")
+
     return {
         "form": form,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "clientes_pre_selecionados": clientes_pre_selecionados,
-        "membros_viagem": membros_viagem,
-        "tipos_visto_disponiveis": tipos_visto_disponiveis,
+        "user_profile": consultant.profile.name if consultant else None,
+        "preselected_clients": preselected_clients,
+        "trip_members": trip_members,
+        "available_visa_types": available_visa_types,
     }
 
 
 @login_required
-def criar_viagem(request):
-                                                
-    consultor = obter_consultor_usuario(request.user)
-    
-                                                                                        
-    if request.method == "GET" and request.GET.get("clientes"):
-        _limpar_flags_cadastro_cliente(request)
+def create_trip(request):
+    consultant = get_user_consultant(request.user)
+
+    if request.method == "GET" and request.GET.get("clients"):
+        _clear_client_registration_flags(request)
         request.session.save()
-        _limpar_flags_cadastro_cliente(request)
-        _limpar_mensagens_cadastro_finalizado_storage(request)
+        _clear_client_registration_flags(request)
+        _clear_registration_complete_messages(request)
 
     if request.method == "POST":
-        form = ViagemForm(data=request.POST, user=request.user)
-        if redirect_response := _processar_post_criar_viagem(request, form):
+        form = TripForm(data=request.POST, user=request.user)
+        if redirect_response := _process_create_trip_post(request, form):
             return redirect_response
     else:
-        form = ViagemForm(user=request.user)
-        if clientes_ids := request.GET.get("clientes", ""):
-            form = _preparar_formulario_com_clientes(request, form, clientes_ids)
+        form = TripForm(user=request.user)
+        if client_ids := request.GET.get("clients", ""):
+            form = _prepare_form_with_clients(request, form, client_ids)
 
-                                                         
-    clientes_pre_selecionados, membros_viagem = _obter_clientes_e_membros_viagem(request)
-    
-                                                                                      
-                                                             
-    if request.method == "GET" and request.GET.get("clientes"):
-        for _ in range(3):                                  
-            _limpar_flags_cadastro_cliente(request)
-            _limpar_mensagens_cadastro_finalizado_storage(request)
-                                                                        
-            if stored_messages := request.session.get('_messages'):
-                phrases_to_remove = ["cadastro finalizado com sucesso", "cadastro finalizado", "cliente 'teste_principal'"]
+    preselected_clients, trip_members = _get_clients_and_trip_members(request)
+
+    if request.method == "GET" and request.GET.get("clients"):
+        phrases_to_remove = [
+            "cadastro finalizado com sucesso",
+            "cadastro finalizado",
+            "cliente 'teste_principal'",
+        ]
+        for _ in range(3):
+            _clear_client_registration_flags(request)
+            _clear_registration_complete_messages(request)
+            if stored := request.session.get('_messages'):
                 filtered = [
-                    msg for msg in stored_messages
-                    if all(phrase not in str(msg.get('message', '') if isinstance(msg, dict) else msg).lower()
-                          for phrase in phrases_to_remove)
+                    msg for msg in stored
+                    if all(
+                        phrase not in str(
+                            msg.get('message', '') if isinstance(msg, dict) else msg
+                        ).lower()
+                        for phrase in phrases_to_remove
+                    )
                 ]
                 if filtered:
                     request.session['_messages'] = filtered
@@ -690,35 +689,35 @@ def criar_viagem(request):
                     request.session.pop('_messages', None)
                 request.session.modified = True
             request.session.save()
-    
-    contexto = _preparar_contexto_criar_viagem(form, consultor, clientes_pre_selecionados, membros_viagem)
-    return render(request, "travel/criar_viagem.html", contexto)
+
+    context = _prepare_create_trip_context(
+        form, consultant, preselected_clients, trip_members
+    )
+    return render(request, "travel/create_trip.html", context)
 
 
 @login_required
-def listar_paises_destino(request):
-                                           
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    paises = PaisDestino.objects.all().order_by("nome")
-    paises, filtros_aplicados = _aplicar_filtros_paises_destino(paises, request)
-    
-    contexto = {
-        "paises": paises,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtros_aplicados": filtros_aplicados,
+def list_destination_countries(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    countries = DestinationCountry.objects.all().order_by("name")
+    countries, applied_filters = _apply_country_filters(countries, request)
+
+    context = {
+        "countries": countries,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "applied_filters_dict": applied_filters,
     }
-    
-    return render(request, "travel/listar_paises_destino.html", contexto)
+
+    return render(request, "travel/list_destination_countries.html", context)
 
 
-def _limpar_mensagens_duplicadas_sessao(request):
-                                                
+def _clear_duplicate_session_messages(request):
     if not (stored_messages := request.session.get('_messages')):
         return
-    
+
     filtered = []
     seen_texts = set()
     for msg in stored_messages:
@@ -726,1064 +725,1096 @@ def _limpar_mensagens_duplicadas_sessao(request):
         if message_text not in seen_texts:
             seen_texts.add(message_text)
             filtered.append(msg)
-    
+
     if filtered:
         request.session['_messages'] = filtered
     else:
         request.session.pop('_messages', None)
     request.session.modified = True
-    
-                                          
+
     storage = messages.get_messages(request)
     storage.used = True
 
 
 @login_required
-def editar_pais_destino(request, pk: int):
-                                                           
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar_todos:
+def edit_destination_country(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    if not can_manage_all:
         raise PermissionDenied
-    
-    pais = get_object_or_404(PaisDestino, pk=pk)
-    
+
+    country = get_object_or_404(DestinationCountry, pk=pk)
+
     if request.method == "POST":
-                                                        
-        _limpar_mensagens_duplicadas_sessao(request)
-        
-        form = PaisDestinoForm(data=request.POST, instance=pais)
+        _clear_duplicate_session_messages(request)
+
+        form = DestinationCountryForm(data=request.POST, instance=country)
         if form.is_valid():
-            pais_atualizado = form.save()
-            messages.success(request, f"País {pais_atualizado.nome} atualizado com sucesso.")
-            return redirect("system:listar_paises_destino")
+            updated_country = form.save()
+            messages.success(request, f"País {updated_country.name} atualizado com sucesso.")
+            return redirect("system:list_destination_countries")
         else:
-                                        
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"{form.fields[field].label}: {error}")
     else:
-        form = PaisDestinoForm(instance=pais)
-    
-    contexto = {
+        form = DestinationCountryForm(instance=country)
+
+    context = {
         "form": form,
-        "pais": pais,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "country": country,
+        "user_profile": consultant.profile.name if consultant else None,
     }
-    
-    return render(request, "travel/editar_pais_destino.html", contexto)
+
+    return render(request, "travel/edit_destination_country.html", context)
 
 
 @login_required
-def visualizar_pais_destino(request, pk: int):
-                                                            
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    pais = get_object_or_404(
-        PaisDestino.objects.select_related("criado_por"),
-        pk=pk
+def view_destination_country(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    country = get_object_or_404(
+        DestinationCountry.objects.select_related("created_by"),
+        pk=pk,
     )
-    
-                                      
-    tipos_visto = TipoVisto.objects.filter(
-        pais_destino=pais
-    ).select_related("pais_destino").prefetch_related("formulario").order_by("nome")
-    
-                               
-    viagens = Viagem.objects.filter(
-        pais_destino=pais
+
+    visa_types = VisaType.objects.filter(
+        destination_country=country
+    ).select_related("destination_country").prefetch_related("form").order_by("name")
+
+    trips = Trip.objects.filter(
+        destination_country=country
     ).select_related(
-        "tipo_visto",
-        "assessor_responsavel",
-        "pais_destino"
-    ).prefetch_related("clientes").order_by("-data_prevista_viagem")
-    
-    contexto = {
-        "pais": pais,
-        "tipos_visto": tipos_visto,
-        "viagens": viagens,
-        "total_tipos_visto": tipos_visto.count(),
-        "total_viagens": viagens.count(),
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "pode_editar": pode_gerenciar_todos,
+        "visa_type",
+        "assigned_advisor",
+        "destination_country",
+    ).prefetch_related("clients").order_by("-planned_departure_date")
+
+    context = {
+        "country": country,
+        "visa_types": visa_types,
+        "trips": trips,
+        "total_visa_types": visa_types.count(),
+        "total_trips": trips.count(),
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "can_edit": can_manage_all,
     }
-    
-    return render(request, "travel/visualizar_pais_destino.html", contexto)
+
+    return render(request, "travel/view_destination_country.html", context)
 
 
 @login_required
-def verificar_exclusao_pais_destino(request, pk: int):
-                                                                            
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar_todos:
+def verify_destination_country_deletion(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    if not can_manage_all:
         raise PermissionDenied
-    
-    pais = get_object_or_404(PaisDestino, pk=pk)
-    
-                                 
-    viagens = Viagem.objects.filter(pais_destino=pais).select_related(
-        "tipo_visto",
-        "assessor_responsavel"
-    ).prefetch_related("clientes").order_by("-data_prevista_viagem")
-    
-    tipos_visto = TipoVisto.objects.filter(pais_destino=pais).select_related(
-        "pais_destino"
-    ).order_by("nome")
-    
-                                                         
-    from system.models import ClienteViagem
-    clientes_viagem = ClienteViagem.objects.filter(
-        viagem__pais_destino=pais
-    ).select_related("cliente", "viagem", "tipo_visto").order_by("-viagem__data_prevista_viagem")
-    
-    contexto = {
-        "pais": pais,
-        "viagens": viagens,
-        "tipos_visto": tipos_visto,
-        "clientes_viagem": clientes_viagem,
-        "total_viagens": viagens.count(),
-        "total_tipos_visto": tipos_visto.count(),
-        "total_clientes_viagem": clientes_viagem.count(),
-        "pode_excluir": viagens.count() == 0,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
+
+    country = get_object_or_404(DestinationCountry, pk=pk)
+
+    trips = Trip.objects.filter(destination_country=country).select_related(
+        "visa_type",
+        "assigned_advisor",
+    ).prefetch_related("clients").order_by("-planned_departure_date")
+
+    visa_types = VisaType.objects.filter(
+        destination_country=country
+    ).select_related("destination_country").order_by("name")
+
+    trip_clients = TripClient.objects.filter(
+        trip__destination_country=country
+    ).select_related(
+        "client", "trip", "visa_type"
+    ).order_by("-trip__planned_departure_date")
+
+    context = {
+        "country": country,
+        "trips": trips,
+        "visa_types": visa_types,
+        "trip_clients_list": trip_clients,
+        "total_trips": trips.count(),
+        "total_visa_types": visa_types.count(),
+        "total_trip_clients": trip_clients.count(),
+        "can_delete": trips.count() == 0,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
     }
-    
-    return render(request, "travel/verificar_exclusao_pais_destino.html", contexto)
+
+    return render(request, "travel/verify_destination_country_deletion.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_pais_destino(request, pk: int):
-                                    
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar_todos:
+def delete_destination_country(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    if not can_manage_all:
         raise PermissionDenied
-    
-                                                         
-    _limpar_mensagens_duplicadas_sessao(request)
-    
-    pais = get_object_or_404(PaisDestino, pk=pk)
-    
-                                        
-    viagens = Viagem.objects.filter(pais_destino=pais)
-    if viagens.exists():
+
+    _clear_duplicate_session_messages(request)
+
+    country = get_object_or_404(DestinationCountry, pk=pk)
+
+    trips = Trip.objects.filter(destination_country=country)
+    if trips.exists():
         messages.error(
             request,
-            f"Não é possível excluir o país {pais.nome} pois existem {viagens.count()} viagem(ns) vinculada(s). "
-            f"Exclua as viagens primeiro."
+            f"Não é possível excluir o país {country.name} pois existem "
+            f"{trips.count()} viagem(ns) vinculada(s). Exclua as viagens primeiro.",
         )
-        return redirect("system:verificar_exclusao_pais_destino", pk=pk)
-    
-    nome_pais = pais.nome
-    pais.delete()
-    
-    messages.success(request, f"País {nome_pais} excluído com sucesso.")
-    return redirect("system:listar_paises_destino")
+        return redirect("system:verify_destination_country_deletion", pk=pk)
+
+    country_name = country.name
+    country.delete()
+
+    messages.success(request, f"País {country_name} excluído com sucesso.")
+    return redirect("system:list_destination_countries")
 
 
 @login_required
-def listar_tipos_visto(request):
-                                        
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    tipos_visto = TipoVisto.objects.select_related("pais_destino").order_by("pais_destino__nome", "nome")
-    tipos_visto, filtros_aplicados = _aplicar_filtros_tipos_visto(tipos_visto, request)
-    
-    contexto = {
-        "tipos_visto": tipos_visto,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtros_aplicados": filtros_aplicados,
-        "paises": PaisDestino.objects.filter(ativo=True).order_by("nome"),
+def list_visa_types(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    visa_types = VisaType.objects.select_related(
+        "destination_country"
+    ).order_by("destination_country__name", "name")
+    visa_types, applied_filters = _apply_visa_type_filters(visa_types, request)
+
+    context = {
+        "visa_types": visa_types,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "applied_filters_dict": applied_filters,
+        "countries": DestinationCountry.objects.filter(is_active=True).order_by("name"),
     }
-    
-    return render(request, "travel/listar_tipos_visto.html", contexto)
+
+    return render(request, "travel/list_visa_types.html", context)
 
 
 @login_required
-def visualizar_tipo_visto(request, pk: int):
-                                                          
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    tipo_visto = get_object_or_404(
-        TipoVisto.objects.select_related(
-            "pais_destino",
-            "criado_por"
-        ),
-        pk=pk
+def view_visa_type(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    visa_type = get_object_or_404(
+        VisaType.objects.select_related("destination_country", "created_by"),
+        pk=pk,
     )
-    
-                                              
-    from system.models import FormularioVisto
-    formulario = None
+
+    form_obj = None
     try:
-        formulario = FormularioVisto.objects.select_related("tipo_visto").prefetch_related(
-            "perguntas"
-        ).get(tipo_visto=tipo_visto)
-    except FormularioVisto.DoesNotExist:
+        form_obj = VisaForm.objects.select_related(
+            "visa_type"
+        ).prefetch_related("questions").get(visa_type=visa_type)
+    except VisaForm.DoesNotExist:
         messages.info(request, "Nenhum formulário disponível para este tipo de visto.")
-    
-                               
-    viagens = Viagem.objects.filter(
-        tipo_visto=tipo_visto
+
+    trips = Trip.objects.filter(
+        visa_type=visa_type
     ).select_related(
-        "pais_destino",
-        "assessor_responsavel",
-        "tipo_visto"
-    ).prefetch_related("clientes").order_by("-data_prevista_viagem")
-    
-    contexto = {
-        "tipo_visto": tipo_visto,
-        "formulario": formulario,
-        "viagens": viagens,
-        "total_viagens": viagens.count(),
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "pode_editar": pode_gerenciar_todos,
+        "destination_country",
+        "assigned_advisor",
+        "visa_type",
+    ).prefetch_related("clients").order_by("-planned_departure_date")
+
+    context = {
+        "visa_type": visa_type,
+        "visa_form_obj": form_obj,
+        "trips": trips,
+        "total_trips": trips.count(),
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "can_edit": can_manage_all,
     }
-    
-    return render(request, "travel/visualizar_tipo_visto.html", contexto)
+
+    return render(request, "travel/view_visa_type.html", context)
 
 
 @login_required
-def editar_tipo_visto(request, pk: int):
-                                                         
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar_todos:
+def edit_visa_type(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    if not can_manage_all:
         raise PermissionDenied
-    
-    tipo_visto = get_object_or_404(TipoVisto.objects.select_related("pais_destino"), pk=pk)
-    
+
+    visa_type = get_object_or_404(
+        VisaType.objects.select_related("destination_country"), pk=pk
+    )
+
     if request.method == "POST":
-        form = TipoVistoForm(data=request.POST, instance=tipo_visto)
+        form = VisaTypeForm(data=request.POST, instance=visa_type)
         if form.is_valid():
             form.save()
-            messages.success(request, f"Tipo de visto {form.cleaned_data['nome']} atualizado com sucesso.")
-            return redirect("system:listar_tipos_visto")
+            messages.success(
+                request,
+                f"Tipo de visto {form.cleaned_data['name']} atualizado com sucesso.",
+            )
+            return redirect("system:list_visa_types")
         messages.error(request, "Não foi possível atualizar o tipo de visto. Verifique os campos.")
     else:
-        form = TipoVistoForm(instance=tipo_visto)
-                                                                           
-        if tipo_visto.pais_destino:
-            form.fields["pais_destino"].initial = tipo_visto.pais_destino.pk
-    
-    contexto = {
+        form = VisaTypeForm(instance=visa_type)
+        if visa_type.destination_country:
+            form.fields["destination_country"].initial = visa_type.destination_country.pk
+
+    context = {
         "form": form,
-        "tipo_visto": tipo_visto,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "visa_type": visa_type,
+        "user_profile": consultant.profile.name if consultant else None,
     }
-    
-    return render(request, "travel/editar_tipo_visto.html", contexto)
+
+    return render(request, "travel/edit_visa_type.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_tipo_visto(request, pk: int):
-                                  
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar_todos:
+def delete_visa_type(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    if not can_manage_all:
         raise PermissionDenied
-    
-    tipo_visto = get_object_or_404(TipoVisto, pk=pk)
-    nome_tipo = tipo_visto.nome
-    tipo_visto.delete()
-    
-    messages.success(request, f"Tipo de visto {nome_tipo} excluído com sucesso.")
-    return redirect("system:listar_tipos_visto")
+
+    visa_type = get_object_or_404(VisaType, pk=pk)
+    type_name = visa_type.name
+    visa_type.delete()
+
+    messages.success(request, f"Tipo de visto {type_name} excluído com sucesso.")
+    return redirect("system:list_visa_types")
 
 
-def _aplicar_filtros_viagens(viagens, request, filtros_aplicados, incluir_assessor=True):
-                                                               
-                                     
-    if incluir_assessor and (assessor_id := request.GET.get("assessor")):
+def _apply_trip_filters(trips, request, applied_filters, include_advisor=True):
+    if include_advisor and (advisor_id := request.GET.get("advisor")):
         with suppress(ValueError, TypeError):
-            viagens = viagens.filter(assessor_responsavel_id=int(assessor_id))
-            filtros_aplicados["assessor"] = int(assessor_id)
-    
-                                
-    if pais_id := request.GET.get("pais"):
+            trips = trips.filter(assigned_advisor_id=int(advisor_id))
+            applied_filters["advisor"] = int(advisor_id)
+
+    if country_id := request.GET.get("country"):
         with suppress(ValueError, TypeError):
-            viagens = viagens.filter(pais_destino_id=int(pais_id))
-            filtros_aplicados["pais"] = int(pais_id)
-    
-                              
-    if tipo_visto_id := request.GET.get("tipo_visto"):
+            trips = trips.filter(destination_country_id=int(country_id))
+            applied_filters["country"] = int(country_id)
+
+    if visa_type_id := request.GET.get("visa_type"):
         with suppress(ValueError, TypeError):
-            viagens = viagens.filter(tipo_visto_id=int(tipo_visto_id))
-            filtros_aplicados["tipo_visto"] = int(tipo_visto_id)
-    
-                                                
-    if data_viagem_inicio := request.GET.get("data_viagem_inicio"):
+            trips = trips.filter(visa_type_id=int(visa_type_id))
+            applied_filters["visa_type"] = int(visa_type_id)
+
+    if departure_start := request.GET.get("departure_date_start"):
         with suppress(ValueError, TypeError):
-            data_inicio = datetime.strptime(data_viagem_inicio, "%Y-%m-%d").date()
-            viagens = viagens.filter(data_prevista_viagem__gte=data_inicio)
-            filtros_aplicados["data_viagem_inicio"] = data_viagem_inicio
-    if data_viagem_fim := request.GET.get("data_viagem_fim"):
+            start_date = datetime.strptime(departure_start, "%Y-%m-%d").date()
+            trips = trips.filter(planned_departure_date__gte=start_date)
+            applied_filters["departure_date_start"] = departure_start
+    if departure_end := request.GET.get("departure_date_end"):
         with suppress(ValueError, TypeError):
-            data_fim = datetime.strptime(data_viagem_fim, "%Y-%m-%d").date()
-            viagens = viagens.filter(data_prevista_viagem__lte=data_fim)
-            filtros_aplicados["data_viagem_fim"] = data_viagem_fim
-    
-                                                 
-    if data_retorno_inicio := request.GET.get("data_retorno_inicio"):
+            end_date = datetime.strptime(departure_end, "%Y-%m-%d").date()
+            trips = trips.filter(planned_departure_date__lte=end_date)
+            applied_filters["departure_date_end"] = departure_end
+
+    if return_start := request.GET.get("return_date_start"):
         with suppress(ValueError, TypeError):
-            data_inicio = datetime.strptime(data_retorno_inicio, "%Y-%m-%d").date()
-            viagens = viagens.filter(data_prevista_retorno__gte=data_inicio)
-            filtros_aplicados["data_retorno_inicio"] = data_retorno_inicio
-    if data_retorno_fim := request.GET.get("data_retorno_fim"):
+            start_date = datetime.strptime(return_start, "%Y-%m-%d").date()
+            trips = trips.filter(planned_return_date__gte=start_date)
+            applied_filters["return_date_start"] = return_start
+    if return_end := request.GET.get("return_date_end"):
         with suppress(ValueError, TypeError):
-            data_fim = datetime.strptime(data_retorno_fim, "%Y-%m-%d").date()
-            viagens = viagens.filter(data_prevista_retorno__lte=data_fim)
-            filtros_aplicados["data_retorno_fim"] = data_retorno_fim
-    
-                                         
-    if valor_min := request.GET.get("valor_min"):
+            end_date = datetime.strptime(return_end, "%Y-%m-%d").date()
+            trips = trips.filter(planned_return_date__lte=end_date)
+            applied_filters["return_date_end"] = return_end
+
+    if min_fee := request.GET.get("min_fee"):
         with suppress(ValueError, TypeError):
-            viagens = viagens.filter(valor_assessoria__gte=float(valor_min))
-            filtros_aplicados["valor_min"] = valor_min
-    if valor_max := request.GET.get("valor_max"):
+            trips = trips.filter(advisory_fee__gte=float(min_fee))
+            applied_filters["min_fee"] = min_fee
+    if max_fee := request.GET.get("max_fee"):
         with suppress(ValueError, TypeError):
-            viagens = viagens.filter(valor_assessoria__lte=float(valor_max))
-            filtros_aplicados["valor_max"] = valor_max
-    
-                                  
-    if cliente_id := request.GET.get("cliente"):
+            trips = trips.filter(advisory_fee__lte=float(max_fee))
+            applied_filters["max_fee"] = max_fee
+
+    if client_name := request.GET.get("client"):
+        client_name = client_name.strip()
+        if client_name:
+            trips = trips.filter(
+                Q(clients__first_name__icontains=client_name)
+                | Q(clients__last_name__icontains=client_name)
+            ).distinct()
+            applied_filters["client"] = client_name
+
+    if partner_id := request.GET.get("partner_obj"):
         with suppress(ValueError, TypeError):
-            viagens = viagens.filter(clientes__id=int(cliente_id)).distinct()
-            filtros_aplicados["cliente"] = int(cliente_id)
-    
-                                                          
-    if parceiro_id := request.GET.get("parceiro"):
+            trips = trips.filter(
+                clients__referring_partner_id=int(partner_id)
+            ).distinct()
+            applied_filters["partner_obj"] = int(partner_id)
+
+    if creation_start := request.GET.get("creation_date_start"):
         with suppress(ValueError, TypeError):
-            viagens = viagens.filter(clientes__parceiro_indicador_id=int(parceiro_id)).distinct()
-            filtros_aplicados["parceiro"] = int(parceiro_id)
-    
-                                        
-    if data_criacao_inicio := request.GET.get("data_criacao_inicio"):
+            start_date = datetime.strptime(creation_start, "%Y-%m-%d").date()
+            trips = trips.filter(created_at__date__gte=start_date)
+            applied_filters["creation_date_start"] = creation_start
+    if creation_end := request.GET.get("creation_date_end"):
         with suppress(ValueError, TypeError):
-            data_inicio = datetime.strptime(data_criacao_inicio, "%Y-%m-%d").date()
-            viagens = viagens.filter(criado_em__date__gte=data_inicio)
-            filtros_aplicados["data_criacao_inicio"] = data_criacao_inicio
-    if data_criacao_fim := request.GET.get("data_criacao_fim"):
-        with suppress(ValueError, TypeError):
-            data_fim = datetime.strptime(data_criacao_fim, "%Y-%m-%d").date()
-            viagens = viagens.filter(criado_em__date__lte=data_fim)
-            filtros_aplicados["data_criacao_fim"] = data_criacao_fim
-    
-    return viagens
+            end_date = datetime.strptime(creation_end, "%Y-%m-%d").date()
+            trips = trips.filter(created_at__date__lte=end_date)
+            applied_filters["creation_date_end"] = creation_end
+
+    return trips
 
 
-def _montar_kpis_viagens(viagens):
-    viagens_ids = list(viagens.values_list("pk", flat=True).distinct())
-    base = Viagem.objects.filter(pk__in=viagens_ids)
-    hoje = date.today()
-    proximidade_fim = hoje + timedelta(days=30)
+def _build_trip_kpis(trips):
+    trip_ids = list(trips.values_list("pk", flat=True).distinct())
+    base = Trip.objects.filter(pk__in=trip_ids)
+    today = date.today()
+    upcoming_threshold = today + timedelta(days=30)
 
-    total_viagens = base.count()
-    total_viagens_concluidas = base.filter(data_prevista_retorno__lt=hoje).count()
-    total_viagens_proximas = base.filter(
-        data_prevista_viagem__gte=hoje,
-        data_prevista_viagem__lte=proximidade_fim,
+    total = base.count()
+    completed = base.filter(planned_return_date__lt=today).count()
+    upcoming = base.filter(
+        planned_departure_date__gte=today,
+        planned_departure_date__lte=upcoming_threshold,
     ).count()
 
-    qtd_por_tipo_visto = list(
-        base.values("tipo_visto__nome").annotate(total=Count("pk")).order_by("-total", "tipo_visto__nome")
+    by_visa_type = list(
+        base.values("visa_type__name").annotate(
+            total=Count("pk")
+        ).order_by("-total", "visa_type__name")
     )
-    qtd_por_pais = list(
-        base.values("pais_destino__nome").annotate(total=Count("pk")).order_by("-total", "pais_destino__nome")
+    by_country = list(
+        base.values("destination_country__name").annotate(
+            total=Count("pk")
+        ).order_by("-total", "destination_country__name")
     )
 
     return {
-        "total_viagens_kpi": total_viagens,
-        "total_viagens_concluidas": total_viagens_concluidas,
-        "total_viagens_proximas": total_viagens_proximas,
-        "quantidade_por_tipo_visto": qtd_por_tipo_visto,
-        "quantidade_por_pais": qtd_por_pais,
+        "total_trips_kpi": total,
+        "total_completed_trips": completed,
+        "total_upcoming_trips": upcoming,
+        "count_by_visa_type": by_visa_type,
+        "count_by_country": by_country,
     }
 
 
-def _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor):
-                                                                              
-    viagens_com_info = []
-    for viagem in viagens:
-                                                         
-        formulario = _obter_formulario_por_tipo_visto(viagem.tipo_visto, apenas_ativo=True)
-        tem_formulario = formulario is not None
-        total_clientes = viagem.clientes.count()
-        clientes_com_resposta = 0
-        
-        if formulario and total_clientes > 0:
-            clientes_com_resposta = RespostaFormulario.objects.filter(
-                viagem=viagem
-            ).values_list("cliente_id", flat=True).distinct().count()
-        
-                                                      
-        total_processos = Processo.objects.filter(viagem=viagem).count()
-        clientes_sem_processo = total_clientes - total_processos if total_clientes > 0 else 0
-        
-        parceiros_vinculados = {cliente.parceiro_indicador for cliente in viagem.clientes.all() if cliente.parceiro_indicador}
-        pode_editar_excluir = pode_gerenciar_todos or (consultor and viagem.assessor_responsavel_id == consultor.pk)
-        
-        viagens_com_info.append({
-            "viagem": viagem,
-            "tem_formulario": tem_formulario,
-            "total_clientes": total_clientes,
-            "clientes_com_resposta": clientes_com_resposta,
-            "clientes_sem_resposta": total_clientes - clientes_com_resposta if tem_formulario else 0,
-            "total_processos": total_processos,
-            "clientes_sem_processo": clientes_sem_processo,
-            "pode_editar_excluir": pode_editar_excluir,
-            "parceiros_vinculados": list(parceiros_vinculados),
-        })
-    
-    return viagens_com_info
+def _prepare_trip_info(trips, can_manage_all, consultant):
+    result = []
+    for trip in trips:
+        form_obj = _get_form_by_visa_type(trip.visa_type, active_only=True)
+        has_form = form_obj is not None
+        total_clients = trip.clients.count()
+        clients_with_answers = 0
 
+        if form_obj and total_clients > 0:
+            clients_with_answers = FormAnswer.objects.filter(
+                trip=trip
+            ).values_list("client_id", flat=True).distinct().count()
 
-_build_pergunta_estado = build_pergunta_estado
-_pergunta_e_visivel = pergunta_e_visivel
-
-
-def _processar_respostas_formulario(request, viagem, cliente, perguntas, respostas_existentes=None):
-    """Wrapper que delega para o serviço centralizado."""
-    return processar_respostas_formulario(
-        request.POST, viagem, cliente, perguntas, respostas_existentes
-    )
-
-
-def _obter_tipo_visto_cliente(viagem, cliente):
-                                                                                                            
-    with suppress(ClienteViagem.DoesNotExist):
-        cliente_viagem = ClienteViagem.objects.select_related('tipo_visto__formulario').get(
-            viagem=viagem, cliente=cliente
+        total_processes = Process.objects.filter(trip=trip).count()
+        clients_without_process = (
+            total_clients - total_processes if total_clients > 0 else 0
         )
-                                                             
-        if cliente_viagem.tipo_visto:
-            return cliente_viagem.tipo_visto
-    
-                                                     
-    return viagem.tipo_visto
+
+        linked_partners = {
+            client.referring_partner
+            for client in trip.clients.all()
+            if client.referring_partner
+        }
+        can_edit_delete = can_manage_all or (
+            consultant and trip.assigned_advisor_id == consultant.pk
+        )
+
+        result.append({
+            "trip": trip,
+            "has_form": has_form,
+            "total_clients": total_clients,
+            "clients_with_answers": clients_with_answers,
+            "clients_without_answers": (
+                total_clients - clients_with_answers if has_form else 0
+            ),
+            "total_processes": total_processes,
+            "clients_without_process": clients_without_process,
+            "can_edit_delete": can_edit_delete,
+            "linked_partners": list(linked_partners),
+        })
+
+    return result
 
 
-def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
-       
-                                                                         
-    
-         
-                                          
-                                                                
-    
-            
-                               
-       
-    if not tipo_visto or not hasattr(tipo_visto, 'pk') or not tipo_visto.pk:
-        return None
-    
-    try:
-        if apenas_ativo:
-            return FormularioVisto.objects.select_related('tipo_visto').get(
-                tipo_visto_id=tipo_visto.pk,
-                ativo=True
-            )
-        else:
-            return FormularioVisto.objects.select_related('tipo_visto').get(
-                tipo_visto_id=tipo_visto.pk
-            )
-    except FormularioVisto.DoesNotExist:
-        return None
-
-
-def _obter_dados_formulario(viagem, cliente, stage_token=None):
-    tipo_visto = _obter_tipo_visto_cliente(viagem, cliente)
-    
-    if not tipo_visto:
-        return None, None, None, None, None, None
-    
-    formulario = _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True)
-    
-    if not formulario:
-        return None, None, None, None, None, None
-    
-    perguntas = (
-        formulario.perguntas.filter(ativo=True)
-        .prefetch_related("opcoes")
-        .order_by("ordem", "pergunta")
+def _process_form_answers(request, trip, client, questions, existing_answers=None):
+    return process_form_answers(
+        request.POST, trip, client, questions, existing_answers
     )
-    
-    respostas_list = RespostaFormulario.objects.filter(
-        viagem=viagem, cliente=cliente
-    ).select_related("resposta_selecao")
-    
-    respostas_existentes = {r.pergunta_id: r for r in respostas_list}
 
-    prefill_form_answers(viagem, cliente, perguntas, respostas_existentes)
 
-    stage_items = build_stage_items(formulario)
+def _get_client_visa_type(trip, client):
+    with suppress(TripClient.DoesNotExist):
+        trip_client = TripClient.objects.select_related(
+            'visa_type__form'
+        ).get(trip=trip, client=client)
+        if trip_client.visa_type:
+            return trip_client.visa_type
+    return trip.visa_type
+
+
+def _get_form_by_visa_type(visa_type, active_only=True):
+    if not visa_type or not hasattr(visa_type, 'pk') or not visa_type.pk:
+        return None
+
+    try:
+        if active_only:
+            return VisaForm.objects.select_related('visa_type').get(
+                visa_type_id=visa_type.pk, is_active=True,
+            )
+        return VisaForm.objects.select_related('visa_type').get(
+            visa_type_id=visa_type.pk,
+        )
+    except VisaForm.DoesNotExist:
+        return None
+
+
+def _get_form_data(trip, client, stage_token=None):
+    visa_type = _get_client_visa_type(trip, client)
+
+    if not visa_type:
+        return None, None, None, None, None, None
+
+    form_obj = _get_form_by_visa_type(visa_type, active_only=True)
+
+    if not form_obj:
+        return None, None, None, None, None, None
+
+    questions = (
+        form_obj.questions.filter(is_active=True)
+        .prefetch_related("options")
+        .order_by("order", "question")
+    )
+
+    answers_list = FormAnswer.objects.filter(
+        trip=trip, client=client
+    ).select_related("answer_select")
+
+    existing_answers = {a.question_id: a for a in answers_list}
+
+    prefill_form_answers(trip, client, questions, existing_answers)
+
+    stage_items = build_stage_items(form_obj)
     current_stage = resolve_stage_token(stage_items, stage_token)
-    stage_perguntas = filter_questions_by_stage(perguntas, current_stage)
+    stage_questions = filter_questions_by_stage(questions, current_stage)
 
-    return formulario, perguntas, respostas_existentes, stage_items, current_stage, list(stage_perguntas)
+    return (
+        form_obj, questions, existing_answers,
+        stage_items, current_stage, list(stage_questions),
+    )
 
 
-def _atualizar_resposta_formulario(resposta, pergunta, valor):
-    """Wrapper que delega para o serviço centralizado."""
-    _atualizar_resposta_formulario_svc(resposta, pergunta, valor)
+def _update_form_answer(answer, question, value):
+    _update_answer_by_type_svc(answer, question, value)
 
 
 @login_required
-def listar_viagens(request):
-                                             
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-                                                       
-    viagens = Viagem.objects.select_related(
-        "pais_destino",
-        "tipo_visto__formulario",
-        "assessor_responsavel",
-    ).prefetch_related("clientes", "clientes__parceiro_indicador").order_by("-data_prevista_viagem")
-    
-                     
-    filtros_aplicados = {}
-    viagens = _aplicar_filtros_viagens(viagens, request, filtros_aplicados)
-    kpis = _montar_kpis_viagens(viagens)
-    
-                                      
-    viagens_com_info = _preparar_info_viagens(viagens, pode_gerenciar_todos, consultor)
-    
-                                   
-    assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("nome")
-    paises = PaisDestino.objects.filter(ativo=True).order_by("nome")
-    tipos_visto = TipoVisto.objects.filter(ativo=True).select_related("pais_destino").order_by("pais_destino__nome", "nome")
-    clientes = ClienteConsultoria.objects.order_by("nome")
-    parceiros = Partner.objects.filter(ativo=True).order_by("nome_empresa", "nome_responsavel")
-    
-    contexto = {
-        "viagens_com_info": viagens_com_info,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "eh_administrador": pode_gerenciar_todos,
-        "assessores": assessores,
-        "paises": paises,
-        "tipos_visto": tipos_visto,
-        "clientes": clientes,
-        "parceiros": parceiros,
-        "filtros_aplicados": filtros_aplicados,
+def list_trips(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    trips = Trip.objects.select_related(
+        "destination_country",
+        "visa_type__form",
+        "assigned_advisor",
+    ).prefetch_related(
+        "clients", "clients__referring_partner"
+    ).order_by("-planned_departure_date")
+
+    applied_filters = {}
+    trips = _apply_trip_filters(trips, request, applied_filters)
+    kpis = _build_trip_kpis(trips)
+
+    trips_with_info = _prepare_trip_info(trips, can_manage_all, consultant)
+
+    advisors = ConsultancyUser.objects.filter(is_active=True).order_by("name")
+    countries = DestinationCountry.objects.filter(is_active=True).order_by("name")
+    visa_types = VisaType.objects.filter(
+        is_active=True
+    ).select_related("destination_country").order_by("destination_country__name", "name")
+    clients = ConsultancyClient.objects.order_by("first_name")
+    partners = Partner.objects.filter(is_active=True).order_by("company_name", "contact_name")
+
+    context = {
+        "trips_with_info": trips_with_info,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "is_admin": can_manage_all,
+        "advisors": advisors,
+        "countries": countries,
+        "visa_types": visa_types,
+        "clients": clients,
+        "partners": partners,
+        "applied_filters_dict": applied_filters,
         **kpis,
     }
-    
-    return render(request, "travel/listar_viagens.html", contexto)
+
+    return render(request, "travel/list_trips.html", context)
 
 
 @login_required
-def visualizar_viagem(request, pk: int):
-                                                                                   
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    viagem = get_object_or_404(
-        Viagem.objects.select_related(
-            "pais_destino",
-            "tipo_visto",
-            "tipo_visto__formulario",
-            "assessor_responsavel",
-        ).prefetch_related("clientes"),
-        pk=pk
+def view_trip(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    trip = get_object_or_404(
+        Trip.objects.select_related(
+            "destination_country",
+            "visa_type",
+            "visa_type__form",
+            "assigned_advisor",
+        ).prefetch_related("clients"),
+        pk=pk,
     )
 
-    clientes_viagem_qs = ClienteViagem.objects.filter(
-        viagem=viagem
+    trip_clients_qs = TripClient.objects.filter(
+        trip=trip
     ).select_related(
-        "cliente", "cliente__assessor_responsavel", "cliente_principal_viagem", "tipo_visto"
+        "client", "client__assigned_advisor", "trip_primary_client", "visa_type"
     ).order_by(
         models.Case(
-            models.When(papel="principal", then=0),
+            models.When(role="primary", then=0),
             default=1,
             output_field=models.IntegerField(),
         ),
-        "cliente__nome",
+        "client__first_name",
     )
 
-    processos = Processo.objects.filter(
-        viagem=viagem
+    processes = Process.objects.filter(
+        trip=trip
     ).select_related(
-        "cliente",
-        "assessor_responsavel",
-    ).prefetch_related("etapas", "etapas__status").order_by("-criado_em")
+        "client",
+        "assigned_advisor",
+    ).prefetch_related("stages", "stages__status").order_by("-created_at")
 
-    clientes_com_info = []
-    for cv in clientes_viagem_qs:
-        cliente = cv.cliente
-        tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
-        formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=False)
+    clients_with_info = []
+    for tc in trip_clients_qs:
+        client = tc.client
+        client_visa_type = _get_client_visa_type(trip, client)
+        form_obj = _get_form_by_visa_type(client_visa_type, active_only=False)
 
-        tem_resposta = False
-        total_perguntas = 0
-        total_respostas = 0
+        has_answer = False
+        total_questions = 0
+        total_answers = 0
 
-        if formulario and formulario.ativo:
-            perguntas = formulario.perguntas.filter(ativo=True)
-            total_perguntas = perguntas.count()
-            if total_perguntas > 0:
-                respostas = RespostaFormulario.objects.filter(
-                    viagem=viagem,
-                    cliente=cliente
-                )
-                total_respostas = respostas.count()
-                tem_resposta = total_respostas > 0
+        if form_obj and form_obj.is_active:
+            questions = form_obj.questions.filter(is_active=True)
+            total_questions = questions.count()
+            if total_questions > 0:
+                answers = FormAnswer.objects.filter(trip=trip, client=client)
+                total_answers = answers.count()
+                has_answer = total_answers > 0
 
-        clientes_com_info.append({
-            "cliente": cliente,
-            "tipo_visto": tipo_visto_cliente,
-            "formulario": formulario,
-            "tem_resposta": tem_resposta,
-            "total_perguntas": total_perguntas,
-            "total_respostas": total_respostas,
-            "completo": tem_resposta and total_respostas == total_perguntas if total_perguntas > 0 else False,
-            "papel": cv.papel,
-            "cliente_principal_viagem": cv.cliente_principal_viagem,
+        clients_with_info.append({
+            "client": client,
+            "visa_type": client_visa_type,
+            "visa_form_obj": form_obj,
+            "has_answer": has_answer,
+            "total_questions": total_questions,
+            "total_answers": total_answers,
+            "complete": (
+                has_answer and total_answers == total_questions
+                if total_questions > 0 else False
+            ),
+            "role": tc.role,
+            "trip_primary_client": tc.trip_primary_client,
         })
-    
-                                            
-    registros_financeiros = Financeiro.objects.filter(
-        viagem=viagem
+
+    financial_records = FinancialRecord.objects.filter(
+        trip=trip
     ).select_related(
-        "cliente",
-        "assessor_responsavel",
-    ).order_by("-criado_em")
-    
-    pode_editar = pode_gerenciar_todos or (consultor and viagem.assessor_responsavel_id == consultor.pk)
+        "client",
+        "assigned_advisor",
+    ).order_by("-created_at")
 
-    papeis_por_cliente = {item["cliente"].pk: item["papel"] for item in clientes_com_info}
+    can_edit = can_manage_all or (
+        consultant and trip.assigned_advisor_id == consultant.pk
+    )
 
-    contexto = {
-        "viagem": viagem,
-        "clientes_com_info": clientes_com_info,
-        "processos": processos,
-        "registros_financeiros": registros_financeiros,
-        "papeis_por_cliente": papeis_por_cliente,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "pode_editar": pode_editar,
+    roles_by_client = {
+        item["client"].pk: item["role"] for item in clients_with_info
     }
-    
-    return render(request, "travel/visualizar_viagem.html", contexto)
+
+    context = {
+        "trip": trip,
+        "clients_with_info": clients_with_info,
+        "processes": processes,
+        "financial_records": financial_records,
+        "roles_by_client": roles_by_client,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "can_edit": can_edit,
+    }
+
+    return render(request, "travel/view_trip.html", context)
 
 
 @login_required
-def editar_viagem(request, pk: int):
-                                                  
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    viagem = get_object_or_404(
-        Viagem.objects.select_related("pais_destino", "tipo_visto", "assessor_responsavel"),
-        pk=pk
+def edit_trip(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    trip = get_object_or_404(
+        Trip.objects.select_related(
+            "destination_country", "visa_type", "assigned_advisor"
+        ),
+        pk=pk,
     )
-    
-                                                                                            
-    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel_id != consultor.pk):
+
+    if not can_manage_all and (
+        not consultant or trip.assigned_advisor_id != consultant.pk
+    ):
         raise PermissionDenied("Você não tem permissão para editar esta viagem.")
-    
+
     if request.method == "POST":
-        form = ViagemForm(data=request.POST, user=request.user, instance=viagem)
+        form = TripForm(data=request.POST, user=request.user, instance=trip)
         if form.is_valid():
             form.save()
             messages.success(request, "Viagem atualizada com sucesso.")
-            return redirect("system:listar_viagens")
+            return redirect("system:list_trips")
         messages.error(request, "Não foi possível atualizar a viagem. Verifique os campos.")
     else:
-        form = ViagemForm(user=request.user, instance=viagem)
-    
-    contexto = {
+        form = TripForm(user=request.user, instance=trip)
+
+    context = {
         "form": form,
-        "viagem": viagem,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "trip": trip,
+        "user_profile": consultant.profile.name if consultant else None,
     }
-    
-    return render(request, "travel/editar_viagem.html", contexto)
+
+    return render(request, "travel/edit_trip.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_viagem(request, pk: int):
-                            
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    viagem = get_object_or_404(
-        Viagem.objects.select_related("assessor_responsavel"),
-        pk=pk
+def delete_trip(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    trip = get_object_or_404(
+        Trip.objects.select_related("assigned_advisor"),
+        pk=pk,
     )
-    
-                                                                                             
-    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel_id != consultor.pk):
+
+    if not can_manage_all and (
+        not consultant or trip.assigned_advisor_id != consultant.pk
+    ):
         raise PermissionDenied("Você não tem permissão para excluir esta viagem.")
-    
-    pais_destino = viagem.pais_destino.nome
-    data_viagem = viagem.data_prevista_viagem.strftime("%d/%m/%Y")
-    viagem.delete()
-    
-    messages.success(request, f"Viagem para {pais_destino} ({data_viagem}) excluída com sucesso.")
-    return redirect("system:listar_viagens")
+
+    country_name = trip.destination_country.name
+    departure_str = trip.planned_departure_date.strftime("%d/%m/%Y")
+    trip.delete()
+
+    messages.success(
+        request,
+        f"Viagem para {country_name} ({departure_str}) excluída com sucesso.",
+    )
+    return redirect("system:list_trips")
 
 
 @login_required
 @require_GET
-def api_tipos_visto(request):
-                                                           
-    pais_id = request.GET.get("pais", "").strip()
+def api_visa_types(request):
+    country_id = request.GET.get("country", "").strip()
 
-    if not pais_id:
+    if not country_id:
         return JsonResponse({"error": "Informe um país."}, status=400)
 
     with suppress(ValueError, TypeError):
-        tipos_visto = TipoVisto.objects.filter(
-            pais_destino_id=int(pais_id),
-            ativo=True
-        ).order_by("nome")
+        visa_types = VisaType.objects.filter(
+            destination_country_id=int(country_id),
+            is_active=True,
+        ).order_by("name")
 
-        data = [{"id": tipo.id, "nome": tipo.nome} for tipo in tipos_visto]
+        data = [{"id": vt.id, "name": vt.name} for vt in visa_types]
         return JsonResponse(data, safe=False)
     return JsonResponse({"error": "País inválido."}, status=400)
 
 
 @login_required
-def listar_formularios_viagem(request, viagem_id: int):
-                                                                     
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    viagem = get_object_or_404(
-        Viagem.objects.select_related("pais_destino", "tipo_visto__formulario", "assessor_responsavel"),
-        pk=viagem_id
-    )
-    
-                                                                        
-                                                             
-    
-                                                                                                       
-    clientes_com_info = []
-    for cliente in viagem.clientes.all():
-                                                  
-        tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
-        
-                                                         
-        formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=False)
-        
-        tem_resposta = False
-        total_perguntas = 0
-        total_respostas = 0
-        
-        if formulario and formulario.ativo:
-            perguntas = formulario.perguntas.filter(ativo=True)
-            total_perguntas = perguntas.count()
-            if total_perguntas > 0:
-                respostas = RespostaFormulario.objects.filter(
-                    viagem=viagem,
-                    cliente=cliente
-                )
-                total_respostas = respostas.count()
-                tem_resposta = total_respostas > 0
-        
-        clientes_com_info.append({
-            "cliente": cliente,
-            "tipo_visto": tipo_visto_cliente,
-            "formulario": formulario,
-            "tem_resposta": tem_resposta,
-            "total_perguntas": total_perguntas,
-            "total_respostas": total_respostas,
-            "completo": tem_resposta and total_respostas == total_perguntas if total_perguntas > 0 else False,
-        })
-    
-    contexto = {
-        "viagem": viagem,
-        "clientes_com_info": clientes_com_info,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-    }
-    
-    return render(request, "travel/listar_formularios_viagem.html", contexto)
+@require_GET
+def api_client_dependents(request):
+    client_id = request.GET.get("client_id", "").strip()
+    if not client_id:
+        return JsonResponse([], safe=False)
+    with suppress(ValueError, TypeError):
+        client = ConsultancyClient.objects.get(pk=int(client_id))
+        dependents = ConsultancyClient.objects.filter(
+            primary_client=client
+        ).order_by("first_name")
+        data = [{"id": d.pk, "name": d.full_name} for d in dependents]
+        return JsonResponse(data, safe=False)
+    return JsonResponse([], safe=False)
 
 
 @login_required
-def editar_formulario_cliente(request, viagem_id: int, cliente_id: int):
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    viagem = get_object_or_404(
-        Viagem.objects.select_related("tipo_visto__formulario"),
-        pk=viagem_id
+@require_GET
+def api_client_trips(request):
+    client_id = request.GET.get("client_id", "").strip()
+    if not client_id:
+        return JsonResponse([], safe=False)
+    with suppress(ValueError, TypeError):
+        trips = Trip.objects.filter(
+            clients__id=int(client_id)
+        ).select_related(
+            "destination_country", "visa_type"
+        ).order_by("-planned_departure_date").distinct()
+        data = [
+            {
+                "id": t.pk,
+                "label": (
+                    f"{t.destination_country.name} - "
+                    f"{t.visa_type.name if t.visa_type else 'Sem visto'} - "
+                    f"{t.planned_departure_date.strftime('%d/%m/%Y') if t.planned_departure_date else 'Sem data'}"
+                ),
+            }
+            for t in trips
+        ]
+        return JsonResponse(data, safe=False)
+    return JsonResponse([], safe=False)
+
+
+@login_required
+def list_trip_forms(request, trip_id: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    trip = get_object_or_404(
+        Trip.objects.select_related(
+            "destination_country", "visa_type__form", "assigned_advisor"
+        ),
+        pk=trip_id,
     )
-    
-    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel_id != consultor.pk):
+
+    clients_with_info = []
+    for client in trip.clients.all():
+        client_visa_type = _get_client_visa_type(trip, client)
+        form_obj = _get_form_by_visa_type(client_visa_type, active_only=False)
+
+        has_answer = False
+        total_questions = 0
+        total_answers = 0
+
+        if form_obj and form_obj.is_active:
+            questions = form_obj.questions.filter(is_active=True)
+            total_questions = questions.count()
+            if total_questions > 0:
+                answers = FormAnswer.objects.filter(trip=trip, client=client)
+                total_answers = answers.count()
+                has_answer = total_answers > 0
+
+        clients_with_info.append({
+            "client": client,
+            "visa_type": client_visa_type,
+            "visa_form_obj": form_obj,
+            "has_answer": has_answer,
+            "total_questions": total_questions,
+            "total_answers": total_answers,
+            "complete": (
+                has_answer and total_answers == total_questions
+                if total_questions > 0 else False
+            ),
+        })
+
+    context = {
+        "trip": trip,
+        "clients_with_info": clients_with_info,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+    }
+
+    return render(request, "travel/list_trip_forms.html", context)
+
+
+@login_required
+def edit_client_form(request, trip_id: int, client_id: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    trip = get_object_or_404(
+        Trip.objects.select_related("visa_type__form"),
+        pk=trip_id,
+    )
+
+    if not can_manage_all and (
+        not consultant or trip.assigned_advisor_id != consultant.pk
+    ):
         raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
-    
-    cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)
-    
-    if cliente not in viagem.clientes.all():
+
+    client = get_object_or_404(ConsultancyClient, pk=client_id)
+
+    if client not in trip.clients.all():
         raise PermissionDenied("Este cliente não está vinculado a esta viagem.")
-    
-    stage_token = request.GET.get("etapa")
-    formulario, all_perguntas, respostas_existentes, stage_items, current_stage, perguntas = _obter_dados_formulario(viagem, cliente, stage_token)
-    
-    if not formulario:
+
+    stage_token = request.GET.get("stage")
+    (
+        form_obj, all_questions, existing_answers,
+        stage_items, current_stage, questions,
+    ) = _get_form_data(trip, client, stage_token)
+
+    if not form_obj:
         messages.warning(
             request,
             "Este tipo de visto não possui um formulário cadastrado ou o formulário está inativo.",
         )
-        return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
-    
+        return redirect("system:list_trip_forms", trip_id=trip_id)
+
     if request.method == "POST":
-        respostas_salvas, erros = _processar_respostas_formulario(request, viagem, cliente, perguntas, respostas_existentes)
-        
-        if erros:
-            for erro in erros:
-                messages.error(request, erro)
+        saved_answers, errors = _process_form_answers(
+            request, trip, client, questions, existing_answers
+        )
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
         else:
             messages.success(
                 request,
-                f"Etapa '{current_stage['nome'] if current_stage else 'Atual'}' salva com sucesso!",
+                f"Etapa '{current_stage['name'] if current_stage else 'Atual'}' salva com sucesso!",
             )
             next_action = request.POST.get("next_action")
             if next_action == "next" and current_stage:
-                next_stage = None
-                for i, item in enumerate(stage_items):
-                    if item["token"] == current_stage["token"] and i + 1 < len(stage_items):
-                        next_stage = stage_items[i + 1]
-                        break
+                next_stage = _find_next_stage(stage_items, current_stage)
                 if next_stage:
-                    return redirect(f"{reverse('system:editar_formulario_cliente', args=[viagem_id, cliente_id])}?etapa={next_stage['token'].replace(':', '%3A')}")
-                return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
+                    return redirect(
+                        f"{reverse('system:edit_client_form', args=[trip_id, client_id])}"
+                        f"?stage={next_stage['token'].replace(':', '%3A')}"
+                    )
+                return redirect("system:list_trip_forms", trip_id=trip_id)
             elif next_action == "finish":
-                return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
+                return redirect("system:list_trip_forms", trip_id=trip_id)
             else:
-                stage_param = f"?etapa={current_stage['token'].replace(':', '%3A')}" if current_stage else ""
-                return redirect(f"{reverse('system:editar_formulario_cliente', args=[viagem_id, cliente_id])}{stage_param}")
-    
-    tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
+                stage_param = (
+                    f"?stage={current_stage['token'].replace(':', '%3A')}"
+                    if current_stage else ""
+                )
+                return redirect(
+                    f"{reverse('system:edit_client_form', args=[trip_id, client_id])}"
+                    f"{stage_param}"
+                )
 
-    stage_index = 0
-    if current_stage and stage_items:
-        for i, item in enumerate(stage_items):
-            if item["token"] == current_stage["token"]:
-                stage_index = i
-                break
+    client_visa_type = _get_client_visa_type(trip, client)
 
+    stage_index = _find_stage_index(stage_items, current_stage)
     next_stage = stage_items[stage_index + 1] if stage_index + 1 < len(stage_items) else None
     prev_stage = stage_items[stage_index - 1] if stage_index > 0 else None
-    
-    contexto = {
-        "viagem": viagem,
-        "cliente": cliente,
-        "tipo_visto_cliente": tipo_visto_cliente,
-        "formulario": formulario,
-        "perguntas": perguntas,
-        "all_perguntas": all_perguntas,
-        "respostas_existentes": respostas_existentes,
-        "respostas_ids": list(respostas_existentes.keys()),
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
+
+    context = {
+        "trip": trip,
+        "client": client,
+        "client_visa_type": client_visa_type,
+        "visa_form_obj": form_obj,
+        "questions": questions,
+        "all_questions": all_questions,
+        "existing_answers": existing_answers,
+        "answer_ids": list(existing_answers.keys()),
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
         "stage_items": stage_items,
         "current_stage": current_stage,
         "next_stage": next_stage,
         "prev_stage": prev_stage,
         "stage_index": stage_index,
     }
-    
-    return render(request, "travel/editar_formulario_cliente.html", contexto)
+
+    return render(request, "travel/edit_client_form.html", context)
+
+
+def _find_stage_index(stage_items, current_stage):
+    if current_stage and stage_items:
+        for i, item in enumerate(stage_items):
+            if item["token"] == current_stage["token"]:
+                return i
+    return 0
+
+
+def _find_next_stage(stage_items, current_stage):
+    for i, item in enumerate(stage_items):
+        if item["token"] == current_stage["token"] and i + 1 < len(stage_items):
+            return stage_items[i + 1]
+    return None
 
 
 @login_required
-def visualizar_formulario_cliente(request, viagem_id: int, cliente_id: int):
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    viagem = get_object_or_404(
-        Viagem.objects.select_related("tipo_visto__formulario", "pais_destino", "assessor_responsavel"),
-        pk=viagem_id
+def view_client_form(request, trip_id: int, client_id: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    trip = get_object_or_404(
+        Trip.objects.select_related(
+            "visa_type__form", "destination_country", "assigned_advisor"
+        ),
+        pk=trip_id,
     )
-    
-    cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)
-    
-    if cliente not in viagem.clientes.all():
+
+    client = get_object_or_404(ConsultancyClient, pk=client_id)
+
+    if client not in trip.clients.all():
         raise PermissionDenied("Este cliente não está vinculado a esta viagem.")
-    
-    stage_token = request.GET.get("etapa")
-    formulario, all_perguntas, respostas_existentes, stage_items, current_stage, perguntas = _obter_dados_formulario(viagem, cliente, stage_token)
-    
-    if not formulario:
+
+    stage_token = request.GET.get("stage")
+    (
+        form_obj, all_questions, existing_answers,
+        stage_items, current_stage, questions,
+    ) = _get_form_data(trip, client, stage_token)
+
+    if not form_obj:
         messages.warning(
             request,
             "Este tipo de visto não possui um formulário cadastrado ou o formulário está inativo.",
         )
-        return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
-    
-    tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
+        return redirect("system:list_trip_forms", trip_id=trip_id)
 
-    stage_index = 0
-    if current_stage and stage_items:
-        for i, item in enumerate(stage_items):
-            if item["token"] == current_stage["token"]:
-                stage_index = i
-                break
+    client_visa_type = _get_client_visa_type(trip, client)
 
+    stage_index = _find_stage_index(stage_items, current_stage)
     next_stage = stage_items[stage_index + 1] if stage_index + 1 < len(stage_items) else None
     prev_stage = stage_items[stage_index - 1] if stage_index > 0 else None
-    
-    contexto = {
-        "viagem": viagem,
-        "cliente": cliente,
-        "tipo_visto_cliente": tipo_visto_cliente,
-        "formulario": formulario,
-        "perguntas": perguntas,
-        "all_perguntas": all_perguntas,
-        "respostas_existentes": respostas_existentes,
-        "respostas_ids": list(respostas_existentes.keys()),
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
+
+    context = {
+        "trip": trip,
+        "client": client,
+        "client_visa_type": client_visa_type,
+        "visa_form_obj": form_obj,
+        "questions": questions,
+        "all_questions": all_questions,
+        "existing_answers": existing_answers,
+        "answer_ids": list(existing_answers.keys()),
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
         "stage_items": stage_items,
         "current_stage": current_stage,
         "next_stage": next_stage,
         "prev_stage": prev_stage,
         "stage_index": stage_index,
     }
-    
-    return render(request, "travel/visualizar_formulario_cliente.html", contexto)
+
+    return render(request, "travel/view_client_form.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_respostas_formulario(request, viagem_id: int, cliente_id: int):
-                                                                              
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    viagem = get_object_or_404(
-        Viagem.objects.select_related("assessor_responsavel"),
-        pk=viagem_id
+def delete_form_answers(request, trip_id: int, client_id: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    trip = get_object_or_404(
+        Trip.objects.select_related("assigned_advisor"),
+        pk=trip_id,
     )
-    
-                                                                                
-    if not pode_gerenciar_todos:
+
+    if not can_manage_all:
         raise PermissionDenied("Apenas administradores podem excluir respostas de formulários.")
-    
-    from system.models import ClienteConsultoria
-    cliente = get_object_or_404(ClienteConsultoria, pk=cliente_id)
-    
-                                                    
-    if cliente not in viagem.clientes.all():
+
+    client = get_object_or_404(ConsultancyClient, pk=client_id)
+
+    if client not in trip.clients.all():
         raise PermissionDenied("Este cliente não está vinculado a esta viagem.")
-    
-                                                            
-    respostas_deletadas = RespostaFormulario.objects.filter(
-        viagem=viagem,
-        cliente=cliente
+
+    deleted_count = FormAnswer.objects.filter(
+        trip=trip, client=client
     ).delete()[0]
-    
+
     messages.success(
         request,
-        f"Todas as respostas do formulário do cliente {cliente.nome_completo} foram excluídas com sucesso. ({respostas_deletadas} resposta(s) removida(s))"
+        f"Todas as respostas do formulário do cliente {client.full_name} "
+        f"foram excluídas com sucesso. ({deleted_count} resposta(s) removida(s))",
     )
 
-    return redirect("system:listar_formularios_viagem", viagem_id=viagem_id)
-
-
-import logging
-
-logger = logging.getLogger("visary.travel")
+    return redirect("system:list_trip_forms", trip_id=trip_id)
 
 
 @login_required
 @require_http_methods(["POST"])
-def trocar_principal_viagem(request, pk: int, cliente_id: int):
-    """Troca o cliente principal de uma viagem com transferência automática de financeiro."""
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def switch_trip_principal(request, pk: int, client_id: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    viagem = get_object_or_404(Viagem, pk=pk)
+    trip = get_object_or_404(Trip, pk=pk)
 
-    if not pode_gerenciar_todos and (not consultor or viagem.assessor_responsavel_id != consultor.pk):
+    if not can_manage_all and (
+        not consultant or trip.assigned_advisor_id != consultant.pk
+    ):
         raise PermissionDenied
 
-    novo_principal = get_object_or_404(ClienteConsultoria, pk=cliente_id)
+    new_primary = get_object_or_404(ConsultancyClient, pk=client_id)
 
-    cv_novo = ClienteViagem.objects.filter(viagem=viagem, cliente=novo_principal).first()
-    if not cv_novo:
+    tc_new = TripClient.objects.filter(trip=trip, client=new_primary).first()
+    if not tc_new:
         messages.error(request, "Cliente não está vinculado a esta viagem.")
-        return redirect("system:visualizar_viagem", pk=pk)
+        return redirect("system:view_trip", pk=pk)
 
-    if cv_novo.papel == "principal":
-        messages.info(request, f"{novo_principal.nome} já é o principal desta viagem.")
-        return redirect("system:visualizar_viagem", pk=pk)
+    if tc_new.role == "primary":
+        messages.info(
+            request,
+            f"{new_primary.first_name} já é o principal desta viagem.",
+        )
+        return redirect("system:view_trip", pk=pk)
 
     with transaction.atomic():
-        cv_antigo_principal = ClienteViagem.objects.filter(
-            viagem=viagem, papel="principal"
-        ).select_related("cliente").first()
+        tc_old_primary = TripClient.objects.filter(
+            trip=trip, role="primary"
+        ).select_related("client").first()
 
-        if cv_antigo_principal:
-            antigo_principal = cv_antigo_principal.cliente
+        if tc_old_primary:
+            old_primary = tc_old_primary.client
 
-            cv_antigo_principal.papel = "dependente"
-            cv_antigo_principal.cliente_principal_viagem = novo_principal
-            cv_antigo_principal.save(update_fields=["papel", "cliente_principal_viagem", "atualizado_em"])
+            tc_old_primary.role = "dependent"
+            tc_old_primary.trip_primary_client = new_primary
+            tc_old_primary.save(
+                update_fields=["role", "trip_primary_client", "updated_at"]
+            )
 
             try:
-                fin_antigo = Financeiro.objects.select_for_update().get(
-                    viagem=viagem, cliente=antigo_principal
+                fin_old = FinancialRecord.objects.select_for_update().get(
+                    trip=trip, client=old_primary
                 )
-                fin_novo, created = Financeiro.objects.select_for_update().get_or_create(
-                    viagem=viagem, cliente=novo_principal,
+                fin_new, created = FinancialRecord.objects.select_for_update().get_or_create(
+                    trip=trip,
+                    client=new_primary,
                     defaults={
-                        "assessor_responsavel": viagem.assessor_responsavel,
-                        "valor": fin_antigo.valor,
-                        "status": fin_antigo.status,
-                        "criado_por": viagem.criado_por,
+                        "assigned_advisor": trip.assigned_advisor,
+                        "amount": fin_old.amount,
+                        "status": fin_old.status,
+                        "created_by": trip.created_by,
                     },
                 )
                 if not created:
-                    fin_novo.valor = fin_antigo.valor
-                    fin_novo.status = fin_antigo.status
-                    if fin_antigo.data_pagamento:
-                        fin_novo.data_pagamento = fin_antigo.data_pagamento
-                    fin_novo.save(update_fields=["valor", "status", "data_pagamento", "atualizado_em"])
+                    fin_new.amount = fin_old.amount
+                    fin_new.status = fin_old.status
+                    if fin_old.payment_date:
+                        fin_new.payment_date = fin_old.payment_date
+                    fin_new.save(
+                        update_fields=["amount", "status", "payment_date", "updated_at"]
+                    )
 
-                fin_antigo.valor = 0
-                fin_antigo.save(update_fields=["valor", "atualizado_em"])
+                fin_old.amount = 0
+                fin_old.save(update_fields=["amount", "updated_at"])
 
                 logger.info(
                     "Financeiro transferido: viagem pk=%s, de '%s' (pk=%s) para '%s' (pk=%s)",
-                    viagem.pk, antigo_principal.nome, antigo_principal.pk,
-                    novo_principal.nome, novo_principal.pk,
+                    trip.pk, old_primary.first_name, old_primary.pk,
+                    new_primary.first_name, new_primary.pk,
                 )
-            except Financeiro.DoesNotExist:
+            except FinancialRecord.DoesNotExist:
                 pass
 
-        cv_novo.papel = "principal"
-        cv_novo.cliente_principal_viagem = None
-        cv_novo.save(update_fields=["papel", "cliente_principal_viagem", "atualizado_em"])
+        tc_new.role = "primary"
+        tc_new.trip_primary_client = None
+        tc_new.save(update_fields=["role", "trip_primary_client", "updated_at"])
 
-        ClienteViagem.objects.filter(
-            viagem=viagem, papel="dependente"
-        ).update(cliente_principal_viagem=novo_principal)
+        TripClient.objects.filter(
+            trip=trip, role="dependent"
+        ).update(trip_primary_client=new_primary)
 
     messages.success(
         request,
-        f"{novo_principal.nome} agora é o cliente principal desta viagem."
+        f"{new_primary.first_name} agora é o cliente principal desta viagem.",
     )
-    return redirect("system:visualizar_viagem", pk=pk)
-
+    return redirect("system:view_trip", pk=pk)

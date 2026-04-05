@@ -7,15 +7,15 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         pipeline = [
-            ("seed_modulos", "modulos"),
-            ("seed_perfis", "perfis"),
-            ("seed_usuarios_consultoria", "usuarios_consultoria"),
-            ("seed_paises", "paises_destino"),
-            ("seed_tipos_visto", "tipos_visto"),
-            ("seed_status_processo", "status_processo"),
-            ("seed_formularios_visto", "formularios_visto"),
-            ("seed_etapas_cliente", "etapas_cliente"),
-            ("seed_parceiros", "parceiros"),
+            ("seed_modules", "modules"),
+            ("seed_profiles", "profiles"),
+            ("seed_consultancy_users", "consultancy_users"),
+            ("seed_countries", "destination_countries"),
+            ("seed_visa_types", "visa_types"),
+            ("seed_process_status", "process_status"),
+            ("seed_visa_forms", "visa_forms"),
+            ("seed_client_steps", "client_steps"),
+            ("seed_partners", "partners"),
         ]
 
         for command_name, label in pipeline:

@@ -52,6 +52,14 @@ Arquitetura alvo:
 5. **Segurança por camadas.** Autorização e escopo no backend + templates apenas para exibir.
 6. **Configuração é externa ou persistida.** Preferir modelos/admin para regras configuráveis; nada importante deve ficar hardcoded.
 7. **Integrações são falíveis.** Tratar falhas com fallback e mensagens claras ao usuário.
+8. **Política de idioma dual (inglês no código, português na interface).**
+   - **Backend 100% inglês:** nomes de models, fields, tabelas, variáveis, funções, classes, services, views, forms, URLs, nomes de arquivos, nomes de diretórios — tudo em inglês. Nenhum identificador em português no código-fonte.
+   - **Frontend: texto visível ao usuário em pt-BR.** Labels, placeholders, mensagens de erro, títulos, botões, tooltips, textos de ajuda — tudo em português brasileiro. Texto em inglês na interface do usuário é rejeitado.
+   - **Frontend: código em inglês.** Variáveis JS, classes CSS, IDs de elementos, nomes de funções JS, configurações — tudo em inglês. Apenas o conteúdo textual exibido ao usuário é em pt-BR.
+   - **Respostas do agente em pt-BR.** Toda comunicação do agente com o desenvolvedor deve ser em português brasileiro.
+9. **Código limpo e sem ruído.** Proibido comentários, docstrings e anotações. Código autoexplicativo por nomes claros e funções pequenas.
+10. **Destruição > remendo.** O sistema está em fase inicial. Código legado em português não deve ser ajustado — deve ser reescrito em inglês. Quebrar o sistema durante refatoração é aceitável: erros expostos revelam lógica que precisa ser corrigida. Nunca acochambrar.
+11. **Anti-code-smell rigoroso.** Máximo 25 linhas por método. Máximo 4 argumentos por função. Proibido `except: pass`. Proibido hardcode. Proibido estruturas condicionais complexas (>3 ramos sem refatoração). Classes com responsabilidade única. TDD obrigatório.
 
 ---
 
@@ -127,6 +135,18 @@ Invariantes:
 - Validação considera apenas a etapa atual (não exigir campos de outras etapas).
 - CPF é validado contra duplicidade na sessão e no banco.
 - Dependente pode herdar dados do principal (endereço, dispensa senha).
+
+### 5.1.1 Cliente com papel dual (principal e dependente em momentos distintos)
+
+Um `ClienteConsultoria` pode ser **dependente** em um contexto e **principal** em outro, desde que não simultaneamente na mesma viagem. O campo `cliente_principal` define o vínculo familiar/cadastral, mas **não impede** que o mesmo cliente atue como principal em outra viagem.
+
+Exemplo: um filho cadastrado como dependente do pai pode, posteriormente, viajar sozinho para intercâmbio — nesse caso, uma nova viagem é criada com ele como principal, sem necessidade de recadastro. O histórico completo do cliente permanece vinculado ao mesmo registro.
+
+Invariantes:
+- O papel na viagem (`ClienteViagem.papel`) é independente do vínculo cadastral (`cliente_principal`).
+- Ao criar viagem, o assessor seleciona o principal e pode incluir/excluir dependentes.
+- Um dependente cadastral pode ser selecionado como principal de uma viagem específica.
+- O mesmo se aplica a processos: o processo é criado por (viagem, cliente), e o cliente pode ter papel de principal em uma viagem e dependente em outra.
 
 ### 5.2 Viagens e processos (checklist)
 
@@ -324,6 +344,37 @@ Se uma feature nova não se encaixar claramente em um desses domínios, a modela
 
 ---
 
+## 10.1 Referência visual canônica — Painel de Atendimento
+
+O **Painel de Atendimento** (`home/home.html`) é a **tela-mestre de design** do sistema. Todo componente de filtro, busca ou interação de seleção em qualquer tela do sistema deve ser visualmente consistente com este painel.
+
+### Componentes de referência obrigatória:
+
+**Combobox de busca de cliente (`.painel-filtros__combobox`):**
+- Input de texto com ícone SVG de lupa à esquerda, botão "Buscar" e botão "Limpar Filtros".
+- Dropdown customizado (`.dropdown-list`) com itens clicáveis, highlight de texto digitado, e "Nenhum resultado" quando vazio.
+- Hover com `background: rgba(86, 244, 156, 0.15)`.
+- Funcionamento: digitar filtra a lista; clicar seleciona; valor vai para `<select>` hidden que alimenta o form.
+
+**Selects inline (`.painel-filtros select`):**
+- Background semi-transparente: `rgba(255, 255, 255, 0.05)`.
+- Borda: `1px solid rgba(255, 255, 255, 0.12)`.
+- Border-radius: `10px`.
+- Custom arrow via `background-image` SVG.
+- `appearance: none; -webkit-appearance: none`.
+- Hover: `border-color: rgba(86, 244, 156, 0.4)`.
+- Focus: `border-color: rgba(86, 244, 156, 0.6)`.
+
+**Barra de filtros (`.painel-filtros`):**
+- Layout flex horizontal com `gap: 12px`, `flex-wrap: wrap`.
+- Label "FILTRAR POR:" em uppercase, `0.78rem`, `var(--text-secondary)`.
+- Responsivo: `@media (max-width: 768px)` → coluna vertical, inputs `width: 100%`.
+
+### Regra inviolável:
+Qualquer tela que tenha filtro de busca por nome de cliente **deve** usar o componente combobox com dropdown (não `<datalist>`, não `<select>` puro sem busca, não `<input type="text">` sem sugestões). Se a implementação exigir adaptação, o resultado visual e de interação deve ser indistinguível do Painel de Atendimento.
+
+---
+
 ## 11. Armadilhas conhecidas
 
 - Confiar apenas em bloqueio visual no frontend para permissões/escopo.
@@ -340,6 +391,17 @@ Se uma feature nova não se encaixar claramente em um desses domínios, a modela
 - Executar rotina de limpeza que altere código-fonte (ex.: strip de comentários/docstrings) ou finalize processos Python fora do escopo do projeto.
 - Executar comandos `git` sem solicitação explícita do usuário na tarefa atual.
 - Entregar template sem testar responsividade: campos de formulário com largura fixa que estouram em mobile, grids sem `min()` que criam scroll horizontal, inputs sem `box-sizing: border-box` que ultrapassam o container, formulários flex sem fallback para coluna única em telas estreitas.
+- Implementar filtros com `<datalist>` nativo, `<select>` puro ou `<input>` sem sugestões quando o Painel de Atendimento usa combobox com dropdown customizado — o padrão visual do Painel é a referência obrigatória.
+- Assumir que padronização de CSS é suficiente sem validar o HTML renderizado e a interação real do componente contra a tela de referência.
+- Escrever texto visível ao usuário em inglês (labels, placeholders, mensagens, títulos, botões). Todo conteúdo de interface deve ser em pt-BR.
+- Usar nomes em português no código-fonte (models, fields, variáveis, funções, classes, arquivos). Todo identificador no código deve ser em inglês.
+- Adicionar comentários, docstrings ou anotações desnecessárias. Código limpo é autoexplicativo.
+- Usar `except: pass` ou `except Exception: pass`. Erros devem ser tratados explicitamente ou propagados.
+- Hardcode de valores mágicos, strings soltas ou configurações embutidas no código.
+- Estruturas condicionais complexas (>3 ramos `if/elif/else` sem refatoração).
+- Classes/métodos "onipotentes" que acumulam responsabilidades excessivas.
+- Métodos com mais de 25 linhas ou funções com mais de 4 argumentos.
+- Tentar ajustar código legado em português em vez de reescrever em inglês. Compatibilidade retroativa não é necessária.
 
 ---
 
@@ -366,4 +428,13 @@ Uma mudança é considerada pronta quando:
 - **[2026-03-20]** Definida regra de deduplicação semântica para `TipoVisto` no import legado e revalidação obrigatória de formulários modularizados com base em `static/forms_ini`.
  - **[2026-03-22]** Definida política de migrações: **nunca criar migrações manuais**. Sempre usar `makemigrations` do Django. Código novo em desenvolvimento não deve gerar migrações versionadas; o banco de desenvolvimento local deve ser recriado via `cleanup.py` + `makemigrations` + `migrate`.
 - **[2026-03-22]** Definida política de consistência visual: **todo template novo ou reescrito deve respeitar o design system do projeto** (CSS custom properties: `--card-bg`, `--accent`, `--text-primary`, etc.; cards com `border-radius: 24px`, `box-shadow`, gradientes escuros; botões com estilização consistente; badges coloridos por tipo; inputs com transições). Templates genéricos (bare `{{ form.as_p }}`, classes CSS aleatórias ou inline styles inconsistentes) são rejeitados em revisão.
+- **[2026-03-30]** Definida regra de papel dual de cliente: um `ClienteConsultoria` pode ser dependente cadastral e principal em viagem/processo distinto, sem recadastro.
+- **[2026-03-30]** Definida referência visual canônica: o **Painel de Atendimento** (`home/home.html`) é a tela-mestre de design para filtros, combobox de busca e componentes de listagem. Toda tela com filtros deve replicar o padrão visual e de interação do Painel (combobox com dropdown de sugestões, ícone de busca, selects customizados), não apenas funcionalidade equivalente.
+- **[2026-03-30]** Definido fluxo canônico de Criar Viagem: selecionar cliente principal (combobox) → auto-exibir dependentes vinculados com checkboxes → permitir desmarcar dependentes ou selecionar apenas um dependente como principal da viagem.
+- **[2026-03-30]** Definido fluxo canônico de Novo Processo: selecionar cliente primeiro (combobox) → exibir viagens vinculadas ao cliente → exibir dependentes → criar processo para selecionados.
 - **[2026-03-26]** Definida política de responsividade obrigatória: **todo template deve funcionar corretamente em desktop (1120px+), tablet (768px) e mobile (480px)**. Regras invioláveis: `box-sizing: border-box` em todos os elementos; inputs/selects sempre `width: 100%` dentro do container; grids com `minmax(min(Xpx, 100%), 1fr)` para evitar overflow; formulários em grid com fallback para coluna única em mobile; tabelas envoltas em `.table-responsive` (`overflow-x: auto`); containers com `min-width: 0` para prevenir estouro de flex/grid; proibido `flex: 0 0 <valor fixo>` sem `@media` correspondente. Campos de formulário minúsculos, desalinhados ou que quebrem a viewport em qualquer resolução são rejeitados em revisão.
+- **[2026-03-29]** Definida política de idioma obrigatório: **todo texto visível ao usuário final deve ser em português brasileiro (pt-BR)**. Labels, placeholders, mensagens, títulos, botões, tooltips — tudo em pt-BR. Texto em inglês no frontend é rejeitado em revisão.
+- **[2026-03-30]** Definida política de idioma dual: **backend 100% inglês** (models, fields, variáveis, funções, classes, arquivos, URLs) + **interface do usuário em pt-BR** (labels, mensagens, textos visíveis). Código JS/CSS/configurações em inglês. Respostas do agente em pt-BR. Todo código existente em português deve ser migrado para inglês.
+- **[2026-03-30]** Definida política de código limpo: **proibido comentários e docstrings**. Código autoexplicativo por nomes claros e funções pequenas.
+- **[2026-03-30]** Definida política de destruição e recriação: sistema em fase inicial, pode ser destruído e recriado. Código legado em português deve ser reescrito em inglês, nunca ajustado. Quebrar durante refatoração é aceitável.
+- **[2026-03-30]** Definida política anti-code-smell rigorosa: max 25 linhas/método, max 4 args/função, proibido `except: pass`, proibido hardcode, proibido condicionais complexas, responsabilidade única por classe, TDD obrigatório.

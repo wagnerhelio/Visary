@@ -1,8 +1,8 @@
-def build_stage_items(formulario):
-    etapas = list(formulario.etapas.filter(ativo=True).order_by("ordem", "nome"))
-    items = [{"token": f"etapa:{etapa.pk}", "etapa": etapa, "nome": etapa.nome} for etapa in etapas]
-    if formulario.perguntas.filter(ativo=True, etapa__isnull=True).exists():
-        items.append({"token": "etapa:none", "etapa": None, "nome": "Outras perguntas"})
+def build_stage_items(visa_form):
+    stages = list(visa_form.stages.filter(is_active=True).order_by("order", "name"))
+    items = [{"token": f"stage:{stage.pk}", "stage": stage, "name": stage.name} for stage in stages]
+    if visa_form.questions.filter(is_active=True, stage__isnull=True).exists():
+        items.append({"token": "stage:none", "stage": None, "name": "Outras perguntas"})
     return items
 
 
@@ -16,10 +16,10 @@ def resolve_stage_token(stage_items, token):
     return stage_items[0]
 
 
-def filter_questions_by_stage(perguntas, stage_item):
+def filter_questions_by_stage(questions, stage_item):
     if not stage_item:
-        return perguntas.none()
-    etapa = stage_item["etapa"]
-    if etapa is None:
-        return perguntas.filter(etapa__isnull=True)
-    return perguntas.filter(etapa=etapa)
+        return questions.none()
+    stage = stage_item["stage"]
+    if stage is None:
+        return questions.filter(stage__isnull=True)
+    return questions.filter(stage=stage)

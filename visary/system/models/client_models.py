@@ -1,275 +1,231 @@
-   
-                                                 
-   
-
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 
-from .permission_models import UsuarioConsultoria
+from .permission_models import ConsultancyUser
 
 
-class ClienteConsultoria(models.Model):
-    """Modelo principal de cliente da consultoria."""
-       
-                                                                 
-       
+PASSPORT_TYPE_CHOICES = [
+    ("regular", "Passaporte Comum/Regular"),
+    ("diplomatic", "Passaporte Diplomático"),
+    ("service", "Passaporte de Serviço"),
+    ("other", "Outro"),
+]
 
-    assessor_responsavel = models.ForeignKey(
-        UsuarioConsultoria,
+
+class ConsultancyClient(models.Model):
+    assigned_advisor = models.ForeignKey(
+        ConsultancyUser,
         on_delete=models.PROTECT,
-        related_name="clientes_assessorados",
+        related_name="advised_clients",
         verbose_name="Assessor responsável",
     )
-    nome = models.CharField("Nome", max_length=100)
-    sobrenome = models.CharField("Sobrenome", max_length=100)
+    first_name = models.CharField("Nome", max_length=100)
+    last_name = models.CharField("Sobrenome", max_length=100)
     cpf = models.CharField(
         "CPF",
         max_length=14,
         unique=True,
         help_text="CPF utilizado para login. Formato: 000.000.000-00",
     )
-    data_nascimento = models.DateField("Data de nascimento")
-    nacionalidade = models.CharField("Nacionalidade", max_length=100)
-    telefone = models.CharField("Telefone", max_length=20)
-    telefone_secundario = models.CharField(
+    birth_date = models.DateField("Data de nascimento")
+    nationality = models.CharField("Nacionalidade", max_length=100)
+    phone = models.CharField("Telefone", max_length=20)
+    secondary_phone = models.CharField(
         "Telefone secundário",
         max_length=20,
         blank=True,
     )
     email = models.EmailField("E-mail", blank=True, default="")
-    senha = models.CharField(
-        "Senha de acesso",
-        max_length=128,
-        help_text="Senha do cliente, armazenada utilizando hash.",
-    )
-    cep = models.CharField("CEP", max_length=9, blank=True)
-    logradouro = models.CharField("Logradouro", max_length=200, blank=True)
-    numero = models.CharField("Número", max_length=20, blank=True)
-    complemento = models.CharField("Complemento", max_length=100, blank=True)
-    bairro = models.CharField("Bairro", max_length=100, blank=True)
-    cidade = models.CharField("Cidade", max_length=100, blank=True)
-    uf = models.CharField("UF", max_length=2, blank=True)
-    observacoes = models.TextField("Observações", blank=True)
-    criado_por = models.ForeignKey(
+    password = models.CharField("Senha de acesso", max_length=128)
+    zip_code = models.CharField("CEP", max_length=9, blank=True)
+    street = models.CharField("Logradouro", max_length=200, blank=True)
+    street_number = models.CharField("Número", max_length=20, blank=True)
+    complement = models.CharField("Complemento", max_length=100, blank=True)
+    district = models.CharField("Bairro", max_length=100, blank=True)
+    city = models.CharField("Cidade", max_length=100, blank=True)
+    state = models.CharField("UF", max_length=2, blank=True)
+    notes = models.TextField("Observações", blank=True)
+    created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name="clientes_criados",
+        related_name="created_clients",
         verbose_name="Criado por",
     )
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
-    parceiro_indicador = models.ForeignKey(
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
+    referring_partner = models.ForeignKey(
         "system.Partner",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="clientes_indicados",
+        related_name="referred_clients",
         verbose_name="Parceiro Indicador",
-        help_text="Parceiro que indicou este cliente. O parceiro só acompanhará o processo se indicado aqui.",
     )
-    cliente_principal = models.ForeignKey(
+    primary_client = models.ForeignKey(
         "self",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name="dependentes",
+        related_name="dependents",
         verbose_name="Cliente Principal",
-        help_text="Se este cliente é dependente, vincule ao cliente principal.",
     )
-    etapa_dados_pessoais = models.BooleanField(
-        "Etapa: Dados Pessoais",
-        default=False,
-        help_text="Dados pessoais preenchidos",
-    )
-    etapa_endereco = models.BooleanField(
-        "Etapa: Endereço",
-        default=False,
-        help_text="Endereço preenchido",
-    )
-    etapa_membros = models.BooleanField(
-        "Etapa: Membros",
-        default=False,
-        help_text="Membros/dependentes adicionados",
-    )
-    etapa_passaporte = models.BooleanField(
-        "Etapa: Passaporte",
-        default=False,
-        help_text="Dados do passaporte preenchidos",
-    )
-                          
-    TIPO_PASSAPORTE_CHOICES = [
-        ("comum", "Passaporte Comum/Regular"),
-        ("diplomatico", "Passaporte Diplomático"),
-        ("servico", "Passaporte de Serviço"),
-        ("outro", "Outro"),
-    ]
-    tipo_passaporte = models.CharField(
+    step_personal_data = models.BooleanField("Etapa: Dados Pessoais", default=False)
+    step_address = models.BooleanField("Etapa: Endereço", default=False)
+    step_members = models.BooleanField("Etapa: Membros", default=False)
+    step_passport = models.BooleanField("Etapa: Passaporte", default=False)
+    passport_type = models.CharField(
         "Tipo de Passaporte",
         max_length=20,
-        choices=TIPO_PASSAPORTE_CHOICES,
+        choices=PASSPORT_TYPE_CHOICES,
         blank=True,
         null=True,
     )
-    tipo_passaporte_outro = models.CharField(
+    passport_type_other = models.CharField(
         "Outro tipo de passaporte",
         max_length=100,
         blank=True,
-        help_text="Especifique o tipo de passaporte se selecionou 'Outro'",
     )
-    numero_passaporte = models.CharField(
+    passport_number = models.CharField(
         "Número do passaporte válido",
         max_length=50,
         blank=True,
     )
-    pais_emissor_passaporte = models.CharField(
+    passport_issuing_country = models.CharField(
         "País que emitiu o passaporte",
         max_length=100,
         blank=True,
     )
-    data_emissao_passaporte = models.DateField(
+    passport_issue_date = models.DateField(
         "Data de emissão",
         null=True,
         blank=True,
     )
-    valido_ate_passaporte = models.DateField(
+    passport_expiry_date = models.DateField(
         "Válido até",
         null=True,
         blank=True,
     )
-    autoridade_passaporte = models.CharField(
+    passport_authority = models.CharField(
         "Autoridade",
         max_length=100,
         blank=True,
     )
-    cidade_emissao_passaporte = models.CharField(
+    passport_issuing_city = models.CharField(
         "Cidade onde foi emitido",
         max_length=100,
         blank=True,
     )
-    passaporte_roubado = models.BooleanField(
+    passport_stolen = models.BooleanField(
         "Já teve algum passaporte roubado?",
         default=False,
     )
 
     class Meta:
-        ordering = ("-criado_em", "nome")
+        ordering = ("-created_at", "first_name")
         verbose_name = "Cliente"
         verbose_name_plural = "Clientes"
 
     @property
-    def nome_completo(self) -> str:
-        return f"{self.nome} {self.sobrenome}".strip()
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}".strip()
 
-    def __str__(self) -> str:
-        return self.nome_completo
+    def __str__(self):
+        return self.full_name
 
-    def set_password(self, raw_password: str) -> None:
-        self.senha = make_password(raw_password)
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
 
-    def check_password(self, raw_password: str) -> bool:
-        if not self.senha:
+    def check_password(self, raw_password):
+        if not self.password:
             return False
-
         try:
-            if check_password(raw_password, self.senha):
+            if check_password(raw_password, self.password):
                 return True
         except ValueError:
             pass
-
-        if self.senha == raw_password:
+        if self.password == raw_password:
             self.set_password(raw_password)
-            self.save(update_fields=["senha", "atualizado_em"])
+            self.save(update_fields=["password", "updated_at"])
             return True
-
         return False
 
     @property
-    def is_principal(self) -> bool:
-                                                                                   
-        return self.cliente_principal is None
+    def is_primary(self):
+        return self.primary_client is None
 
     @property
-    def is_dependente(self) -> bool:
-                                                        
-        return self.cliente_principal is not None
+    def is_dependent(self):
+        return self.primary_client is not None
 
     @property
-    def total_dependentes(self) -> int:
-                                                         
-        return self.dependentes.count()
+    def total_dependents(self):
+        return self.dependents.count()
 
-    def papel_na_viagem(self, viagem) -> str | None:
-        """Retorna 'principal' ou 'dependente' para uma viagem específica, ou None se não vinculado."""
-        from .travel_models import ClienteViagem
+    def role_in_trip(self, trip):
+        from .travel_models import TripClient
 
         try:
-            cv = ClienteViagem.objects.get(viagem=viagem, cliente=self)
-            return cv.papel
-        except ClienteViagem.DoesNotExist:
+            tc = TripClient.objects.get(trip=trip, client=self)
+            return tc.role
+        except TripClient.DoesNotExist:
             return None
 
-    def is_principal_na_viagem(self, viagem) -> bool:
-        return self.papel_na_viagem(viagem) == "principal"
+    def is_primary_in_trip(self, trip):
+        return self.role_in_trip(trip) == "primary"
 
-    def dependentes_na_viagem(self, viagem):
-        """QuerySet de clientes que são dependentes deste cliente numa viagem."""
-        from .client_models import ClienteConsultoria
-
-        return ClienteConsultoria.objects.filter(
-            viagens_cliente__viagem=viagem,
-            viagens_cliente__cliente_principal_viagem=self,
-            viagens_cliente__papel="dependente",
+    def dependents_in_trip(self, trip):
+        return ConsultancyClient.objects.filter(
+            client_trips__trip=trip,
+            client_trips__trip_primary_client=self,
+            client_trips__role="dependent",
         )
 
-    def principal_na_viagem(self, viagem):
-        """Retorna o cliente principal deste cliente numa viagem, ou None."""
-        from .travel_models import ClienteViagem
+    def primary_in_trip(self, trip):
+        from .travel_models import TripClient
 
         try:
-            cv = ClienteViagem.objects.select_related("cliente_principal_viagem").get(
-                viagem=viagem, cliente=self
+            tc = TripClient.objects.select_related("trip_primary_client").get(
+                trip=trip, client=self
             )
-            return cv.cliente_principal_viagem
-        except ClienteViagem.DoesNotExist:
+            return tc.trip_primary_client
+        except TripClient.DoesNotExist:
             return None
 
     @property
-    def progresso_etapas(self) -> int:
-                                                           
-        etapas = [
-            self.etapa_dados_pessoais,
-            self.etapa_endereco,
-            self.etapa_passaporte,
-            self.etapa_membros,
+    def step_progress(self):
+        steps = [
+            self.step_personal_data,
+            self.step_address,
+            self.step_passport,
+            self.step_members,
         ]
-        concluidas = sum(etapas)
-        return int((concluidas / len(etapas)) * 100) if etapas else 0
+        completed = sum(steps)
+        return int((completed / len(steps)) * 100) if steps else 0
 
 
-class Lembrete(models.Model):
-    cliente = models.ForeignKey(
-        ClienteConsultoria,
+class Reminder(models.Model):
+    client = models.ForeignKey(
+        ConsultancyClient,
         on_delete=models.CASCADE,
-        related_name="lembretes",
+        related_name="reminders",
         verbose_name="Cliente",
     )
-    texto = models.CharField("Lembrete", max_length=500)
-    data_lembrete = models.DateField("Data do lembrete", null=True, blank=True)
-    concluido = models.BooleanField("Concluído", default=False)
-    criado_por = models.ForeignKey(
-        UsuarioConsultoria,
+    text = models.CharField("Lembrete", max_length=500)
+    reminder_date = models.DateField("Data do lembrete", null=True, blank=True)
+    completed = models.BooleanField("Concluído", default=False)
+    created_by = models.ForeignKey(
+        ConsultancyUser,
         on_delete=models.PROTECT,
-        related_name="lembretes_criados",
+        related_name="created_reminders",
         verbose_name="Criado por",
     )
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
 
     class Meta:
-        ordering = ("concluido", "-criado_em")
+        ordering = ("completed", "-created_at")
         verbose_name = "Lembrete"
         verbose_name_plural = "Lembretes"
 
-    def __str__(self) -> str:
-        return self.texto[:60]
-
+    def __str__(self):
+        return self.text[:60]

@@ -1,97 +1,75 @@
-   
-                                                          
-   
-
 from django import forms
 from django.db.models import Max, Q
 
-from system.models import EtapaFormularioVisto, FormularioVisto, PerguntaFormulario, TipoVisto
+from system.models import FormQuestion, VisaForm, VisaFormStage, VisaType
 
 
-class FormularioVistoForm(forms.ModelForm):
-                                                           
-
+class VisaFormForm(forms.ModelForm):
     class Meta:
-        model = FormularioVisto
-        fields = ("tipo_visto", "ativo")
+        model = VisaForm
+        fields = ("visa_type", "is_active")
         widgets = {
-            "tipo_visto": forms.Select(attrs={"class": "input"}),
-            "ativo": forms.CheckboxInput(),
+            "visa_type": forms.Select(attrs={"class": "input"}),
+            "is_active": forms.CheckboxInput(),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-                                                                    
         if self.instance.pk:
-                                                       
-            self.fields["tipo_visto"].queryset = TipoVisto.objects.filter(
-                Q(pk=self.instance.tipo_visto_id) | Q(formulario__isnull=True)
+            self.fields["visa_type"].queryset = VisaType.objects.filter(
+                Q(pk=self.instance.visa_type_id) | Q(form__isnull=True)
             )
         else:
-                                                   
-            self.fields["tipo_visto"].queryset = TipoVisto.objects.filter(formulario__isnull=True)
+            self.fields["visa_type"].queryset = VisaType.objects.filter(form__isnull=True)
 
 
-class PerguntaFormularioForm(forms.ModelForm):
-                                                              
-
+class FormQuestionForm(forms.ModelForm):
     class Meta:
-        model = PerguntaFormulario
-        fields = ("pergunta", "etapa", "tipo_campo", "obrigatorio", "ordem", "ativo")
+        model = FormQuestion
+        fields = ("question", "stage", "field_type", "is_required", "order", "is_active")
         widgets = {
-            "pergunta": forms.TextInput(
-                attrs={
-                    "placeholder": "Digite a pergunta",
-                    "class": "input",
-                }
+            "question": forms.TextInput(
+                attrs={"placeholder": "Digite a pergunta", "class": "input"}
             ),
-            "etapa": forms.Select(attrs={"class": "input"}),
-            "tipo_campo": forms.Select(attrs={"class": "input"}),
-            "obrigatorio": forms.CheckboxInput(),
-            "ordem": forms.NumberInput(
-                attrs={
-                    "min": "0",
-                    "step": "1",
-                    "class": "input",
-                }
+            "stage": forms.Select(attrs={"class": "input"}),
+            "field_type": forms.Select(attrs={"class": "input"}),
+            "is_required": forms.CheckboxInput(),
+            "order": forms.NumberInput(
+                attrs={"min": "0", "step": "1", "class": "input"}
             ),
-            "ativo": forms.CheckboxInput(),
+            "is_active": forms.CheckboxInput(),
         }
 
-    def __init__(self, *args, formulario=None, **kwargs):
+    def __init__(self, *args, visa_form=None, **kwargs):
         super().__init__(*args, **kwargs)
-        if formulario:
-            self.instance.formulario = formulario
-            self.fields["etapa"].queryset = EtapaFormularioVisto.objects.filter(
-                formulario=formulario,
-                ativo=True,
-            ).order_by("ordem", "nome")
-            
+        if visa_form:
+            self.instance.form = visa_form
+            self.fields["stage"].queryset = VisaFormStage.objects.filter(
+                form=visa_form, is_active=True
+            ).order_by("order", "name")
             if not self.instance.pk:
-                ultima_ordem = PerguntaFormulario.objects.filter(
-                    formulario=formulario
-                ).aggregate(Max("ordem"))["ordem__max"]
-                self.fields["ordem"].initial = (ultima_ordem or 0) + 1
+                last_order = FormQuestion.objects.filter(
+                    form=visa_form
+                ).aggregate(Max("order"))["order__max"]
+                self.fields["order"].initial = (last_order or 0) + 1
 
 
-class FormularioEtapaForm(forms.ModelForm):
+class VisaFormStageForm(forms.ModelForm):
     class Meta:
-        model = EtapaFormularioVisto
-        fields = ("nome", "ordem", "ativo")
+        model = VisaFormStage
+        fields = ("name", "order", "is_active")
         widgets = {
-            "nome": forms.TextInput(attrs={"class": "input", "placeholder": "Nome da etapa"}),
-            "ordem": forms.NumberInput(attrs={"class": "input", "min": "0", "step": "1"}),
-            "ativo": forms.CheckboxInput(),
+            "name": forms.TextInput(attrs={"class": "input", "placeholder": "Nome da etapa"}),
+            "order": forms.NumberInput(attrs={"class": "input", "min": "0", "step": "1"}),
+            "is_active": forms.CheckboxInput(),
         }
 
-    def __init__(self, *args, formulario=None, **kwargs):
+    def __init__(self, *args, visa_form=None, **kwargs):
         super().__init__(*args, **kwargs)
-        if formulario:
-            max_ordem = (
-                EtapaFormularioVisto.objects.filter(formulario=formulario)
-                .aggregate(Max("ordem"))["ordem__max"]
+        if visa_form:
+            max_order = (
+                VisaFormStage.objects.filter(form=visa_form)
+                .aggregate(Max("order"))["order__max"]
                 or 0
             )
-            self.fields["ordem"].help_text = f"Próxima ordem disponível: {max_ordem + 1}"
-
-
+            self.fields["order"].help_text = f"Próxima ordem disponível: {max_order + 1}"

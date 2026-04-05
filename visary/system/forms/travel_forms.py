@@ -1,162 +1,139 @@
-   
-                                              
-   
-
 from __future__ import annotations
-
-from typing import Optional
 
 from django import forms
 from django.contrib.auth import get_user_model
 
-from system.models import ClienteConsultoria, PaisDestino, TipoVisto, Viagem
-from system.models import UsuarioConsultoria
+from system.models import ConsultancyClient, ConsultancyUser, DestinationCountry, Trip, VisaType
 
 User = get_user_model()
 
 
-class PaisDestinoForm(forms.ModelForm):
-                                                      
-
+class DestinationCountryForm(forms.ModelForm):
     class Meta:
-        model = PaisDestino
-        fields = ("nome", "codigo_iso", "ativo")
+        model = DestinationCountry
+        fields = ("name", "iso_code", "is_active")
         widgets = {
-            "nome": forms.TextInput(
+            "name": forms.TextInput(
                 attrs={"placeholder": "Nome do país", "autocomplete": "country-name"}
             ),
-            "codigo_iso": forms.TextInput(
+            "iso_code": forms.TextInput(
                 attrs={"placeholder": "Ex: BRA, USA, FRA", "maxlength": "3", "style": "text-transform: uppercase;"}
             ),
-            "ativo": forms.CheckboxInput(),
+            "is_active": forms.CheckboxInput(),
         }
 
-    def __init__(self, *args, user: Optional[User] = None, **kwargs) -> None:
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._user = user
 
-    def save(self, commit: bool = True) -> PaisDestino:
-        pais = super().save(commit=False)
+    def save(self, commit=True):
+        country = super().save(commit=False)
         if commit:
-            pais.save()
-        return pais
+            country.save()
+        return country
 
 
-class TipoVistoForm(forms.ModelForm):
-                                                    
-
+class VisaTypeForm(forms.ModelForm):
     class Meta:
-        model = TipoVisto
-        fields = ("pais_destino", "nome", "descricao", "ativo")
+        model = VisaType
+        fields = ("destination_country", "name", "description", "is_active")
         widgets = {
-            "pais_destino": forms.Select(attrs={"class": "input"}),
-            "nome": forms.TextInput(
+            "destination_country": forms.Select(attrs={"class": "input"}),
+            "name": forms.TextInput(
                 attrs={"placeholder": "Ex: Turismo, Negócios, Estudante"}
             ),
-            "descricao": forms.Textarea(
-                attrs={
-                    "rows": 3,
-                    "placeholder": "Descrição do tipo de visto",
-                }
+            "description": forms.Textarea(
+                attrs={"rows": 3, "placeholder": "Descrição do tipo de visto"}
             ),
-            "ativo": forms.CheckboxInput(),
+            "is_active": forms.CheckboxInput(),
         }
 
-    def __init__(self, *args, user: Optional[User] = None, **kwargs) -> None:
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._user = user
-        self.fields["pais_destino"].queryset = PaisDestino.objects.filter(ativo=True).order_by("nome")
+        self.fields["destination_country"].queryset = (
+            DestinationCountry.objects.filter(is_active=True).order_by("name")
+        )
 
-    def save(self, commit: bool = True) -> TipoVisto:
-        tipo_visto = super().save(commit=False)
+    def save(self, commit=True):
+        visa_type = super().save(commit=False)
         if commit:
-            tipo_visto.save()
-        return tipo_visto
+            visa_type.save()
+        return visa_type
 
 
-class ViagemForm(forms.ModelForm):
-                                             
-
+class TripForm(forms.ModelForm):
     class Meta:
-        model = Viagem
+        model = Trip
         fields = (
-            "assessor_responsavel",
-            "pais_destino",
-            "tipo_visto",
-            "data_prevista_viagem",
-            "data_prevista_retorno",
-            "valor_assessoria",
-            "clientes",
-            "observacoes",
+            "assigned_advisor",
+            "destination_country",
+            "visa_type",
+            "planned_departure_date",
+            "planned_return_date",
+            "advisory_fee",
+            "clients",
+            "notes",
         )
         widgets = {
-            "assessor_responsavel": forms.Select(attrs={"class": "input"}),
-            "pais_destino": forms.Select(attrs={"class": "input"}),
-            "tipo_visto": forms.Select(attrs={"class": "input"}),
-            "data_prevista_viagem": forms.DateInput(
+            "assigned_advisor": forms.Select(attrs={"class": "input"}),
+            "destination_country": forms.Select(attrs={"class": "input"}),
+            "visa_type": forms.Select(attrs={"class": "input"}),
+            "planned_departure_date": forms.DateInput(
                 attrs={"type": "date", "placeholder": "dd/mm/aaaa"}
             ),
-            "data_prevista_retorno": forms.DateInput(
+            "planned_return_date": forms.DateInput(
                 attrs={"type": "date", "placeholder": "dd/mm/aaaa"}
             ),
-            "valor_assessoria": forms.NumberInput(
-                attrs={
-                    "placeholder": "0.00",
-                    "step": "0.01",
-                    "min": "0",
-                }
+            "advisory_fee": forms.NumberInput(
+                attrs={"placeholder": "0.00", "step": "0.01", "min": "0"}
             ),
-            "clientes": forms.SelectMultiple(attrs={"class": "input"}),
-            "observacoes": forms.Textarea(
-                attrs={
-                    "rows": 3,
-                    "placeholder": "Informações adicionais sobre a viagem",
-                }
+            "clients": forms.SelectMultiple(attrs={"class": "input"}),
+            "notes": forms.Textarea(
+                attrs={"rows": 3, "placeholder": "Informações adicionais sobre a viagem"}
             ),
         }
 
-    def __init__(self, *args, user: Optional[User] = None, **kwargs) -> None:
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._user = user
-        self.fields["assessor_responsavel"].queryset = (
-            UsuarioConsultoria.objects.filter(ativo=True)
-            .order_by("nome")
-            .select_related("perfil")
+        self.fields["assigned_advisor"].queryset = (
+            ConsultancyUser.objects.filter(is_active=True)
+            .order_by("name")
+            .select_related("profile")
         )
-        self.fields["pais_destino"].queryset = PaisDestino.objects.filter(ativo=True).order_by("nome")
-        self.fields["tipo_visto"].queryset = TipoVisto.objects.filter(ativo=True).select_related("pais_destino")
-        self.fields["clientes"].queryset = ClienteConsultoria.objects.all().order_by("nome")
+        self.fields["destination_country"].queryset = (
+            DestinationCountry.objects.filter(is_active=True).order_by("name")
+        )
+        self.fields["visa_type"].queryset = (
+            VisaType.objects.filter(is_active=True).select_related("destination_country")
+        )
+        self.fields["clients"].queryset = ConsultancyClient.objects.all().order_by("first_name")
 
-        if user is not None and not user.is_superuser and not user.is_staff:
-            consultor = (
-                UsuarioConsultoria.objects.filter(email__iexact=user.email, ativo=True)
-                .order_by("-atualizado_em")
+        if user and not user.is_superuser and not user.is_staff:
+            consultant = (
+                ConsultancyUser.objects.filter(email__iexact=user.email, is_active=True)
+                .order_by("-updated_at")
                 .first()
             )
-            if consultor:
-                self.fields["assessor_responsavel"].initial = consultor.pk
+            if consultant:
+                self.fields["assigned_advisor"].initial = consultant.pk
 
     def clean(self):
         cleaned_data = super().clean()
-        data_viagem = cleaned_data.get("data_prevista_viagem")
-        data_retorno = cleaned_data.get("data_prevista_retorno")
-
-        if data_viagem and data_retorno:
-            if data_retorno < data_viagem:
-                raise forms.ValidationError(
-                    "A data de retorno não pode ser anterior à data de viagem."
-                )
-
+        departure = cleaned_data.get("planned_departure_date")
+        return_date = cleaned_data.get("planned_return_date")
+        if departure and return_date and return_date < departure:
+            raise forms.ValidationError(
+                "A data de retorno não pode ser anterior à data de viagem."
+            )
         return cleaned_data
 
-    def save(self, commit: bool = True) -> Viagem:
-        viagem = super().save(commit=False)
-        if self._user and not viagem.criado_por_id:
-            viagem.criado_por = self._user
-
+    def save(self, commit=True):
+        trip = super().save(commit=False)
+        if self._user and not trip.created_by_id:
+            trip.created_by = self._user
         if commit:
-            viagem.save()
+            trip.save()
             self.save_m2m()
-
-        return viagem
-
+        return trip

@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Visualizar Formulário - {{ client.full_name }}{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+    <style>
+        .form-header {
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .form-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 8px 0;
+        }
+
+        .form-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .stages-stepper {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            overflow-x: auto;
+            padding: 12px 0 4px;
+            scrollbar-width: thin;
+        }
+
+        .stages-stepper::-webkit-scrollbar { height: 4px; }
+        .stages-stepper::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+        .stages-stepper::-webkit-scrollbar-thumb { background: rgba(86,244,156,0.3); border-radius: 4px; }
+
+        .stage-step-connector {
+            width: 24px;
+            height: 2px;
+            background: rgba(86,244,156,0.2);
+            flex-shrink: 0;
+        }
+
+        .stage-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            flex-shrink: 0;
+            transition: opacity 0.2s;
+        }
+
+        .stage-step:hover { opacity: 0.8; }
+
+        .stage-step-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            background: rgba(86,244,156,0.15);
+            border: 2px solid rgba(86,244,156,0.4);
+            color: rgba(86,244,156,0.9);
+        }
+
+        .stage-step-label {
+            font-size: 0.72rem;
+            color: rgba(245,245,245,0.6);
+            text-align: center;
+            max-width: 80px;
+            line-height: 1.3;
+        }
+
+        .stage-block {
+            background: var(--card-bg);
+            border-radius: 24px;
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 8px 32px rgba(5,8,17,0.4);
+            padding: clamp(18px, 3vw, 28px);
+            margin-bottom: 24px;
+        }
+
+        .stage-block-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-soft);
+            flex-wrap: wrap;
+        }
+
+        .stage-block-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .stage-block-title h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .form-group label .is_required {
+            color: rgba(255, 81, 81, 0.9);
+            margin-left: 4px;
+        }
+
+        .resposta-container {
+            position: relative;
+        }
+
+        .resposta-value {
+            padding-right: 120px;
+            word-wrap: break-word;
+        }
+
+        .resposta-value.booleano {
+            padding-right: 120px;
+        }
+
+        .resposta-value .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .resposta-value .badge.sim {
+            background: rgba(86, 244, 156, 0.2);
+            border: 1px solid rgba(86, 244, 156, 0.5);
+            color: rgba(86, 244, 156, 0.95);
+        }
+
+        .resposta-value .badge.nao {
+            background: rgba(255, 81, 81, 0.15);
+            border: 1px solid rgba(255, 104, 104, 0.5);
+            color: rgba(255, 104, 104, 0.95);
+        }
+
+        .resposta-value .empty,
+        .resposta-value.empty {
+            color: rgba(245, 245, 245, 0.4);
+            font-style: italic;
+        }
+
+        .btn-copiar {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            padding: 6px 12px;
+            background: rgba(86, 244, 156, 0.15);
+            border: 1px solid rgba(86, 244, 156, 0.4);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        .btn-copiar:hover {
+            background: rgba(86, 244, 156, 0.25);
+            border-color: rgba(86, 244, 156, 0.6);
+            transform: translateY(-50%) translateY(-1px);
+            box-shadow: 0 2px 8px rgba(86, 244, 156, 0.3);
+        }
+
+        .resposta-existente {
+            background: rgba(86, 244, 156, 0.1);
+            border: 1px solid rgba(86, 244, 156, 0.3);
+            border-radius: 8px;
+            padding: 6px 12px;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: rgba(86, 244, 156, 0.8);
+        }
+
+        .sem-resposta {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            border-radius: 8px;
+            padding: 6px 12px;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: rgba(255, 193, 7, 0.8);
+        }
+    </style>
+{% endblock %}
+
+{% block app_content %}
+<div class="form-header">
+    <h1>Visualizar Formulário: {{ client.full_name }}</h1>
+    <p>Viagem para {{ trip.destination_country.name }} - {{ client_visa_type.name|default:trip.visa_type.name }} - {{ trip.planned_departure_date|date:"d/m/Y" }}</p>
+    {% if stage_items %}
+    <div class="stages-stepper">
+        {% regroup all_questions|dictsort:"stage.order" by stage as questions_by_stage %}
+        {% for grupo in questions_by_stage %}
+            {% with stage=grupo.grouper %}
+                {% if not forloop.first %}<div class="stage-step-connector"></div>{% endif %}
+                <a href="#etapa-{{ stage.pk|default:'no-stage' }}" class="stage-step">
+                    <div class="stage-step-circle">{{ stage.order|default:'?' }}</div>
+                    <span class="stage-step-label">{{ stage.name|default:'Sem etapa' }}</span>
+                </a>
+            {% endwith %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div class="header-actions" style="margin-top: 16px; display: flex; gap: 8px;">
+        <a href="{% url 'system:list_trip_forms' trip.pk %}" class="btn btn-outline">Voltar</a>
+        {% if can_manage_all %}
+            <a href="{% url 'system:edit_client_form' trip.pk cliente.pk %}" class="btn btn-primary">Editar Formulário</a>
+        {% endif %}
+    </div>
+</div>
+
+{% regroup all_questions|dictsort:"stage.order" by stage as questions_by_stage %}
+{% for grupo in questions_by_stage %}
+    {% with stage=grupo.grouper %}
+    <div class="stage-block" id="etapa-{{ stage.pk|default:'no-stage' }}">
+        <div class="stage-block-header">
+            <div class="stage-block-title">
+                <h3>Etapa {{ stage.order|default:'' }}: {{ stage.name|default:'Perguntas sem etapa' }}</h3>
+            </div>
+        </div>
+
+        {% for question in grupo.list %}
+        <div class="form-group" data-ordem="{{ question.order }}" data-rule="{{ question.display_rule|default_if_none:'' }}">
+            <label>
+                {{ question.question }}
+                {% if question.is_required %}
+                    <span class="obrigatorio">*</span>
+                {% endif %}
+            </label>
+
+            {% if question.pk in answer_ids %}
+                {% for question_id, answer in existing_answers.items %}
+                    {% if question_id == question.pk %}
+                        <div class="resposta-container">
+                            {% if question.field_type == "text" %}
+                                <div class="resposta-value" id="resposta_{{ question.pk }}" data-valor="{% if answer.answer_text %}{{ answer.answer_text|escape }}{% endif %}">
+                                    {% if answer.answer_text %}{{ answer.answer_text }}{% else %}<span class="empty">-</span>{% endif %}
+                                </div>
+                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ question.pk }}', this)">Copiar</button>
+                            {% elif question.field_type == "date" %}
+                                <div class="resposta-value" id="resposta_{{ question.pk }}" data-valor="{% if answer.answer_date %}{{ answer.answer_date|date:"d/m/Y"|escape }}{% endif %}">
+                                    {% if answer.answer_date %}{{ answer.answer_date|date:"d/m/Y" }}{% else %}<span class="empty">-</span>{% endif %}
+                                </div>
+                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ question.pk }}', this)">Copiar</button>
+                            {% elif question.field_type == "number" %}
+                                <div class="resposta-value" id="resposta_{{ question.pk }}" data-valor="{% if answer.answer_number %}{{ answer.answer_number }}{% endif %}">
+                                    {% if answer.answer_number %}{{ answer.answer_number }}{% else %}<span class="empty">-</span>{% endif %}
+                                </div>
+                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ question.pk }}', this)">Copiar</button>
+                            {% elif question.field_type == "boolean" %}
+                                <div class="resposta-value booleano" id="resposta_{{ question.pk }}" data-valor="{% if answer.answer_boolean %}Sim{% elif answer.answer_boolean == False %}Nao{% endif %}">
+                                    {% if answer.answer_boolean %}
+                                        <span class="badge sim">Sim</span>
+                                    {% elif answer.answer_boolean == False %}
+                                        <span class="badge nao">Nao</span>
+                                    {% else %}
+                                        <span class="empty">Nao respondido</span>
+                                    {% endif %}
+                                </div>
+                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ question.pk }}', this)">Copiar</button>
+                            {% elif question.field_type == "select" %}
+                                <div class="resposta-value" id="resposta_{{ question.pk }}" data-valor="{% if answer.answer_select %}{{ answer.answer_select.text|escape }}{% endif %}">
+                                    {% if answer.answer_select %}{{ answer.answer_select.text }}{% else %}<span class="empty">Nao selecionado</span>{% endif %}
+                                </div>
+                                <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ question.pk }}', this)">Copiar</button>
+                            {% endif %}
+                        </div>
+                        <div class="resposta-existente">Resposta salva</div>
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <div class="resposta-container">
+                    <div class="resposta-value empty" id="resposta_{{ question.pk }}">Nao respondido</div>
+                </div>
+                <div class="sem-resposta">Esta pergunta ainda nao foi respondida</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endwith %}
+{% endfor %}
+
+<script>
+    function decodificarSequenciasEscapadas(texto) {
+        return texto
+            .replace(/\\u([0-9a-fA-F]{4})/g, function(match, hex) {
+                return String.fromCharCode(parseInt(hex, 16));
+            })
+            .replace(/\\x([0-9a-fA-F]{2})/g, function(match, hex) {
+                return String.fromCharCode(parseInt(hex, 16));
+            });
+    }
+
+    function extrairDigitos(texto) {
+        return String(texto || '').replace(/\D/g, '');
+    }
+
+    function pareceTelefone(textoOriginal) {
+        const texto = decodificarSequenciasEscapadas(String(textoOriginal || ''));
+        const digitos = extrairDigitos(texto);
+        const temFormatoTelefone = /[()+\-]/.test(texto) || /\d\s+\d/.test(texto);
+        return temFormatoTelefone && digitos.length >= 10 && digitos.length <= 13;
+    }
+
+    function normalizarTextoParaCopia(texto) {
+        let valor = texto == null ? '' : String(texto);
+        valor = decodificarSequenciasEscapadas(valor);
+        valor = valor.replace(/[\u0000-\u001F\u007F]/g, ' ');
+        valor = valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        valor = valor.replace(/[^0-9A-Za-z\s]/g, ' ');
+        valor = valor.replace(/\s+/g, ' ').trim();
+        return valor;
+    }
+
+    function exibirFeedbackCopia(botao) {
+        if (!botao) return;
+        const textoOriginal = botao.getAttribute('data-texto-original') || botao.innerHTML;
+        botao.setAttribute('data-texto-original', textoOriginal);
+        botao.innerHTML = 'Copiado!';
+        botao.style.background = 'rgba(86, 244, 156, 0.3)';
+        botao.style.borderColor = 'rgba(86, 244, 156, 0.6)';
+        setTimeout(function() {
+            botao.innerHTML = textoOriginal;
+            botao.style.background = 'rgba(86, 244, 156, 0.15)';
+            botao.style.borderColor = 'rgba(86, 244, 156, 0.4)';
+        }, 2000);
+    }
+
+    function copiarResposta(elementId, botao) {
+        const elemento = document.getElementById(elementId);
+        if (!elemento) return;
+        let valor = elemento.getAttribute('data-valor');
+        if (!valor || valor.trim() === '' || valor === 'undefined') {
+            valor = elemento.innerText || elemento.textContent || '';
+            valor = valor.replace(/\s+/g, ' ').trim();
+        }
+        const valorOriginal = valor;
+        valor = normalizarTextoParaCopia(valor);
+        if (pareceTelefone(valorOriginal)) {
+            const telefoneSomenteDigitos = extrairDigitos(decodificarSequenciasEscapadas(valorOriginal));
+            if (telefoneSomenteDigitos) valor = telefoneSomenteDigitos;
+        }
+        const valorNormalizado = (valor || '').toLowerCase();
+        if (!valor || valorNormalizado === 'nao respondido' || valorNormalizado === 'nao selecionado') return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(valor).then(function() { exibirFeedbackCopia(botao); }).catch(function() { copiarFallback(valor, botao); });
+        } else {
+            copiarFallback(valor, botao);
+        }
+    }
+
+    function copiarFallback(texto, botao) {
+        const textarea = document.createElement('textarea');
+        textarea.value = texto;
+        textarea.style.position = 'fixed';
+        textarea.style.top = '0';
+        textarea.style.left = '0';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        try { document.execCommand('copy') ? exibirFeedbackCopia(botao) : alert('Erro ao copiar.'); } catch(e) { alert('Erro ao copiar.'); }
+        document.body.removeChild(textarea);
+    }
+
+    (function() {
+        function normalizarResposta(valor) {
+            if (valor === 'Sim') return 'sim';
+            if (valor === 'Nao') return 'nao';
+            return valor;
+        }
+
+        function avaliarVisibilidade() {
+            var estado = {};
+            document.querySelectorAll('.form-group[data-ordem]').forEach(function(el) {
+                var ordem = parseInt(el.dataset.order);
+                var respostaEl = el.querySelector('[id^="resposta_"]');
+                if (respostaEl) {
+                    var dataValor = respostaEl.getAttribute('data-valor');
+                    if (dataValor !== null && dataValor !== '' && dataValor !== 'undefined') {
+                        estado[ordem] = normalizarResposta(dataValor);
+                    } else {
+                        var texto = respostaEl.innerText.trim();
+                        if (texto && texto !== 'Nao respondido' && texto !== '-') {
+                            estado[ordem] = normalizarResposta(texto);
+                        }
+                    }
+                }
+            });
+
+            document.querySelectorAll('.form-group[data-rule]').forEach(function(el) {
+                var ruleStr = el.dataset.rule;
+                if (!ruleStr) return;
+                try { var rule = JSON.parse(ruleStr); } catch(e) { return; }
+                if (rule.type !== 'show_if') return;
+                var triggerOrdem = parseInt(rule.question_order);
+                var valoresEsperados = Array.isArray(rule.value) ? rule.value : [rule.value];
+                var triggerValue = estado[triggerOrdem];
+                var visivel = valoresEsperados.indexOf(triggerValue) !== -1;
+                el.style.display = visivel ? '' : 'none';
+            });
+        }
+
+        avaliarVisibilidade();
+    })();
+</script>
+{% endblock %}

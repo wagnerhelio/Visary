@@ -1,7 +1,3 @@
-   
-                                                    
-   
-
 from contextlib import suppress
 
 from django.contrib import messages
@@ -11,845 +7,743 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
 from system.forms import (
-    FormularioEtapaForm,
-    FormularioVistoForm,
-    OpcaoSelecaoForm,
-    PerguntaFormularioForm,
+    VisaFormStageForm,
+    VisaFormForm,
+    SelectOptionForm,
+    FormQuestionForm,
 )
-from system.models import EtapaFormularioVisto, FormularioVisto, OpcaoSelecao, PaisDestino, PerguntaFormulario, Viagem
-from system.views.client_views import listar_clientes, obter_consultor_usuario, usuario_pode_gerenciar_todos
+from system.models import VisaFormStage, VisaForm, SelectOption, DestinationCountry, FormQuestion, Trip
+from system.views.client_views import list_clients, get_user_consultant, user_can_manage_all
 
 
-def _ler_filtros_formularios(request):
+def _read_form_filters(request):
     return {
-        "cliente": request.GET.get("cliente", "").strip(),
-        "pais": request.GET.get("pais", "").strip(),
-        "tipo_visto": request.GET.get("tipo_visto", "").strip(),
+        "client": request.GET.get("client", "").strip(),
+        "country": request.GET.get("country", "").strip(),
+        "visa_type": request.GET.get("visa_type", "").strip(),
         "status": request.GET.get("status", "").strip(),
     }
 
 
-def _filtro_formulario_cliente_ok(cliente_info, viagem, filtros):
-    if filtros["cliente"] and str(cliente_info["cliente"].pk) != filtros["cliente"]:
+def _client_form_filter_matches(client_info, trip, filters):
+    if filters["client"]:
+        full_name = client_info["client"].full_name.lower()
+        term = filters["client"].lower()
+        if term not in full_name:
+            return False
+    if filters["country"] and str(trip.destination_country_id) != filters["country"]:
         return False
-    if filtros["pais"] and str(viagem.pais_destino_id) != filtros["pais"]:
+    if filters["visa_type"] and str(client_info["visa_type"].pk) != filters["visa_type"]:
         return False
-    if filtros["tipo_visto"] and str(cliente_info["tipo_visto"].pk) != filtros["tipo_visto"]:
+    if filters["status"] == "pendente" and client_info["complete"]:
         return False
-    if filtros["status"] == "pendente" and cliente_info["completo"]:
-        return False
-    if filtros["status"] == "completo" and not cliente_info["completo"]:
+    if filters["status"] == "complete" and not client_info["complete"]:
         return False
     return True
 
 
-def _ordenar_clientes_por_grupo_familiar(clientes, viagem=None):
-    if viagem:
-        from system.models import ClienteViagem
+def _sort_clients_by_family_group(clients, trip=None):
+    if trip:
+        from system.models import TripClient
         cv_map = {
-            cv.cliente_id: cv.papel
-            for cv in ClienteViagem.objects.filter(viagem=viagem)
+            cv.client_id: cv.role
+            for cv in TripClient.objects.filter(trip=trip)
         }
         return sorted(
-            clientes,
-            key=lambda c: (0 if cv_map.get(c.pk) == "principal" else 1, c.nome),
+            clients,
+            key=lambda c: (0 if cv_map.get(c.pk) == "primary" else 1, c.first_name),
         )
-    return sorted(clientes, key=lambda c: (c.nome,))
+    return sorted(clients, key=lambda c: (c.first_name,))
 
 
-def _aplicar_filtros_formularios_respostas(formularios_respostas, filtros):
-    filtrados = []
-    for item in formularios_respostas:
-        clientes_filtrados = [
-            cliente_info
-            for cliente_info in item["clientes"]
-            if _filtro_formulario_cliente_ok(cliente_info, item["viagem"], filtros)
+def _apply_form_response_filters(form_responses, filters):
+    filtered = []
+    for item in form_responses:
+        filtered_clients = [
+            client_info
+            for client_info in item["clients"]
+            if _client_form_filter_matches(client_info, item["trip"], filters)
         ]
-        if clientes_filtrados:
-            novo_item = dict(item)
-            novo_item["clientes"] = clientes_filtrados
-            filtrados.append(novo_item)
-    return filtrados
+        if filtered_clients:
+            new_item = dict(item)
+            new_item["clients"] = filtered_clients
+            filtered.append(new_item)
+    return filtered
 
 
-def _opcoes_filtro_formularios(formularios_respostas):
-    clientes_map = {}
-    paises_map = {}
-    tipos_map = {}
-    for item in formularios_respostas:
-        viagem = item["viagem"]
-        paises_map.setdefault(viagem.pais_destino.pk, viagem.pais_destino)
-        for cliente_info in item["clientes"]:
-            cliente = cliente_info["cliente"]
-            tipo_visto = cliente_info["tipo_visto"]
-            clientes_map.setdefault(cliente.pk, cliente)
-            tipos_map.setdefault(tipo_visto.pk, tipo_visto)
+def _form_filter_options(form_responses):
+    clients_map = {}
+    countries_map = {}
+    types_map = {}
+    for item in form_responses:
+        trip = item["trip"]
+        countries_map.setdefault(trip.destination_country.pk, trip.destination_country)
+        for client_info in item["clients"]:
+            client = client_info["client"]
+            visa_type = client_info["visa_type"]
+            clients_map.setdefault(client.pk, client)
+            types_map.setdefault(visa_type.pk, visa_type)
     return {
-        "clientes_filtro": sorted(clientes_map.values(), key=lambda c: c.nome.lower()),
-        "paises_filtro": sorted(paises_map.values(), key=lambda p: p.nome.lower()),
-        "tipos_visto_filtro": sorted(tipos_map.values(), key=lambda t: t.nome.lower()),
+        "clients_filter": sorted(clients_map.values(), key=lambda c: c.full_name.lower()),
+        "countries_filter": sorted(countries_map.values(), key=lambda p: p.name.lower()),
+        "visa_types_filter": sorted(types_map.values(), key=lambda t: t.name.lower()),
     }
 
 
-def _aplicar_filtros_tipos_formulario(formularios, request):
-    filtros = {
-        "busca": request.GET.get("busca", "").strip(),
-        "pais": request.GET.get("pais", "").strip(),
+def _apply_form_type_filters(visa_forms, request):
+    filters = {
+        "search": request.GET.get("search", "").strip(),
+        "country": request.GET.get("country", "").strip(),
         "status": request.GET.get("status", "").strip(),
     }
 
-    if filtros["busca"]:
-        formularios = formularios.filter(tipo_visto__nome__icontains=filtros["busca"])
-    if filtros["pais"]:
-        formularios = formularios.filter(tipo_visto__pais_destino_id=filtros["pais"])
-    if filtros["status"] == "ativo":
-        formularios = formularios.filter(ativo=True)
-    elif filtros["status"] == "inativo":
-        formularios = formularios.filter(ativo=False)
+    if filters["search"]:
+        visa_forms = visa_forms.filter(visa_type__name__icontains=filters["search"])
+    if filters["country"]:
+        visa_forms = visa_forms.filter(visa_type__destination_country_id=filters["country"])
+    if filters["status"] == "ativo":
+        visa_forms = visa_forms.filter(is_active=True)
+    elif filters["status"] == "inativo":
+        visa_forms = visa_forms.filter(is_active=False)
 
-    return formularios, filtros
+    return visa_forms, filters
+
+
+def _get_client_visa_type(trip, client):
+    from system.models import TripClient
+    with suppress(TripClient.DoesNotExist):
+        trip_client = TripClient.objects.select_related('visa_type__form').get(
+            trip=trip, client=client
+        )
+        if trip_client.visa_type:
+            return trip_client.visa_type
+    return trip.visa_type
+
+
+def _get_visa_form_by_type(visa_type, active_only=True):
+    if not visa_type or not hasattr(visa_type, 'pk') or not visa_type.pk:
+        return None
+    try:
+        if active_only:
+            return VisaForm.objects.select_related('visa_type').get(
+                visa_type_id=visa_type.pk,
+                is_active=True
+            )
+        return VisaForm.objects.select_related('visa_type').get(
+            visa_type_id=visa_type.pk
+        )
+    except VisaForm.DoesNotExist:
+        return None
+
+
+def _build_clients_by_form_data(trip, clients_ordered, form_responses, counter=None):
+    from system.models import FormAnswer
+    clients_by_form = {}
+
+    for client in clients_ordered:
+        client_visa_type = _get_client_visa_type(trip, client)
+        if not client_visa_type:
+            continue
+
+        visa_form = _get_visa_form_by_type(client_visa_type, active_only=True)
+        if not visa_form:
+            continue
+
+        key = f"{trip.pk}_{visa_form.pk}"
+        if key not in clients_by_form:
+            clients_by_form[key] = {
+                "trip": trip,
+                "visa_form_obj": visa_form,
+                "clients": [],
+            }
+
+        total_questions = visa_form.questions.filter(is_active=True).count()
+        total_answers = FormAnswer.objects.filter(
+            trip=trip,
+            client=client
+        ).count()
+
+        clients_by_form[key]["clients"].append({
+            "client": client,
+            "visa_type": client_visa_type,
+            "total_questions": total_questions,
+            "total_answers": total_answers,
+            "complete": total_answers == total_questions if total_questions > 0 else False,
+        })
+        if counter is not None:
+            counter[0] += 1
+
+    form_responses.extend(clients_by_form.values())
 
 
 @login_required
-def home_formularios(request):
-    from system.models import ClienteViagem, RespostaFormulario
+def home_forms(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+    user_clients = list_clients(request.user)
+    client_ids = list(user_clients.values_list("pk", flat=True))
 
-    clientes_usuario = listar_clientes(request.user)
-    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
-    
-                                            
-    viagens = Viagem.objects.filter(
-        clientes__pk__in=clientes_ids
+    trips = Trip.objects.filter(
+        clients__pk__in=client_ids
     ).select_related(
-        "pais_destino",
-        "tipo_visto",
-        "tipo_visto__formulario",
-    ).prefetch_related("clientes").distinct().order_by("-data_prevista_viagem")
-    
-                                                      
-    def _obter_tipo_visto_cliente(viagem, cliente):
-                                                                                                                
-        with suppress(ClienteViagem.DoesNotExist):
-            cliente_viagem = ClienteViagem.objects.select_related('tipo_visto__formulario').get(
-                viagem=viagem, cliente=cliente
-            )
-            if cliente_viagem.tipo_visto:
-                return cliente_viagem.tipo_visto
-        return viagem.tipo_visto
-    
-                                                          
-    def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
-                                                                                   
-        if not tipo_visto or not hasattr(tipo_visto, 'pk') or not tipo_visto.pk:
-            return None
-        try:
-            if apenas_ativo:
-                return FormularioVisto.objects.select_related('tipo_visto').get(
-                    tipo_visto_id=tipo_visto.pk,
-                    ativo=True
-                )
-            return FormularioVisto.objects.select_related('tipo_visto').get(
-                tipo_visto_id=tipo_visto.pk
-            )
-        except FormularioVisto.DoesNotExist:
-            return None
-    
-                                           
-    formularios_respostas = []
-    total_clientes_com_formulario = 0
-    
-    for viagem in viagens[:10]:                              
-                                                          
-        clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids)
-        
-        if not clientes_viagem.exists():
+        "destination_country",
+        "visa_type",
+        "visa_type__form",
+    ).prefetch_related("clients").distinct().order_by("-planned_departure_date")
+
+    form_responses = []
+    total_clients_with_form = [0]
+
+    for trip in trips[:10]:
+        trip_clients = trip.clients.filter(pk__in=client_ids)
+        if not trip_clients.exists():
             continue
-        
-        clientes_por_formulario = {}
-        
-        clientes_ordenados = _ordenar_clientes_por_grupo_familiar(clientes_viagem)
-        
-        for cliente in clientes_ordenados:
-            tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
-            
-            if not tipo_visto_cliente:
-                continue
-            
-                                                             
-            formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=True)
-            
-            if not formulario:
-                continue
-            
-                                                         
-            chave = f"{viagem.pk}_{formulario.pk}"
-            
-            if chave not in clientes_por_formulario:
-                clientes_por_formulario[chave] = {
-                    "viagem": viagem,
-                    "formulario": formulario,
-                    "clientes": [],
-                }
-            
-                                                                  
-            total_perguntas = formulario.perguntas.filter(ativo=True).count()
-            total_respostas = RespostaFormulario.objects.filter(
-                viagem=viagem,
-                cliente=cliente
-            ).count()
-            
-            clientes_por_formulario[chave]["clientes"].append({
-                "cliente": cliente,
-                "tipo_visto": tipo_visto_cliente,
-                "total_perguntas": total_perguntas,
-                "total_respostas": total_respostas,
-                "completo": total_respostas == total_perguntas if total_perguntas > 0 else False,
-            })
-            total_clientes_com_formulario += 1
-        
-        
-        formularios_respostas.extend(clientes_por_formulario.values())
-    
-    formularios_pendentes = []
-    formularios_preenchidos = []
-    for item in formularios_respostas:
-        for cli in item["clientes"]:
+        ordered_clients = _sort_clients_by_family_group(trip_clients)
+        _build_clients_by_form_data(trip, ordered_clients, form_responses, counter=total_clients_with_form)
+
+    pending_forms = []
+    completed_forms = []
+    for item in form_responses:
+        for cli in item["clients"]:
             entry = {
-                "viagem": item["viagem"],
-                "cliente_info": {
-                    "cliente": cli["cliente"],
-                    "tipo_visto": cli["tipo_visto"],
-                    "total_perguntas": cli["total_perguntas"],
-                    "total_respostas": cli["total_respostas"],
-                    "completo": cli["completo"],
+                "trip": item["trip"],
+                "client_info": {
+                    "client": cli["client"],
+                    "visa_type": cli["visa_type"],
+                    "total_questions": cli["total_questions"],
+                    "total_answers": cli["total_answers"],
+                    "complete": cli["complete"],
                 },
             }
-            if cli["completo"]:
-                formularios_preenchidos.append(entry)
+            if cli["complete"]:
+                completed_forms.append(entry)
             else:
-                formularios_pendentes.append(entry)
+                pending_forms.append(entry)
 
-    filtros_aplicados = _ler_filtros_formularios(request)
-    formularios_respostas = _aplicar_filtros_formularios_respostas(formularios_respostas, filtros_aplicados)
-    formularios_pendentes = [
+    applied_filters = _read_form_filters(request)
+    form_responses = _apply_form_response_filters(form_responses, applied_filters)
+    pending_forms = [
         item
-        for item in formularios_pendentes
-        if _filtro_formulario_cliente_ok(item["cliente_info"], item["viagem"], filtros_aplicados)
+        for item in pending_forms
+        if _client_form_filter_matches(item["client_info"], item["trip"], applied_filters)
     ]
-    formularios_preenchidos = [
+    completed_forms = [
         item
-        for item in formularios_preenchidos
-        if _filtro_formulario_cliente_ok(item["cliente_info"], item["viagem"], filtros_aplicados)
+        for item in completed_forms
+        if _client_form_filter_matches(item["client_info"], item["trip"], applied_filters)
     ]
-    opcoes_filtro = _opcoes_filtro_formularios(formularios_respostas)
+    filter_options = _form_filter_options(form_responses)
 
-    total_formularios_kpi = len(formularios_pendentes) + len(formularios_preenchidos)
-    total_pendentes_kpi = len(formularios_pendentes)
-    total_completos_kpi = len(formularios_preenchidos)
+    total_forms_kpi = len(pending_forms) + len(completed_forms)
+    total_pending_kpi = len(pending_forms)
+    total_completed_kpi = len(completed_forms)
 
-    contexto = {
-        "total_formularios": total_clientes_com_formulario,
-        "formularios_respostas": formularios_respostas,
-        "formularios_pendentes": formularios_pendentes,
-        "formularios_preenchidos": formularios_preenchidos,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtros_aplicados": filtros_aplicados,
-        **opcoes_filtro,
-        "total_formularios_kpi": total_formularios_kpi,
-        "total_pendentes_kpi": total_pendentes_kpi,
-        "total_completos_kpi": total_completos_kpi,
+    context = {
+        "total_forms": total_clients_with_form[0],
+        "form_responses": form_responses,
+        "pending_forms": pending_forms,
+        "completed_forms": completed_forms,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "applied_filters_dict": applied_filters,
+        **filter_options,
+        "total_forms_kpi": total_forms_kpi,
+        "total_pending_kpi": total_pending_kpi,
+        "total_completed_kpi": total_completed_kpi,
     }
 
-    return render(request, "forms/home_formularios.html", contexto)
+    return render(request, "forms/home_forms.html", context)
 
 
 @login_required
-def listar_formularios(request):
-    from system.models import ClienteViagem, RespostaFormulario
-    
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def list_forms(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    viagens = Viagem.objects.select_related(
-        "pais_destino",
-        "tipo_visto",
-        "tipo_visto__formulario",
-    ).prefetch_related("clientes").distinct().order_by("-data_prevista_viagem")
-    
-                                                      
-    def _obter_tipo_visto_cliente(viagem, cliente):
-                                                                                                                
-        with suppress(ClienteViagem.DoesNotExist):
-            cliente_viagem = ClienteViagem.objects.select_related('tipo_visto__formulario').get(
-                viagem=viagem, cliente=cliente
-            )
-            if cliente_viagem.tipo_visto:
-                return cliente_viagem.tipo_visto
-        return viagem.tipo_visto
-    
-                                                          
-    def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
-                                                                                   
-        if not tipo_visto or not hasattr(tipo_visto, 'pk') or not tipo_visto.pk:
-            return None
-        try:
-            if apenas_ativo:
-                return FormularioVisto.objects.select_related('tipo_visto').get(
-                    tipo_visto_id=tipo_visto.pk,
-                    ativo=True
-                )
-            return FormularioVisto.objects.select_related('tipo_visto').get(
-                tipo_visto_id=tipo_visto.pk
-            )
-        except FormularioVisto.DoesNotExist:
-            return None
-    
-                                           
-    formularios_respostas = []
-    
-    for viagem in viagens:
-                                                          
-        clientes_viagem = viagem.clientes.all()
-        
-        if not clientes_viagem.exists():
+    trips = Trip.objects.select_related(
+        "destination_country",
+        "visa_type",
+        "visa_type__form",
+    ).prefetch_related("clients").distinct().order_by("-planned_departure_date")
+
+    form_responses = []
+
+    for trip in trips:
+        trip_clients = trip.clients.all()
+        if not trip_clients.exists():
             continue
-        
-        clientes_por_formulario = {}
-        
-        clientes_ordenados = _ordenar_clientes_por_grupo_familiar(clientes_viagem)
-        
-        for cliente in clientes_ordenados:
-            tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
-            
-            if not tipo_visto_cliente:
-                continue
-            
-                                                             
-            formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=True)
-            
-            if not formulario:
-                continue
-            
-                                                         
-            chave = f"{viagem.pk}_{formulario.pk}"
-            
-            if chave not in clientes_por_formulario:
-                clientes_por_formulario[chave] = {
-                    "viagem": viagem,
-                    "formulario": formulario,
-                    "clientes": [],
-                }
-            
-                                                                  
-            total_perguntas = formulario.perguntas.filter(ativo=True).count()
-            total_respostas = RespostaFormulario.objects.filter(
-                viagem=viagem,
-                cliente=cliente
-            ).count()
-            
-            clientes_por_formulario[chave]["clientes"].append({
-                "cliente": cliente,
-                "tipo_visto": tipo_visto_cliente,
-                "total_perguntas": total_perguntas,
-                "total_respostas": total_respostas,
-                "completo": total_respostas == total_perguntas if total_perguntas > 0 else False,
-            })
-        
-                                
-        formularios_respostas.extend(clientes_por_formulario.values())
+        ordered_clients = _sort_clients_by_family_group(trip_clients)
+        _build_clients_by_form_data(trip, ordered_clients, form_responses)
 
-    filtros_aplicados = _ler_filtros_formularios(request)
-    formularios_respostas = _aplicar_filtros_formularios_respostas(formularios_respostas, filtros_aplicados)
-    opcoes_filtro = _opcoes_filtro_formularios(formularios_respostas)
-    total_formularios_kpi = sum(len(item["clientes"]) for item in formularios_respostas)
-    total_pendentes_kpi = sum(
+    applied_filters = _read_form_filters(request)
+    form_responses = _apply_form_response_filters(form_responses, applied_filters)
+    filter_options = _form_filter_options(form_responses)
+    total_forms_kpi = sum(len(item["clients"]) for item in form_responses)
+    total_pending_kpi = sum(
         1
-        for item in formularios_respostas
-        for cliente in item["clientes"]
-        if not cliente["completo"]
+        for item in form_responses
+        for client in item["clients"]
+        if not client["complete"]
     )
-    total_completos_kpi = total_formularios_kpi - total_pendentes_kpi
-    
-    contexto = {
-        "formularios_respostas": formularios_respostas,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtros_aplicados": filtros_aplicados,
-        **opcoes_filtro,
-        "total_formularios_kpi": total_formularios_kpi,
-        "total_pendentes_kpi": total_pendentes_kpi,
-        "total_completos_kpi": total_completos_kpi,
+    total_completed_kpi = total_forms_kpi - total_pending_kpi
+
+    context = {
+        "form_responses": form_responses,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "applied_filters_dict": applied_filters,
+        **filter_options,
+        "total_forms_kpi": total_forms_kpi,
+        "total_pending_kpi": total_pending_kpi,
+        "total_completed_kpi": total_completed_kpi,
     }
 
-    return render(request, "forms/listar_formularios.html", contexto)
+    return render(request, "forms/list_forms.html", context)
 
 
 @login_required
-def home_tipos_formulario(request):
-    consultor = obter_consultor_usuario(request.user)
-    if not usuario_pode_gerenciar_todos(request.user, consultor):
+def home_form_types(request):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
-    pode_gerenciar_todos = True
+    can_manage_all = True
 
-    formularios = FormularioVisto.objects.select_related("tipo_visto", "tipo_visto__pais_destino").all().order_by(
-        "tipo_visto__nome"
+    visa_forms = VisaForm.objects.select_related("visa_type", "visa_type__destination_country").all().order_by(
+        "visa_type__name"
     )
-    formularios, filtros_aplicados = _aplicar_filtros_tipos_formulario(formularios, request)
-    total_formularios = formularios.count()
+    visa_forms, applied_filters = _apply_form_type_filters(visa_forms, request)
+    total_forms = visa_forms.count()
 
-    contexto = {
-        "formularios": formularios[:10],
-        "total_formularios": total_formularios,
-        "perfil_usuario": consultor.perfil.nome if consultor else "Administrador",
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtros_aplicados": filtros_aplicados,
-        "paises": PaisDestino.objects.filter(ativo=True).order_by("nome"),
+    context = {
+        "visa_forms": visa_forms[:10],
+        "total_forms": total_forms,
+        "user_profile": consultant.profile.name if consultant else "Administrador",
+        "can_manage_all": can_manage_all,
+        "applied_filters_dict": applied_filters,
+        "countries": DestinationCountry.objects.filter(is_active=True).order_by("name"),
     }
 
-    return render(request, "forms/home_tipos_formulario.html", contexto)
+    return render(request, "forms/home_form_types.html", context)
 
 
 @login_required
-def criar_formulario(request):
-                                                         
-    consultor = obter_consultor_usuario(request.user)
+def create_form(request):
+    consultant = get_user_consultant(request.user)
 
     if request.method == "POST":
-        form = FormularioVistoForm(data=request.POST)
+        form = VisaFormForm(data=request.POST)
         if form.is_valid():
-            formulario = form.save()
+            visa_form = form.save()
             messages.success(
                 request,
-                f"Formulário para {formulario.tipo_visto.nome} criado com sucesso.",
+                f"Formulário para {visa_form.visa_type.name} criado com sucesso.",
             )
-            return redirect("system:editar_formulario", pk=formulario.pk)
+            return redirect("system:edit_form", pk=visa_form.pk)
         messages.error(request, "Não foi possível criar o formulário. Verifique os campos.")
     else:
-        form = FormularioVistoForm()
+        form = VisaFormForm()
 
-    contexto = {
+    context = {
         "form": form,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "forms/criar_formulario.html", contexto)
+    return render(request, "forms/create_form.html", context)
 
 
 @login_required
-def listar_tipos_formulario(request):
-                                                      
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def list_form_types(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    formularios = (
-        FormularioVisto.objects.select_related("tipo_visto", "tipo_visto__pais_destino")
+    visa_forms = (
+        VisaForm.objects.select_related("visa_type", "visa_type__destination_country")
         .all()
-        .order_by("tipo_visto__nome")
+        .order_by("visa_type__name")
     )
-    formularios, filtros_aplicados = _aplicar_filtros_tipos_formulario(formularios, request)
+    visa_forms, applied_filters = _apply_form_type_filters(visa_forms, request)
 
-    contexto = {
-        "formularios": formularios,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtros_aplicados": filtros_aplicados,
-        "paises": PaisDestino.objects.filter(ativo=True).order_by("nome"),
+    context = {
+        "visa_forms": visa_forms,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "applied_filters_dict": applied_filters,
+        "countries": DestinationCountry.objects.filter(is_active=True).order_by("name"),
     }
 
-    return render(request, "forms/listar_tipos_formulario.html", contexto)
+    return render(request, "forms/list_form_types.html", context)
 
 
 @login_required
-def editar_formulario(request, pk: int):
-                                                  
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def edit_form(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-    formulario = get_object_or_404(
-        FormularioVisto.objects.select_related("tipo_visto"), pk=pk
+    visa_form = get_object_or_404(
+        VisaForm.objects.select_related("visa_type"), pk=pk
     )
-    perguntas = (
-        formulario.perguntas.all()
-        .prefetch_related("opcoes")
-        .order_by("ordem", "pergunta")
+    questions = (
+        visa_form.questions.all()
+        .prefetch_related("options")
+        .order_by("order", "question")
     )
-    etapas = list(
-        EtapaFormularioVisto.objects.filter(formulario=formulario)
-        .prefetch_related("perguntas")
-        .order_by("ordem")
+    stages = list(
+        VisaFormStage.objects.filter(form=visa_form)
+        .prefetch_related("questions")
+        .order_by("order")
     )
-    perguntas_s_orphan = list(
-        formulario.perguntas.filter(ativo=True, etapa__isnull=True).order_by("ordem")
+    orphan_questions = list(
+        visa_form.questions.filter(is_active=True, stage__isnull=True).order_by("order")
     )
 
     if request.method == "POST":
-        form = FormularioVistoForm(data=request.POST, instance=formulario)
+        form = VisaFormForm(data=request.POST, instance=visa_form)
         if form.is_valid():
             form.save()
             messages.success(request, "Formulário atualizado com sucesso.")
-            return redirect("system:editar_formulario", pk=formulario.pk)
+            return redirect("system:edit_form", pk=visa_form.pk)
         messages.error(request, "Não foi possível atualizar o formulário.")
     else:
-        form = FormularioVistoForm(instance=formulario)
+        form = VisaFormForm(instance=visa_form)
 
-    contexto = {
+    context = {
         "form": form,
-        "formulario": formulario,
-        "perguntas": perguntas,
-        "etapas": etapas,
-        "perguntas_s_orphan": perguntas_s_orphan,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "visa_form_obj": visa_form,
+        "questions": questions,
+        "stages": stages,
+        "orphan_questions": orphan_questions,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "forms/editar_formulario.html", contexto)
+    return render(request, "forms/edit_form.html", context)
 
 
 @login_required
-def criar_etapa_formulario(request, formulario_id: int):
-    consultor = obter_consultor_usuario(request.user)
-    if not usuario_pode_gerenciar_todos(request.user, consultor):
+def create_form_stage(request, form_id: int):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    formulario = get_object_or_404(FormularioVisto, pk=formulario_id)
+    visa_form = get_object_or_404(VisaForm, pk=form_id)
     if request.method == "POST":
-        form = FormularioEtapaForm(data=request.POST, formulario=formulario)
+        form = VisaFormStageForm(data=request.POST, visa_form=visa_form)
         if form.is_valid():
-            etapa = form.save(commit=False)
-            etapa.formulario = formulario
-            etapa.save()
+            stage = form.save(commit=False)
+            stage.form = visa_form
+            stage.save()
             messages.success(request, "Etapa do formulário criada com sucesso.")
-            return redirect("system:editar_formulario", pk=formulario.pk)
+            return redirect("system:edit_form", pk=visa_form.pk)
         messages.error(request, "Não foi possível criar a etapa do formulário.")
     else:
-        form = FormularioEtapaForm(formulario=formulario)
+        form = VisaFormStageForm(visa_form=visa_form)
 
     return render(
         request,
-        "forms/criar_etapa_formulario.html",
-        {"form": form, "formulario": formulario, "perfil_usuario": consultor.perfil.nome if consultor else None},
+        "forms/create_form_stage.html",
+        {"form": form, "visa_form_obj": visa_form, "user_profile": consultant.profile.name if consultant else None},
     )
 
 
 @login_required
-def editar_etapa_formulario(request, pk: int):
-    consultor = obter_consultor_usuario(request.user)
-    if not usuario_pode_gerenciar_todos(request.user, consultor):
+def edit_form_stage(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    etapa = get_object_or_404(EtapaFormularioVisto.objects.select_related("formulario"), pk=pk)
-    formulario = etapa.formulario
-    perguntas = etapa.perguntas.all().order_by("ordem", "pergunta")
+    stage = get_object_or_404(VisaFormStage.objects.select_related("form"), pk=pk)
+    visa_form = stage.form
+    questions = stage.questions.all().order_by("order", "question")
 
     if request.method == "POST":
-        form = FormularioEtapaForm(data=request.POST, instance=etapa)
+        form = VisaFormStageForm(data=request.POST, instance=stage)
         if form.is_valid():
             form.save()
             messages.success(request, "Etapa do formulário atualizada com sucesso.")
-            return redirect("system:editar_etapa_formulario", pk=etapa.pk)
+            return redirect("system:edit_form_stage", pk=stage.pk)
         messages.error(request, "Não foi possível atualizar a etapa do formulário.")
     else:
-        form = FormularioEtapaForm(instance=etapa)
+        form = VisaFormStageForm(instance=stage)
 
     return render(
         request,
-        "forms/editar_etapa_formulario.html",
+        "forms/edit_form_stage.html",
         {
             "form": form,
-            "etapa": etapa,
-            "formulario": formulario,
-            "perguntas": perguntas,
-            "perfil_usuario": consultor.perfil.nome if consultor else None,
+            "stage": stage,
+            "visa_form_obj": visa_form,
+            "questions": questions,
+            "user_profile": consultant.profile.name if consultant else None,
         },
     )
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_etapa_formulario(request, pk: int):
-    consultor = obter_consultor_usuario(request.user)
-    if not usuario_pode_gerenciar_todos(request.user, consultor):
+def delete_form_stage(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    if not user_can_manage_all(request.user, consultant):
         raise PermissionDenied
 
-    etapa = get_object_or_404(EtapaFormularioVisto.objects.select_related("formulario"), pk=pk)
-    formulario_id = etapa.formulario_id
-    PerguntaFormulario.objects.filter(etapa=etapa).update(etapa=None)
-    etapa.delete()
+    stage = get_object_or_404(VisaFormStage.objects.select_related("form"), pk=pk)
+    form_id = stage.form_id
+    FormQuestion.objects.filter(stage=stage).update(stage=None)
+    stage.delete()
     messages.success(request, "Etapa removida. Perguntas ficaram sem agrupamento.")
-    return redirect("system:editar_formulario", pk=formulario_id)
+    return redirect("system:edit_form", pk=form_id)
 
 
 @login_required
-def excluir_formulario(request, pk: int):
-                                        
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def delete_form(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-    formulario = get_object_or_404(FormularioVisto, pk=pk)
-    tipo_visto_nome = formulario.tipo_visto.nome
-    formulario.delete()
+    visa_form = get_object_or_404(VisaForm, pk=pk)
+    visa_type_name = visa_form.visa_type.name
+    visa_form.delete()
 
-    messages.success(request, f"Formulário de {tipo_visto_nome} excluído com sucesso.")
-    return redirect("system:listar_tipos_formulario")
+    messages.success(request, f"Formulário de {visa_type_name} excluído com sucesso.")
+    return redirect("system:list_form_types")
 
 
 @login_required
-def criar_pergunta(request, formulario_id: int):
-                                               
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def create_question(request, form_id: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-    formulario = get_object_or_404(FormularioVisto, pk=formulario_id)
+    visa_form = get_object_or_404(VisaForm, pk=form_id)
 
     if request.method == "POST":
-        form = PerguntaFormularioForm(data=request.POST, formulario=formulario)
+        form = FormQuestionForm(data=request.POST, visa_form=visa_form)
         if form.is_valid():
-            pergunta = form.save()
-            messages.success(request, f"Pergunta '{pergunta.pergunta}' adicionada com sucesso.")
-            return redirect("system:editar_formulario", pk=formulario.pk)
+            question = form.save()
+            messages.success(request, f"Pergunta '{question.question}' adicionada com sucesso.")
+            return redirect("system:edit_form", pk=visa_form.pk)
         messages.error(request, "Não foi possível criar a pergunta. Verifique os campos.")
     else:
-        form = PerguntaFormularioForm(formulario=formulario)
+        form = FormQuestionForm(visa_form=visa_form)
 
-    contexto = {
+    context = {
         "form": form,
-        "formulario": formulario,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "visa_form_obj": visa_form,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "forms/criar_pergunta.html", contexto)
+    return render(request, "forms/create_question.html", context)
 
 
 @login_required
-def editar_pergunta(request, pk: int):
-                                    
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def edit_question(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-    pergunta = get_object_or_404(
-        PerguntaFormulario.objects.select_related("formulario"), pk=pk
+    question = get_object_or_404(
+        FormQuestion.objects.select_related("form"), pk=pk
     )
-    formulario = pergunta.formulario
-    opcoes = pergunta.opcoes.all().order_by("ordem", "texto") if pergunta.tipo_campo == "selecao" else []
+    visa_form = question.form
+    options = question.options.all().order_by("order", "text") if question.field_type == "selecao" else []
 
     if request.method == "POST":
-        form = PerguntaFormularioForm(data=request.POST, instance=pergunta, formulario=formulario)
+        form = FormQuestionForm(data=request.POST, instance=question, visa_form=visa_form)
         if form.is_valid():
             form.save()
-            messages.success(request, f"Pergunta '{pergunta.pergunta}' atualizada com sucesso.")
-            return redirect("system:editar_formulario", pk=formulario.pk)
+            messages.success(request, f"Pergunta '{question.question}' atualizada com sucesso.")
+            return redirect("system:edit_form", pk=visa_form.pk)
         messages.error(request, "Não foi possível atualizar a pergunta.")
     else:
-        form = PerguntaFormularioForm(instance=pergunta, formulario=formulario)
+        form = FormQuestionForm(instance=question, visa_form=visa_form)
 
-    contexto = {
+    context = {
         "form": form,
-        "pergunta": pergunta,
-        "formulario": formulario,
-        "opcoes": opcoes,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "question": question,
+        "visa_form_obj": visa_form,
+        "options_list": options,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "forms/editar_pergunta.html", contexto)
+    return render(request, "forms/edit_question.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_pergunta(request, pk: int):
-                              
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def delete_question(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-    pergunta = get_object_or_404(PerguntaFormulario.objects.select_related("formulario"), pk=pk)
-    formulario = pergunta.formulario
-    pergunta_texto = pergunta.pergunta
-    pergunta.delete()
+    question = get_object_or_404(FormQuestion.objects.select_related("form"), pk=pk)
+    visa_form = question.form
+    question_text = question.question
+    question.delete()
 
-    messages.success(request, f"Pergunta '{pergunta_texto}' excluída com sucesso.")
-    return redirect("system:editar_formulario", pk=formulario.pk)
+    messages.success(request, f"Pergunta '{question_text}' excluída com sucesso.")
+    return redirect("system:edit_form", pk=visa_form.pk)
 
 
 @login_required
-def criar_opcao_selecao(request, pergunta_id: int):
-                                                        
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def create_select_option(request, question_id: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-    pergunta = get_object_or_404(
-        PerguntaFormulario.objects.select_related("formulario"), pk=pergunta_id
+    question = get_object_or_404(
+        FormQuestion.objects.select_related("form"), pk=question_id
     )
-    
-                                               
-    if pergunta.tipo_campo != "selecao":
+
+    if question.field_type != "selecao":
         messages.error(request, "Apenas perguntas do tipo 'Seleção' podem ter opções.")
-        return redirect("system:editar_pergunta", pk=pergunta.pk)
+        return redirect("system:edit_question", pk=question.pk)
 
     if request.method == "POST":
-        form = OpcaoSelecaoForm(data=request.POST, pergunta=pergunta)
+        form = SelectOptionForm(data=request.POST, question=question)
         if form.is_valid():
-            opcao = form.save()
-            messages.success(request, f"Opção '{opcao.texto}' adicionada com sucesso.")
-            return redirect("system:editar_pergunta", pk=pergunta.pk)
+            option = form.save()
+            messages.success(request, f"Opção '{option.text}' adicionada com sucesso.")
+            return redirect("system:edit_question", pk=question.pk)
         messages.error(request, "Não foi possível criar a opção. Verifique os campos.")
     else:
-        form = OpcaoSelecaoForm(pergunta=pergunta)
+        form = SelectOptionForm(question=question)
 
-    contexto = {
+    context = {
         "form": form,
-        "pergunta": pergunta,
-        "formulario": pergunta.formulario,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "question": question,
+        "visa_form_obj": question.form,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "forms/criar_opcao_selecao.html", contexto)
+    return render(request, "forms/create_select_option.html", context)
 
 
 @login_required
-def selecionar_viagem_cliente_formulario(request):
-                                                                         
-    from system.models import ClienteConsultoria
-    
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-                                            
-    if pode_gerenciar_todos:
-        clientes_ids = list(ClienteConsultoria.objects.values_list("pk", flat=True))
+def select_trip_client_form(request):
+    from system.models import ConsultancyClient
+
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    if can_manage_all:
+        client_ids = list(ConsultancyClient.objects.values_list("pk", flat=True))
     else:
-                                                      
-        clientes_usuario = listar_clientes(request.user)
-        clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
-    
-                                                               
-    viagens = Viagem.objects.filter(
-        clientes__pk__in=clientes_ids,
-        tipo_visto__formulario__isnull=False,
-        tipo_visto__formulario__ativo=True
+        user_clients = list_clients(request.user)
+        client_ids = list(user_clients.values_list("pk", flat=True))
+
+    trips = Trip.objects.filter(
+        clients__pk__in=client_ids,
+        visa_type__form__isnull=False,
+        visa_type__form__is_active=True
     ).select_related(
-        "pais_destino",
-        "tipo_visto",
-        "tipo_visto__formulario",
-    ).prefetch_related("clientes").distinct().order_by("-data_prevista_viagem")
-    
-                                                          
+        "destination_country",
+        "visa_type",
+        "visa_type__form",
+    ).prefetch_related("clients").distinct().order_by("-planned_departure_date")
+
     if request.method == "POST":
-        viagem_id = request.POST.get("viagem_id")
-        cliente_id = request.POST.get("cliente_id")
-        
-        if not viagem_id or not cliente_id:
+        trip_id = request.POST.get("trip_id")
+        client_id = request.POST.get("client_id")
+
+        if not trip_id or not client_id:
             messages.error(request, "Por favor, selecione uma viagem e um cliente.")
-            return redirect("system:selecionar_viagem_cliente_formulario")
-        
+            return redirect("system:select_trip_client_form")
+
         try:
-            viagem = Viagem.objects.get(pk=viagem_id)
-            cliente = ClienteConsultoria.objects.get(pk=cliente_id)
-            
-                                 
-            if not pode_gerenciar_todos and int(cliente_id) not in clientes_ids:
+            trip = Trip.objects.get(pk=trip_id)
+            client = ConsultancyClient.objects.get(pk=client_id)
+
+            if not can_manage_all and int(client_id) not in client_ids:
                 raise PermissionDenied("Você não tem permissão para acessar este cliente.")
-            
-            if cliente not in viagem.clientes.all():
+
+            if client not in trip.clients.all():
                 messages.error(request, "Este cliente não está vinculado a esta viagem.")
-                return redirect("system:selecionar_viagem_cliente_formulario")
-            
-                                                 
-            return redirect("system:editar_formulario_cliente", viagem_id=viagem_id, cliente_id=cliente_id)
-        except (Viagem.DoesNotExist, ClienteConsultoria.DoesNotExist, ValueError):
+                return redirect("system:select_trip_client_form")
+
+            return redirect("system:edit_client_form", trip_id=trip_id, client_id=client_id)
+        except (Trip.DoesNotExist, ConsultancyClient.DoesNotExist, ValueError):
             messages.error(request, "Viagem ou cliente não encontrado.")
-            return redirect("system:selecionar_viagem_cliente_formulario")
-    
-                                    
-    viagens_com_clientes = []
-    for viagem in viagens:
-        clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids).select_related("assessor_responsavel")
-        if clientes_viagem.exists():
-            viagens_com_clientes.append({
-                "viagem": viagem,
-                "clientes": clientes_viagem,
+            return redirect("system:select_trip_client_form")
+
+    trips_with_clients = []
+    for trip in trips:
+        trip_clients = trip.clients.filter(pk__in=client_ids).select_related("assigned_advisor")
+        if trip_clients.exists():
+            trips_with_clients.append({
+                "trip": trip,
+                "clients": trip_clients,
             })
-    
-    contexto = {
-        "viagens_com_clientes": viagens_com_clientes,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
+
+    context = {
+        "trips_with_clients": trips_with_clients,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
     }
-    
-    return render(request, "forms/selecionar_viagem_cliente_formulario.html", contexto)
+
+    return render(request, "forms/select_trip_client_form.html", context)
 
 
 @login_required
-def editar_opcao_selecao(request, pk: int):
-                                            
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def edit_select_option(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-    opcao = get_object_or_404(
-        OpcaoSelecao.objects.select_related("pergunta__formulario"), pk=pk
+    option = get_object_or_404(
+        SelectOption.objects.select_related("question__form"), pk=pk
     )
-    pergunta = opcao.pergunta
+    question = option.question
 
     if request.method == "POST":
-        form = OpcaoSelecaoForm(data=request.POST, instance=opcao, pergunta=pergunta)
+        form = SelectOptionForm(data=request.POST, instance=option, question=question)
         if form.is_valid():
             form.save()
-            messages.success(request, f"Opção '{opcao.texto}' atualizada com sucesso.")
-            return redirect("system:editar_pergunta", pk=pergunta.pk)
+            messages.success(request, f"Opção '{option.text}' atualizada com sucesso.")
+            return redirect("system:edit_question", pk=question.pk)
         messages.error(request, "Não foi possível atualizar a opção.")
     else:
-        form = OpcaoSelecaoForm(instance=opcao, pergunta=pergunta)
+        form = SelectOptionForm(instance=option, question=question)
 
-    contexto = {
+    context = {
         "form": form,
-        "opcao": opcao,
-        "pergunta": pergunta,
-        "formulario": pergunta.formulario,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "option": option,
+        "question": question,
+        "visa_form_obj": question.form,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "forms/editar_opcao_selecao.html", contexto)
+    return render(request, "forms/edit_select_option.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_opcao_selecao(request, pk: int):
-                                      
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def delete_select_option(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-    opcao = get_object_or_404(
-        OpcaoSelecao.objects.select_related("pergunta__formulario"), pk=pk
+    option = get_object_or_404(
+        SelectOption.objects.select_related("question__form"), pk=pk
     )
-    pergunta = opcao.pergunta
-    opcao_texto = opcao.texto
-    opcao.delete()
+    question = option.question
+    option_text = option.text
+    option.delete()
 
-    messages.success(request, f"Opção '{opcao_texto}' excluída com sucesso.")
-    return redirect("system:editar_pergunta", pk=pergunta.pk)
-
+    messages.success(request, f"Opção '{option_text}' excluída com sucesso.")
+    return redirect("system:edit_question", pk=question.pk)

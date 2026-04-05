@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Minhas Viagens{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+    <style>
+    .home-acoes {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        margin-bottom: 24px;
+    }
+
+    .home-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none;
+    }
+
+    .home-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(5, 8, 17, 0.5);
+    }
+
+    .home-card__icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        color: #081423;
+        flex-shrink: 0;
+    }
+
+    .home-card__content h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--text-primary);
+    }
+
+    .home-card__content p {
+        margin: 2px 0 0 0;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+
+    .home-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .kpi-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin-bottom: 20px;
+    }
+
+    .kpi-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.22);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .kpi-card span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.35rem;
+        color: var(--accent);
+    }
+
+    .kpi-card--mini strong {
+        font-size: 1rem;
+        line-height: 1.3;
+    }
+
+    .home-section {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 24px;
+    }
+
+    .home-section__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .home-section__header h2 {
+        margin: 0;
+        font-size: 1.05rem;
+        color: var(--text-primary);
+    }
+
+    .home-section__header p {
+        margin: 3px 0 0 0;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+
+    .home-section__actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mini-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .mini-table th {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.7rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        white-space: nowrap;
+    }
+
+    .mini-table td {
+        padding: 10px 10px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        vertical-align: middle;
+    }
+
+    .mini-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .family-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .family-member__name {
+        font-size: 0.85rem;
+        color: var(--text-primary);
+    }
+
+    .text-muted {
+        color: var(--text-secondary);
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-completo {
+        background: rgba(86, 244, 156, 0.15);
+        color: rgba(86, 244, 156, 0.95);
+    }
+
+    .badge-parcial {
+        background: rgba(255, 193, 7, 0.15);
+        color: rgba(255, 193, 7, 0.95);
+    }
+
+    .badge-pendente {
+        background: rgba(255, 104, 104, 0.15);
+        color: rgba(255, 104, 104, 0.95);
+    }
+
+    .badge-sem {
+        color: var(--text-secondary);
+        font-weight: 400;
+    }
+
+    .btn-small { padding: 5px 10px; font-size: 0.8rem; }
+
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    .filtros-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+        align-items: end;
+    }
+    .filtros-grid input,
+    .filtros-grid select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+    .filtros-grid input:focus,
+    .filtros-grid select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+    .filtros-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 12px;
+    }
+    .filtros-actions .btn { width: auto; }
+
+    @media (max-width: 768px) {
+        .filtros-grid { grid-template-columns: 1fr; }
+        .filtros-actions { flex-direction: column; }
+        .filtros-actions .btn { width: 100%; text-align: center; }
+    }
+
+    @media (max-width: 480px) {
+        .home-acoes { grid-template-columns: 1fr; }
+        .home-section__header { flex-direction: column; align-items: flex-start; }
+    }
+    </style>
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div>
+        <h1>Minhas Viagens</h1>
+        <p>Gerencie viagens dos seus clientes.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="home-acoes">
+    <a href="{% url 'system:create_trip' %}" class="home-card">
+        <div class="home-card__icon">&#10133;</div>
+        <div class="home-card__content">
+            <h3>Criar Viagem</h3>
+            <p>Nova viagem</p>
+        </div>
+    </a>
+    <a href="{% url 'system:list_trips' %}" class="home-card">
+        <div class="home-card__icon">&#128196;</div>
+        <div class="home-card__content">
+            <h3>Listar Viagens</h3>
+            <p>Ver todas</p>
+        </div>
+    </a>
+</section>
+
+<section class="filtros-card">
+    <form method="get" class="filtros-grid">
+        <select name="country">
+            <option value="">País</option>
+            {% for country in paises %}
+                <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk %}selected{% endif %}>{{ country.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="tipo_visto">
+            <option value="">Tipo de visto</option>
+            {% for tipo in tipos_visto %}
+                <option value="{{ tipo.pk }}" {% if applied_filters_dict.visa_type == tipo.pk %}selected{% endif %}>{{ tipo.name }}</option>
+            {% endfor %}
+        </select>
+        <input type="text" name="client" value="{{ applied_filters_dict.client }}" placeholder="Nome do cliente" list="datalist-clientes">
+        <select name="partner">
+            <option value="">Parceiro</option>
+            {% for partner_obj in partners %}
+                <option value="{{ partner_obj.pk }}" {% if applied_filters_dict.partner == partner_obj.pk %}selected{% endif %}>
+                    {% if partner_obj.company_name %}{{ partner_obj.company_name }}{% else %}{{ partner_obj.contact_name }}{% endif %}
+                </option>
+            {% endfor %}
+        </select>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:home_trips' %}" class="btn btn-outline">Limpar</a>
+        </div>
+    </form>
+</section>
+<datalist id="datalist-clientes">
+    {% for client in clientes %}
+        <option value="{{ client.full_name }}">
+    {% endfor %}
+</datalist>
+
+<div class="home-grid">
+    <section class="home-section">
+        <div class="kpi-grid">
+            <article class="kpi-card">
+                <span>Total de viagens</span>
+                <strong>{{ total_trips_kpi }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Viagens concluídas</span>
+                <strong>{{ total_completed_trips }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Viagens próximas (30 dias)</span>
+                <strong>{{ total_upcoming_trips }}</strong>
+            </article>
+        </div>
+        <div class="kpi-grid">
+            {% for item in count_by_visa_type|slice:":4" %}
+            <article class="kpi-card kpi-card--mini">
+                <span>Tipo de visto</span>
+                <strong>{{ item.visa_type__name|default:"Não informado" }}: {{ item.total }}</strong>
+            </article>
+            {% endfor %}
+            {% for item in count_by_country|slice:":4" %}
+            <article class="kpi-card kpi-card--mini">
+                <span>País de destino</span>
+                <strong>{{ item.destination_country__name|default:"Não informado" }}: {{ item.total }}</strong>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if viagens %}
+    <section class="home-section">
+        <div class="home-section__header">
+            <div>
+                <h2>Minhas Viagens</h2>
+                <p>{{ total_trips }} viagem(ns)</p>
+            </div>
+            <div class="home-section__actions">
+                <a href="{% url 'system:list_trips' %}" class="btn btn-outline btn-small">Ver Todas</a>
+            </div>
+        </div>
+        <div class="table-wrapper">
+        <table class="mini-table">
+            <thead>
+                <tr>
+                    <th>Clientes</th>
+                    <th>País</th>
+                    <th>Tipo de Visto</th>
+                    <th>Parceiro</th>
+                    <th>Data Viagem</th>
+                    <th>Data Retorno</th>
+                    <th>Valor</th>
+                    <th>Formulário</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in trips_with_info %}
+                <tr>
+                    <td>
+                        {% with clients=item.trip.clients.all %}
+                            {% if clients %}
+                                <div class="family-stack">
+                                    {% for client in clientes %}
+                                        <div class="family-member">
+                                            <span class="family-member__name">{{ client.full_name }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>{{ item.trip.destination_country.name }}</td>
+                    <td>{{ item.trip.visa_type.name }}</td>
+                    <td>
+                        {% if item.linked_partners %}
+                            {% for partner_obj in item.linked_partners %}
+                                {% if partner_obj.company_name %}{{ partner_obj.company_name }}{% else %}{{ partner_obj.contact_name }}{% endif %}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.trip.planned_departure_date|date:"d/m/Y" }}</td>
+                    <td>{{ item.trip.planned_return_date|date:"d/m/Y" }}</td>
+                    <td>R$ {{ item.trip.advisory_fee|floatformat:2 }}</td>
+                    <td>
+                        {% if item.has_form %}
+                            {% if item.total_clientes > 0 %}
+                                {% if item.clients_with_answers == item.total_clientes %}
+                                    <span class="badge badge-completo">Completo</span>
+                                {% elif item.clients_with_answers > 0 %}
+                                    <span class="badge badge-parcial">{{ item.clients_with_answers }}/{{ item.total_clientes }}</span>
+                                {% else %}
+                                    <span class="badge badge-pendente">Pendente</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge badge-sem">Sem clientes</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge badge-sem">Sem formulário</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:view_trip' item.trip.pk %}" class="btn btn-primary btn-small">Ver</a>
+                            {% if item.can_update_excluir %}
+                                <a href="{% url 'system:edit_trip' item.trip.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

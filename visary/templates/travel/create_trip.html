@@ -1,0 +1,789 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Criar Viagem{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    <style>
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .grid-inline {
+        display: grid;
+        gap: 18px;
+        grid-template-columns: 1fr;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(18px, 3.5vw, 28px);
+    }
+
+    .messages {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+    }
+
+    .messages li {
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    .messages .success {
+        background: rgba(86, 244, 156, 0.2);
+        border: 1px solid rgba(86, 244, 156, 0.55);
+    }
+
+    .messages .error {
+        background: rgba(255, 81, 81, 0.15);
+        border: 1px solid rgba(255, 104, 104, 0.55);
+    }
+
+    .form-card form {
+        display: grid;
+        gap: 16px;
+    }
+
+    .form-card label {
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .form-card input,
+    .form-card select,
+    .form-card textarea {
+        width: 100%;
+        min-width: 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.95rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .form-card input::placeholder,
+    .form-card textarea::placeholder {
+        color: rgba(245, 245, 245, 0.55);
+    }
+
+    .form-card select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding-right: 42px;
+        background-image: linear-gradient(45deg, transparent 50%, rgba(245, 245, 245, 0.75) 50%),
+                          linear-gradient(135deg, rgba(245, 245, 245, 0.75) 50%, transparent 50%);
+        background-position: calc(100% - 24px) center, calc(100% - 16px) center;
+        background-size: 8px 8px;
+        background-repeat: no-repeat;
+    }
+
+    .form-card input:focus,
+    .form-card select:focus,
+    .form-card textarea:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+
+    @media (min-width: 1120px) {
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            max-width: 600px;
+        }
+
+        .grid-inline {
+            grid-template-columns: repeat(2, minmax(240px, 1fr));
+        }
+    }
+
+    @media (max-width: 768px) {
+        .layout-grid {
+            width: 100%;
+            max-width: 480px;
+            margin-inline: auto;
+            gap: 16px;
+        }
+
+        .card.form-card,
+        .layout-grid > .card {
+            width: 100%;
+            margin-inline: 0;
+            padding: 16px 12px;
+            border-radius: 18px;
+            box-shadow: 0 16px 32px rgba(5, 8, 17, 0.45);
+        }
+
+        .form-card label {
+            font-size: 0.78rem;
+            margin-bottom: 6px;
+        }
+
+        .form-card input,
+        .form-card select,
+        .form-card textarea {
+            padding: 10px 12px;
+            font-size: 0.9rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .page-header__titles h1 {
+            font-size: 1.3rem;
+        }
+
+        .page-header__titles p {
+            font-size: 0.9rem;
+        }
+    }
+
+    /* === Client combobox === */
+    .viagem-cliente-combobox {
+        position: relative;
+    }
+
+    .viagem-cliente-combobox .search-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .viagem-cliente-combobox input[type="text"] {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        color: rgba(245, 245, 245, 0.88);
+        padding: 12px 14px 12px 38px;
+        font-size: 0.88rem;
+        width: 100%;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        font-family: inherit;
+    }
+
+    .viagem-cliente-combobox input[type="text"]:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.6);
+        box-shadow: 0 0 0 3px rgba(86, 244, 156, 0.15);
+    }
+
+    .viagem-cliente-combobox input[type="text"]::placeholder {
+        color: rgba(245, 245, 245, 0.4);
+    }
+
+    .viagem-cliente-combobox .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        pointer-events: none;
+        opacity: 0.5;
+    }
+
+    .viagem-cliente-combobox .dropdown-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #1a1d29;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        margin-top: 4px;
+        max-height: 280px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .viagem-cliente-combobox .dropdown-list.active {
+        display: block;
+    }
+
+    .viagem-cliente-combobox .dropdown-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        color: rgba(245, 245, 245, 0.88);
+        transition: background 0.15s;
+    }
+
+    .viagem-cliente-combobox .dropdown-item:hover {
+        background: rgba(86, 244, 156, 0.15);
+    }
+
+    .viagem-cliente-combobox .dropdown-item.no-results {
+        color: rgba(245, 245, 245, 0.4);
+        cursor: default;
+        text-align: center;
+    }
+
+    .viagem-cliente-combobox .highlight {
+        color: var(--accent);
+        font-weight: 600;
+    }
+
+    /* === Dependents section === */
+    .dependents-section {
+        margin-top: 16px;
+        padding: 16px;
+        background: rgba(255, 193, 7, 0.08);
+        border: 1px solid rgba(255, 193, 7, 0.25);
+        border-radius: 12px;
+    }
+
+    .dependents-section h4 {
+        margin: 0 0 12px 0;
+        font-size: 0.92rem;
+        color: rgba(255, 193, 7, 0.95);
+    }
+
+    .dependente-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: rgba(255, 193, 7, 0.05);
+        border: 1px solid rgba(255, 193, 7, 0.15);
+        border-radius: 8px;
+        margin-bottom: 6px;
+    }
+
+    .dependente-checkbox-item input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: rgba(86, 244, 156, 0.8);
+        cursor: pointer;
+    }
+
+    .dependente-checkbox-item label {
+        cursor: pointer;
+        font-size: 0.88rem;
+        color: var(--text-primary);
+        text-transform: none;
+        letter-spacing: normal;
+        font-weight: 500;
+        margin-bottom: 0;
+    }
+
+    .principal-selecionado {
+        padding: 12px 16px;
+        background: rgba(86, 244, 156, 0.1);
+        border: 1px solid rgba(86, 244, 156, 0.3);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .principal-selecionado__nome {
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.92rem;
+    }
+
+    .principal-selecionado .badge-principal {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+    }
+
+    .principal-selecionado .btn-trocar {
+        background: none;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: rgba(245, 245, 245, 0.7);
+        padding: 4px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.78rem;
+        transition: all 0.2s;
+    }
+
+    .principal-selecionado .btn-trocar:hover {
+        border-color: rgba(86, 244, 156, 0.4);
+        color: rgba(86, 244, 156, 0.9);
+    }
+
+    </style>
+{% endblock %}
+
+
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Criar Viagem</h1>
+        <p>Preencha os dados para cadastrar uma nova viagem.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="layout-grid">
+    <article class="card form-card">
+        <header>
+            <h2>Nova viagem</h2>
+        </header>
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <ul class="messages">
+                    {% for error in form.non_field_errors %}
+                        <li class="error">{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            
+            
+            <div>
+                <label for="{{ form.assigned_advisor.id_for_label }}">Assessor responsável *</label>
+                {{ form.assigned_advisor }}
+                {{ form.assigned_advisor.errors }}
+            </div>
+            <div>
+                <label for="{{ form.advisory_fee.id_for_label }}">Valor assessoria Visary *</label>
+                {{ form.advisory_fee }}
+                {{ form.advisory_fee.errors }}
+            </div>
+            
+            
+            {% if trip_members %}
+            <div style="margin-top: 32px; padding: 24px; background: rgba(86, 244, 156, 0.1); border: 1px solid rgba(86, 244, 156, 0.3); border-radius: 12px;">
+                <h3 style="margin: 0 0 16px 0; font-size: 1.2rem; color: rgba(86, 244, 156, 0.95);">
+                    Membros da Viagem ({{ trip_members|length }})
+                </h3>
+
+                {% for membro in trip_members %}
+                    <div class="dependente-checkbox-item" style="{% if membro.role == 'primary' %}background: rgba(86, 244, 156, 0.08); border-color: rgba(86, 244, 156, 0.25);{% endif %}">
+                        {% if membro.role == 'primary' %}
+                            <input type="checkbox" checked disabled style="width: 18px; height: 18px; accent-color: rgba(86, 244, 156, 0.8);">
+                            <input type="hidden" name="clientes" value="{{ membro.client.pk }}">
+                        {% else %}
+                            <input type="checkbox" id="membro-{{ membro.client.pk }}" name="clientes" value="{{ membro.client.pk }}" checked style="width: 18px; height: 18px; accent-color: rgba(86, 244, 156, 0.8); cursor: pointer;">
+                        {% endif %}
+                        <label {% if membro.role != 'primary' %}for="membro-{{ membro.client.pk }}"{% endif %} style="cursor: {% if membro.role == 'primary' %}default{% else %}pointer{% endif %}; font-size: 0.92rem; color: var(--text-primary); text-transform: none; letter-spacing: normal; font-weight: 500; margin-bottom: 0;">
+                            {{ membro.client.full_name }}
+                        </label>
+                        {% if membro.role == 'primary' %}
+                            <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(86, 244, 156, 0.2); color: rgba(86, 244, 156, 0.95); border: 1px solid rgba(86, 244, 156, 0.4);">
+                                Principal
+                            </span>
+                        {% else %}
+                            <span style="display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; background: rgba(255, 193, 7, 0.2); color: rgba(255, 193, 7, 0.95); border: 1px solid rgba(255, 193, 7, 0.4);">
+                                Dependente
+                            </span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+            {% else %}
+
+            <div>
+                <label>Cliente principal *</label>
+                <div class="viagem-cliente-combobox" id="combobox-cliente">
+                    <div class="search-wrapper">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <path d="M21 21l-4.35-4.35"/>
+                        </svg>
+                        <input type="text" id="busca-cliente-input" placeholder="Digite o nome do cliente..." autocomplete="off">
+                    </div>
+                    <div class="dropdown-list" id="dropdown-clientes"></div>
+                </div>
+                {{ form.clients.errors }}
+
+                <!-- Selected principal display (hidden initially) -->
+                <div id="principal-display" style="display: none; margin-top: 12px;">
+                    <div class="principal-selecionado">
+                        <div>
+                            <span class="principal-selecionado__nome" id="principal-nome"></span>
+                            <span class="badge-principal">Principal</span>
+                        </div>
+                        <button type="button" class="btn-trocar" onclick="trocarCliente()">Trocar</button>
+                    </div>
+                    <input type="hidden" name="clientes" id="principal-hidden-input" value="">
+                </div>
+
+                <!-- Dependents section (populated dynamically) -->
+                <div id="dependentes-container" style="display: none; margin-top: 12px;">
+                    <div class="dependentes-section">
+                        <h4>Dependentes vinculados</h4>
+                        <div id="dependentes-list"></div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            
+            <div style="margin-top: 32px; padding: 24px; background: rgba(12, 19, 35, 0.4); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;">
+                <h3 style="margin: 0 0 20px 0; font-size: 1.1rem; color: var(--text-primary);">
+                    Dados da Viagem Principal
+                </h3>
+                <div class="grid-inline">
+                    <div>
+                        <label for="{{ form.destination_country.id_for_label }}">País de destino *</label>
+                        {{ form.destination_country }}
+                        {{ form.destination_country.errors }}
+                    </div>
+                    <div>
+                        <label for="{{ form.visa_type.id_for_label }}">Tipo de visto *</label>
+                        {{ form.visa_type }}
+                        {{ form.visa_type.errors }}
+                    </div>
+                </div>
+                <div class="grid-inline">
+                    <div>
+                        <label for="{{ form.planned_departure_date.id_for_label }}">Data prevista da trip *</label>
+                        {{ form.planned_departure_date }}
+                        {{ form.planned_departure_date.errors }}
+                    </div>
+                    <div>
+                        <label for="{{ form.planned_return_date.id_for_label }}">Data prevista de retorno *</label>
+                        {{ form.planned_return_date }}
+                        {{ form.planned_return_date.errors }}
+                    </div>
+                </div>
+            </div>
+            
+            
+            {% if trip_members %}
+                {% for membro in trip_members %}
+                    {% if membro.role == 'dependent' %}
+                    <div style="margin-top: 32px; padding: 24px; background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">
+                                Dependente: {{ membro.client.full_name }}
+                            </h3>
+                            <button 
+                                type="button" 
+                                class="btn-replicar-dados"
+                                data-dependente-id="{{ membro.client.pk }}"
+                                style="padding: 8px 16px; background: rgba(86, 244, 156, 0.2); border: 1px solid rgba(86, 244, 156, 0.4); border-radius: 8px; color: rgba(86, 244, 156, 0.95); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;"
+                                onmouseover="this.style.background='rgba(86, 244, 156, 0.3)'; this.style.borderColor='rgba(86, 244, 156, 0.6)';"
+                                onmouseout="this.style.background='rgba(86, 244, 156, 0.2)'; this.style.borderColor='rgba(86, 244, 156, 0.4)';">
+                                📋 Replicar dados da trip principal
+                            </button>
+                        </div>
+                        
+                        <div class="grid-inline">
+                            <div>
+                                <label for="destination_country_dependent_{{ membro.client.pk }}">País de destino *</label>
+                                <select 
+                                    name="destination_country_dependent_{{ membro.client.pk }}" 
+                                    id="destination_country_dependent_{{ membro.client.pk }}"
+                                    class="pais-destino-dependente"
+                                    data-tipo-visto-select="visa_type_dependent_{{ membro.client.pk }}"
+                                    required
+                                    style="width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(12, 19, 35, 0.72); color: #f5f5f5; font-size: 0.95rem;">
+                                    <option value="">Selecione o país de destino</option>
+                                    {% for country in form.destination_country.field.queryset %}
+                                        <option value="{{ country.pk }}">{{ country.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label for="visa_type_dependent_{{ membro.client.pk }}">Tipo de visto *</label>
+                                <select 
+                                    name="visa_type_dependent_{{ membro.client.pk }}" 
+                                    id="visa_type_dependent_{{ membro.client.pk }}"
+                                    class="tipo-visto-dependente"
+                                    data-pais-select="destination_country_dependent_{{ membro.client.pk }}"
+                                    required
+                                    style="width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(12, 19, 35, 0.72); color: #f5f5f5; font-size: 0.95rem;">
+                                    <option value="">Selecione o tipo de visto</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="grid-inline">
+                            <div>
+                                <label for="departure_date_dependent_{{ membro.client.pk }}">Data prevista da trip *</label>
+                                <input 
+                                    type="date" 
+                                    name="departure_date_dependent_{{ membro.client.pk }}" 
+                                    id="departure_date_dependent_{{ membro.client.pk }}"
+                                    required
+                                    style="width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(12, 19, 35, 0.72); color: #f5f5f5; font-size: 0.95rem;">
+                            </div>
+                            <div>
+                                <label for="return_date_dependent_{{ membro.client.pk }}">Data prevista de retorno *</label>
+                                <input 
+                                    type="date" 
+                                    name="return_date_dependent_{{ membro.client.pk }}" 
+                                    id="return_date_dependent_{{ membro.client.pk }}"
+                                    required
+                                    style="width: 100%; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.12); background: rgba(12, 19, 35, 0.72); color: #f5f5f5; font-size: 0.95rem;">
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 16px; padding: 12px; background: rgba(86, 244, 156, 0.15); border: 1px solid rgba(86, 244, 156, 0.4); border-radius: 8px;">
+                            <p style="margin: 0; font-size: 0.9rem; color: rgba(86, 244, 156, 0.95);">
+                                <strong>ℹ️ Informação:</strong> Se o tipo de visto deste membro for diferente do tipo de visto da trip principal, uma trip separada será criada automaticamente.
+                            </p>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+            <div>
+                <label for="{{ form.notes.id_for_label }}">Observações</label>
+                {{ form.notes }}
+                {{ form.notes.errors }}
+            </div>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;">
+                {% if preselected_clients %}
+                    <button type="submit" name="action" value="save" class="btn btn-primary">Salvar Viagem</button>
+                    <button type="submit" name="action" value="save_and_create_process" class="btn btn-primary" style="background: linear-gradient(135deg, #4dd0e1 0%, #56f49c 100%);">
+                        Salvar e Criar Processo
+                    </button>
+                {% else %}
+                    <button type="submit" name="action" value="save" class="btn btn-primary">Salvar Viagem</button>
+                {% endif %}
+            </div>
+        </form>
+    </article>
+</section>
+
+<script>
+(function() {
+    const paisSelect = document.getElementById('{{ form.destination_country.id_for_label }}');
+    const tipoVistoSelect = document.getElementById('{{ form.visa_type.id_for_label }}');
+
+    if (!paisSelect || !tipoVistoSelect) return;
+
+    
+    function carregarTiposVisto(selectElement, paisId) {
+        if (!selectElement) return;
+        
+        selectElement.innerHTML = '<option value="">Carregando...</option>';
+        selectElement.disabled = true;
+
+        if (!paisId) {
+            selectElement.innerHTML = '<option value="">Selecione um país primeiro</option>';
+            return;
+        }
+
+        fetch(`{% url 'system:api_visa_types' %}?pais=${paisId}`)
+            .then(resp => resp.json())
+            .then(data => {
+                selectElement.innerHTML = '<option value="">Selecione o tipo de visto</option>';
+                data.forEach(tipo => {
+                    const option = document.createElement('option');
+                    option.value = tipo.id;
+                    option.textContent = tipo.name;
+                    selectElement.appendChild(option);
+                });
+                selectElement.disabled = false;
+            })
+            .catch(err => {
+                console.error('Erro ao carregar tipos de visto:', err);
+                selectElement.innerHTML = '<option value="">Erro ao carregar</option>';
+            });
+    }
+
+    
+    paisSelect.addEventListener('change', function() {
+        const paisId = this.value;
+        carregarTiposVisto(tipoVistoSelect, paisId);
+    });
+
+    
+    if (paisSelect.value) {
+        carregarTiposVisto(tipoVistoSelect, paisSelect.value);
+    }
+
+    
+    document.querySelectorAll('.pais-destino-dependente').forEach(paisSelectDependente => {
+        paisSelectDependente.addEventListener('change', function() {
+            const paisId = this.value;
+            const tipoVistoSelectId = this.dataset.tipoVistoSelect;
+            const tipoVistoSelectDependente = document.getElementById(tipoVistoSelectId);
+            if (tipoVistoSelectDependente) {
+                carregarTiposVisto(tipoVistoSelectDependente, paisId);
+            }
+        });
+    });
+
+    
+    function replicarDadosPrincipal(dependenteId) {
+        
+        const paisPrincipal = document.getElementById('{{ form.destination_country.id_for_label }}').value;
+        const tipoVistoPrincipal = document.getElementById('{{ form.visa_type.id_for_label }}').value;
+        const dataViagemPrincipal = document.getElementById('{{ form.planned_departure_date.id_for_label }}').value;
+        const dataRetornoPrincipal = document.getElementById('{{ form.planned_return_date.id_for_label }}').value;
+
+        
+        const paisDependente = document.getElementById(`destination_country_dependent_${dependenteId}`);
+        const tipoVistoDependente = document.getElementById(`visa_type_dependent_${dependenteId}`);
+        const dataViagemDependente = document.getElementById(`departure_date_dependent_${dependenteId}`);
+        const returnDateDependent = document.getElementById(`return_date_dependent_${dependenteId}`);
+
+        if (paisDependente && paisPrincipal) {
+            paisDependente.value = paisPrincipal;
+            
+            paisDependente.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            
+            setTimeout(() => {
+                if (tipoVistoDependente && tipoVistoPrincipal) {
+                    tipoVistoDependente.value = tipoVistoPrincipal;
+                }
+            }, 500);
+        }
+
+        if (dataViagemDependente && dataViagemPrincipal) {
+            dataViagemDependente.value = dataViagemPrincipal;
+        }
+
+        if (returnDateDependent && dataRetornoPrincipal) {
+            returnDateDependent.value = dataRetornoPrincipal;
+        }
+    }
+
+
+    document.querySelectorAll('.btn-replicar-dados').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const dependenteId = this.dataset.dependenteId;
+            replicarDadosPrincipal(dependenteId);
+
+
+            const originalText = this.textContent;
+            this.textContent = '✅ Dados replicados!';
+            this.style.background = 'rgba(86, 244, 156, 0.4)';
+            setTimeout(() => {
+                this.textContent = originalText;
+                this.style.background = 'rgba(86, 244, 156, 0.2)';
+            }, 2000);
+        });
+    });
+
+    // === CLIENT COMBOBOX ===
+    const buscaInput = document.getElementById('busca-cliente-input');
+    const dropdownClientes = document.getElementById('dropdown-clientes');
+    const principalDisplay = document.getElementById('principal-display');
+    const principalNome = document.getElementById('principal-nome');
+    const principalHidden = document.getElementById('principal-hidden-input');
+    const dependentesContainer = document.getElementById('dependentes-container');
+    const dependentesList = document.getElementById('dependentes-list');
+
+    if (buscaInput) {
+        // All clients data from the form's queryset
+        const todosClientes = [
+            {% for client in form.clients.field.queryset %}
+            { id: {{ client.pk }}, nome: "{{ client.full_name|escapejs }}" },
+            {% endfor %}
+        ];
+
+        let dropdownAberto = false;
+        let clienteSelecionado = null;
+
+        function renderDropdown(filtro) {
+            const termo = (filtro || '').toLowerCase();
+            const filtrados = termo
+                ? todosClientes.filter(c => c.name.toLowerCase().includes(termo))
+                : todosClientes;
+
+            if (filtrados.length === 0) {
+                dropdownClientes.innerHTML = '<div class="dropdown-item no-results">Nenhum cliente encontrado</div>';
+            } else {
+                dropdownClientes.innerHTML = filtrados.map(c => {
+                    let nomeHtml = c.name;
+                    if (termo) {
+                        const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                        nomeHtml = c.name.replace(regex, '<span class="highlight">$1</span>');
+                    }
+                    return `<div class="dropdown-item" data-id="${c.id}" data-nome="${c.name}">${nomeHtml}</div>`;
+                }).join('');
+            }
+
+            dropdownClientes.classList.add('active');
+            dropdownAberto = true;
+        }
+
+        buscaInput.addEventListener('focus', () => renderDropdown(buscaInput.value));
+        buscaInput.addEventListener('input', () => renderDropdown(buscaInput.value));
+
+        dropdownClientes.addEventListener('click', (e) => {
+            const item = e.target.closest('.dropdown-item[data-id]');
+            if (!item) return;
+            selecionarPrincipal(parseInt(item.dataset.id), item.dataset.name);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#combobox-cliente') && dropdownAberto) {
+                dropdownClientes.classList.remove('active');
+                dropdownAberto = false;
+            }
+        });
+
+        function selecionarPrincipal(id, nome) {
+            clienteSelecionado = { id, nome };
+            principalNome.textContent = nome;
+            principalHidden.value = id;
+            principalDisplay.style.display = 'block';
+            buscaInput.parentElement.parentElement.querySelector('.search-wrapper').style.display = 'none';
+            dropdownClientes.classList.remove('active');
+            dropdownAberto = false;
+
+            // Fetch dependents
+            fetch(`{% url 'system:api_client_dependents' %}?client_id=${id}`)
+                .then(r => r.json())
+                .then(dependentes => {
+                    if (dependentes.length > 0) {
+                        dependentesList.innerHTML = dependentes.map(d => `
+                            <div class="dependente-checkbox-item">
+                                <input type="checkbox" id="dep-${d.id}" name="clientes" value="${d.id}" checked>
+                                <label for="dep-${d.id}">${d.name}</label>
+                            </div>
+                        `).join('');
+                        dependentesContainer.style.display = 'block';
+                    } else {
+                        dependentesContainer.style.display = 'none';
+                        dependentesList.innerHTML = '';
+                    }
+                })
+                .catch(() => {
+                    dependentesContainer.style.display = 'none';
+                });
+        }
+
+        window.trocarCliente = function() {
+            clienteSelecionado = null;
+            principalDisplay.style.display = 'none';
+            principalHidden.value = '';
+            dependentesContainer.style.display = 'none';
+            dependentesList.innerHTML = '';
+            buscaInput.parentElement.parentElement.querySelector('.search-wrapper').style.display = 'flex';
+            buscaInput.value = '';
+            buscaInput.focus();
+        };
+    }
+})();
+</script>
+{% endblock %}
+

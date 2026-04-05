@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Visary | Cliente {{ client.full_name }}{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    <style>
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card header {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .card header h2 {
+        margin: 0;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 100%;
+    }
+
+    th,
+    td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .status-success {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.35);
+    }
+
+    .status-warning {
+        background: rgba(255, 193, 7, 0.2);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.35);
+    }
+
+    .status-danger {
+        background: rgba(255, 104, 104, 0.2);
+        color: rgba(255, 104, 104, 0.95);
+        border: 1px solid rgba(255, 104, 104, 0.35);
+    }
+
+    .status-neutral {
+        background: rgba(158, 158, 158, 0.2);
+        color: rgba(220, 220, 220, 0.9);
+        border: 1px solid rgba(158, 158, 158, 0.35);
+    }
+
+    @media (max-width: 768px) {
+        th,
+        td {
+            padding: 10px 8px;
+        }
+    }
+    </style>
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>{{ client.full_name }}</h1>
+        <p>Detalhes do cliente</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:partner_dashboard' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<div class="layout-grid">
+    <section class="card">
+        <header>
+            <h2>Viagens</h2>
+        </header>
+        {% if client_viagens %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Destino</th>
+                            <th>Tipo de Visto</th>
+                            <th>Data de Viagem</th>
+                            <th>Data de Retorno</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in cliente_viagens %}
+                            <tr>
+                                <td>{{ item.trip.destination_country.name }}</td>
+                                <td>{{ item.visa_type.name|default:item.trip.visa_type.name }}</td>
+                                <td>{{ item.trip.planned_departure_date|date:"d/m/Y" }}</td>
+                                <td>{{ item.trip.planned_return_date|date:"d/m/Y" }}</td>
+                                <td>
+                                    {% if item.trip.planned_return_date < today %}
+                                        <span class="status-badge status-success">Concluída</span>
+                                    {% else %}
+                                        <span class="status-badge status-warning">Em andamento</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">Nenhuma trip vinculada para este cliente.</div>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <header>
+            <h2>Processos</h2>
+        </header>
+        {% if process_objs %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Viagem</th>
+                            <th>Progresso</th>
+                            <th>Etapas Concluídas</th>
+                            <th>Status Geral</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for process_obj in processes %}
+                            <tr>
+                                <td>{{ process_obj.trip.destination_country.name }} - {{ process_obj.trip.planned_departure_date|date:"d/m/Y" }}</td>
+                                <td>{{ process_obj.progress_percentage }}%</td>
+                                <td>{{ process_obj.completed_stages }}/{{ process_obj.total_stages }}</td>
+                                <td>
+                                    {% if process_obj.progress_percentage == 100 %}
+                                        <span class="status-badge status-success">Concluído</span>
+                                    {% elif process_obj.completed_stages > 0 %}
+                                        <span class="status-badge status-warning">Em andamento</span>
+                                    {% else %}
+                                        <span class="status-badge status-danger">Pendente</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">Nenhum processo encontrado para este cliente.</div>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <header>
+            <h2>Formulários</h2>
+        </header>
+        {% if visa_form_objs_resumo %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Viagem</th>
+                            <th>Tipo de Visto</th>
+                            <th>Respostas</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in forms_summary %}
+                            <tr>
+                                <td>{{ item.trip.destination_country.name }} - {{ item.trip.planned_departure_date|date:"d/m/Y" }}</td>
+                                <td>{{ item.visa_type.name }}</td>
+                                <td>
+                                    {% if item.total_questions > 0 %}
+                                        {{ item.total_answers }}/{{ item.total_questions }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.status == "Concluído" %}
+                                        <span class="status-badge status-success">{{ item.status }}</span>
+                                    {% elif item.status == "Em andamento" %}
+                                        <span class="status-badge status-warning">{{ item.status }}</span>
+                                    {% elif item.status == "Não iniciado" %}
+                                        <span class="status-badge status-danger">{{ item.status }}</span>
+                                    {% else %}
+                                        <span class="status-badge status-neutral">{{ item.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">Nenhum formulário disponível para este cliente.</div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

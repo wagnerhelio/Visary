@@ -1,195 +1,187 @@
-   
-                                                      
-   
-
 from django.db import models
 
-from .travel_models import TipoVisto
+from .travel_models import VisaType
 
 
-class FormularioVisto(models.Model):
-                                                           
+FIELD_TYPE_CHOICES = [
+    ("text", "Texto"),
+    ("date", "Data"),
+    ("number", "Número"),
+    ("boolean", "Sim/Não"),
+    ("select", "Seleção"),
+]
 
-    tipo_visto = models.OneToOneField(
-        TipoVisto,
+
+class VisaForm(models.Model):
+    visa_type = models.OneToOneField(
+        VisaType,
         on_delete=models.CASCADE,
-        related_name="formulario",
+        related_name="form",
         verbose_name="Tipo de Visto",
     )
-    ativo = models.BooleanField("Ativo", default=True)
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    is_active = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
         verbose_name = "Formulário de Visto"
         verbose_name_plural = "Formulários de Visto"
-        ordering = ("tipo_visto__nome",)
+        ordering = ("visa_type__name",)
 
     def __str__(self):
-        return f"Formulário - {self.tipo_visto.nome}"
+        return f"Formulário - {self.visa_type.name}"
 
 
-class EtapaFormularioVisto(models.Model):
-    formulario = models.ForeignKey(
-        FormularioVisto,
+class VisaFormStage(models.Model):
+    form = models.ForeignKey(
+        VisaForm,
         on_delete=models.CASCADE,
-        related_name="etapas",
+        related_name="stages",
         verbose_name="Formulário",
     )
-    nome = models.CharField("Nome da etapa", max_length=120)
-    ordem = models.PositiveIntegerField("Ordem", default=0)
-    ativo = models.BooleanField("Ativo", default=True)
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    name = models.CharField("Nome da etapa", max_length=120)
+    order = models.PositiveIntegerField("Ordem", default=0)
+    is_active = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
         verbose_name = "Etapa do Formulário"
         verbose_name_plural = "Etapas do Formulário"
-        ordering = ("formulario", "ordem", "nome")
-        unique_together = [("formulario", "ordem")]
+        ordering = ("form", "order", "name")
+        unique_together = [("form", "order")]
 
     def __str__(self):
-        return f"{self.formulario} - {self.nome}"
+        return f"{self.form} - {self.name}"
 
 
-class PerguntaFormulario(models.Model):
-                                                   
-
-    TIPO_CAMPO_CHOICES = [
-        ("texto", "Texto"),
-        ("data", "Data"),
-        ("numero", "Número"),
-        ("booleano", "Sim/Não"),
-        ("selecao", "Seleção"),
-    ]
-
-    formulario = models.ForeignKey(
-        FormularioVisto,
+class FormQuestion(models.Model):
+    form = models.ForeignKey(
+        VisaForm,
         on_delete=models.CASCADE,
-        related_name="perguntas",
+        related_name="questions",
         verbose_name="Formulário",
     )
-    etapa = models.ForeignKey(
-        EtapaFormularioVisto,
+    stage = models.ForeignKey(
+        VisaFormStage,
         on_delete=models.SET_NULL,
-        related_name="perguntas",
+        related_name="questions",
         verbose_name="Etapa",
         null=True,
         blank=True,
     )
-    pergunta = models.CharField("Pergunta", max_length=500)
-    regra_exibicao = models.JSONField("Regra de Exibição", null=True, blank=True)
-    tipo_campo = models.CharField(
+    question = models.CharField("Pergunta", max_length=500)
+    display_rule = models.JSONField("Regra de Exibição", null=True, blank=True)
+    field_type = models.CharField(
         "Tipo de Campo",
         max_length=20,
-        choices=TIPO_CAMPO_CHOICES,
-        default="texto",
+        choices=FIELD_TYPE_CHOICES,
+        default="text",
     )
-    obrigatorio = models.BooleanField("Obrigatório", default=False)
-    ordem = models.PositiveIntegerField("Ordem", default=0)
-    ativo = models.BooleanField("Ativo", default=True)
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    is_required = models.BooleanField("Obrigatório", default=False)
+    order = models.PositiveIntegerField("Ordem", default=0)
+    is_active = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
         verbose_name = "Pergunta do Formulário"
         verbose_name_plural = "Perguntas do Formulário"
-        ordering = ("formulario", "ordem", "pergunta")
-        unique_together = [("formulario", "ordem")]
+        ordering = ("form", "order", "question")
+        unique_together = [("form", "order")]
 
     def __str__(self):
-        return f"{self.pergunta} ({self.get_tipo_campo_display()})"
+        return f"{self.question} ({self.get_field_type_display()})"
 
 
-class OpcaoSelecao(models.Model):
-                                                            
-
-    pergunta = models.ForeignKey(
-        PerguntaFormulario,
+class SelectOption(models.Model):
+    question = models.ForeignKey(
+        FormQuestion,
         on_delete=models.CASCADE,
-        related_name="opcoes",
+        related_name="options",
         verbose_name="Pergunta",
     )
-    texto = models.CharField("Texto da Opção", max_length=200)
-    ordem = models.PositiveIntegerField("Ordem", default=0)
-    ativo = models.BooleanField("Ativo", default=True)
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    text = models.CharField("Texto da Opção", max_length=200)
+    order = models.PositiveIntegerField("Ordem", default=0)
+    is_active = models.BooleanField("Ativo", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
         verbose_name = "Opção de Seleção"
         verbose_name_plural = "Opções de Seleção"
-        ordering = ("pergunta", "ordem", "texto")
-        unique_together = [("pergunta", "ordem")]
+        ordering = ("question", "order", "text")
+        unique_together = [("question", "order")]
 
     def __str__(self):
-        return f"{self.texto} ({self.pergunta.pergunta})"
+        return f"{self.text} ({self.question.question})"
 
 
-class RespostaFormulario(models.Model):
-                                                          
-
-    viagem = models.ForeignKey(
-        "system.Viagem",
+class FormAnswer(models.Model):
+    trip = models.ForeignKey(
+        "system.Trip",
         on_delete=models.CASCADE,
-        related_name="respostas_formulario",
+        related_name="form_answers",
         verbose_name="Viagem",
     )
-    cliente = models.ForeignKey(
-        "system.ClienteConsultoria",
+    client = models.ForeignKey(
+        "system.ConsultancyClient",
         on_delete=models.CASCADE,
-        related_name="respostas_formulario",
+        related_name="form_answers",
         verbose_name="Cliente",
     )
-    pergunta = models.ForeignKey(
-        PerguntaFormulario,
+    question = models.ForeignKey(
+        FormQuestion,
         on_delete=models.CASCADE,
-        related_name="respostas",
+        related_name="answers",
         verbose_name="Pergunta",
     )
-    resposta_texto = models.TextField("Resposta (Texto)", blank=True)
-    resposta_data = models.DateField("Resposta (Data)", null=True, blank=True)
-    resposta_numero = models.DecimalField(
+    answer_text = models.TextField("Resposta (Texto)", blank=True)
+    answer_date = models.DateField("Resposta (Data)", null=True, blank=True)
+    answer_number = models.DecimalField(
         "Resposta (Número)",
         max_digits=15,
         decimal_places=2,
         null=True,
         blank=True,
     )
-    resposta_booleano = models.BooleanField("Resposta (Sim/Não)", null=True, blank=True)
-    resposta_selecao = models.ForeignKey(
-        OpcaoSelecao,
+    answer_boolean = models.BooleanField("Resposta (Sim/Não)", null=True, blank=True)
+    answer_select = models.ForeignKey(
+        SelectOption,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="respostas",
+        related_name="answers",
         verbose_name="Resposta (Seleção)",
     )
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
         verbose_name = "Resposta do Formulário"
         verbose_name_plural = "Respostas do Formulário"
-        ordering = ("viagem", "cliente", "pergunta__ordem")
-        unique_together = [("viagem", "cliente", "pergunta")]
+        ordering = ("trip", "client", "question__order")
+        unique_together = [("trip", "client", "question")]
 
     def __str__(self):
-        return f"{self.cliente.nome_completo} - {self.pergunta.pergunta}"
+        return f"{self.client.full_name} - {self.question.question}"
 
-    def get_resposta_display(self):
-                                                                         
-        if self.pergunta.tipo_campo == "texto":
-            return self.resposta_texto
-        elif self.pergunta.tipo_campo == "data":
-            return self.resposta_data.strftime("%d/%m/%Y") if self.resposta_data else ""
-        elif self.pergunta.tipo_campo == "numero":
-            return str(self.resposta_numero) if self.resposta_numero is not None else ""
-        elif self.pergunta.tipo_campo == "booleano":
-            return "Sim" if self.resposta_booleano else "Não" if self.resposta_booleano is False else ""
-        elif self.pergunta.tipo_campo == "selecao":
-            if self.resposta_selecao:
-                return self.resposta_selecao.texto
-            return self.resposta_texto or ""
+    def get_answer_display(self):
+        field_type = self.question.field_type
+        if field_type == "text":
+            return self.answer_text
+        if field_type == "date":
+            return self.answer_date.strftime("%d/%m/%Y") if self.answer_date else ""
+        if field_type == "number":
+            return str(self.answer_number) if self.answer_number is not None else ""
+        if field_type == "boolean":
+            if self.answer_boolean is True:
+                return "Sim"
+            if self.answer_boolean is False:
+                return "Não"
+            return ""
+        if field_type == "select":
+            if self.answer_select:
+                return self.answer_select.text
+            return self.answer_text or ""
         return ""
-

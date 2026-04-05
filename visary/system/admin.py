@@ -1,52 +1,52 @@
 from django.contrib import admin
 
-from system.models import ClienteConsultoria, Modulo, Perfil, UsuarioConsultoria
+from system.models import ConsultancyClient, Module, Profile, ConsultancyUser
 
 
-@admin.register(Modulo)
-class ModuloAdmin(admin.ModelAdmin):
-    list_display = ("nome", "slug", "ordem", "ativo", "atualizado_em")
-    list_filter = ("ativo",)
-    search_fields = ("nome", "slug", "descricao")
-    ordering = ("ordem", "nome")
+@admin.register(Module)
+class ModuleAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "order", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("name", "slug", "description")
+    ordering = ("order", "name")
 
 
-@admin.register(Perfil)
-class PerfilAdmin(admin.ModelAdmin):
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
     list_display = (
-        "nome",
-        "ativo",
-        "pode_criar",
-        "pode_visualizar",
-        "pode_atualizar",
-        "pode_excluir",
-        "atualizado_em",
+        "name",
+        "is_active",
+        "can_create",
+        "can_view",
+        "can_update",
+        "can_delete",
+        "updated_at",
     )
-    list_filter = ("ativo", "pode_criar", "pode_visualizar", "pode_atualizar", "pode_excluir")
-    search_fields = ("nome", "descricao")
-    filter_horizontal = ("modulos",)
-    ordering = ("nome",)
+    list_filter = ("is_active", "can_create", "can_view", "can_update", "can_delete")
+    search_fields = ("name", "description")
+    filter_horizontal = ("modules",)
+    ordering = ("name",)
 
 
-@admin.register(UsuarioConsultoria)
-class UsuarioConsultoriaAdmin(admin.ModelAdmin):
-    list_display = ("nome", "email", "perfil", "ativo", "atualizado_em")
-    list_filter = ("ativo", "perfil")
-    search_fields = ("nome", "email")
-    autocomplete_fields = ("perfil",)
-    ordering = ("nome",)
-    readonly_fields = ("criado_em", "atualizado_em")
+@admin.register(ConsultancyUser)
+class ConsultancyUserAdmin(admin.ModelAdmin):
+    list_display = ("name", "email", "profile", "is_active", "updated_at")
+    list_filter = ("is_active", "profile")
+    search_fields = ("name", "email")
+    autocomplete_fields = ("profile",)
+    ordering = ("name",)
+    readonly_fields = ("created_at", "updated_at")
 
 
-@admin.register(ClienteConsultoria)
-class ClienteConsultoriaAdmin(admin.ModelAdmin):
+@admin.register(ConsultancyClient)
+class ConsultancyClientAdmin(admin.ModelAdmin):
     list_display = (
-        "nome",
+        "full_name",
         "email",
-        "assessor_responsavel",
-        "telefone",
-        "criado_em",
+        "assigned_advisor",
+        "phone",
+        "created_at",
     )
-    search_fields = ("nome", "email", "telefone")
-    list_filter = ("assessor_responsavel", "criado_em")
-    readonly_fields = ("criado_em", "atualizado_em")
+    search_fields = ("first_name", "last_name", "email", "phone")
+    list_filter = ("assigned_advisor", "created_at")
+    readonly_fields = ("created_at", "updated_at")

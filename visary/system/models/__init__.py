@@ -1,48 +1,34 @@
-   
-                                    
-
-                                                      
-                                      
-   
-
-from .client_models import ClienteConsultoria, Lembrete
-from .etapa_models import CampoEtapaCliente, EtapaCadastroCliente
-from .financial_models import Financeiro, StatusFinanceiro
-from .form_models import (
-    EtapaFormularioVisto,
-    FormularioVisto,
-    OpcaoSelecao,
-    PerguntaFormulario,
-    RespostaFormulario,
-)
+from .client_models import ConsultancyClient, Reminder
+from .financial_models import FinancialRecord, FinancialStatus
+from .form_models import FormAnswer, FormQuestion, SelectOption, VisaForm, VisaFormStage
 from .partners_models import Partner
-from .permission_models import Modulo, Perfil, UsuarioConsultoria
-from .process_models import EtapaProcesso, Processo, StatusProcesso, ViagemStatusProcesso
-from .travel_models import ClienteViagem, PaisDestino, TipoVisto, Viagem
+from .permission_models import ConsultancyUser, Module, Profile
+from .process_models import Process, ProcessStage, ProcessStatus, TripProcessStatus
+from .registration_step_models import ClientRegistrationStep, ClientStepField
+from .travel_models import DestinationCountry, Trip, TripClient, VisaType
 
 __all__ = (
-    "CampoEtapaCliente",
-    "ClienteConsultoria",
-    "ClienteViagem",
-    "EtapaCadastroCliente",
-    "EtapaFormularioVisto",
-    "EtapaProcesso",
-    "Financeiro",
-    "StatusFinanceiro",
-    "FormularioVisto",
-    "Lembrete",
-    "Modulo",
-    "OpcaoSelecao",
+    "ClientRegistrationStep",
+    "ClientStepField",
+    "ConsultancyClient",
+    "ConsultancyUser",
+    "DestinationCountry",
+    "FinancialRecord",
+    "FinancialStatus",
+    "FormAnswer",
+    "FormQuestion",
+    "Module",
     "Partner",
-    "PaisDestino",
-    "Perfil",
-    "PerguntaFormulario",
-    "Processo",
-    "RespostaFormulario",
-    "StatusProcesso",
-    "TipoVisto",
-    "UsuarioConsultoria",
-    "Viagem",
-    "ViagemStatusProcesso",
+    "Process",
+    "ProcessStage",
+    "ProcessStatus",
+    "Profile",
+    "Reminder",
+    "SelectOption",
+    "Trip",
+    "TripClient",
+    "TripProcessStatus",
+    "VisaForm",
+    "VisaFormStage",
+    "VisaType",
 )
-

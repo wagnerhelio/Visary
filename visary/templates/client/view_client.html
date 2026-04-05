@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Visualizar Cliente{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    <style>
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
+    .layout-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: clamp(16px, 3.5vw, 28px);
+        width: 100%;
+        min-width: 0;
+    }
+
+    .card header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .card h2 {
+        margin: 0;
+        font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+        color: var(--text-primary);
+    }
+
+    .card p {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .info-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .info-item--full {
+        grid-column: 1 / -1;
+    }
+
+    .info-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: rgba(245, 245, 245, 0.6);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .info-value {
+        font-size: 0.95rem;
+        color: rgba(245, 245, 245, 0.88);
+        word-break: break-word;
+    }
+
+    .info-value--obs {
+        white-space: pre-wrap;
+        padding: 12px;
+        background: rgba(12, 19, 35, 0.72);
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        line-height: 1.6;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .badge-primary {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-warning {
+        background: rgba(255, 193, 7, 0.2);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .badge-danger {
+        background: rgba(244, 67, 54, 0.2);
+        color: rgba(244, 67, 54, 0.95);
+        border: 1px solid rgba(244, 67, 54, 0.4);
+    }
+
+    .badge-gray {
+        background: rgba(158, 158, 158, 0.2);
+        color: rgba(158, 158, 158, 0.95);
+        border: 1px solid rgba(158, 158, 158, 0.4);
+    }
+
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+        white-space: nowrap;
+    }
+
+    td {
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .empty-state {
+        padding: 24px;
+        text-align: center;
+        color: var(--text-secondary);
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        border-radius: 12px;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    /* ── Lembretes ── */
+    .reminders-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .lembrete-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        background: rgba(12, 19, 35, 0.5);
+        min-width: 0;
+    }
+
+    .lembrete-item--concluido {
+        opacity: 0.55;
+    }
+
+    .lembrete-item--concluido .lembrete-texto {
+        text-decoration: line-through;
+    }
+
+    .lembrete-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .lembrete-texto {
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        line-height: 1.5;
+        word-break: break-word;
+    }
+
+    .lembrete-meta {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: 4px;
+    }
+
+    .lembrete-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+        align-items: center;
+    }
+
+    .lembrete-actions form {
+        margin: 0;
+        display: inline;
+    }
+
+    .lembrete-actions button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        transition: background 0.15s, color 0.15s;
+        white-space: nowrap;
+    }
+
+    .lembrete-actions button:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text-primary);
+    }
+
+    .lembrete-actions .btn-concluir {
+        color: var(--accent);
+    }
+
+    .lembrete-actions .btn-excluir {
+        color: rgba(244, 67, 54, 0.8);
+    }
+
+    .lembrete-form {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 20px;
+    }
+
+    .lembrete-form label {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+    }
+
+    .lembrete-form input[type="text"],
+    .lembrete-form input[type="date"] {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+        background: rgba(12, 19, 35, 0.72);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .lembrete-form input:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+    }
+
+    /* ── Clientes vinculados ── */
+    .vinculados-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+    }
+
+    .vinculado-card {
+        padding: 16px;
+        border-radius: 14px;
+        border: 1px solid var(--border-soft);
+        background: rgba(12, 19, 35, 0.5);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: border-color 0.15s;
+        text-decoration: none;
+        min-width: 0;
+    }
+
+    .vinculado-card:hover {
+        border-color: rgba(86, 244, 156, 0.3);
+    }
+
+    .vinculado-card__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .vinculado-card__nome {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        word-break: break-word;
+    }
+
+    .vinculado-card__info {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+        word-break: break-word;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        table {
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            padding: 10px 8px;
+        }
+
+        .lembrete-form {
+            grid-template-columns: 1fr;
+        }
+
+        .lembrete-item {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .lembrete-actions {
+            align-self: flex-end;
+        }
+
+        .vinculados-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .vinculado-card__header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+
+    </style>
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Visualizar Cliente</h1>
+        <p>Informações completas do cliente, viagens e processos</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_clients' %}" class="btn btn-outline">Voltar</a>
+        {% if can_edit %}
+            <a href="{% url 'system:edit_client' cliente.pk %}" class="btn btn-primary">Editar</a>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<div class="layout-grid">
+    {% if legacy_meta.imported %}
+        {% if legacy_meta.status == "problem" %}
+            <section class="card" style="border: 1px solid rgba(255, 82, 82, 0.35); background: rgba(255, 82, 82, 0.08);">
+                <header>
+                    <h2>Importação legado com pendências</h2>
+                </header>
+                <ul style="margin: 0; padding-left: 18px;">
+                    {% for issue in legacy_meta.issues %}
+                        <li>{{ issue }}</li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% else %}
+            <section class="card" style="border: 1px solid rgba(86, 244, 156, 0.35); background: rgba(86, 244, 156, 0.08);">
+                <strong>Registro importado do legado sem pendências críticas.</strong>
+            </section>
+        {% endif %}
+    {% endif %}
+
+    <section class="card">
+        <header>
+            <h2>Informações do Cliente</h2>
+        </header>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">Nome</span>
+                <span class="info-value">{{ client.full_name }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">E-mail</span>
+                <span class="info-value">{{ client.email|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Telefone</span>
+                <span class="info-value">{{ client.phone|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Telefone Secundário</span>
+                <span class="info-value">{{ client.secondary_phone|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Data de Nascimento</span>
+                <span class="info-value">{{ client.birth_date|date:"d/m/Y"|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Nacionalidade</span>
+                <span class="info-value">{{ client.nationality|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Assessor Responsável</span>
+                <span class="info-value">{{ client.assigned_advisor.name|default:"-" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status Financeiro</span>
+                <span class="info-value">
+                    {% if financial_status == "Pendente" %}
+                        <span class="badge badge-warning">Pendente</span>
+                    {% elif financial_status == "Pago" %}
+                        <span class="badge badge-primary">Pago</span>
+                    {% elif financial_status == "Cancelado" %}
+                        <span class="badge badge-danger">Cancelado</span>
+                    {% else %}
+                        <span class="badge badge-gray">Sem registros</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Data de Cadastro</span>
+                <span class="info-value">{{ client.created_at|localtime|date:"d/m/Y H:i" }}</span>
+            </div>
+            {% if clean_notes %}
+            <div class="info-item info-item--full">
+                <span class="info-label">Observações do Cadastro</span>
+                <div class="info-value info-value--obs">{{ clean_notes }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="card">
+        <header>
+            <h2>Lembretes</h2>
+            <p>Lembretes e anotações vinculados ao cliente</p>
+        </header>
+        {% if can_edit %}
+        <form method="post" action="{% url 'system:create_reminder' cliente.pk %}" class="lembrete-form">
+            {% csrf_token %}
+            <div>
+                <label for="lembrete-texto">Novo lembrete</label>
+                <input type="text" id="lembrete-texto" name="text" placeholder="Digite o lembrete..." required>
+            </div>
+            <div>
+                <label for="lembrete-data">Data (opcional)</label>
+                <input type="date" id="lembrete-data" name="data_lembrete">
+            </div>
+            <button type="submit" class="btn btn-primary btn-small">Adicionar</button>
+        </form>
+        {% endif %}
+        {% if reminders %}
+        <div class="lembretes-list">
+            {% for reminder in reminders %}
+            <div class="lembrete-item {% if reminder.completed %}lembrete-item--concluido{% endif %}">
+                <div class="lembrete-content">
+                    <div class="lembrete-texto">{{ reminder.text }}</div>
+                    <div class="lembrete-meta">
+                        {{ reminder.created_by.name }} &middot; {{ reminder.created_at|localtime|date:"d/m/Y H:i" }}
+                        {% if reminder.reminder_date %}
+                            &middot; Lembrar em {{ reminder.reminder_date|date:"d/m/Y" }}
+                        {% endif %}
+                    </div>
+                </div>
+                {% if can_edit %}
+                <div class="lembrete-actions">
+                    <form method="post" action="{% url 'system:toggle_reminder' reminder.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-concluir" title="{% if reminder.completed %}Reabrir{% else %}Concluir{% endif %}">
+                            {% if reminder.completed %}Reabrir{% else %}Concluir{% endif %}
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'system:delete_reminder' reminder.pk %}" onsubmit="return confirm('Excluir este lembrete?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-excluir" title="Excluir">Excluir</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            Nenhum reminder registrado para este cliente.
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <header>
+            <h2>Viagens</h2>
+            <p>Viagens vinculadas ao cliente</p>
+        </header>
+        {% if viagens %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>País</th>
+                        <th>Tipo de Visto</th>
+                        <th>Data Viagem</th>
+                        <th>Data Retorno</th>
+                        <th>Valor</th>
+                        <th>Observações</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trip in viagens %}
+                    <tr>
+                        <td>{{ trip.destination_country.name }}</td>
+                        <td>{{ trip.visa_type.name }}</td>
+                        <td>{{ trip.planned_departure_date|date:"d/m/Y" }}</td>
+                        <td>{{ trip.planned_return_date|date:"d/m/Y"|default:"-" }}</td>
+                        <td>R$ {{ trip.advisory_fee|floatformat:2 }}</td>
+                        <td>
+                            {% if trip.notes %}
+                                <div style="max-width: 300px; white-space: pre-wrap; word-wrap: break-word; font-size: 0.85rem; color: rgba(245, 245, 245, 0.75);">
+                                    {{ trip.notes|truncatewords:20 }}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'system:list_trip_forms' trip.pk %}" class="btn btn-outline btn-small">Formulários</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            Nenhuma trip vinculada a este cliente.
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <header>
+            <h2>Processos</h2>
+            <p>Processos de visto vinculados ao cliente</p>
+        </header>
+        {% if process_objs %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Viagem</th>
+                        <th>País</th>
+                        <th>Progresso</th>
+                        <th>Assessor</th>
+                        <th>Observações</th>
+                        <th>Criado em</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for process_obj in processes %}
+                    <tr>
+                        <td>{{ process_obj.trip.destination_country.name }} - {{ process_obj.trip.planned_departure_date|date:"d/m/Y" }}</td>
+                        <td>{{ process_obj.trip.destination_country.name }}</td>
+                        <td>
+                            <div class="progress-bar-cell">
+                                <div class="progress-bar-cell__bar">
+                                    <div class="progress-bar-cell__fill" style="width: {{ process_obj.progress_percentage }}%;"></div>
+                                </div>
+                                <span class="progress-bar-cell__label">{{ process_obj.progress_percentage }}%</span>
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">
+                                {{ process_obj.completed_stages }} de {{ process_obj.total_stages }} etapas
+                            </div>
+                        </td>
+                        <td>{{ process_obj.assigned_advisor.name }}</td>
+                        <td>
+                            {% if process_obj.notes %}
+                                <div style="max-width: 300px; white-space: pre-wrap; word-wrap: break-word; font-size: 0.85rem; color: rgba(245, 245, 245, 0.75);">
+                                    {{ process_obj.notes|truncatewords:20 }}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ process_obj.created_at|localtime|date:"d/m/Y" }}</td>
+                        <td>
+                            <a href="{% url 'system:edit_process' process_obj.pk %}" class="btn btn-outline btn-small">Ver Processo</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            Nenhum processo vinculado a este cliente.
+        </div>
+        {% endif %}
+    </section>
+
+    {% if financial_records %}
+    <section class="card">
+        <header>
+            <h2>Registros Financeiros</h2>
+            <p>Registros financeiros vinculados ao cliente</p>
+        </header>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Viagem</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th>Data Pagamento</th>
+                        <th>Criado em</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in financial_records %}
+                    <tr>
+                        <td>{{ record.trip.destination_country.name }} - {{ record.trip.planned_departure_date|date:"d/m/Y" }}</td>
+                        <td>R$ {{ record.amount|floatformat:2 }}</td>
+                        <td>
+                            {% if registro.status == "pendente" %}
+                                <span class="badge badge-warning">Pendente</span>
+                            {% elif registro.status == "pago" %}
+                                <span class="badge badge-primary">Pago</span>
+                            {% elif registro.status == "cancelado" %}
+                                <span class="badge badge-danger">Cancelado</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ record.payment_date|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ record.created_at|localtime|date:"d/m/Y" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if clients_vinculados %}
+    <section class="card">
+        <header>
+            <h2>Clientes Vinculados</h2>
+            <p>
+                {% if client.is_principal %}
+                    Dependentes vinculados a este cliente
+                {% else %}
+                    Cliente principal e outros dependentes do grupo familiar
+                {% endif %}
+            </p>
+        </header>
+        <div class="vinculados-grid">
+            {% for item in linked_clients %}
+            <a href="{% url 'system:view_client' item.client.pk %}" class="vinculado-card">
+                <div class="vinculado-card__header">
+                    <span class="vinculado-card__nome">{{ item.client.full_name }}</span>
+                    {% if item.relacao == "Principal" %}
+                        <span class="badge badge-primary">Principal</span>
+                    {% else %}
+                        <span class="badge badge-warning">Dependente</span>
+                    {% endif %}
+                </div>
+                <div class="vinculado-card__info">
+                    {{ item.client.email|default:"Sem e-mail" }} &middot; {{ item.client.phone|default:"Sem telefone" }}
+                </div>
+                <div class="vinculado-card__info">
+                    CPF: {{ item.client.cpf }} &middot; Nasc.: {{ item.client.birth_date|date:"d/m/Y"|default:"-" }}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

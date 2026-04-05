@@ -4,15 +4,23 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum
 from django.shortcuts import render
 
-from system.models import ClienteViagem, FormularioVisto, PaisDestino, Partner, Processo, RespostaFormulario, Viagem
-from system.models.financial_models import Financeiro, StatusFinanceiro
+from system.models import (
+    TripClient,
+    VisaForm,
+    DestinationCountry,
+    Partner,
+    Process,
+    FormAnswer,
+    Trip,
+)
+from system.models.financial_models import FinancialRecord, FinancialStatus
 from system.views.client_views import (
-    _obter_status_financeiro_cliente,
-    _obter_status_formulario_cliente,
-    listar_clientes,
-    obter_consultor_usuario,
-    usuario_pode_editar_cliente,
-    usuario_pode_gerenciar_todos,
+    _get_client_financial_status,
+    _get_client_form_status,
+    list_clients,
+    get_user_consultant,
+    user_can_edit_client,
+    user_can_manage_all,
 )
 
 
@@ -26,34 +34,34 @@ def _parse_positive_int(value):
     return number if number > 0 else None
 
 
-def _selecionar_prioritarios(prioritarios, secundarios, limite):
-    selecionados = []
-    vistos = set()
+def _select_priority_items(priority_items, secondary_items, limit):
+    selected = []
+    seen = set()
 
-    for item in prioritarios:
-        if item in vistos:
+    for item in priority_items:
+        if item in seen:
             continue
-        vistos.add(item)
-        selecionados.append(item)
-        if len(selecionados) >= limite:
-            return selecionados
+        seen.add(item)
+        selected.append(item)
+        if len(selected) >= limit:
+            return selected
 
-    for item in secundarios:
-        if item in vistos:
+    for item in secondary_items:
+        if item in seen:
             continue
-        vistos.add(item)
-        selecionados.append(item)
-        if len(selecionados) >= limite:
+        seen.add(item)
+        selected.append(item)
+        if len(selected) >= limit:
             break
 
-    return selecionados
+    return selected
 
 
 def _build_period_dates(filters):
-    year_start = _parse_positive_int(filters.get("financeiro_ano_inicio"))
-    year_end = _parse_positive_int(filters.get("financeiro_ano_fim"))
-    month_start = _parse_positive_int(filters.get("financeiro_mes_inicio"))
-    month_end = _parse_positive_int(filters.get("financeiro_mes_fim"))
+    year_start = _parse_positive_int(filters.get("financial_year_start"))
+    year_end = _parse_positive_int(filters.get("financial_year_end"))
+    month_start = _parse_positive_int(filters.get("financial_month_start"))
+    month_end = _parse_positive_int(filters.get("financial_month_end"))
 
     if month_start and not year_start:
         month_start = None
@@ -80,378 +88,515 @@ def _build_period_dates(filters):
     return start_date, end_date
 
 
-def _filter_financeiro_by_period(financeiro_qs, filters):
+def _filter_financial_by_period(financial_qs, filters):
     start_date, end_date = _build_period_dates(filters)
-    base_periodo = filters.get("financeiro_base_periodo", "entrada")
+    period_basis = filters.get("financial_period_basis", "entrada")
 
-    if base_periodo == "baixa":
-        financeiro_qs = financeiro_qs.exclude(data_pagamento__isnull=True)
+    if period_basis == "baixa":
+        financial_qs = financial_qs.exclude(payment_date__isnull=True)
         if start_date:
-            financeiro_qs = financeiro_qs.filter(data_pagamento__gte=start_date)
+            financial_qs = financial_qs.filter(payment_date__gte=start_date)
         if end_date:
-            financeiro_qs = financeiro_qs.filter(data_pagamento__lte=end_date)
-        return financeiro_qs
+            financial_qs = financial_qs.filter(payment_date__lte=end_date)
+        return financial_qs
 
     if start_date:
-        financeiro_qs = financeiro_qs.filter(criado_em__date__gte=start_date)
+        financial_qs = financial_qs.filter(created_at__date__gte=start_date)
     if end_date:
-        financeiro_qs = financeiro_qs.filter(criado_em__date__lte=end_date)
-    return financeiro_qs
+        financial_qs = financial_qs.filter(created_at__date__lte=end_date)
+    return financial_qs
 
 
 def _available_financial_years():
-    years = set(Financeiro.objects.values_list("criado_em__year", flat=True))
+    years = set(FinancialRecord.objects.values_list("created_at__year", flat=True))
     years.update(
-        Financeiro.objects.exclude(data_pagamento__isnull=True).values_list(
-            "data_pagamento__year", flat=True
+        FinancialRecord.objects.exclude(payment_date__isnull=True).values_list(
+            "payment_date__year", flat=True
         )
     )
     return sorted([year for year in years if year], reverse=True)
 
 
-@login_required
-def home(request):
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    is_admin = pode_gerenciar_todos
-    dashboard_limite = 10
-    dias_proximidade_viagem = 30
-    hoje = date.today()
+def _get_client_visa_type(trip, client):
+    from contextlib import suppress
 
-    filtros_painel = {
-        "cliente": request.GET.get("cliente", "").strip(),
-        "visto": request.GET.get("visto", "").strip(),
-        "formulario": request.GET.get("formulario", "").strip(),
-        "financeiro": request.GET.get("financeiro", "").strip(),
-        "financeiro_base_periodo": request.GET.get("financeiro_base_periodo", "entrada").strip() or "entrada",
-        "financeiro_ano_inicio": request.GET.get("financeiro_ano_inicio", "").strip(),
-        "financeiro_ano_fim": request.GET.get("financeiro_ano_fim", "").strip(),
-        "financeiro_mes_inicio": request.GET.get("financeiro_mes_inicio", "").strip(),
-        "financeiro_mes_fim": request.GET.get("financeiro_mes_fim", "").strip(),
+    with suppress(TripClient.DoesNotExist):
+        trip_client = TripClient.objects.select_related(
+            "visa_type__form"
+        ).get(trip=trip, client=client)
+        if trip_client.visa_type:
+            return trip_client.visa_type
+    return trip.visa_type
+
+
+def _get_form_by_visa_type(visa_type, active_only=True):
+    if not visa_type or not hasattr(visa_type, "pk") or not visa_type.pk:
+        return None
+    try:
+        if active_only:
+            return VisaForm.objects.select_related("visa_type").get(
+                visa_type_id=visa_type.pk, is_active=True
+            )
+        return VisaForm.objects.select_related("visa_type").get(
+            visa_type_id=visa_type.pk
+        )
+    except VisaForm.DoesNotExist:
+        return None
+
+
+def _build_client_item(request, consultant, client):
+    financial_status = _get_client_financial_status(client)
+    form_status = _get_client_form_status(client)
+    return {
+        "client": client,
+        "financial_status": financial_status,
+        "form_status": form_status["status"],
+        "total_questions": form_status["total_questions"],
+        "total_answers": form_status["total_answers"],
+        "can_edit": user_can_edit_client(
+            request.user, consultant, client
+        ),
     }
 
-    selected_cliente_id = _parse_positive_int(filtros_painel["cliente"])
-    selected_visto_id = _parse_positive_int(filtros_painel["visto"])
-    selected_financeiro_status = filtros_painel["financeiro"]
-    if selected_financeiro_status == "sem-registros":
-        selected_financeiro_status = "sem_registros"
 
-    clientes_usuario = listar_clientes(request.user)
-    clientes_filtro_base = clientes_usuario
+def _apply_form_status_filter(client_items, form_filter):
+    if not form_filter:
+        return client_items
+    return [
+        item
+        for item in client_items
+        if item["form_status"]
+        .lower()
+        .replace("ã", "a")
+        .replace("á", "a")
+        .replace("ç", "c")
+        .replace(" ", "-")
+        == form_filter
+    ]
 
-    if selected_cliente_id:
-        ids_cliente = {selected_cliente_id}
-        viagens_do_cliente = ClienteViagem.objects.filter(
-            cliente_id=selected_cliente_id
-        ).values_list("viagem_id", flat=True).distinct()
-        ids_cliente.update(
-            ClienteViagem.objects.filter(viagem_id__in=viagens_do_cliente).values_list("cliente_id", flat=True)
+
+def _build_display_processes(processes_qs, limit):
+    recent_ids = list(
+        processes_qs.values_list("pk", flat=True)[:limit]
+    )
+    unfinished_ids = list(
+        processes_qs.filter(
+            Q(stages__completed=False) | Q(stages__isnull=True)
         )
-        clientes_usuario = clientes_usuario.filter(pk__in=ids_cliente)
-
-    if selected_visto_id:
-        clientes_usuario = clientes_usuario.filter(viagens__tipo_visto_id=selected_visto_id).distinct()
-
-    if is_admin and selected_financeiro_status:
-        financeiro_filtrado_clientes = Financeiro.objects.exclude(cliente__isnull=True)
-        financeiro_filtrado_clientes = _filter_financeiro_by_period(financeiro_filtrado_clientes, filtros_painel)
-        if selected_visto_id:
-            financeiro_filtrado_clientes = financeiro_filtrado_clientes.filter(viagem__tipo_visto_id=selected_visto_id)
-        if selected_financeiro_status != "sem_registros":
-            financeiro_filtrado_clientes = financeiro_filtrado_clientes.filter(status=selected_financeiro_status)
-            clientes_usuario = clientes_usuario.filter(pk__in=financeiro_filtrado_clientes.values("cliente_id")).distinct()
-        else:
-            clientes_usuario = clientes_usuario.exclude(pk__in=financeiro_filtrado_clientes.values("cliente_id")).distinct()
-
-    clientes_ids = list(clientes_usuario.values_list("pk", flat=True))
-
-    clientes_qs = clientes_usuario.select_related(
-        "assessor_responsavel", "criado_por", "parceiro_indicador"
-    ).prefetch_related("viagens").order_by("-criado_em")
-
-    processos_qs = Processo.objects.filter(
-        cliente__pk__in=clientes_ids
-    ).select_related(
-        "viagem", "viagem__pais_destino", "viagem__tipo_visto", "cliente", "assessor_responsavel"
-    ).prefetch_related("etapas").order_by("-criado_em")
-
-    viagens_qs = Viagem.objects.filter(clientes__pk__in=clientes_ids).select_related(
-        "pais_destino", "tipo_visto", "assessor_responsavel"
-    ).prefetch_related("clientes").distinct().order_by("-data_prevista_viagem")
-
-    if selected_visto_id:
-        processos_qs = processos_qs.filter(viagem__tipo_visto_id=selected_visto_id)
-        viagens_qs = viagens_qs.filter(tipo_visto_id=selected_visto_id)
-
-    total_clientes = clientes_usuario.count()
-    total_dependentes = ClienteViagem.objects.filter(
-        cliente_id__in=clientes_ids, papel="dependente"
-    ).values("cliente_id").distinct().count()
-    total_viagens = viagens_qs.count()
-    total_viagens_proximas = viagens_qs.filter(
-        data_prevista_viagem__gte=hoje,
-        data_prevista_viagem__lte=hoje + timedelta(days=dias_proximidade_viagem),
-    ).count()
-    total_viagens_concluidas = viagens_qs.filter(data_prevista_retorno__lt=hoje).count()
-    total_processos = processos_qs.count()
-    total_processos_andamento = processos_qs.filter(
-        Q(etapas__concluida=False) | Q(etapas__isnull=True)
-    ).distinct().count()
-    total_processos_concluidos = max(total_processos - total_processos_andamento, 0)
-    total_formularios = RespostaFormulario.objects.filter(cliente__pk__in=clientes_ids).values(
-        "viagem", "cliente"
-    ).distinct().count()
-
-    financeiro_qs_kpi = Financeiro.objects.all()
-    if is_admin:
-        total_partners = Partner.objects.count()
-        total_paises = PaisDestino.objects.count()
-
-        if selected_cliente_id:
-            ids_kpi_cliente = {selected_cliente_id}
-            viagens_kpi = ClienteViagem.objects.filter(
-                cliente_id=selected_cliente_id
-            ).values_list("viagem_id", flat=True).distinct()
-            ids_kpi_cliente.update(
-                ClienteViagem.objects.filter(viagem_id__in=viagens_kpi).values_list("cliente_id", flat=True)
-            )
-            financeiro_qs_kpi = financeiro_qs_kpi.filter(cliente_id__in=ids_kpi_cliente)
-
-        if selected_visto_id:
-            financeiro_qs_kpi = financeiro_qs_kpi.filter(viagem__tipo_visto_id=selected_visto_id)
-
-        financeiro_qs_kpi = _filter_financeiro_by_period(financeiro_qs_kpi, filtros_painel)
-
-        if selected_financeiro_status and selected_financeiro_status != "sem_registros":
-            financeiro_qs_kpi = financeiro_qs_kpi.filter(status=selected_financeiro_status)
-        elif selected_financeiro_status == "sem_registros":
-            financeiro_qs_kpi = financeiro_qs_kpi.none()
-
-        valor_total = financeiro_qs_kpi.aggregate(Sum("valor"))["valor__sum"] or 0
-        valor_pago = financeiro_qs_kpi.filter(status=StatusFinanceiro.PAGO).aggregate(Sum("valor"))["valor__sum"] or 0
-        valor_pendente = financeiro_qs_kpi.filter(status=StatusFinanceiro.PENDENTE).aggregate(Sum("valor"))["valor__sum"] or 0
-    else:
-        total_partners = 0
-        total_paises = 0
-        valor_total = 0
-        valor_pago = 0
-        valor_pendente = 0
-
-    def build_cliente_item(cliente):
-        status_financeiro = _obter_status_financeiro_cliente(cliente)
-        status_formulario = _obter_status_formulario_cliente(cliente)
-        return {
-            "cliente": cliente,
-            "status_financeiro": status_financeiro,
-            "status_formulario": status_formulario["status"],
-            "total_perguntas": status_formulario["total_perguntas"],
-            "total_respostas": status_formulario["total_respostas"],
-            "pode_editar": usuario_pode_editar_cliente(request.user, consultor, cliente),
-        }
-
-    clientes_com_status = [build_cliente_item(c) for c in clientes_qs[:dashboard_limite]]
-
-    if filtros_painel["formulario"]:
-        clientes_com_status = [
-            item
-            for item in clientes_com_status
-            if item["status_formulario"].lower().replace("ã", "a")
-            .replace("á", "a")
-            .replace("ç", "c")
-            .replace(" ", "-")
-            == filtros_painel["formulario"]
-        ]
-
-    processos_recentes_ids = list(processos_qs.values_list("pk", flat=True)[:dashboard_limite])
-    processos_nao_finalizados_ids = list(
-        processos_qs.filter(Q(etapas__concluida=False) | Q(etapas__isnull=True))
         .values_list("pk", flat=True)
         .distinct()
     )
-    processos_ids_display = _selecionar_prioritarios(
-        processos_nao_finalizados_ids,
-        processos_recentes_ids,
-        dashboard_limite,
+    display_ids = _select_priority_items(
+        unfinished_ids, recent_ids, limit
     )
-    processos_display = list(processos_qs.filter(pk__in=processos_ids_display))
-    ordem_processos = {pk: idx for idx, pk in enumerate(processos_ids_display)}
-    processos_display.sort(key=lambda processo: ordem_processos.get(processo.pk, dashboard_limite + 1))
+    display_list = list(processes_qs.filter(pk__in=display_ids))
+    order_map = {pk: idx for idx, pk in enumerate(display_ids)}
+    display_list.sort(
+        key=lambda p: order_map.get(p.pk, limit + 1)
+    )
+    return display_list
 
-    viagens_recentes_ids = list(
-        viagens_qs.order_by("-criado_em").values_list("pk", flat=True)[:dashboard_limite]
+
+def _build_dashboard_trips(trips_qs, today, proximity_days, limit):
+    recent_ids = list(
+        trips_qs.order_by("-created_at")
+        .values_list("pk", flat=True)[:limit]
     )
-    viagens_proximas_ids = list(
-        viagens_qs.filter(
-            data_prevista_viagem__gte=hoje,
-            data_prevista_viagem__lte=hoje + timedelta(days=dias_proximidade_viagem),
+    upcoming_ids = list(
+        trips_qs.filter(
+            planned_departure_date__gte=today,
+            planned_departure_date__lte=today + timedelta(days=proximity_days),
         )
-        .order_by("data_prevista_viagem")
+        .order_by("planned_departure_date")
         .values_list("pk", flat=True)
     )
-    viagens_ids_dashboard = _selecionar_prioritarios(
-        viagens_proximas_ids,
-        viagens_recentes_ids,
-        dashboard_limite,
+    dashboard_ids = _select_priority_items(
+        upcoming_ids, recent_ids, limit
     )
-    viagens_dashboard = list(viagens_qs.filter(pk__in=viagens_ids_dashboard))
-    ordem_viagens = {pk: idx for idx, pk in enumerate(viagens_ids_dashboard)}
-    viagens_dashboard.sort(key=lambda viagem: ordem_viagens.get(viagem.pk, dashboard_limite + 1))
+    dashboard_list = list(trips_qs.filter(pk__in=dashboard_ids))
+    order_map = {pk: idx for idx, pk in enumerate(dashboard_ids)}
+    dashboard_list.sort(
+        key=lambda t: order_map.get(t.pk, limit + 1)
+    )
+    return dashboard_list
 
-    from contextlib import suppress
 
-    def _obter_tipo_visto_cliente(viagem, cliente):
-        with suppress(ClienteViagem.DoesNotExist):
-            cliente_viagem = ClienteViagem.objects.select_related('tipo_visto__formulario').get(
-                viagem=viagem, cliente=cliente
-            )
-            if cliente_viagem.tipo_visto:
-                return cliente_viagem.tipo_visto
-        return viagem.tipo_visto
+def _build_form_candidates(trips_qs, client_ids):
+    candidates = []
 
-    def _obter_formulario_por_tipo_visto(tipo_visto, apenas_ativo=True):
-        if not tipo_visto or not hasattr(tipo_visto, 'pk') or not tipo_visto.pk:
-            return None
-        try:
-            if apenas_ativo:
-                return FormularioVisto.objects.select_related('tipo_visto').get(
-                    tipo_visto_id=tipo_visto.pk, ativo=True
-                )
-            return FormularioVisto.objects.select_related('tipo_visto').get(
-                tipo_visto_id=tipo_visto.pk
-            )
-        except FormularioVisto.DoesNotExist:
-            return None
-
-    formularios_candidatos = []
-
-    for viagem in viagens_qs.order_by("-criado_em")[:50]:
-        clientes_viagem = viagem.clientes.filter(pk__in=clientes_ids)
-        if not clientes_viagem.exists():
+    for trip in trips_qs.order_by("-created_at")[:50]:
+        trip_clients = trip.clients.filter(pk__in=client_ids)
+        if not trip_clients.exists():
             continue
 
-        cv_map = {
-            cv.cliente_id: cv.papel
-            for cv in ClienteViagem.objects.filter(viagem=viagem)
+        role_map = {
+            tc.client_id: tc.role
+            for tc in TripClient.objects.filter(trip=trip)
         }
-        clientes_ordenados_v = sorted(
-            clientes_viagem,
-            key=lambda c: (0 if cv_map.get(c.pk) == "principal" else 1, c.pk),
+        sorted_clients = sorted(
+            trip_clients,
+            key=lambda c: (
+                0 if role_map.get(c.pk) == "primary" else 1,
+                c.pk,
+            ),
         )
 
-        clientes_info = []
-        for cliente in clientes_ordenados_v:
-            tipo_visto_cliente = _obter_tipo_visto_cliente(viagem, cliente)
-            if not tipo_visto_cliente:
+        for client in sorted_clients:
+            visa_type = _get_client_visa_type(trip, client)
+            if not visa_type:
                 continue
-            formulario = _obter_formulario_por_tipo_visto(tipo_visto_cliente, apenas_ativo=True)
-            if not formulario:
+            form = _get_form_by_visa_type(visa_type, active_only=True)
+            if not form:
                 continue
 
-            total_perguntas = formulario.perguntas.filter(ativo=True).count()
-            total_respostas = RespostaFormulario.objects.filter(
-                viagem=viagem, cliente=cliente
+            total_questions = form.questions.filter(is_active=True).count()
+            total_answers = FormAnswer.objects.filter(
+                trip=trip, client=client
             ).count()
-            completo = total_respostas == total_perguntas if total_perguntas > 0 else False
-            if completo:
-                status_slug = "completo"
-            elif total_respostas == 0:
+            is_complete = (
+                total_answers == total_questions
+                if total_questions > 0
+                else False
+            )
+            if is_complete:
+                status_slug = "complete"
+            elif total_answers == 0:
                 status_slug = "nao-preenchido"
             else:
                 status_slug = "parcial"
 
-            info = {
-                "cliente": cliente,
-                "tipo_visto": tipo_visto_cliente,
-                "formulario": formulario,
-                "total_perguntas": total_perguntas,
-                "total_respostas": total_respostas,
-                "completo": completo,
-                "status_slug": status_slug,
-            }
+            candidates.append({
+                "key": (trip.pk, client.pk),
+                "trip": trip,
+                "client_info": {
+                    "client": client,
+                    "visa_type": visa_type,
+                    "visa_form_obj": form,
+                    "total_questions": total_questions,
+                    "total_answers": total_answers,
+                    "complete": is_complete,
+                    "status_slug": status_slug,
+                },
+            })
 
-            formularios_candidatos.append(
-                {
-                    "chave": (viagem.pk, cliente.pk),
-                    "viagem": viagem,
-                    "cliente_info": info,
-                }
-            )
+    return candidates
 
-    formularios_recentes = sorted(
-        formularios_candidatos,
-        key=lambda item: item["viagem"].criado_em,
+
+def _build_form_display(candidates, form_filter, limit):
+    sorted_recent = sorted(
+        candidates,
+        key=lambda item: item["trip"].created_at,
         reverse=True,
     )
-    formularios_incompletos_chaves = [
-        item["chave"]
-        for item in formularios_candidatos
-        if item["cliente_info"]["status_slug"] in {"parcial", "nao-preenchido"}
+    incomplete_keys = [
+        item["key"]
+        for item in candidates
+        if item["client_info"]["status_slug"] in {"parcial", "nao-preenchido"}
     ]
-    formularios_recentes_chaves = [item["chave"] for item in formularios_recentes]
-    formularios_chaves_display = _selecionar_prioritarios(
-        formularios_incompletos_chaves,
-        formularios_recentes_chaves,
-        dashboard_limite,
+    recent_keys = [item["key"] for item in sorted_recent]
+    display_keys = _select_priority_items(
+        incomplete_keys, recent_keys, limit
     )
-    formularios_mapa = {item["chave"]: item for item in formularios_candidatos}
-    formularios_display = [
-        formularios_mapa[chave]
-        for chave in formularios_chaves_display
-        if chave in formularios_mapa
+    candidate_map = {item["key"]: item for item in candidates}
+    display = [
+        candidate_map[key]
+        for key in display_keys
+        if key in candidate_map
     ]
 
-    if filtros_painel["formulario"]:
-        formularios_display = [
+    if form_filter:
+        display = [
             item
-            for item in formularios_display
-            if item["cliente_info"]["status_slug"] == filtros_painel["formulario"]
+            for item in display
+            if item["client_info"]["status_slug"] == form_filter
         ]
 
-    formularios_pendentes = [
-        item for item in formularios_display
-        if item["cliente_info"]["status_slug"] in {"parcial", "nao-preenchido"}
-    ]
-    formularios_preenchidos = [
-        item for item in formularios_display
-        if item["cliente_info"]["status_slug"] == "completo"
-    ]
-    total_formularios_pendentes = len(formularios_pendentes)
-    total_formularios_preenchidos = len(formularios_preenchidos)
-    total_formularios_monitorados = total_formularios_pendentes + total_formularios_preenchidos
+    return display
 
-    if filtros_painel["formulario"]:
-        total_formularios = total_formularios_pendentes + total_formularios_preenchidos
 
-    filtro_clientes = [
+def _build_visa_type_filter(display_processes, form_items, dashboard_trips):
+    seen = set()
+    visa_types = []
+
+    for process in display_processes:
+        vt = process.trip.visa_type
+        if vt and vt.pk not in seen:
+            seen.add(vt.pk)
+            visa_types.append({"pk": vt.pk, "name": vt.name})
+
+    for item in form_items:
+        vt = item["client_info"]["visa_type"]
+        if vt and hasattr(vt, "pk") and vt.pk not in seen:
+            seen.add(vt.pk)
+            visa_types.append({"pk": vt.pk, "name": vt.name})
+
+    for trip in dashboard_trips:
+        vt = trip.visa_type
+        if vt and vt.pk not in seen:
+            seen.add(vt.pk)
+            visa_types.append({"pk": vt.pk, "name": vt.name})
+
+    visa_types.sort(key=lambda x: x["name"].lower())
+    return visa_types
+
+
+def _compute_financial_kpis(panel_filters, selected_client_id, selected_visa_id, selected_financial_status):
+    financial_qs = FinancialRecord.objects.all()
+
+    if selected_client_id:
+        related_ids = {selected_client_id}
+        trip_ids = (
+            TripClient.objects.filter(client_id=selected_client_id)
+            .values_list("trip_id", flat=True)
+            .distinct()
+        )
+        related_ids.update(
+            TripClient.objects.filter(trip_id__in=trip_ids)
+            .values_list("client_id", flat=True)
+        )
+        financial_qs = financial_qs.filter(client_id__in=related_ids)
+
+    if selected_visa_id:
+        financial_qs = financial_qs.filter(
+            trip__visa_type_id=selected_visa_id
+        )
+
+    financial_qs = _filter_financial_by_period(financial_qs, panel_filters)
+
+    if selected_financial_status and selected_financial_status != "sem_registros":
+        financial_qs = financial_qs.filter(status=selected_financial_status)
+    elif selected_financial_status == "sem_registros":
+        financial_qs = financial_qs.none()
+
+    total = financial_qs.aggregate(Sum("amount"))["amount__sum"] or 0
+    paid = (
+        financial_qs.filter(status=FinancialStatus.PAID)
+        .aggregate(Sum("amount"))["amount__sum"]
+        or 0
+    )
+    pending = (
+        financial_qs.filter(status=FinancialStatus.PENDING)
+        .aggregate(Sum("amount"))["amount__sum"]
+        or 0
+    )
+    return total, paid, pending
+
+
+@login_required
+def home(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+    is_admin = can_manage_all
+    dashboard_limit = 10
+    trip_proximity_days = 30
+    today = date.today()
+
+    panel_filters = {
+        "client": request.GET.get("client", "").strip(),
+        "visa_type": request.GET.get("visa_type", "").strip(),
+        "visa_form_obj": request.GET.get("visa_form_obj", "").strip(),
+        "financial": request.GET.get("financial", "").strip(),
+        "financial_period_basis": request.GET.get("financial_period_basis", "entrada").strip() or "entrada",
+        "financial_year_start": request.GET.get("financial_year_start", "").strip(),
+        "financial_year_end": request.GET.get("financial_year_end", "").strip(),
+        "financial_month_start": request.GET.get("financial_month_start", "").strip(),
+        "financial_month_end": request.GET.get("financial_month_end", "").strip(),
+    }
+
+    selected_client_id = _parse_positive_int(panel_filters["client"])
+    selected_visa_id = _parse_positive_int(panel_filters["visa_type"])
+    selected_financial_status = panel_filters["financial"]
+    if selected_financial_status == "sem-registros":
+        selected_financial_status = "sem_registros"
+
+    user_clients = list_clients(request.user)
+    filter_base_clients = user_clients
+
+    if selected_client_id:
+        client_ids_set = {selected_client_id}
+        client_trip_ids = (
+            TripClient.objects.filter(client_id=selected_client_id)
+            .values_list("trip_id", flat=True)
+            .distinct()
+        )
+        client_ids_set.update(
+            TripClient.objects.filter(trip_id__in=client_trip_ids)
+            .values_list("client_id", flat=True)
+        )
+        user_clients = user_clients.filter(pk__in=client_ids_set)
+
+    if selected_visa_id:
+        user_clients = user_clients.filter(
+            trips__visa_type_id=selected_visa_id
+        ).distinct()
+
+    if is_admin and selected_financial_status:
+        filtered_financial = FinancialRecord.objects.exclude(
+            client__isnull=True
+        )
+        filtered_financial = _filter_financial_by_period(
+            filtered_financial, panel_filters
+        )
+        if selected_visa_id:
+            filtered_financial = filtered_financial.filter(
+                trip__visa_type_id=selected_visa_id
+            )
+        if selected_financial_status != "sem_registros":
+            filtered_financial = filtered_financial.filter(
+                status=selected_financial_status
+            )
+            user_clients = user_clients.filter(
+                pk__in=filtered_financial.values("client_id")
+            ).distinct()
+        else:
+            user_clients = user_clients.exclude(
+                pk__in=filtered_financial.values("client_id")
+            ).distinct()
+
+    client_ids = list(user_clients.values_list("pk", flat=True))
+
+    clients_qs = (
+        user_clients.select_related(
+            "assigned_advisor", "created_by", "referring_partner"
+        )
+        .prefetch_related("trips")
+        .order_by("-created_at")
+    )
+
+    processes_qs = (
+        Process.objects.filter(client__pk__in=client_ids)
+        .select_related(
+            "trip",
+            "trip__destination_country",
+            "trip__visa_type",
+            "client",
+            "assigned_advisor",
+        )
+        .prefetch_related("stages")
+        .order_by("-created_at")
+    )
+
+    trips_qs = (
+        Trip.objects.filter(clients__pk__in=client_ids)
+        .select_related(
+            "destination_country", "visa_type", "assigned_advisor"
+        )
+        .prefetch_related("clients")
+        .distinct()
+        .order_by("-planned_departure_date")
+    )
+
+    if selected_visa_id:
+        processes_qs = processes_qs.filter(
+            trip__visa_type_id=selected_visa_id
+        )
+        trips_qs = trips_qs.filter(visa_type_id=selected_visa_id)
+
+    total_clients = user_clients.count()
+    total_dependents = (
+        TripClient.objects.filter(
+            client_id__in=client_ids, role="dependent"
+        )
+        .values("client_id")
+        .distinct()
+        .count()
+    )
+    total_trips = trips_qs.count()
+    total_upcoming_trips = trips_qs.filter(
+        planned_departure_date__gte=today,
+        planned_departure_date__lte=today + timedelta(days=trip_proximity_days),
+    ).count()
+    total_completed_trips = trips_qs.filter(
+        planned_return_date__lt=today
+    ).count()
+    total_processes = processes_qs.count()
+    total_ongoing_processes = (
+        processes_qs.filter(
+            Q(stages__completed=False) | Q(stages__isnull=True)
+        )
+        .distinct()
+        .count()
+    )
+    total_completed_processes = max(
+        total_processes - total_ongoing_processes, 0
+    )
+    total_forms = (
+        FormAnswer.objects.filter(client__pk__in=client_ids)
+        .values("trip", "client")
+        .distinct()
+        .count()
+    )
+
+    if is_admin:
+        total_partners = Partner.objects.count()
+        total_countries = DestinationCountry.objects.count()
+        total_amount, paid_amount, pending_amount = _compute_financial_kpis(
+            panel_filters,
+            selected_client_id,
+            selected_visa_id,
+            selected_financial_status,
+        )
+    else:
+        total_partners = 0
+        total_countries = 0
+        total_amount = 0
+        paid_amount = 0
+        pending_amount = 0
+
+    clients_with_status = [
+        _build_client_item(request, consultant, c)
+        for c in clients_qs[:dashboard_limit]
+    ]
+    clients_with_status = _apply_form_status_filter(
+        clients_with_status, panel_filters["visa_form_obj"]
+    )
+
+    display_processes = _build_display_processes(
+        processes_qs, dashboard_limit
+    )
+    dashboard_trips = _build_dashboard_trips(
+        trips_qs, today, trip_proximity_days, dashboard_limit
+    )
+
+    form_candidates = _build_form_candidates(trips_qs, client_ids)
+    forms_display = _build_form_display(
+        form_candidates, panel_filters["visa_form_obj"], dashboard_limit
+    )
+
+    pending_forms = [
+        item
+        for item in forms_display
+        if item["client_info"]["status_slug"] in {"parcial", "nao-preenchido"}
+    ]
+    completed_forms = [
+        item
+        for item in forms_display
+        if item["client_info"]["status_slug"] == "complete"
+    ]
+    total_pending_forms = len(pending_forms)
+    total_completed_forms = len(completed_forms)
+    total_monitored_forms = total_pending_forms + total_completed_forms
+
+    if panel_filters["visa_form_obj"]:
+        total_forms = total_pending_forms + total_completed_forms
+
+    client_filter_options = [
         {
-            "pk": cliente.pk,
-            "nome": cliente.nome_completo,
+            "pk": client.pk,
+            "name": client.full_name,
             "principal_pk": None,
         }
-        for cliente in clientes_usuario.order_by("nome")
+        for client in user_clients.order_by("first_name")
     ]
 
-    seen_vistos = set()
-    filtro_vistos = []
-    for p in processos_display:
-        tv = p.viagem.tipo_visto
-        if tv and tv.pk not in seen_vistos:
-            seen_vistos.add(tv.pk)
-            filtro_vistos.append({"pk": tv.pk, "nome": tv.nome})
-    for item in formularios_pendentes + formularios_preenchidos:
-        tv = item["cliente_info"]["tipo_visto"]
-        if tv and hasattr(tv, "pk") and tv.pk not in seen_vistos:
-            seen_vistos.add(tv.pk)
-            filtro_vistos.append({"pk": tv.pk, "nome": tv.nome})
-    for viagem in viagens_dashboard:
-        tv = viagem.tipo_visto
-        if tv and tv.pk not in seen_vistos:
-            seen_vistos.add(tv.pk)
-            filtro_vistos.append({"pk": tv.pk, "nome": tv.nome})
-    filtro_vistos.sort(key=lambda x: x["nome"].lower())
+    visa_type_filter_options = _build_visa_type_filter(
+        display_processes,
+        pending_forms + completed_forms,
+        dashboard_trips,
+    )
 
-    anos_financeiro = _available_financial_years() if is_admin else []
-    meses_financeiro = [
+    financial_years = _available_financial_years() if is_admin else []
+    financial_months = [
         (1, "Janeiro"),
         (2, "Fevereiro"),
         (3, "Marco"),
@@ -466,40 +611,40 @@ def home(request):
         (12, "Dezembro"),
     ]
 
-    contexto = {
+    context = {
         "is_admin": is_admin,
-        "consultor": consultor,
-        "clientes_com_status": clientes_com_status,
-        "processos": processos_display,
-        "viagens_dashboard": viagens_dashboard,
-        "total_clientes": total_clientes,
-        "total_dependentes": total_dependentes,
-        "total_viagens": total_viagens,
-        "total_viagens_proximas": total_viagens_proximas,
-        "total_viagens_concluidas": total_viagens_concluidas,
-        "total_processos": total_processos,
-        "total_processos_andamento": total_processos_andamento,
-        "total_processos_concluidos": total_processos_concluidos,
-        "total_paises": total_paises,
+        "consultant": consultant,
+        "clients_with_status": clients_with_status,
+        "processes": display_processes,
+        "dashboard_trips": dashboard_trips,
+        "total_clients": total_clients,
+        "total_dependents": total_dependents,
+        "total_trips": total_trips,
+        "total_upcoming_trips": total_upcoming_trips,
+        "total_completed_trips": total_completed_trips,
+        "total_processes": total_processes,
+        "total_ongoing_processes": total_ongoing_processes,
+        "total_completed_processes": total_completed_processes,
+        "total_countries": total_countries,
         "total_partners": total_partners,
-        "total_formularios": total_formularios,
-        "total_formularios_monitorados": total_formularios_monitorados,
-        "total_formularios_pendentes": total_formularios_pendentes,
-        "total_formularios_preenchidos": total_formularios_preenchidos,
-        "formularios_pendentes": formularios_pendentes,
-        "formularios_preenchidos": formularios_preenchidos,
-        "valor_total": valor_total,
-        "valor_pago": valor_pago,
-        "valor_pendente": valor_pendente,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtro_clientes": filtro_clientes,
-        "filtro_vistos": filtro_vistos,
-        "filtros_painel": filtros_painel,
-        "anos_financeiro": anos_financeiro,
-        "meses_financeiro": meses_financeiro,
-        "dashboard_limite": dashboard_limite,
-        "dias_proximidade_viagem": dias_proximidade_viagem,
+        "total_forms": total_forms,
+        "total_monitored_forms": total_monitored_forms,
+        "total_pending_forms": total_pending_forms,
+        "total_completed_forms": total_completed_forms,
+        "pending_forms": pending_forms,
+        "completed_forms": completed_forms,
+        "total_amount": total_amount,
+        "paid_amount": paid_amount,
+        "pending_amount": pending_amount,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "client_filter_options": client_filter_options,
+        "visa_filter_options": visa_type_filter_options,
+        "panel_filters": panel_filters,
+        "financial_years": financial_years,
+        "financial_months": financial_months,
+        "dashboard_limit": dashboard_limit,
+        "trip_proximity_days": trip_proximity_days,
     }
 
-    return render(request, "home/home.html", contexto)
+    return render(request, "home/home.html", context)

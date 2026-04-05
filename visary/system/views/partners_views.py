@@ -1,7 +1,3 @@
-   
-                               
-   
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -11,183 +7,174 @@ from django.views.decorators.http import require_http_methods
 
 from system.forms import PartnerForm
 from system.models import Partner
-from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos, usuario_tem_acesso_modulo
+from system.views.client_views import get_user_consultant, user_can_manage_all, user_has_module_access
 
 
-def _aplicar_filtros_partners(partners, request):
-    filtros = {
-        "busca": request.GET.get("busca", "").strip(),
-        "segmento": request.GET.get("segmento", "").strip(),
+def _apply_partner_filters(partners, request):
+    filters = {
+        "search": request.GET.get("search", "").strip(),
+        "segment": request.GET.get("segment", "").strip(),
         "status": request.GET.get("status", "").strip(),
-        "estado": request.GET.get("estado", "").strip(),
-        "cidade": request.GET.get("cidade", "").strip(),
+        "state": request.GET.get("state", "").strip(),
+        "city": request.GET.get("city", "").strip(),
     }
 
-    if filtros["busca"]:
-        termo = filtros["busca"]
+    if filters["search"]:
+        search_term = filters["search"]
         partners = partners.filter(
-            Q(nome_responsavel__icontains=termo)
-            | Q(nome_empresa__icontains=termo)
-            | Q(email__icontains=termo)
+            Q(contact_name__icontains=search_term)
+            | Q(company_name__icontains=search_term)
+            | Q(email__icontains=search_term)
         )
-    if filtros["segmento"]:
-        partners = partners.filter(segmento=filtros["segmento"])
-    if filtros["status"] == "ativo":
-        partners = partners.filter(ativo=True)
-    elif filtros["status"] == "inativo":
-        partners = partners.filter(ativo=False)
-    if filtros["estado"]:
-        partners = partners.filter(estado__icontains=filtros["estado"])
-    if filtros["cidade"]:
-        partners = partners.filter(cidade__icontains=filtros["cidade"])
+    if filters["segment"]:
+        partners = partners.filter(segment=filters["segment"])
+    if filters["status"] == "ativo":
+        partners = partners.filter(is_active=True)
+    elif filters["status"] == "inativo":
+        partners = partners.filter(is_active=False)
+    if filters["state"]:
+        partners = partners.filter(state__icontains=filters["state"])
+    if filters["city"]:
+        partners = partners.filter(city__icontains=filters["city"])
 
-    return partners, filtros
+    return partners, filters
 
 
 @login_required
 def home_partners(request):
-    consultor = obter_consultor_usuario(request.user)
-    if not usuario_tem_acesso_modulo(request.user, consultor, "Parceiros"):
+    consultant = get_user_consultant(request.user)
+    if not user_has_module_access(request.user, consultant, "Parceiros"):
         raise PermissionDenied
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    partners = Partner.objects.all().order_by("nome_empresa", "nome_responsavel")
-    partners, filtros_aplicados = _aplicar_filtros_partners(partners, request)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    partners = Partner.objects.all().order_by("company_name", "contact_name")
+    partners, applied_filters = _apply_partner_filters(partners, request)
     total_partners = partners.count()
-    
-    contexto = {
+
+    context = {
         "partners": partners[:10],
         "total_partners": total_partners,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtros_aplicados": filtros_aplicados,
-        "segmentos": Partner.SEGMENTO_CHOICES,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "applied_filters_dict": applied_filters,
+        "segments": Partner.SEGMENT_CHOICES,
     }
-    
-    return render(request, "partners/home_partners.html", contexto)
+
+    return render(request, "partners/home_partners.html", context)
 
 
 @login_required
-def criar_partner(request):
-                                                  
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar_todos:
+def create_partner(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    if not can_manage_all:
         raise PermissionDenied
 
     if request.method == "POST":
         form = PartnerForm(data=request.POST, user=request.user)
         if form.is_valid():
             partner = form.save(commit=False)
-            partner.criado_por = request.user
+            partner.created_by = request.user
             partner.save()
-            messages.success(request, f"Parceiro {form.cleaned_data.get('nome_empresa') or form.cleaned_data.get('nome_responsavel')} cadastrado com sucesso.")
+            messages.success(request, f"Parceiro {form.cleaned_data.get('company_name') or form.cleaned_data.get('contact_name')} cadastrado com sucesso.")
             return redirect("system:home_partners")
         messages.error(request, "Não foi possível cadastrar o parceiro. Verifique os campos.")
     else:
         form = PartnerForm(user=request.user)
 
-    contexto = {
+    context = {
         "form": form,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "partners/criar_partner.html", contexto)
+    return render(request, "partners/create_partner.html", context)
 
 
 @login_required
-def listar_partners(request):
-                                   
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    partners = Partner.objects.all().order_by("nome_empresa", "nome_responsavel")
-    partners, filtros_aplicados = _aplicar_filtros_partners(partners, request)
-    
-    contexto = {
+def list_partners(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    partners = Partner.objects.all().order_by("company_name", "contact_name")
+    partners, applied_filters = _apply_partner_filters(partners, request)
+
+    context = {
         "partners": partners,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "filtros_aplicados": filtros_aplicados,
-        "segmentos": Partner.SEGMENTO_CHOICES,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "applied_filters_dict": applied_filters,
+        "segments": Partner.SEGMENT_CHOICES,
     }
-    
-    return render(request, "partners/listar_partners.html", contexto)
+
+    return render(request, "partners/list_partners.html", context)
 
 
 @login_required
-def editar_partner(request, pk: int):
-                                                    
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar_todos:
+def edit_partner(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
+    if not can_manage_all:
         raise PermissionDenied
-    
+
     partner = get_object_or_404(Partner, pk=pk)
-    
+
     if request.method == "POST":
-                                                        
-        _limpar_mensagens_duplicadas_sessao(request)
-        
+        _clear_duplicate_session_messages(request)
+
         form = PartnerForm(data=request.POST, user=request.user, instance=partner)
         if form.is_valid():
-            partner_atualizado = form.save()
-            messages.success(request, f"Parceiro {partner_atualizado.nome_empresa or partner_atualizado.nome_responsavel} atualizado com sucesso.")
-            return redirect("system:listar_partners")
+            updated_partner = form.save()
+            messages.success(request, f"Parceiro {updated_partner.company_name or updated_partner.contact_name} atualizado com sucesso.")
+            return redirect("system:list_partners")
         else:
-                                        
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"{form.fields[field].label}: {error}")
     else:
         form = PartnerForm(user=request.user, instance=partner)
-                                                  
         if partner.cpf:
             form.fields["cpf"].initial = partner.cpf
         if partner.cnpj:
             form.fields["cnpj"].initial = partner.cnpj
 
-    contexto = {
+    context = {
         "form": form,
         "partner": partner,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "user_profile": consultant.profile.name if consultant else None,
     }
-    
-    return render(request, "partners/editar_partner.html", contexto)
+
+    return render(request, "partners/edit_partner.html", context)
 
 
 @login_required
-def visualizar_partner(request, pk: int):
-                                                     
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
+def view_partner(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
+
     partner = get_object_or_404(Partner, pk=pk)
-    
-                                                
-    from system.models import ClienteConsultoria
-    clientes_vinculados = ClienteConsultoria.objects.filter(
-        parceiro_indicador=partner
-    ).select_related("assessor_responsavel", "cliente_principal").order_by("nome")
-    
-    contexto = {
+
+    from system.models import ConsultancyClient
+    linked_clients = ConsultancyClient.objects.filter(
+        referring_partner=partner
+    ).select_related("assigned_advisor", "primary_client").order_by("first_name")
+
+    context = {
         "partner": partner,
-        "clientes_vinculados": clientes_vinculados,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "pode_gerenciar_todos": pode_gerenciar_todos,
-        "pode_editar": pode_gerenciar_todos,
+        "linked_clients": linked_clients,
+        "user_profile": consultant.profile.name if consultant else None,
+        "can_manage_all": can_manage_all,
+        "can_edit": can_manage_all,
     }
-    
-    return render(request, "partners/visualizar_partner.html", contexto)
+
+    return render(request, "partners/view_partner.html", context)
 
 
-def _limpar_mensagens_duplicadas_sessao(request):
-                                                
+def _clear_duplicate_session_messages(request):
     if not (stored_messages := request.session.get('_messages')):
         return
-    
+
     filtered = []
     seen_texts = set()
     for msg in stored_messages:
@@ -195,14 +182,13 @@ def _limpar_mensagens_duplicadas_sessao(request):
         if message_text not in seen_texts:
             seen_texts.add(message_text)
             filtered.append(msg)
-    
+
     if filtered:
         request.session['_messages'] = filtered
     else:
         request.session.pop('_messages', None)
     request.session.modified = True
-    
-                                          
+
     from django.contrib import messages
     storage = messages.get_messages(request)
     storage.used = True
@@ -210,21 +196,18 @@ def _limpar_mensagens_duplicadas_sessao(request):
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_partner(request, pk: int):
-                             
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar_todos:
-        raise PermissionDenied
-    
-                                                         
-    _limpar_mensagens_duplicadas_sessao(request)
-    
-    partner = get_object_or_404(Partner, pk=pk)
-    nome_partner = partner.nome_empresa or partner.nome_responsavel
-    partner.delete()
-    
-    messages.success(request, f"Parceiro {nome_partner} excluído com sucesso.")
-    return redirect("system:listar_partners")
+def delete_partner(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
+    if not can_manage_all:
+        raise PermissionDenied
+
+    _clear_duplicate_session_messages(request)
+
+    partner = get_object_or_404(Partner, pk=pk)
+    partner_name = partner.company_name or partner.contact_name
+    partner.delete()
+
+    messages.success(request, f"Parceiro {partner_name} excluído com sucesso.")
+    return redirect("system:list_partners")

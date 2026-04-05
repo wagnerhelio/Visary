@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Listar Módulos{% endblock %}
+
+{% block body_class %}listagem-page{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    <style>
+    .card {
+        overflow-x: auto;
+    }
+
+    .card .table-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: min(68vh, 720px);
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
+    @media (min-width: 1120px) {
+        body.listagem-page {
+            overflow: hidden;
+        }
+
+        body.listagem-page .app-main {
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.listagem-page .page-header {
+            flex-shrink: 0;
+        }
+
+        body.listagem-page .card:last-of-type {
+            flex: 1;
+            min-height: 0;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.listagem-page .card:last-of-type .table-wrapper {
+            flex: 1;
+            min-height: 0;
+            max-height: none;
+        }
+    }
+
+    thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--card-bg);
+        backdrop-filter: blur(4px);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 100%;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    th,
+    td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+    }
+
+    th {
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-badge.is_active {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .status-badge.inativo {
+        background: rgba(244, 67, 54, 0.2);
+        color: rgba(244, 67, 54, 0.95);
+        border: 1px solid rgba(244, 67, 54, 0.4);
+    }
+
+    .empty-state {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        color: rgba(245, 245, 245, 0.72);
+        text-align: center;
+    }
+
+    .table-wrapper::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb {
+        background: rgba(86, 244, 156, 0.4);
+        border-radius: 4px;
+    }
+
+    .table-wrapper::-webkit-scrollbar-thumb:hover {
+        background: rgba(86, 244, 156, 0.6);
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .filtros-card header h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 16px 0;
+    }
+    .filtros-form {
+        display: grid;
+        gap: 16px;
+    }
+    .filtros-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    }
+    .filtros-form label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 6px;
+        display: block;
+    }
+    .filtros-form input,
+    .filtros-form select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+    .filtros-form input:focus,
+    .filtros-form select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+    .filtros-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+    }
+    .filtros-actions .btn { width: auto; }
+
+    @media (max-width: 768px) {
+        table {
+            font-size: 0.85rem;
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+        }
+
+        .filtros-grid { grid-template-columns: 1fr; }
+        .filtros-actions { flex-direction: column; }
+        .filtros-actions .btn { width: 100%; text-align: center; }
+    }
+
+    </style>
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Listar Módulos</h1>
+        <p>Visualize e gerencie todos os módulos do sistema.</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_admin' %}" class="btn btn-outline">Voltar</a>
+        <a href="{% url 'system:create_module' %}" class="btn btn-primary">Novo Módulo</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="filtros-card">
+    <header>
+        <h2>Filtros</h2>
+    </header>
+    <form method="get" action="{% url 'system:list_modules' %}" class="filtros-form">
+        <div class="filtros-grid">
+            <div>
+                <label for="nome">Nome</label>
+                <input type="text" id="name" name="name" value="{{ filters_dict.name }}" placeholder="Nome do módulo">
+            </div>
+            <div>
+                <label for="ativo">Status</label>
+                <select id="ativo" name="active">
+                    <option value="">Todos</option>
+                    <option value="true" {% if filters_dict.is_active == 'true' %}selected{% endif %}>Ativo</option>
+                    <option value="false" {% if filters_dict.is_active == 'false' %}selected{% endif %}>Inativo</option>
+                </select>
+            </div>
+        </div>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:list_modules' %}" class="btn btn-outline">Limpar Filtros</a>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+            <tr>
+                <th>Ordem</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Perfis</th>
+                <th>Status</th>
+                <th style="width:150px;">Ações</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for module_obj in modulos %}
+                <tr>
+                    <td>{{ module_obj.order }}</td>
+                    <td><strong>{{ module_obj.name }}</strong></td>
+                    <td>{{ module_obj.description|truncatewords:10|default:"-" }}</td>
+                    <td>{{ module_obj.perfis.count }}</td>
+                    <td>
+                        <span class="status-badge {% if modulo.is_active %}ativo{% else %}inativo{% endif %}">
+                            {% if modulo.is_active %}Ativo{% else %}Inativo{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:edit_module' modulo.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            <form method="post" action="{% url 'system:delete_module' modulo.pk %}" onsubmit="return confirm('Deseja realmente excluir este módulo?');" style="margin: 0;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        Nenhum módulo encontrado.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+

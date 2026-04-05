@@ -10,22 +10,22 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from system.models import (
-    ClienteConsultoria,
-    ClienteViagem,
-    EtapaProcesso,
-    Financeiro,
-    FormularioVisto,
-    OpcaoSelecao,
-    PaisDestino,
+    ConsultancyClient,
+    ConsultancyUser,
+    DestinationCountry,
+    FinancialRecord,
+    FinancialStatus,
+    FormAnswer,
+    FormQuestion,
     Partner,
-    PerguntaFormulario,
-    Processo,
-    RespostaFormulario,
-    StatusProcesso,
-    StatusFinanceiro,
-    TipoVisto,
-    UsuarioConsultoria,
-    Viagem,
+    Process,
+    ProcessStage,
+    ProcessStatus,
+    SelectOption,
+    Trip,
+    TripClient,
+    VisaForm,
+    VisaType,
 )
 from system.services.legacy_markers import extract_legacy_meta, upsert_legacy_meta
 
@@ -144,73 +144,73 @@ class Command(BaseCommand):
             )
 
         actor = self._get_actor_user()
-        assessor_default = UsuarioConsultoria.objects.filter(ativo=True).order_by("id").first()
-        if not assessor_default:
+        default_advisor = ConsultancyUser.objects.filter(is_active=True).order_by("id").first()
+        if not default_advisor:
             raise CommandError(
-                "Nao existe UsuarioConsultoria ativo para vincular assessor_responsavel. "
-                "Rode seed_usuarios_consultoria antes de seed_legacy."
+                "Nao existe ConsultancyUser ativo para vincular assigned_advisor. "
+                "Rode seed_consultancy_users antes de seed_legacy."
             )
 
         with transaction.atomic():
-            pais_map = self._import_paises(legacy, actor)
-            tipo_map = self._import_tipos_visto(legacy, pais_map, actor)
-            parceiro_map = self._import_parceiros(legacy, actor)
-            cliente_map, cliente_issues = self._import_clientes(
+            country_map = self._import_countries(legacy, actor)
+            visa_type_map = self._import_visa_types(legacy, country_map, actor)
+            partner_map = self._import_partners(legacy, actor)
+            client_map, client_issues = self._import_clients(
                 legacy,
-                assessor_default,
+                default_advisor,
                 actor,
             )
-            self._import_dependentes(legacy, cliente_map)
-            viagem_map = self._import_viagens(
+            self._import_dependents(legacy, client_map)
+            trip_map = self._import_trips(
                 legacy,
-                cliente_map,
-                tipo_map,
-                pais_map,
-                parceiro_map,
-                assessor_default,
+                client_map,
+                visa_type_map,
+                country_map,
+                partner_map,
+                default_advisor,
                 actor,
             )
-            parceiro_links = self._collect_legacy_partner_links(legacy)
-            parceiros_linked_count = self._link_clientes_parceiros(
-                cliente_map,
-                parceiro_map,
-                parceiro_links,
+            partner_links = self._collect_legacy_partner_links(legacy)
+            partners_linked_count = self._link_clients_partners(
+                client_map,
+                partner_map,
+                partner_links,
             )
-            processo_map = self._import_processos(
+            process_map = self._import_processes(
                 legacy,
-                cliente_map,
-                viagem_map,
-                tipo_map,
-                assessor_default,
+                client_map,
+                trip_map,
+                visa_type_map,
+                default_advisor,
                 actor,
             )
-            etapas_count = self._import_etapas_processo(
+            stages_count = self._import_process_stages(
                 legacy,
-                processo_map,
-                tipo_map,
+                process_map,
+                visa_type_map,
             )
-            financeiro_count = self._import_financeiro(
+            financial_count = self._import_financial(
                 legacy,
-                processo_map,
-                assessor_default,
+                process_map,
+                default_advisor,
                 actor,
             )
-            respostas_count = self._import_respostas_formulario(
+            answers_count = self._import_form_answers(
                 legacy,
-                processo_map,
-                tipo_map,
+                process_map,
+                visa_type_map,
             )
 
         self._print_validation_report(
             legacy=legacy,
-            cliente_map=cliente_map,
-            processo_map=processo_map,
-            viagem_map=viagem_map,
-            cliente_issues=cliente_issues,
-            etapas_count=etapas_count,
-            parceiros_linked_count=parceiros_linked_count,
-            financeiro_count=financeiro_count,
-            respostas_count=respostas_count,
+            client_map=client_map,
+            process_map=process_map,
+            trip_map=trip_map,
+            client_issues=client_issues,
+            stages_count=stages_count,
+            partners_linked_count=partners_linked_count,
+            financial_count=financial_count,
+            answers_count=answers_count,
         )
 
     def _get_legacy_connection(self):
@@ -320,93 +320,92 @@ class Command(BaseCommand):
         )
         return user
 
-    def _import_paises(self, legacy, actor):
-        def resolve_semantic_country(nome):
-            target = normalize_text(nome)
+    def _import_countries(self, legacy, actor):
+        def resolve_semantic_country(raw_name):
+            target = normalize_text(raw_name)
             if not target:
                 return None
-            for pais in PaisDestino.objects.all():
-                if normalize_text(pais.nome) == target:
-                    return pais
+            for country in DestinationCountry.objects.all():
+                if normalize_text(country.name) == target:
+                    return country
             return None
 
         by_id = {}
         for row in legacy["pais"]:
-            nome = str(row.get("nome") or "").strip()
-            if not nome:
+            raw_name = str(row.get("nome") or "").strip()
+            if not raw_name:
                 continue
-            semantic_country = resolve_semantic_country(nome)
+            semantic_country = resolve_semantic_country(raw_name)
             if semantic_country:
-                pais = semantic_country
+                country = semantic_country
             else:
-                pais, _ = PaisDestino.objects.get_or_create(
-                    nome=nome,
+                country, _ = DestinationCountry.objects.get_or_create(
+                    name=raw_name,
                     defaults={
-                        "codigo_iso": (row.get("sigla") or "")[:3],
-                        "ativo": True,
-                        "criado_por": actor,
+                        "iso_code": (row.get("sigla") or "")[:3],
+                        "is_active": True,
+                        "created_by": actor,
                     },
                 )
-            pais.codigo_iso = (row.get("sigla") or pais.codigo_iso or "")[:3]
-            pais.ativo = True
-            pais.criado_por = actor
-            pais.save()
-            by_id[int(row["id"])] = pais
+            country.iso_code = (row.get("sigla") or country.iso_code or "")[:3]
+            country.is_active = True
+            country.created_by = actor
+            country.save()
+            by_id[int(row["id"])] = country
         return by_id
 
-    def _import_tipos_visto(self, legacy, pais_map, actor):
-        def resolve_semantic_tipo(pais, nome):
-            target = normalize_text(nome)
-            target_compact = normalize_semantic_key(nome)
+    def _import_visa_types(self, legacy, country_map, actor):
+        def resolve_semantic_visa_type(country, raw_name):
+            target = normalize_text(raw_name)
+            target_compact = normalize_semantic_key(raw_name)
             if not target:
                 return None
-            candidates = list(TipoVisto.objects.filter(pais_destino=pais))
+            candidates = list(VisaType.objects.filter(destination_country=country))
             if not candidates:
                 return None
             with_form = [
-                candidate
-                for candidate in candidates
-                if FormularioVisto.objects.filter(tipo_visto=candidate, ativo=True).exists()
+                c for c in candidates
+                if VisaForm.objects.filter(visa_type=c, is_active=True).exists()
             ]
             pool = with_form or candidates
-            for candidate in pool:
-                if normalize_text(candidate.nome) == target:
-                    return candidate
-                if normalize_semantic_key(candidate.nome) == target_compact:
-                    return candidate
+            for c in pool:
+                if normalize_text(c.name) == target:
+                    return c
+                if normalize_semantic_key(c.name) == target_compact:
+                    return c
             return None
 
-        tipo_by_id = {}
-        tipo_legacy = {int(item["id"]): item for item in legacy["tipo_vistos"]}
+        vt_by_id = {}
+        vt_legacy = {int(item["id"]): item for item in legacy["tipo_vistos"]}
         for relation in legacy["pais_tipo_visto"]:
-            pais_id = int(relation["pais_id"])
-            tipo_id = int(relation["tipo_visto_id"])
-            pais = pais_map.get(pais_id)
-            tipo_row = tipo_legacy.get(tipo_id)
-            if not pais or not tipo_row:
+            country_id = int(relation["pais_id"])
+            vt_id = int(relation["tipo_visto_id"])
+            country = country_map.get(country_id)
+            vt_row = vt_legacy.get(vt_id)
+            if not country or not vt_row:
                 continue
-            nome = str(tipo_row.get("nome") or "").strip()
-            if not nome:
+            raw_name = str(vt_row.get("nome") or "").strip()
+            if not raw_name:
                 continue
-            existing_semantic = resolve_semantic_tipo(pais, nome)
-            if existing_semantic:
-                tipo_by_id[tipo_id] = existing_semantic
+            existing = resolve_semantic_visa_type(country, raw_name)
+            if existing:
+                vt_by_id[vt_id] = existing
                 continue
-            tipo, _ = TipoVisto.objects.get_or_create(
-                pais_destino=pais,
-                nome=nome,
+            vt, _ = VisaType.objects.get_or_create(
+                destination_country=country,
+                name=raw_name,
                 defaults={
-                    "descricao": str(tipo_row.get("observacao") or ""),
-                    "ativo": True,
-                    "criado_por": actor,
+                    "description": str(vt_row.get("observacao") or ""),
+                    "is_active": True,
+                    "created_by": actor,
                 },
             )
-            tipo.descricao = str(tipo_row.get("observacao") or tipo.descricao or "")
-            tipo.ativo = True
-            tipo.criado_por = actor
-            tipo.save()
-            tipo_by_id[tipo_id] = tipo
-        return tipo_by_id
+            vt.description = str(vt_row.get("observacao") or vt.description or "")
+            vt.is_active = True
+            vt.created_by = actor
+            vt.save()
+            vt_by_id[vt_id] = vt
+        return vt_by_id
 
     def _parse_legacy_percentage(self, value) -> int:
         if value in (None, ""):
@@ -419,13 +418,13 @@ class Command(BaseCommand):
         return max(0, min(100, percentage))
 
     def _find_by_exact_marker(self, model_class, marker):
-        for instance in model_class.objects.filter(observacoes__contains=marker.split("=")[0]):
-            for line in str(instance.observacoes or "").splitlines():
+        for instance in model_class.objects.filter(notes__contains=marker.split("=")[0]):
+            for line in str(instance.notes or "").splitlines():
                 if line.strip() == marker:
                     return instance
         return None
 
-    def _import_parceiros(self, legacy, actor):
+    def _import_partners(self, legacy, actor):
         partner_map = {}
         for row in legacy["parceiros"]:
             partner_id = int(row["id"])
@@ -435,24 +434,24 @@ class Command(BaseCommand):
             partner, _ = Partner.objects.get_or_create(
                 email=email,
                 defaults={
-                    "nome_responsavel": str(row.get("user_name") or row.get("empresa") or f"Parceiro {partner_id}"),
-                    "nome_empresa": str(row.get("empresa") or ""),
-                    "senha": "placeholder",
-                    "segmento": self._normalize_segment(str(row.get("segmento") or "")),
-                    "telefone": str(row.get("telefone") or ""),
-                    "cidade": str(row.get("cidade") or ""),
-                    "estado": str(row.get("estado") or "")[:2],
-                    "criado_por": actor,
+                    "contact_name": str(row.get("user_name") or row.get("empresa") or f"Parceiro {partner_id}"),
+                    "company_name": str(row.get("empresa") or ""),
+                    "password": "placeholder",
+                    "segment": self._normalize_segment(str(row.get("segmento") or "")),
+                    "phone": str(row.get("telefone") or ""),
+                    "city": str(row.get("cidade") or ""),
+                    "state": str(row.get("estado") or "")[:2],
+                    "created_by": actor,
                 },
             )
-            partner.nome_responsavel = str(row.get("user_name") or partner.nome_responsavel)
-            partner.nome_empresa = str(row.get("empresa") or "")
-            partner.segmento = self._normalize_segment(str(row.get("segmento") or ""))
-            partner.telefone = str(row.get("telefone") or "")
-            partner.cidade = str(row.get("cidade") or "")
-            partner.estado = str(row.get("estado") or "")[:2]
-            partner.ativo = True
-            partner.criado_por = actor
+            partner.contact_name = str(row.get("user_name") or partner.contact_name)
+            partner.company_name = str(row.get("empresa") or "")
+            partner.segment = self._normalize_segment(str(row.get("segmento") or ""))
+            partner.phone = str(row.get("telefone") or "")
+            partner.city = str(row.get("cidade") or "")
+            partner.state = str(row.get("estado") or "")[:2]
+            partner.is_active = True
+            partner.created_by = actor
             partner.set_password(f"legacy-partner-{partner_id}")
             partner.save()
             partner_map[partner_id] = partner
@@ -460,42 +459,50 @@ class Command(BaseCommand):
 
     def _normalize_segment(self, value: str) -> str:
         key = normalize_text(value).replace(" ", "_")
-        allowed = {"agencia_viagem", "consultoria_imigracao", "advocacia", "educacao", "outros"}
-        return key if key in allowed else "outros"
+        allowed = {"travel_agency", "immigration_consulting", "law", "education", "other"}
+        legacy_map = {
+            "agencia_viagem": "travel_agency",
+            "consultoria_imigracao": "immigration_consulting",
+            "advocacia": "law",
+            "educacao": "education",
+            "outros": "other",
+        }
+        mapped = legacy_map.get(key, key)
+        return mapped if mapped in allowed else "other"
 
-    def _build_assessor_lookup(self):
-        assessores = UsuarioConsultoria.objects.filter(ativo=True).order_by("id")
+    def _build_advisor_lookup(self):
+        advisors = ConsultancyUser.objects.filter(is_active=True).order_by("id")
         by_email = {}
         by_name = {}
-        for assessor in assessores:
-            email = str(assessor.email or "").strip().lower()
-            nome = normalize_text(assessor.nome or "")
+        for advisor in advisors:
+            email = str(advisor.email or "").strip().lower()
+            name_key = normalize_text(advisor.name or "")
             if email:
-                by_email[email] = assessor
-            if nome:
-                by_name[nome] = assessor
+                by_email[email] = advisor
+            if name_key:
+                by_name[name_key] = advisor
         return by_email, by_name
 
-    def _resolve_assessor_for_cliente_row(self, row, assessor_default, by_email, by_name):
-        responsavel_email = str(row.get("responsavel_email") or "").strip().lower()
-        if responsavel_email and responsavel_email in by_email:
-            return by_email[responsavel_email]
+    def _resolve_advisor_for_client_row(self, row, default_advisor, by_email, by_name):
+        responsible_email = str(row.get("responsavel_email") or "").strip().lower()
+        if responsible_email and responsible_email in by_email:
+            return by_email[responsible_email]
 
-        responsavel_name = normalize_text(row.get("responsavel_name") or "")
-        if responsavel_name and responsavel_name in by_name:
-            return by_name[responsavel_name]
+        responsible_name = normalize_text(row.get("responsavel_name") or "")
+        if responsible_name and responsible_name in by_name:
+            return by_name[responsible_name]
 
         for alias in ("raquel", "yan", "juliana"):
-            if alias in responsavel_name:
-                for nome_key, assessor in by_name.items():
-                    if alias in nome_key:
-                        return assessor
+            if alias in responsible_name:
+                for name_key, advisor in by_name.items():
+                    if alias in name_key:
+                        return advisor
 
-        return assessor_default
+        return default_advisor
 
-    def _import_clientes(self, legacy, assessor_default, actor):
+    def _import_clients(self, legacy, default_advisor, actor):
         clientes = legacy["clientes"]
-        by_email, by_name = self._build_assessor_lookup()
+        by_email, by_name = self._build_advisor_lookup()
         cpf_counter = Counter()
         for row in clientes:
             cpf = normalize_cpf(row.get("cpf"))
@@ -503,14 +510,14 @@ class Command(BaseCommand):
                 cpf_counter[cpf] += 1
 
         cpf_seen = set()
-        existing = ClienteConsultoria.objects.select_related("assessor_responsavel").all()
+        existing = ConsultancyClient.objects.select_related("assigned_advisor").all()
         by_legacy_id = {}
-        for cliente in existing:
-            meta = extract_legacy_meta(cliente.observacoes)
+        for client in existing:
+            meta = extract_legacy_meta(client.notes)
             if meta.get("legacy_cliente_id"):
-                by_legacy_id[int(meta["legacy_cliente_id"])] = cliente
+                by_legacy_id[int(meta["legacy_cliente_id"])] = client
 
-        cliente_map = {}
+        client_map = {}
         issue_map = {}
 
         for row in clientes:
@@ -537,46 +544,46 @@ class Command(BaseCommand):
             if not first_name and not last_name:
                 first_name = f"Cliente legado #{legacy_id}"
 
-            cliente = by_legacy_id.get(legacy_id)
-            if not cliente:
-                cliente = ClienteConsultoria.objects.filter(cpf=cpf_formatted).first()
+            client = by_legacy_id.get(legacy_id)
+            if not client:
+                client = ConsultancyClient.objects.filter(cpf=cpf_formatted).first()
 
-            if not cliente:
-                cliente = ClienteConsultoria(
-                    assessor_responsavel=assessor_default,
-                    criado_por=actor,
-                    nome=first_name,
-                    sobrenome=last_name,
+            if not client:
+                client = ConsultancyClient(
+                    assigned_advisor=default_advisor,
+                    created_by=actor,
+                    first_name=first_name,
+                    last_name=last_name,
                     cpf=cpf_formatted,
-                    data_nascimento=parse_date(row.get("nascimento")) or datetime(1990, 1, 1).date(),
-                    nacionalidade=str(row.get("nacionalidade") or "Nao informado"),
-                    telefone=str(row.get("telefone") or "000000000"),
-                    senha=str(row.get("user_password") or "legacy-import"),
+                    birth_date=parse_date(row.get("nascimento")) or datetime(1990, 1, 1).date(),
+                    nationality=str(row.get("nacionalidade") or "Nao informado"),
+                    phone=str(row.get("telefone") or "000000000"),
+                    password=str(row.get("user_password") or "legacy-import"),
                 )
 
-            cliente.nome = first_name
-            cliente.sobrenome = last_name
-            cliente.cpf = cpf_formatted
-            cliente.data_nascimento = parse_date(row.get("nascimento")) or cliente.data_nascimento
-            cliente.nacionalidade = str(row.get("nacionalidade") or cliente.nacionalidade)
-            cliente.telefone = str(row.get("telefone") or cliente.telefone)
-            cliente.telefone_secundario = str(row.get("telefone_secundario") or "")[:20]
-            cliente.email = str(row.get("user_email") or "").lower()
-            cliente.cep = str(row.get("cep") or "")[:9]
-            cliente.logradouro = str(row.get("endereco") or "")
-            cliente.complemento = str(row.get("complemento") or "")
-            cliente.bairro = str(row.get("bairro") or "")
-            cliente.cidade = str(row.get("cidade") or "")
-            cliente.uf = str(row.get("estado") or "")[:2]
-            cliente.assessor_responsavel = self._resolve_assessor_for_cliente_row(
+            client.first_name = first_name
+            client.last_name = last_name
+            client.cpf = cpf_formatted
+            client.birth_date = parse_date(row.get("nascimento")) or client.birth_date
+            client.nationality = str(row.get("nacionalidade") or client.nationality)
+            client.phone = str(row.get("telefone") or client.phone)
+            client.secondary_phone = str(row.get("telefone_secundario") or "")[:20]
+            client.email = str(row.get("user_email") or "").lower()
+            client.zip_code = str(row.get("cep") or "")[:9]
+            client.street = str(row.get("endereco") or "")
+            client.complement = str(row.get("complemento") or "")
+            client.district = str(row.get("bairro") or "")
+            client.city = str(row.get("cidade") or "")
+            client.state = str(row.get("estado") or "")[:2]
+            client.assigned_advisor = self._resolve_advisor_for_client_row(
                 row,
-                assessor_default,
+                default_advisor,
                 by_email,
                 by_name,
             )
-            cliente.criado_por = actor
+            client.created_by = actor
             if row.get("user_password"):
-                cliente.senha = str(row["user_password"])
+                client.password = str(row["user_password"])
 
             meta = {
                 "source": "legacy",
@@ -585,23 +592,23 @@ class Command(BaseCommand):
                 "status": "problem" if issues else "ok",
                 "issues": issues,
             }
-            cliente.observacoes = upsert_legacy_meta(cliente.observacoes, meta)
-            cliente.save()
+            client.notes = upsert_legacy_meta(client.notes, meta)
+            client.save()
 
-            cliente_map[legacy_id] = cliente
+            client_map[legacy_id] = client
             issue_map[legacy_id] = issues
 
-        return cliente_map, issue_map
+        return client_map, issue_map
 
-    def _import_dependentes(self, legacy, cliente_map):
+    def _import_dependents(self, legacy, client_map):
         for row in legacy["familiares_clientes"]:
-            principal = cliente_map.get(int(row["id_cliente_principal"]))
-            dependente = cliente_map.get(int(row["id_cliente_familiar"]))
-            if not principal or not dependente or principal.pk == dependente.pk:
+            principal = client_map.get(int(row["id_cliente_principal"]))
+            dependent = client_map.get(int(row["id_cliente_familiar"]))
+            if not principal or not dependent or principal.pk == dependent.pk:
                 continue
-            if dependente.cliente_principal_id != principal.pk:
-                dependente.cliente_principal = principal
-                dependente.save(update_fields=["cliente_principal", "atualizado_em"])
+            if dependent.primary_client_id != principal.pk:
+                dependent.primary_client = principal
+                dependent.save(update_fields=["primary_client", "updated_at"])
 
     def _build_process_groups(self, legacy):
         process_ids = {int(process_row["id"]) for process_row in legacy["processos"]}
@@ -617,98 +624,98 @@ class Command(BaseCommand):
             normalized[process_id] = principal_id if principal_id in process_ids else process_id
         return normalized
 
-    def _import_viagens(self, legacy, cliente_map, tipo_map, pais_map, parceiro_map, assessor_default, actor):
+    def _import_trips(self, legacy, client_map, visa_type_map, country_map, partner_map, default_advisor, actor):
         groups = self._build_process_groups(legacy)
-        processos_by_id = {int(row["id"]): row for row in legacy["processos"]}
+        processes_by_id = {int(row["id"]): row for row in legacy["processos"]}
         group_rows = {}
         for process_id, principal_id in groups.items():
-            if process_id not in processos_by_id:
+            if process_id not in processes_by_id:
                 continue
             if principal_id not in group_rows:
-                group_rows[principal_id] = processos_by_id[process_id]
+                group_rows[principal_id] = processes_by_id[process_id]
 
-        viagem_map = {}
+        trip_map = {}
         for group_id, process_row in group_rows.items():
-            pais = pais_map.get(int(process_row["pais_id"]))
-            tipo = tipo_map.get(int(process_row["tipo_visto_id"]))
-            cliente_principal = cliente_map.get(int(process_row["cliente_id"]))
-            assessor_viagem = (
-                cliente_principal.assessor_responsavel
-                if cliente_principal and cliente_principal.assessor_responsavel_id
-                else assessor_default
+            country = country_map.get(int(process_row["pais_id"]))
+            vt = visa_type_map.get(int(process_row["tipo_visto_id"]))
+            principal_client = client_map.get(int(process_row["cliente_id"]))
+            trip_advisor = (
+                principal_client.assigned_advisor
+                if principal_client and principal_client.assigned_advisor_id
+                else default_advisor
             )
-            if not pais or not tipo:
+            if not country or not vt:
                 continue
             marker = f"LEGACY_TRAVEL_GROUP_ID={group_id}"
-            viagem = self._find_by_exact_marker(Viagem, marker)
-            if not viagem:
-                viagem = Viagem.objects.create(
-                    assessor_responsavel=assessor_viagem,
-                    pais_destino=pais,
-                    tipo_visto=tipo,
-                    data_prevista_viagem=parse_date(process_row.get("data_prevista_viagem")) or datetime(2030, 1, 1).date(),
-                    data_prevista_retorno=parse_date(process_row.get("data_prevista_retorno")) or datetime(2030, 1, 2).date(),
-                    valor_assessoria=Decimal("0"),
-                    criado_por=actor,
-                    observacoes=marker,
+            trip = self._find_by_exact_marker(Trip, marker)
+            if not trip:
+                trip = Trip.objects.create(
+                    assigned_advisor=trip_advisor,
+                    destination_country=country,
+                    visa_type=vt,
+                    planned_departure_date=parse_date(process_row.get("data_prevista_viagem")) or datetime(2030, 1, 1).date(),
+                    planned_return_date=parse_date(process_row.get("data_prevista_retorno")) or datetime(2030, 1, 2).date(),
+                    advisory_fee=Decimal("0"),
+                    created_by=actor,
+                    notes=marker,
                 )
             else:
-                viagem.assessor_responsavel = assessor_viagem
-                viagem.pais_destino = pais
-                viagem.tipo_visto = tipo
-                viagem.data_prevista_viagem = parse_date(process_row.get("data_prevista_viagem")) or viagem.data_prevista_viagem
-                viagem.data_prevista_retorno = parse_date(process_row.get("data_prevista_retorno")) or viagem.data_prevista_retorno
-                viagem.criado_por = actor
-                if marker not in (viagem.observacoes or ""):
-                    viagem.observacoes = f"{marker}\n{viagem.observacoes or ''}".strip()
-                viagem.save()
+                trip.assigned_advisor = trip_advisor
+                trip.destination_country = country
+                trip.visa_type = vt
+                trip.planned_departure_date = parse_date(process_row.get("data_prevista_viagem")) or trip.planned_departure_date
+                trip.planned_return_date = parse_date(process_row.get("data_prevista_retorno")) or trip.planned_return_date
+                trip.created_by = actor
+                if marker not in (trip.notes or ""):
+                    trip.notes = f"{marker}\n{trip.notes or ''}".strip()
+                trip.save()
 
-            viagem_map[group_id] = viagem
+            trip_map[group_id] = trip
 
-        return viagem_map
+        return trip_map
 
-    def _import_processos(self, legacy, cliente_map, viagem_map, tipo_map, assessor_default, actor):
+    def _import_processes(self, legacy, client_map, trip_map, visa_type_map, default_advisor, actor):
         groups = self._build_process_groups(legacy)
-        processo_map = {}
+        process_map = {}
         for row in legacy["processos"]:
             process_id = int(row["id"])
             group_id = groups[process_id]
-            viagem = viagem_map.get(group_id)
-            cliente = cliente_map.get(int(row["cliente_id"]))
-            if not viagem or not cliente:
+            trip = trip_map.get(group_id)
+            client = client_map.get(int(row["cliente_id"]))
+            if not trip or not client:
                 continue
-            assessor_processo = (
-                cliente.assessor_responsavel
-                if cliente.assessor_responsavel_id
-                else assessor_default
+            process_advisor = (
+                client.assigned_advisor
+                if client.assigned_advisor_id
+                else default_advisor
             )
 
             marker = f"LEGACY_PROCESS_ID={process_id}"
-            processo = self._find_by_exact_marker(Processo, marker)
-            if not processo:
-                processo, _ = Processo.objects.get_or_create(
-                    viagem=viagem,
-                    cliente=cliente,
+            process = self._find_by_exact_marker(Process, marker)
+            if not process:
+                process, _ = Process.objects.get_or_create(
+                    trip=trip,
+                    client=client,
                     defaults={
-                        "assessor_responsavel": assessor_processo,
-                        "criado_por": actor,
-                        "observacoes": marker,
+                        "assigned_advisor": process_advisor,
+                        "created_by": actor,
+                        "notes": marker,
                     },
                 )
-            if marker not in (processo.observacoes or ""):
-                processo.observacoes = f"{marker}\n{processo.observacoes or ''}".strip()
-            processo.assessor_responsavel = assessor_processo
-            processo.criado_por = actor
-            processo.save()
+            if marker not in (process.notes or ""):
+                process.notes = f"{marker}\n{process.notes or ''}".strip()
+            process.assigned_advisor = process_advisor
+            process.created_by = actor
+            process.save()
 
-            tipo = tipo_map.get(int(row["tipo_visto_id"]))
-            ClienteViagem.objects.update_or_create(
-                viagem=viagem,
-                cliente=cliente,
-                defaults={"tipo_visto": tipo},
+            vt = visa_type_map.get(int(row["tipo_visto_id"]))
+            TripClient.objects.update_or_create(
+                trip=trip,
+                client=client,
+                defaults={"visa_type": vt},
             )
-            processo_map[process_id] = processo
-        return processo_map
+            process_map[process_id] = process
+        return process_map
 
     def _collect_legacy_partner_links(self, legacy):
         links = {}
@@ -722,16 +729,16 @@ class Command(BaseCommand):
             links.setdefault(cliente_id, parceiro_id)
         return links
 
-    def _link_clientes_parceiros(self, cliente_map, parceiro_map, parceiro_links):
+    def _link_clients_partners(self, client_map, partner_map, partner_links):
         linked = 0
-        for legacy_cliente_id, legacy_parceiro_id in parceiro_links.items():
-            cliente = cliente_map.get(legacy_cliente_id)
-            parceiro = parceiro_map.get(legacy_parceiro_id)
-            if not cliente or not parceiro:
+        for legacy_client_id, legacy_partner_id in partner_links.items():
+            client = client_map.get(legacy_client_id)
+            partner = partner_map.get(legacy_partner_id)
+            if not client or not partner:
                 continue
-            if cliente.parceiro_indicador_id != parceiro.pk:
-                cliente.parceiro_indicador = parceiro
-                cliente.save(update_fields=["parceiro_indicador", "atualizado_em"])
+            if client.referring_partner_id != partner.pk:
+                client.referring_partner = partner
+                client.save(update_fields=["referring_partner", "updated_at"])
             linked += 1
         return linked
 
@@ -756,7 +763,7 @@ class Command(BaseCommand):
             )
         return situacao_by_id, cronograma_by_process
 
-    def _build_expected_stage_state(self, statuses, status_by_name, cron_rows, situacao_by_id, fallback_conclusao_date):
+    def _build_expected_stage_state(self, statuses, status_by_name, cron_rows, situacao_by_id, fallback_date):
         state = {}
         mapped_rows = []
 
@@ -768,144 +775,144 @@ class Command(BaseCommand):
             if not status:
                 continue
 
-            prazo_dias_raw = str(cron_row.get("dias_prazo_finalizacao") or "").strip()
-            prazo_dias = int(prazo_dias_raw) if prazo_dias_raw.isdigit() else status.prazo_padrao_dias
-            concluida = cron_row.get("data_finalizacao") is not None
-            data_conclusao = parse_date(cron_row.get("data_finalizacao")) if concluida else None
+            raw_days = str(cron_row.get("dias_prazo_finalizacao") or "").strip()
+            days = int(raw_days) if raw_days.isdigit() else status.default_deadline_days
+            done = cron_row.get("data_finalizacao") is not None
+            completion = parse_date(cron_row.get("data_finalizacao")) if done else None
 
             state[status.pk] = {
-                "concluida": concluida,
-                "prazo_dias": prazo_dias,
-                "data_conclusao": data_conclusao,
+                "completed": done,
+                "deadline_days": days,
+                "completion_date": completion,
             }
-            mapped_rows.append((status, concluida))
+            mapped_rows.append((status, done))
 
         if mapped_rows:
             current_status, current_done = mapped_rows[-1]
-            if normalize_text(current_status.nome) != "processo cancelado":
+            if normalize_text(current_status.name) != "processo cancelado":
                 for status in statuses:
-                    if status.ordem < current_status.ordem:
-                        base_state = state.get(status.pk, {})
+                    if status.order < current_status.order:
+                        base = state.get(status.pk, {})
                         state[status.pk] = {
-                            "concluida": True,
-                            "prazo_dias": base_state.get("prazo_dias", status.prazo_padrao_dias),
-                            "data_conclusao": base_state.get("data_conclusao") or fallback_conclusao_date,
+                            "completed": True,
+                            "deadline_days": base.get("deadline_days", status.default_deadline_days),
+                            "completion_date": base.get("completion_date") or fallback_date,
                         }
                 current_base = state.get(current_status.pk, {})
                 state[current_status.pk] = {
-                    "concluida": current_done,
-                    "prazo_dias": current_base.get("prazo_dias", current_status.prazo_padrao_dias),
-                    "data_conclusao": current_base.get("data_conclusao") or (fallback_conclusao_date if current_done else None),
+                    "completed": current_done,
+                    "deadline_days": current_base.get("deadline_days", current_status.default_deadline_days),
+                    "completion_date": current_base.get("completion_date") or (fallback_date if current_done else None),
                 }
 
         return state
 
-    def _build_status_name_map(self, tipo):
-        statuses = list(StatusProcesso.objects.filter(ativo=True, tipo_visto=tipo).order_by("ordem", "id"))
+    def _build_status_name_map(self, visa_type):
+        statuses = list(ProcessStatus.objects.filter(is_active=True, visa_type=visa_type).order_by("order", "id"))
         if not statuses:
-            statuses = list(StatusProcesso.objects.filter(ativo=True, tipo_visto__isnull=True).order_by("ordem", "id"))
-        by_name = {normalize_text(status.nome): status for status in statuses}
+            statuses = list(ProcessStatus.objects.filter(is_active=True, visa_type__isnull=True).order_by("order", "id"))
+        by_name = {normalize_text(s.name): s for s in statuses}
         return statuses, by_name
 
-    def _import_etapas_processo(self, legacy, processo_map, tipo_map):
+    def _import_process_stages(self, legacy, process_map, visa_type_map):
         updated = 0
         situacao_by_id, cronograma_by_process = self._legacy_cronograma_maps(legacy)
         for row in legacy["processos"]:
             process_id = int(row["id"])
-            processo = processo_map.get(process_id)
-            if not processo:
+            process = process_map.get(process_id)
+            if not process:
                 continue
 
-            tipo_visto_id = row.get("tipo_visto_id")
-            if not tipo_visto_id:
+            vt_id = row.get("tipo_visto_id")
+            if not vt_id:
                 continue
-            tipo = tipo_map.get(int(tipo_visto_id))
-            if not tipo:
+            vt = visa_type_map.get(int(vt_id))
+            if not vt:
                 continue
 
-            statuses, status_by_name = self._build_status_name_map(tipo)
+            statuses, status_by_name = self._build_status_name_map(vt)
             if not statuses:
                 continue
 
             cron_rows = cronograma_by_process.get(process_id, [])
-            fallback_conclusao_date = parse_date(row.get("updated_at"))
-            cronograma_state_by_status = self._build_expected_stage_state(
+            fallback_date = parse_date(row.get("updated_at"))
+            stage_state_by_status = self._build_expected_stage_state(
                 statuses=statuses,
                 status_by_name=status_by_name,
                 cron_rows=cron_rows,
                 situacao_by_id=situacao_by_id,
-                fallback_conclusao_date=fallback_conclusao_date,
+                fallback_date=fallback_date,
             )
 
             percentage = self._parse_legacy_percentage(row.get("percet_conclusao"))
-            concluida_count = int(round((percentage / 100) * len(statuses)))
-            concluida_count = max(0, min(len(statuses), concluida_count))
+            done_count = int(round((percentage / 100) * len(statuses)))
+            done_count = max(0, min(len(statuses), done_count))
 
             for index, status in enumerate(statuses):
                 if cron_rows:
-                    stage_state = cronograma_state_by_status.get(
+                    stage_state = stage_state_by_status.get(
                         status.pk,
                         {
-                            "concluida": False,
-                            "prazo_dias": status.prazo_padrao_dias,
-                            "data_conclusao": None,
+                            "completed": False,
+                            "deadline_days": status.default_deadline_days,
+                            "completion_date": None,
                         },
                     )
                 else:
                     stage_state = {
-                        "concluida": index < concluida_count,
-                        "prazo_dias": status.prazo_padrao_dias,
-                        "data_conclusao": fallback_conclusao_date if index < concluida_count else None,
+                        "completed": index < done_count,
+                        "deadline_days": status.default_deadline_days,
+                        "completion_date": fallback_date if index < done_count else None,
                     }
 
-                EtapaProcesso.objects.update_or_create(
-                    processo=processo,
+                ProcessStage.objects.update_or_create(
+                    process=process,
                     status=status,
                     defaults={
-                        "concluida": stage_state["concluida"],
-                        "prazo_dias": stage_state["prazo_dias"],
-                        "data_conclusao": stage_state["data_conclusao"],
-                        "ordem": status.ordem,
+                        "completed": stage_state["completed"],
+                        "deadline_days": stage_state["deadline_days"],
+                        "completion_date": stage_state["completion_date"],
+                        "order": status.order,
                     },
                 )
                 updated += 1
         return updated
 
-    def _import_financeiro(self, legacy, processo_map, assessor_default, actor):
+    def _import_financial(self, legacy, process_map, default_advisor, actor):
         created_or_updated = 0
         for row in legacy["entradas"]:
-            processo_id = row.get("processo_id")
-            if not processo_id:
+            process_id = row.get("processo_id")
+            if not process_id:
                 continue
-            processo = processo_map.get(int(processo_id))
-            if not processo:
+            process = process_map.get(int(process_id))
+            if not process:
                 continue
 
             marker = f"LEGACY_FINANCE_ENTRY_ID={int(row['id'])}"
-            financeiro = self._find_by_exact_marker(Financeiro, marker)
-            status = StatusFinanceiro.PAGO if parse_bool(row.get("pago")) else StatusFinanceiro.PENDENTE
-            if not financeiro:
-                financeiro, _ = Financeiro.objects.update_or_create(
-                    viagem=processo.viagem,
-                    cliente=processo.cliente,
+            record = self._find_by_exact_marker(FinancialRecord, marker)
+            status = FinancialStatus.PAID if parse_bool(row.get("pago")) else FinancialStatus.PENDING
+            if not record:
+                record, _ = FinancialRecord.objects.update_or_create(
+                    trip=process.trip,
+                    client=process.client,
                     defaults={
-                        "assessor_responsavel": processo.assessor_responsavel,
-                        "valor": parse_decimal(row.get("valor")),
-                        "data_pagamento": parse_date(row.get("data")) if status == StatusFinanceiro.PAGO else None,
+                        "assigned_advisor": process.assigned_advisor,
+                        "amount": parse_decimal(row.get("valor")),
+                        "payment_date": parse_date(row.get("data")) if status == FinancialStatus.PAID else None,
                         "status": status,
-                        "observacoes": marker,
-                        "criado_por": actor,
+                        "notes": marker,
+                        "created_by": actor,
                     },
                 )
             else:
-                financeiro.assessor_responsavel = processo.assessor_responsavel
-                financeiro.valor = parse_decimal(row.get("valor"))
-                financeiro.data_pagamento = parse_date(row.get("data")) if status == StatusFinanceiro.PAGO else None
-                financeiro.status = status
-                financeiro.criado_por = actor
-                if marker not in (financeiro.observacoes or ""):
-                    financeiro.observacoes = f"{marker}\n{financeiro.observacoes or ''}".strip()
-                financeiro.save()
+                record.assigned_advisor = process.assigned_advisor
+                record.amount = parse_decimal(row.get("valor"))
+                record.payment_date = parse_date(row.get("data")) if status == FinancialStatus.PAID else None
+                record.status = status
+                record.created_by = actor
+                if marker not in (record.notes or ""):
+                    record.notes = f"{marker}\n{record.notes or ''}".strip()
+                record.save()
             created_or_updated += 1
         return created_or_updated
 
@@ -991,9 +998,9 @@ class Command(BaseCommand):
                     return raw_value
         return None
 
-    def _import_respostas_formulario(self, legacy, processo_map, tipo_map):
+    def _import_form_answers(self, legacy, process_map, visa_type_map):
         payload_maps = self._legacy_process_payload_maps(legacy)
-        legacy_clientes_by_id = {
+        legacy_clients_by_id = {
             int(item["id"]): item
             for item in legacy["clientes"]
             if item.get("id") is not None
@@ -1001,104 +1008,104 @@ class Command(BaseCommand):
         total = 0
         for legacy_process in legacy["processos"]:
             process_id = int(legacy_process["id"])
-            processo = processo_map.get(process_id)
-            if not processo:
+            process = process_map.get(process_id)
+            if not process:
                 continue
 
-            tipo_visto_id = legacy_process.get("tipo_visto_id")
-            if not tipo_visto_id:
+            vt_id = legacy_process.get("tipo_visto_id")
+            if not vt_id:
                 continue
 
-            tipo = tipo_map.get(int(tipo_visto_id))
-            if not tipo:
+            vt = visa_type_map.get(int(vt_id))
+            if not vt:
                 continue
-            formulario = FormularioVisto.objects.filter(tipo_visto=tipo, ativo=True).first()
-            if not formulario:
+            form = VisaForm.objects.filter(visa_type=vt, is_active=True).first()
+            if not form:
                 continue
 
-            cliente_id = legacy_process.get("cliente_id")
-            if not cliente_id:
+            client_id = legacy_process.get("cliente_id")
+            if not client_id:
                 continue
-            cliente_legacy = legacy_clientes_by_id.get(int(cliente_id))
-            if not cliente_legacy:
+            legacy_client = legacy_clients_by_id.get(int(client_id))
+            if not legacy_client:
                 continue
 
             context = {
-                "cliente": cliente_legacy,
+                "cliente": legacy_client,
                 "processo": legacy_process,
             }
             for table_name, table_map in payload_maps.items():
                 context[table_name] = table_map.get(process_id, {})
 
-            perguntas = PerguntaFormulario.objects.filter(formulario=formulario, ativo=True).order_by("ordem")
-            RespostaFormulario.objects.filter(
-                viagem=processo.viagem,
-                cliente=processo.cliente,
-                pergunta__in=perguntas,
+            questions = FormQuestion.objects.filter(form=form, is_active=True).order_by("order")
+            FormAnswer.objects.filter(
+                trip=process.trip,
+                client=process.client,
+                question__in=questions,
             ).delete()
-            for pergunta in perguntas:
-                answer = self._extract_answer_value(pergunta.pergunta, context)
+            for question in questions:
+                answer = self._extract_answer_value(question.question, context)
                 if answer in (None, ""):
                     continue
 
                 defaults = {
-                    "resposta_texto": "",
-                    "resposta_data": None,
-                    "resposta_numero": None,
-                    "resposta_booleano": None,
-                    "resposta_selecao": None,
+                    "answer_text": "",
+                    "answer_date": None,
+                    "answer_number": None,
+                    "answer_boolean": None,
+                    "answer_select": None,
                 }
 
-                if pergunta.tipo_campo == "data":
+                if question.field_type == "date":
                     parsed_date = parse_date(answer)
                     if not parsed_date:
                         continue
-                    defaults["resposta_data"] = parsed_date
-                elif pergunta.tipo_campo == "numero":
+                    defaults["answer_date"] = parsed_date
+                elif question.field_type == "number":
                     parsed_number = parse_decimal_strict(answer)
                     if parsed_number is None:
                         continue
-                    defaults["resposta_numero"] = parsed_number
-                elif pergunta.tipo_campo == "booleano":
+                    defaults["answer_number"] = parsed_number
+                elif question.field_type == "boolean":
                     parsed_bool = parse_bool(answer)
                     if parsed_bool is None:
                         continue
-                    defaults["resposta_booleano"] = parsed_bool
-                elif pergunta.tipo_campo == "selecao":
-                    selected = self._match_option(pergunta, answer)
+                    defaults["answer_boolean"] = parsed_bool
+                elif question.field_type == "select":
+                    selected = self._match_option(question, answer)
                     if selected:
-                        defaults["resposta_selecao"] = selected
+                        defaults["answer_select"] = selected
                     else:
                         continue
                 else:
-                    defaults["resposta_texto"] = str(answer)
+                    defaults["answer_text"] = str(answer)
 
-                RespostaFormulario.objects.update_or_create(
-                    viagem=processo.viagem,
-                    cliente=processo.cliente,
-                    pergunta=pergunta,
+                FormAnswer.objects.update_or_create(
+                    trip=process.trip,
+                    client=process.client,
+                    question=question,
                     defaults=defaults,
                 )
                 total += 1
         return total
 
-    def _match_option(self, pergunta, value):
+    def _match_option(self, question, value):
         needle = normalize_text(value)
         if not needle:
             return None
-        options = OpcaoSelecao.objects.filter(pergunta=pergunta, ativo=True).order_by("ordem")
+        options = SelectOption.objects.filter(question=question, is_active=True).order_by("order")
         exact = None
         partial = None
         for option in options:
-            text = normalize_text(option.texto)
-            if text == needle:
+            option_text = normalize_text(option.text)
+            if option_text == needle:
                 exact = option
                 break
-            if needle in text and partial is None:
+            if needle in option_text and partial is None:
                 partial = option
         return exact or partial
 
-    def _strict_sql_orm_validation(self, legacy, cliente_map, processo_map):
+    def _strict_sql_orm_validation(self, legacy, client_map, process_map):
         legacy_process_map = {
             int(row["id"]): row
             for row in legacy["processos"]
@@ -1113,50 +1120,49 @@ class Command(BaseCommand):
         situacao_by_id, cronograma_by_process = self._legacy_cronograma_maps(legacy)
 
         stage_mismatches = []
-        for process_id, processo in processo_map.items():
+        for process_id, process in process_map.items():
             legacy_row = legacy_process_map.get(process_id)
             if not legacy_row:
                 stage_mismatches.append(f"Processo legado {process_id} nao encontrado para comparar etapas")
                 continue
 
-            tipo_legacy_id = legacy_row.get("tipo_visto_id")
-            if not tipo_legacy_id:
+            vt_legacy_id = legacy_row.get("tipo_visto_id")
+            if not vt_legacy_id:
                 continue
 
-            tipo_viagem = processo.viagem.tipo_visto
-            statuses, status_by_name = self._build_status_name_map(tipo_viagem)
+            trip_vt = process.trip.visa_type
+            statuses, status_by_name = self._build_status_name_map(trip_vt)
             if not statuses:
                 continue
 
-            cronograma_state_by_status = {}
             cron_rows = cronograma_by_process.get(process_id, [])
-            fallback_conclusao_date = parse_date(legacy_row.get("updated_at"))
-            cronograma_state_by_status = self._build_expected_stage_state(
+            fallback_date = parse_date(legacy_row.get("updated_at"))
+            stage_state_by_status = self._build_expected_stage_state(
                 statuses=statuses,
                 status_by_name=status_by_name,
                 cron_rows=cron_rows,
                 situacao_by_id=situacao_by_id,
-                fallback_conclusao_date=fallback_conclusao_date,
+                fallback_date=fallback_date,
             )
 
             percentage = self._parse_legacy_percentage(legacy_row.get("percet_conclusao"))
-            concluida_count = int(round((percentage / 100) * len(statuses)))
-            concluida_count = max(0, min(len(statuses), concluida_count))
+            done_count = int(round((percentage / 100) * len(statuses)))
+            done_count = max(0, min(len(statuses), done_count))
 
             for index, status in enumerate(statuses):
                 if cron_rows:
-                    expected_done = cronograma_state_by_status.get(status.pk, {}).get("concluida", False)
+                    expected_done = stage_state_by_status.get(status.pk, {}).get("completed", False)
                 else:
-                    expected_done = index < concluida_count
-                etapa = EtapaProcesso.objects.filter(processo=processo, status=status).first()
-                if not etapa:
+                    expected_done = index < done_count
+                stage = ProcessStage.objects.filter(process=process, status=status).first()
+                if not stage:
                     stage_mismatches.append(
-                        f"Processo {process_id}: etapa '{status.nome}' ausente no ORM"
+                        f"Processo {process_id}: etapa '{status.name}' ausente no ORM"
                     )
                     continue
-                if etapa.concluida != expected_done:
+                if stage.completed != expected_done:
                     stage_mismatches.append(
-                        f"Processo {process_id}: etapa '{status.nome}' esperado={expected_done} orm={etapa.concluida}"
+                        f"Processo {process_id}: etapa '{status.name}' esperado={expected_done} orm={stage.completed}"
                     )
 
         partner_mismatches = []
@@ -1166,18 +1172,18 @@ class Command(BaseCommand):
             if row.get("id") is not None
         }
         expected_links = self._collect_legacy_partner_links(legacy)
-        for legacy_cliente_id, legacy_partner_id in expected_links.items():
-            cliente = cliente_map.get(legacy_cliente_id)
-            if not cliente or not cliente.parceiro_indicador_id:
+        for legacy_client_id, legacy_partner_id in expected_links.items():
+            client = client_map.get(legacy_client_id)
+            if not client or not client.referring_partner_id:
                 partner_mismatches.append(
-                    f"Cliente legado {legacy_cliente_id}: parceiro ausente no ORM"
+                    f"Cliente legado {legacy_client_id}: parceiro ausente no ORM"
                 )
                 continue
             expected_email = legacy_partner_by_id.get(legacy_partner_id)
-            current_email = str(cliente.parceiro_indicador.email or "").strip().lower()
+            current_email = str(client.referring_partner.email or "").strip().lower()
             if expected_email and expected_email != current_email:
                 partner_mismatches.append(
-                    f"Cliente legado {legacy_cliente_id}: parceiro esperado={expected_email} orm={current_email}"
+                    f"Cliente legado {legacy_client_id}: parceiro esperado={expected_email} orm={current_email}"
                 )
 
         form_mismatches = []
@@ -1189,14 +1195,14 @@ class Command(BaseCommand):
             "data validade",
             "cidade emissao",
         )
-        for process_id, processo in processo_map.items():
+        for process_id, process in process_map.items():
             legacy_row = legacy_process_map.get(process_id)
             if not legacy_row:
                 continue
             expected_concluded_form = parse_bool(legacy_row.get("conclusao_formulario")) is True
-            orm_qs = RespostaFormulario.objects.filter(
-                viagem=processo.viagem,
-                cliente=processo.cliente,
+            orm_qs = FormAnswer.objects.filter(
+                trip=process.trip,
+                client=process.client,
             )
             orm_response_count = orm_qs.count()
             if expected_concluded_form and orm_response_count == 0:
@@ -1204,62 +1210,62 @@ class Command(BaseCommand):
                     f"Processo {process_id}: legado conclusao_formulario=1 mas ORM sem respostas"
                 )
 
-            formulario = FormularioVisto.objects.filter(tipo_visto=processo.viagem.tipo_visto, ativo=True).first()
-            legacy_cliente = legacy_client_map.get(int(legacy_row.get("cliente_id") or 0))
-            if not formulario or not legacy_cliente:
+            form = VisaForm.objects.filter(visa_type=process.trip.visa_type, is_active=True).first()
+            legacy_client = legacy_client_map.get(int(legacy_row.get("cliente_id") or 0))
+            if not form or not legacy_client:
                 continue
 
             context = {
-                "cliente": legacy_cliente,
+                "cliente": legacy_client,
                 "processo": legacy_row,
             }
             for table_name, table_map in payload_maps.items():
                 context[table_name] = table_map.get(process_id, {})
 
-            for pergunta in PerguntaFormulario.objects.filter(formulario=formulario, ativo=True).order_by("ordem"):
-                question_key = normalize_text(pergunta.pergunta)
-                if not any(alias in question_key for alias in critical_form_aliases):
+            for question in FormQuestion.objects.filter(form=form, is_active=True).order_by("order"):
+                q_key = normalize_text(question.question)
+                if not any(alias in q_key for alias in critical_form_aliases):
                     continue
-                expected_value = self._extract_answer_value(pergunta.pergunta, context)
+                expected_value = self._extract_answer_value(question.question, context)
                 if expected_value in (None, ""):
                     continue
-                resposta = orm_qs.filter(pergunta=pergunta).first()
-                if not resposta:
+                answer = orm_qs.filter(question=question).first()
+                if not answer:
                     form_mismatches.append(
-                        f"Processo {process_id}: pergunta '{pergunta.pergunta}' sem resposta no ORM"
+                        f"Processo {process_id}: pergunta '{question.question}' sem resposta no ORM"
                     )
                     continue
 
-                if pergunta.tipo_campo == "data":
+                if question.field_type == "date":
                     expected_date = parse_date(expected_value)
-                    if expected_date and resposta.resposta_data != expected_date:
+                    if expected_date and answer.answer_date != expected_date:
                         form_mismatches.append(
-                            f"Processo {process_id}: pergunta '{pergunta.pergunta}' data esperada={expected_date} orm={resposta.resposta_data}"
+                            f"Processo {process_id}: pergunta '{question.question}' data esperada={expected_date} orm={answer.answer_date}"
                         )
-                elif pergunta.tipo_campo == "numero":
+                elif question.field_type == "number":
                     expected_number = parse_decimal_strict(expected_value)
-                    if expected_number is not None and resposta.resposta_numero != expected_number:
+                    if expected_number is not None and answer.answer_number != expected_number:
                         form_mismatches.append(
-                            f"Processo {process_id}: pergunta '{pergunta.pergunta}' numero esperado={expected_number} orm={resposta.resposta_numero}"
+                            f"Processo {process_id}: pergunta '{question.question}' numero esperado={expected_number} orm={answer.answer_number}"
                         )
-                elif pergunta.tipo_campo == "booleano":
+                elif question.field_type == "boolean":
                     expected_bool = parse_bool(expected_value)
-                    if expected_bool is not None and resposta.resposta_booleano != expected_bool:
+                    if expected_bool is not None and answer.answer_boolean != expected_bool:
                         form_mismatches.append(
-                            f"Processo {process_id}: pergunta '{pergunta.pergunta}' booleano esperado={expected_bool} orm={resposta.resposta_booleano}"
+                            f"Processo {process_id}: pergunta '{question.question}' booleano esperado={expected_bool} orm={answer.answer_boolean}"
                         )
-                elif pergunta.tipo_campo == "selecao":
-                    expected_option = self._match_option(pergunta, expected_value)
-                    if expected_option and resposta.resposta_selecao_id != expected_option.pk:
+                elif question.field_type == "select":
+                    expected_option = self._match_option(question, expected_value)
+                    if expected_option and answer.answer_select_id != expected_option.pk:
                         form_mismatches.append(
-                            f"Processo {process_id}: pergunta '{pergunta.pergunta}' selecao esperada={expected_option.texto} orm={resposta.get_resposta_display()}"
+                            f"Processo {process_id}: pergunta '{question.question}' selecao esperada={expected_option.text} orm={answer.get_answer_display()}"
                         )
                 else:
                     expected_text_key = normalize_semantic_key(expected_value)
-                    actual_text_key = normalize_semantic_key(resposta.resposta_texto)
+                    actual_text_key = normalize_semantic_key(answer.answer_text)
                     if expected_text_key and actual_text_key and expected_text_key != actual_text_key:
                         form_mismatches.append(
-                            f"Processo {process_id}: pergunta '{pergunta.pergunta}' texto esperado={expected_value} orm={resposta.resposta_texto}"
+                            f"Processo {process_id}: pergunta '{question.question}' texto esperado={expected_value} orm={answer.answer_text}"
                         )
 
         return {
@@ -1271,44 +1277,44 @@ class Command(BaseCommand):
     def _print_validation_report(
         self,
         legacy,
-        cliente_map,
-        processo_map,
-        viagem_map,
-        cliente_issues,
-        etapas_count,
-        parceiros_linked_count,
-        financeiro_count,
-        respostas_count,
+        client_map,
+        process_map,
+        trip_map,
+        client_issues,
+        stages_count,
+        partners_linked_count,
+        financial_count,
+        answers_count,
     ):
-        issues_total = sum(1 for _, issues in cliente_issues.items() if issues)
+        issues_total = sum(1 for _, issues in client_issues.items() if issues)
         legacy_clients = len(legacy["clientes"])
         legacy_processes = len(legacy["processos"])
         legacy_groups = len(set(self._build_process_groups(legacy).values()))
 
         self.stdout.write("\n================= VALIDACAO LEGADO -> VISARY =================")
         self.stdout.write(f"SQL legado clientes: {legacy_clients}")
-        self.stdout.write(f"ORM importados clientes: {len(cliente_map)}")
+        self.stdout.write(f"ORM importados clientes: {len(client_map)}")
         self.stdout.write(f"SQL legado processos: {legacy_processes}")
-        self.stdout.write(f"ORM importados processos: {len(processo_map)}")
+        self.stdout.write(f"ORM importados processos: {len(process_map)}")
         self.stdout.write(f"SQL legado grupos de viagem: {legacy_groups}")
-        self.stdout.write(f"ORM importadas viagens: {len(viagem_map)}")
-        self.stdout.write(f"ORM etapas de processo atualizadas/criadas: {etapas_count}")
-        self.stdout.write(f"Clientes com parceiro legado vinculado: {parceiros_linked_count}")
-        self.stdout.write(f"ORM financeiro atualizados/criados: {financeiro_count}")
-        self.stdout.write(f"ORM respostas de formulario atualizadas/criadas: {respostas_count}")
+        self.stdout.write(f"ORM importadas viagens: {len(trip_map)}")
+        self.stdout.write(f"ORM etapas de processo atualizadas/criadas: {stages_count}")
+        self.stdout.write(f"Clientes com parceiro legado vinculado: {partners_linked_count}")
+        self.stdout.write(f"ORM financeiro atualizados/criados: {financial_count}")
+        self.stdout.write(f"ORM respostas de formulario atualizadas/criadas: {answers_count}")
         self.stdout.write(f"Clientes com inconsistencia de CPF marcada: {issues_total}")
-        assessor_counter = Counter(
-            cliente.assessor_responsavel.nome
-            for cliente in cliente_map.values()
-            if cliente.assessor_responsavel_id
+        advisor_counter = Counter(
+            client.assigned_advisor.name
+            for client in client_map.values()
+            if client.assigned_advisor_id
         )
-        for assessor_nome, quantidade in assessor_counter.items():
-            self.stdout.write(f"Clientes vinculados ao assessor {assessor_nome}: {quantidade}")
+        for advisor_name, count in advisor_counter.items():
+            self.stdout.write(f"Clientes vinculados ao assessor {advisor_name}: {count}")
 
         strict_report = self._strict_sql_orm_validation(
             legacy=legacy,
-            cliente_map=cliente_map,
-            processo_map=processo_map,
+            client_map=client_map,
+            process_map=process_map,
         )
         stage_issues = strict_report["stage_mismatches"]
         partner_issues = strict_report["partner_mismatches"]
@@ -1325,9 +1331,9 @@ class Command(BaseCommand):
             self.stdout.write(f" - {line}")
 
         if (
-            len(cliente_map) == legacy_clients
-            and len(processo_map) == legacy_processes
-            and len(viagem_map) == legacy_groups
+            len(client_map) == legacy_clients
+            and len(process_map) == legacy_processes
+            and len(trip_map) == legacy_groups
             and not stage_issues
             and not partner_issues
             and not form_issues

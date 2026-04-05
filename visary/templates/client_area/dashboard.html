@@ -222,46 +222,46 @@
 {% block app_content %}
 <div class="client-header">
     <div>
-        <h1>Bem-vindo, {{ cliente.nome_completo }}!</h1>
+        <h1>Bem-vindo, {{ client.full_name }}!</h1>
         <p>Gerencie suas viagens e formulários</p>
     </div>
-    <a href="{% url 'system:cliente_logout' %}" class="btn btn-outline">Sair</a>
+    <a href="{% url 'system:client_logout' %}" class="btn btn-outline">Sair</a>
 </div>
 
 {% if viagens %}
     <div class="viagens-grid">
-        {% for viagem in viagens %}
+        {% for trip in viagens %}
             <div class="viagem-card">
                 <div class="viagem-header">
-                    <h3>{{ viagem.pais_destino.nome }}</h3>
-                    <span class="viagem-badge">{{ viagem.tipo_visto.nome }}</span>
+                    <h3>{{ trip.destination_country.name }}</h3>
+                    <span class="viagem-badge">{{ trip.visa_type.name }}</span>
                 </div>
 
                 <div class="viagem-info">
                     <div class="viagem-info-item">
                         <strong>Data da Viagem:</strong>
-                        <span>{{ viagem.data_prevista_viagem|date:"d/m/Y" }}</span>
+                        <span>{{ trip.planned_departure_date|date:"d/m/Y" }}</span>
                     </div>
                     <div class="viagem-info-item">
                         <strong>Data de Retorno:</strong>
-                        <span>{{ viagem.data_prevista_retorno|date:"d/m/Y" }}</span>
+                        <span>{{ trip.planned_return_date|date:"d/m/Y" }}</span>
                     </div>
                     <div class="viagem-info-item">
                         <strong>Assessor:</strong>
-                        <span>{{ viagem.assessor_responsavel.nome }}</span>
+                        <span>{{ trip.assigned_advisor.name }}</span>
                     </div>
                 </div>
 
-                {% if viagem.tipo_visto.formulario %}
+                {% if trip.visa_type.form %}
                 <div class="viajantes-section">
-                    {% for c in viagem.clientes.all %}
+                    {% for c in trip.clients.all %}
                         <div class="viajante-card">
                             <div class="viajante-info">
-                                <span class="viajante-nome">{{ c.nome }}</span>
+                                <span class="viajante-nome">{{ c.name }}</span>
                                 <span class="viajante-cpf">{{ c.cpf }}</span>
                             </div>
                             <div class="viajante-actions">
-                                <a href="{% url 'system:cliente_visualizar_formulario' viagem.pk %}" class="btn btn-primary">
+                                <a href="{% url 'system:client_view_form' trip.pk %}" class="btn btn-primary">
                                     Preencher Formulário
                                 </a>
                             </div>
@@ -278,7 +278,7 @@
     </div>
 {% else %}
     <div class="empty-state">
-        <h3>Nenhuma viagem encontrada</h3>
+        <h3>Nenhuma trip encontrada</h3>
         <p>Você ainda não está vinculado a nenhuma viagem. Entre em contato com seu assessor.</p>
     </div>
 {% endif %}

@@ -1,209 +1,196 @@
-   
-                                          
-   
-
 from django.conf import settings
 from django.db import models
 
-from .permission_models import UsuarioConsultoria
+from .permission_models import ConsultancyUser
 
 
-class PaisDestino(models.Model):
-                                       
-
-    nome = models.CharField("Nome do país", max_length=100, unique=True)
-    codigo_iso = models.CharField("Código ISO", max_length=3, blank=True)
-    ativo = models.BooleanField("Ativo", default=True)
-    criado_por = models.ForeignKey(
+class DestinationCountry(models.Model):
+    name = models.CharField("Nome do país", max_length=100, unique=True)
+    iso_code = models.CharField("Código ISO", max_length=3, blank=True)
+    is_active = models.BooleanField("Ativo", default=True)
+    created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name="paises_destino_criados",
+        related_name="created_destination_countries",
         verbose_name="Criado por",
     )
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ("nome",)
+        ordering = ("name",)
         verbose_name = "País de Destino"
         verbose_name_plural = "Países de Destino"
 
-    def __str__(self) -> str:
-        return self.nome
+    def __str__(self):
+        return self.name
 
 
-class TipoVisto(models.Model):
-                                                       
-
-    pais_destino = models.ForeignKey(
-        PaisDestino,
+class VisaType(models.Model):
+    destination_country = models.ForeignKey(
+        DestinationCountry,
         on_delete=models.CASCADE,
-        related_name="tipos_visto",
+        related_name="visa_types",
         verbose_name="País de destino",
     )
-    nome = models.CharField("Nome do visto", max_length=100)
-    descricao = models.TextField("Descrição", blank=True)
-    ativo = models.BooleanField("Ativo", default=True)
-    criado_por = models.ForeignKey(
+    name = models.CharField("Nome do visto", max_length=100)
+    description = models.TextField("Descrição", blank=True)
+    is_active = models.BooleanField("Ativo", default=True)
+    created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name="tipos_visto_criados",
+        related_name="created_visa_types",
         verbose_name="Criado por",
     )
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ("pais_destino", "nome")
+        ordering = ("destination_country", "name")
         verbose_name = "Tipo de Visto"
         verbose_name_plural = "Tipos de Visto"
-        unique_together = [("pais_destino", "nome")]
+        unique_together = [("destination_country", "name")]
 
-    def __str__(self) -> str:
-        return f"{self.nome} - {self.pais_destino.nome}"
+    def __str__(self):
+        return f"{self.name} - {self.destination_country.name}"
 
 
-class Viagem(models.Model):
-                                             
-
-    assessor_responsavel = models.ForeignKey(
-        UsuarioConsultoria,
+class Trip(models.Model):
+    assigned_advisor = models.ForeignKey(
+        ConsultancyUser,
         on_delete=models.PROTECT,
-        related_name="viagens_assessoradas",
+        related_name="advised_trips",
         verbose_name="Assessor responsável",
     )
-    pais_destino = models.ForeignKey(
-        PaisDestino,
+    destination_country = models.ForeignKey(
+        DestinationCountry,
         on_delete=models.PROTECT,
-        related_name="viagens",
+        related_name="trips",
         verbose_name="País de destino",
     )
-    tipo_visto = models.ForeignKey(
-        TipoVisto,
+    visa_type = models.ForeignKey(
+        VisaType,
         on_delete=models.PROTECT,
-        related_name="viagens",
+        related_name="trips",
         verbose_name="Tipo de visto",
     )
-    data_prevista_viagem = models.DateField("Data prevista da viagem")
-    data_prevista_retorno = models.DateField("Data prevista de retorno")
-    valor_assessoria = models.DecimalField(
+    planned_departure_date = models.DateField("Data prevista da viagem")
+    planned_return_date = models.DateField("Data prevista de retorno")
+    advisory_fee = models.DecimalField(
         "Valor assessoria Visary",
         max_digits=10,
         decimal_places=2,
         default=0.00,
     )
-    clientes = models.ManyToManyField(
-        "system.ClienteConsultoria",
-        related_name="viagens",
+    clients = models.ManyToManyField(
+        "system.ConsultancyClient",
+        related_name="trips",
         verbose_name="Clientes vinculados",
         blank=True,
-        through="ClienteViagem",
-        through_fields=("viagem", "cliente"),
+        through="TripClient",
+        through_fields=("trip", "client"),
     )
-    observacoes = models.TextField("Observações", blank=True)
-    criado_por = models.ForeignKey(
+    notes = models.TextField("Observações", blank=True)
+    created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name="viagens_criadas",
+        related_name="created_trips",
         verbose_name="Criado por",
     )
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
-        ordering = ("-data_prevista_viagem", "-criado_em")
+        ordering = ("-planned_departure_date", "-created_at")
         verbose_name = "Viagem"
         verbose_name_plural = "Viagens"
 
-    def __str__(self) -> str:
-        return f"{self.pais_destino.nome} - {self.data_prevista_viagem.strftime('%d/%m/%Y')}"
+    def __str__(self):
+        return f"{self.destination_country.name} - {self.planned_departure_date.strftime('%d/%m/%Y')}"
 
 
-class ClienteViagem(models.Model):
-    """Vínculo entre cliente e viagem, incluindo papel (principal/dependente) por viagem."""
+ROLE_CHOICES = [
+    ("primary", "Principal"),
+    ("dependent", "Dependente"),
+]
 
-    PAPEL_CHOICES = [
-        ("principal", "Principal"),
-        ("dependente", "Dependente"),
-    ]
 
-    viagem = models.ForeignKey(
-        Viagem,
+class TripClient(models.Model):
+    trip = models.ForeignKey(
+        Trip,
         on_delete=models.CASCADE,
-        related_name="clientes_viagem",
+        related_name="trip_clients",
         verbose_name="Viagem",
     )
-    cliente = models.ForeignKey(
-        "system.ClienteConsultoria",
+    client = models.ForeignKey(
+        "system.ConsultancyClient",
         on_delete=models.CASCADE,
-        related_name="viagens_cliente",
+        related_name="client_trips",
         verbose_name="Cliente",
     )
-    tipo_visto = models.ForeignKey(
-        TipoVisto,
+    visa_type = models.ForeignKey(
+        VisaType,
         on_delete=models.PROTECT,
-        related_name="clientes_viagem_tipo_visto",
+        related_name="trip_client_visa_types",
         verbose_name="Tipo de visto",
         null=True,
         blank=True,
-        help_text="Tipo de visto específico para este cliente. Se não informado, usa o tipo de visto da viagem.",
     )
-    papel = models.CharField(
+    role = models.CharField(
         "Papel na viagem",
         max_length=20,
-        choices=PAPEL_CHOICES,
-        default="dependente",
+        choices=ROLE_CHOICES,
+        default="dependent",
     )
-    cliente_principal_viagem = models.ForeignKey(
-        "system.ClienteConsultoria",
+    trip_primary_client = models.ForeignKey(
+        "system.ConsultancyClient",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="dependentes_viagem",
+        related_name="trip_dependents",
         verbose_name="Cliente principal nesta viagem",
-        help_text="Se dependente, quem é o principal NESTA viagem.",
     )
-    criado_em = models.DateTimeField("Criado em", auto_now_add=True)
-    atualizado_em = models.DateTimeField("Atualizado em", auto_now=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
 
     class Meta:
         verbose_name = "Cliente na Viagem"
         verbose_name_plural = "Clientes na Viagem"
-        unique_together = [("viagem", "cliente")]
+        unique_together = [("trip", "client")]
         constraints = [
             models.UniqueConstraint(
-                fields=["viagem"],
-                condition=models.Q(papel="principal"),
-                name="unique_principal_per_viagem",
+                fields=["trip"],
+                condition=models.Q(role="primary"),
+                name="unique_primary_per_trip",
             ),
         ]
 
     def clean(self):
         from django.core.exceptions import ValidationError
 
-        if self.papel == "principal" and self.cliente_principal_viagem is not None:
+        if self.role == "primary" and self.trip_primary_client is not None:
             raise ValidationError(
-                {"cliente_principal_viagem": "O cliente principal não pode ter um principal vinculado."}
+                {"trip_primary_client": "O cliente principal não pode ter um principal vinculado."}
             )
-        if self.papel == "dependente":
-            if self.cliente_principal_viagem is None:
+        if self.role == "dependent":
+            if self.trip_primary_client is None:
                 raise ValidationError(
-                    {"cliente_principal_viagem": "Dependente deve ter um cliente principal nesta viagem."}
+                    {"trip_primary_client": "Dependente deve ter um cliente principal nesta viagem."}
                 )
-            if self.cliente_principal_viagem_id == self.cliente_id:
+            if self.trip_primary_client_id == self.client_id:
                 raise ValidationError(
-                    {"cliente_principal_viagem": "Um cliente não pode ser principal de si mesmo."}
+                    {"trip_primary_client": "Um cliente não pode ser principal de si mesmo."}
                 )
 
     @property
-    def is_principal_na_viagem(self) -> bool:
-        return self.papel == "principal"
+    def is_primary_in_trip(self):
+        return self.role == "primary"
 
     @property
-    def is_dependente_na_viagem(self) -> bool:
-        return self.papel == "dependente"
+    def is_dependent_in_trip(self):
+        return self.role == "dependent"
 
-    def __str__(self) -> str:
-        tipo_visto_str = f" - {self.tipo_visto}" if self.tipo_visto else ""
-        papel_str = f" ({self.get_papel_display()})"
-        return f"{self.cliente.nome_completo} em {self.viagem}{tipo_visto_str}{papel_str}"
+    def __str__(self):
+        visa_str = f" - {self.visa_type}" if self.visa_type else ""
+        role_str = f" ({self.get_role_display()})"
+        return f"{self.client.full_name} em {self.trip}{visa_str}{role_str}"

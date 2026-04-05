@@ -1,45 +1,44 @@
 from django import forms
 from django.contrib.auth.hashers import make_password
 
-from system.models import Perfil, UsuarioConsultoria
+from system.models import ConsultancyUser, Profile
 
 
-class UsuarioConsultoriaForm(forms.ModelForm):
-    senha = forms.CharField(
+class ConsultancyUserForm(forms.ModelForm):
+    raw_password = forms.CharField(
         label="Senha",
         widget=forms.PasswordInput(attrs={"placeholder": "Defina uma senha segura"}),
     )
 
     class Meta:
-        model = UsuarioConsultoria
-        fields = ["nome", "email", "senha", "perfil", "ativo"]
+        model = ConsultancyUser
+        fields = ["name", "email", "raw_password", "profile", "is_active"]
         widgets = {
-            "nome": forms.TextInput(attrs={"placeholder": "Ex.: Ana Souza"}),
+            "name": forms.TextInput(attrs={"placeholder": "Ex.: Ana Souza"}),
             "email": forms.EmailInput(attrs={"placeholder": "ana@empresa.com"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["perfil"].queryset = Perfil.objects.filter(ativo=True).order_by("nome")
+        self.fields["profile"].queryset = Profile.objects.filter(is_active=True).order_by("name")
         if self.instance.pk:
-            self.fields["senha"].required = False
-            self.fields["senha"].widget.attrs[
-                "placeholder"
-            ] = "Deixe em branco para manter a senha atual"
+            self.fields["raw_password"].required = False
+            self.fields["raw_password"].widget.attrs["placeholder"] = (
+                "Deixe em branco para manter a senha atual"
+            )
 
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
-        if UsuarioConsultoria.objects.exclude(pk=self.instance.pk).filter(email=email).exists():
+        if ConsultancyUser.objects.exclude(pk=self.instance.pk).filter(email=email).exists():
             raise forms.ValidationError("Já existe um usuário com este e-mail.")
         return email
 
     def save(self, commit=True):
-        usuario = super().save(commit=False)
-        senha_plana = self.cleaned_data.get("senha")
-        if senha_plana:
-            usuario.senha = make_password(senha_plana)
+        user_obj = super().save(commit=False)
+        raw = self.cleaned_data.get("raw_password")
+        if raw:
+            user_obj.password = make_password(raw)
         if commit:
-            usuario.save()
+            user_obj.save()
             self.save_m2m()
-        return usuario
-
+        return user_obj

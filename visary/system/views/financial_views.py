@@ -1,7 +1,3 @@
-   
-                              
-   
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -9,139 +5,142 @@ from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
-from system.forms import DarBaixaFinanceiroForm
-from system.models import Financeiro
-from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos
+from system.forms import FinancialSettlementForm
+from system.models import ConsultancyClient, FinancialRecord, FinancialStatus
+from system.views.client_views import get_user_consultant, user_can_manage_all
 
 
-def _aplicar_filtros_financeiro(registros, request):
-    filtros = {
-        "cliente": request.GET.get("cliente", "").strip(),
-        "assessor": request.GET.get("assessor", "").strip(),
+def _apply_financial_filters(records, request):
+    filters = {
+        "client": request.GET.get("client", "").strip(),
+        "advisor": request.GET.get("advisor", "").strip(),
         "status": request.GET.get("status", "").strip(),
-        "data_inicio": request.GET.get("data_inicio", "").strip(),
-        "data_fim": request.GET.get("data_fim", "").strip(),
+        "date_start": request.GET.get("date_start", "").strip(),
+        "date_end": request.GET.get("date_end", "").strip(),
     }
 
-    if filtros["cliente"]:
-        registros = registros.filter(
-            Q(cliente__nome__icontains=filtros["cliente"]) |
-            Q(cliente__email__icontains=filtros["cliente"])
+    if filters["client"]:
+        records = records.filter(
+            Q(client__first_name__icontains=filters["client"]) |
+            Q(client__email__icontains=filters["client"])
         )
-    if filtros["assessor"]:
-        registros = registros.filter(
-            Q(assessor_responsavel__nome__icontains=filtros["assessor"]) |
-            Q(assessor_responsavel__email__icontains=filtros["assessor"])
+    if filters["advisor"]:
+        records = records.filter(
+            Q(assigned_advisor__name__icontains=filters["advisor"]) |
+            Q(assigned_advisor__email__icontains=filters["advisor"])
         )
-    if filtros["status"]:
-        registros = registros.filter(status=filtros["status"])
-    if filtros["data_inicio"]:
-        registros = registros.filter(criado_em__date__gte=filtros["data_inicio"])
-    if filtros["data_fim"]:
-        registros = registros.filter(criado_em__date__lte=filtros["data_fim"])
+    if filters["status"]:
+        records = records.filter(status=filters["status"])
+    if filters["date_start"]:
+        records = records.filter(created_at__date__gte=filters["date_start"])
+    if filters["date_end"]:
+        records = records.filter(created_at__date__lte=filters["date_end"])
 
-    return registros, filtros
+    return records, filters
 
 
 @login_required
-def home_financeiro(request):
-                                                        
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def home_financial(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-                  
-    registros = Financeiro.objects.select_related(
-        "viagem",
-        "cliente",
-                "assessor_responsavel",
-    ).order_by("-criado_em")
-    registros, filtros = _aplicar_filtros_financeiro(registros, request)
+    records = FinancialRecord.objects.select_related(
+        "trip",
+        "client",
+        "assigned_advisor",
+    ).order_by("-created_at")
+    records, filters = _apply_financial_filters(records, request)
 
-    total_registros = registros.count()
-    total_pendente = registros.filter(status="pendente").count()
-    total_pago = registros.filter(status="pago").count()
-    
-                 
-    valor_total = registros.aggregate(Sum("valor"))["valor__sum"] or 0
-    valor_pago = registros.filter(status="pago").aggregate(Sum("valor"))["valor__sum"] or 0
-    valor_pendente = registros.filter(status="pendente").aggregate(Sum("valor"))["valor__sum"] or 0
+    total_records = records.count()
+    total_pending = records.filter(status=FinancialStatus.PENDING).count()
+    total_paid = records.filter(status=FinancialStatus.PAID).count()
 
-                       
-    ultimos_registros = registros[:10]
+    total_amount = records.aggregate(Sum("amount"))["amount__sum"] or 0
+    paid_amount = records.filter(status=FinancialStatus.PAID).aggregate(Sum("amount"))["amount__sum"] or 0
+    pending_amount = records.filter(status=FinancialStatus.PENDING).aggregate(Sum("amount"))["amount__sum"] or 0
 
-    contexto = {
-        "total_registros": total_registros,
-        "total_pendente": total_pendente,
-        "total_pago": total_pago,
-        "valor_total": valor_total,
-        "valor_pago": valor_pago,
-        "valor_pendente": valor_pendente,
-        "ultimos_registros": ultimos_registros,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "filtros": filtros,
+    latest_records = records[:10]
+
+    clients = ConsultancyClient.objects.filter(
+        primary_client__isnull=True
+    ).order_by("first_name")
+
+    context = {
+        "total_records": total_records,
+        "total_pending": total_pending,
+        "total_paid": total_paid,
+        "total_amount": total_amount,
+        "paid_amount": paid_amount,
+        "pending_amount": pending_amount,
+        "latest_records": latest_records,
+        "user_profile": consultant.profile.name if consultant else None,
+        "filters_dict": filters,
+        "clients": clients,
     }
 
-    return render(request, "financial/home_financeiro.html", contexto)
+    return render(request, "financial/home_financial.html", context)
 
 
 @login_required
-def listar_financeiro(request):
-                                                           
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def list_financial(request):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-    registros = Financeiro.objects.select_related(
-        "viagem",
-        "cliente",
-                "assessor_responsavel",
-    ).order_by("-criado_em")
-    registros, filtros = _aplicar_filtros_financeiro(registros, request)
+    records = FinancialRecord.objects.select_related(
+        "trip",
+        "client",
+        "assigned_advisor",
+    ).order_by("-created_at")
+    records, filters = _apply_financial_filters(records, request)
 
-    contexto = {
-        "registros": registros,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
-        "filtros": filtros,
+    clients = ConsultancyClient.objects.filter(
+        primary_client__isnull=True
+    ).order_by("first_name")
+
+    context = {
+        "records": records,
+        "user_profile": consultant.profile.name if consultant else None,
+        "filters_dict": filters,
+        "clients": clients,
     }
 
-    return render(request, "financial/listar_financeiro.html", contexto)
+    return render(request, "financial/list_financial.html", context)
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def dar_baixa_financeiro(request, pk: int):
-                                                           
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar_todos = usuario_pode_gerenciar_todos(request.user, consultor)
+def settle_financial(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage_all = user_can_manage_all(request.user, consultant)
 
-    if not pode_gerenciar_todos:
+    if not can_manage_all:
         raise PermissionDenied
 
-    registro = get_object_or_404(
-        Financeiro.objects.select_related("viagem", "cliente", "cliente__cliente_principal", "assessor_responsavel"),
+    record = get_object_or_404(
+        FinancialRecord.objects.select_related("trip", "client", "client__primary_client", "assigned_advisor"),
         pk=pk
     )
 
     if request.method == "POST":
-        form = DarBaixaFinanceiroForm(data=request.POST, instance=registro)
+        form = FinancialSettlementForm(data=request.POST, instance=record)
         if form.is_valid():
             form.save()
             messages.success(request, "Baixa no pagamento registrada com sucesso.")
-            return redirect("system:listar_financeiro")
+            return redirect("system:list_financial")
         messages.error(request, "Não foi possível registrar a baixa. Verifique os campos.")
     else:
-        form = DarBaixaFinanceiroForm(instance=registro)
+        form = FinancialSettlementForm(instance=record)
 
-    contexto = {
+    context = {
         "form": form,
-        "registro": registro,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "record": record,
+        "user_profile": consultant.profile.name if consultant else None,
     }
 
-    return render(request, "financial/dar_baixa_financeiro.html", contexto)
-
+    return render(request, "financial/settle_financial.html", context)

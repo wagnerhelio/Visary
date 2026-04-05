@@ -121,13 +121,12 @@
         padding: 20px;
         margin-bottom: 24px;
     }
-
     .filtros-grid {
         display: grid;
         gap: 12px;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+        align-items: end;
     }
-
     .filtros-grid input,
     .filtros-grid select {
         width: 100%;
@@ -136,20 +135,31 @@
         border: 1px solid rgba(255, 255, 255, 0.12);
         background: rgba(12, 19, 35, 0.72);
         color: #f5f5f5;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
     }
-
+    .filtros-grid input:focus,
+    .filtros-grid select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
     .filtros-actions {
         grid-column: 1 / -1;
         display: flex;
         gap: 12px;
     }
-
     .filtros-actions .btn { width: auto; }
 
     @media (max-width: 480px) {
         .home-acoes { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+        .filtros-grid { grid-template-columns: 1fr; }
         .filtros-actions { flex-direction: column; }
-        .filtros-actions .btn { width: 100%; }
+        .filtros-actions .btn { width: 100%; text-align: center; }
     }
     </style>
 {% endblock %}
@@ -158,21 +168,21 @@
 <section class="page-header">
     <div>
         <h1>Parceiros</h1>
-        <p>Gerencie os parceiros que indicam clientes para a empresa.</p>
+        <p>Gerencie os partners que indicam clientes para a empresa.</p>
     </div>
 </section>
 {% endblock %}
 
 {% block app_content %}
 <section class="home-acoes">
-    <a href="{% url 'system:criar_partner' %}" class="home-card">
+    <a href="{% url 'system:create_partner' %}" class="home-card">
         <div class="home-card__icon">&#10133;</div>
         <div class="home-card__content">
             <h3>Criar Parceiro</h3>
             <p>Novo parceiro</p>
         </div>
     </a>
-    <a href="{% url 'system:listar_partners' %}" class="home-card">
+    <a href="{% url 'system:list_partners' %}" class="home-card">
         <div class="home-card__icon">&#128196;</div>
         <div class="home-card__content">
             <h3>Listar Parceiros</h3>
@@ -183,20 +193,20 @@
 
 <section class="filtros-card">
     <form method="get" class="filtros-grid">
-        <input type="text" name="busca" value="{{ filtros_aplicados.busca }}" placeholder="Nome, empresa ou e-mail">
-        <select name="segmento">
+        <input type="text" name="search" value="{{ applied_filters_dict.search }}" placeholder="Nome, empresa ou e-mail">
+        <select name="segment">
             <option value="">Segmento</option>
             {% for value, label in segmentos %}
-                <option value="{{ value }}" {% if filtros_aplicados.segmento == value %}selected{% endif %}>{{ label }}</option>
+                <option value="{{ value }}" {% if applied_filters_dict.segment == value %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
         </select>
         <select name="status">
             <option value="">Status</option>
-            <option value="ativo" {% if filtros_aplicados.status == "ativo" %}selected{% endif %}>Ativo</option>
-            <option value="inativo" {% if filtros_aplicados.status == "inativo" %}selected{% endif %}>Inativo</option>
+            <option value="ativo" {% if applied_filters_dict.status == "ativo" %}selected{% endif %}>Ativo</option>
+            <option value="inativo" {% if applied_filters_dict.status == "inativo" %}selected{% endif %}>Inativo</option>
         </select>
-        <input type="text" name="cidade" value="{{ filtros_aplicados.cidade }}" placeholder="Cidade">
-        <input type="text" name="estado" value="{{ filtros_aplicados.estado }}" placeholder="UF">
+        <input type="text" name="city" value="{{ applied_filters_dict.city }}" placeholder="Cidade">
+        <input type="text" name="state" value="{{ applied_filters_dict.state }}" placeholder="UF">
         <div class="filtros-actions">
             <button type="submit" class="btn btn-primary">Filtrar</button>
             <a href="{% url 'system:home_partners' %}" class="btn btn-outline">Limpar</a>
@@ -208,24 +218,24 @@
 <section class="home-list">
     <div class="home-list__header">
         <h2>Parceiros mais recentes</h2>
-        <p>Últimos parceiros cadastrados</p>
+        <p>Últimos partners cadastrados</p>
     </div>
     <ul>
         {% for partner in partners %}
         <li>
             <div>
                 <strong>
-                    {% if partner.nome_empresa %}
-                        {{ partner.nome_empresa }}
+                    {% if partner.company_name %}
+                        {{ partner.company_name }}
                     {% else %}
-                        {{ partner.nome_responsavel }}
+                        {{ partner.contact_name }}
                     {% endif %}
                 </strong>
-                {% if partner.nome_empresa %}
-                    <span style="color: var(--text-secondary); font-size: 0.82rem; margin-left: 8px;">({{ partner.nome_responsavel }})</span>
+                {% if partner.company_name %}
+                    <span style="color: var(--text-secondary); font-size: 0.82rem; margin-left: 8px;">({{ partner.contact_name }})</span>
                 {% endif %}
             </div>
-            {% if partner.ativo %}
+            {% if partner.is_active %}
                 <span class="badge-ativo">Ativo</span>
             {% else %}
                 <span class="badge-inativo">Inativo</span>

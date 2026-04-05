@@ -1,7 +1,3 @@
-   
-                                                    
-   
-
 from typing import Optional
 
 from django.contrib import messages
@@ -13,290 +9,277 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
 from system.forms import (
-    CampoEtapaClienteInlineForm,
-    ClienteConsultoriaForm,
-    EtapaCadastroClienteForm,
+    ClientStepFieldInlineForm,
+    ConsultancyClientForm,
+    ClientRegistrationStepForm,
 )
-from system.models import CampoEtapaCliente, EtapaCadastroCliente
-from system.views.client_views import obter_consultor_usuario, usuario_pode_gerenciar_todos
+from system.models import ClientStepField, ClientRegistrationStep
+from system.views.client_views import get_user_consultant, user_can_manage_all
 
 
 @login_required
-def listar_etapas_cadastro(request):
-                                                         
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar:
+def list_registration_steps(request):
+    consultant = get_user_consultant(request.user)
+    can_manage = user_can_manage_all(request.user, consultant)
+
+    if not can_manage:
         raise PermissionDenied("Você não tem permissão para gerenciar etapas.")
-    
-                                                                      
-    etapas_queryset = EtapaCadastroCliente.objects.all().prefetch_related(
+
+    steps_queryset = ClientRegistrationStep.objects.all().prefetch_related(
         models.Prefetch(
-            "campos",
-            queryset=CampoEtapaCliente.objects.all().order_by("ordem", "nome_campo")
+            "fields",
+            queryset=ClientStepField.objects.all().order_by("order", "field_name")
         )
-    ).order_by("ordem", "nome")
-    
-                                                                                         
-    etapas = list(etapas_queryset)
-    
-    contexto = {
-        "etapas": etapas,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+    ).order_by("order", "name")
+
+    steps = list(steps_queryset)
+
+    context = {
+        "stages": steps,
+        "user_profile": consultant.profile.name if consultant else None,
     }
-    
-    return render(request, "client/etapas/listar_etapas_cadastro.html", contexto)
+
+    return render(request, "client/etapas/list_registration_steps.html", context)
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def criar_etapa_cadastro(request):
-                                          
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar:
+def create_registration_step(request):
+    consultant = get_user_consultant(request.user)
+    can_manage = user_can_manage_all(request.user, consultant)
+
+    if not can_manage:
         raise PermissionDenied("Você não tem permissão para criar etapas.")
-    
+
     if request.method == "POST":
-        form = EtapaCadastroClienteForm(data=request.POST)
+        form = ClientRegistrationStepForm(data=request.POST)
         if form.is_valid():
-            etapa = form.save()
-            messages.success(request, f"Etapa '{etapa.nome}' criada com sucesso.")
-            return redirect("system:editar_etapa_cadastro", pk=etapa.pk)
-                                                 
+            step = form.save()
+            messages.success(request, f"Etapa '{step.name}' criada com sucesso.")
+            return redirect("system:edit_registration_step", pk=step.pk)
+
         for field, errors in form.errors.items():
             for error in errors:
                 messages.error(request, f"Campo '{form.fields[field].label}': {error}")
     else:
-        form = EtapaCadastroClienteForm()
-    
-    contexto = {
+        form = ClientRegistrationStepForm()
+
+    context = {
         "form": form,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "user_profile": consultant.profile.name if consultant else None,
     }
-    
-    return render(request, "client/etapas/criar_etapa_cadastro.html", contexto)
+
+    return render(request, "client/etapas/create_registration_step.html", context)
 
 
-def _obter_campos_disponiveis(campos_ja_vinculados: set) -> list:
-                                                                             
-    temp_form = ClienteConsultoriaForm()
-    campos_modelo = [
-        "assessor_responsavel",
-        "nome",
+def _get_available_fields(already_linked_fields: set) -> list:
+    temp_form = ConsultancyClientForm()
+    model_fields = [
+        "assigned_advisor",
+        "first_name",
+        "last_name",
         "cpf",
-        "data_nascimento",
-        "nacionalidade",
-        "telefone",
-        "telefone_secundario",
+        "birth_date",
+        "nationality",
+        "phone",
+        "secondary_phone",
         "email",
-        "senha",
-        "confirmar_senha",
-        "parceiro_indicador",
-        "cep",
-        "logradouro",
-        "numero",
-        "complemento",
-        "bairro",
-        "cidade",
-        "uf",
-        "observacoes",
+        "password",
+        "confirm_password",
+        "referring_partner",
+        "zip_code",
+        "street",
+        "street_number",
+        "complement",
+        "district",
+        "city",
+        "state",
+        "notes",
     ]
-    
+
     return [
         {
-            "nome": campo_nome,
-            "label": temp_form.fields[campo_nome].label or campo_nome,
-            "ja_vinculado": campo_nome in campos_ja_vinculados,
+            "name": field_name,
+            "label": temp_form.fields[field_name].label or field_name,
+            "already_linked": field_name in already_linked_fields,
         }
-        for campo_nome in campos_modelo
-        if campo_nome in temp_form.fields
+        for field_name in model_fields
+        if field_name in temp_form.fields
     ]
 
 
-def _adicionar_campo_etapa(request, etapa, campos, campos_disponiveis) -> Optional[HttpResponseRedirect]:
-                                                
-    nome_campo = request.POST.get("nome_campo")
-    nomes_disponiveis = {c["nome"] for c in campos_disponiveis}
-    
-    if not nome_campo or nome_campo not in nomes_disponiveis:
+def _add_step_field(request, step, step_fields, available_fields) -> Optional[HttpResponseRedirect]:
+    field_name = request.POST.get("field_name")
+    available_names = {c["name"] for c in available_fields}
+
+    if not field_name or field_name not in available_names:
         messages.error(request, "Campo inválido.")
         return None
-    
-    if CampoEtapaCliente.objects.filter(etapa=etapa, nome_campo=nome_campo).exists():
-        messages.error(request, f"Campo '{nome_campo}' já está vinculado a esta etapa.")
+
+    if ClientStepField.objects.filter(step=step, field_name=field_name).exists():
+        messages.error(request, f"Campo '{field_name}' já está vinculado a esta etapa.")
         return None
-    
-    maior_ordem = campos.aggregate(models.Max("ordem"))["ordem__max"] or 0
-    CampoEtapaCliente.objects.create(
-        etapa=etapa,
-        nome_campo=nome_campo,
-        ordem=maior_ordem + 1,
-        obrigatorio=False,
-        ativo=True,
+
+    max_order = step_fields.aggregate(models.Max("order"))["order__max"] or 0
+    ClientStepField.objects.create(
+        step=step,
+        field_name=field_name,
+        order=max_order + 1,
+        is_required=False,
+        is_active=True,
     )
-    messages.success(request, f"Campo '{nome_campo}' adicionado à etapa.")
-    return redirect("system:editar_etapa_cadastro", pk=etapa.pk)
+    messages.success(request, f"Campo '{field_name}' adicionado à etapa.")
+    return redirect("system:edit_registration_step", pk=step.pk)
 
 
-def _processar_atualizacao_etapa(request, form, etapa) -> Optional[HttpResponseRedirect]:
-                                                                       
+def _process_step_update(request, form, step) -> Optional[HttpResponseRedirect]:
     if not form.is_valid():
         for field, errors in form.errors.items():
             field_label = form.fields[field].label if field in form.fields else field
             for error in errors:
                 messages.error(request, f"Campo '{field_label}': {error}")
         return None
-    
+
     form.save()
-    messages.success(request, f"Etapa '{etapa.nome}' atualizada com sucesso.")
-    return redirect("system:editar_etapa_cadastro", pk=etapa.pk)
+    messages.success(request, f"Etapa '{step.name}' atualizada com sucesso.")
+    return redirect("system:edit_registration_step", pk=step.pk)
 
 
 @require_http_methods(["GET", "POST"])
-def editar_etapa_cadastro(request, pk: int):
-                                                
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar:
+def edit_registration_step(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage = user_can_manage_all(request.user, consultant)
+
+    if not can_manage:
         raise PermissionDenied("Você não tem permissão para editar etapas.")
-    
-    etapa = get_object_or_404(EtapaCadastroCliente, pk=pk)
-    campos = CampoEtapaCliente.objects.filter(etapa=etapa).order_by("ordem", "nome_campo")
-    campos_ja_vinculados = {campo.nome_campo for campo in campos}
-    campos_disponiveis = _obter_campos_disponiveis(campos_ja_vinculados)
-    
+
+    step = get_object_or_404(ClientRegistrationStep, pk=pk)
+    step_fields = ClientStepField.objects.filter(step=step).order_by("order", "field_name")
+    already_linked_fields = {f.field_name for f in step_fields}
+    available_fields = _get_available_fields(already_linked_fields)
+
     if request.method == "POST":
-        if "adicionar_campo" in request.POST:
-            if redirect_response := _adicionar_campo_etapa(request, etapa, campos, campos_disponiveis):
+        if "add_field" in request.POST:
+            if redirect_response := _add_step_field(request, step, step_fields, available_fields):
                 return redirect_response
-        
-        form = EtapaCadastroClienteForm(data=request.POST, instance=etapa)
-        if redirect_response := _processar_atualizacao_etapa(request, form, etapa):
+
+        form = ClientRegistrationStepForm(data=request.POST, instance=step)
+        if redirect_response := _process_step_update(request, form, step):
             return redirect_response
     else:
-        form = EtapaCadastroClienteForm(instance=etapa)
-    
-                                                 
-    campos = CampoEtapaCliente.objects.filter(etapa=etapa).order_by("ordem", "nome_campo")
-    
-    contexto = {
+        form = ClientRegistrationStepForm(instance=step)
+
+    step_fields = ClientStepField.objects.filter(step=step).order_by("order", "field_name")
+
+    context = {
         "form": form,
-        "etapa": etapa,
-        "campos": campos,
-        "campos_disponiveis": campos_disponiveis,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "stage": step,
+        "fields_list": step_fields,
+        "available_fields": available_fields,
+        "user_profile": consultant.profile.name if consultant else None,
     }
-    
-    return render(request, "client/etapas/editar_etapa_cadastro.html", contexto)
+
+    return render(request, "client/etapas/edit_registration_step.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_etapa_cadastro(request, pk: int):
-                                       
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar:
+def delete_registration_step(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage = user_can_manage_all(request.user, consultant)
+
+    if not can_manage:
         raise PermissionDenied("Você não tem permissão para excluir etapas.")
-    
-    etapa = get_object_or_404(EtapaCadastroCliente, pk=pk)
-    nome_etapa = etapa.nome
-    etapa.delete()
-    messages.success(request, f"Etapa '{nome_etapa}' excluída com sucesso.")
-    return redirect("system:listar_etapas_cadastro")
+
+    step = get_object_or_404(ClientRegistrationStep, pk=pk)
+    step_name = step.name
+    step.delete()
+    messages.success(request, f"Etapa '{step_name}' excluída com sucesso.")
+    return redirect("system:list_registration_steps")
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def criar_campo_etapa(request, etapa_id: int):
-                                            
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar:
+def create_step_field(request, step_id: int):
+    consultant = get_user_consultant(request.user)
+    can_manage = user_can_manage_all(request.user, consultant)
+
+    if not can_manage:
         raise PermissionDenied("Você não tem permissão para criar campos.")
-    
-    etapa = get_object_or_404(EtapaCadastroCliente, pk=etapa_id)
-    
+
+    step = get_object_or_404(ClientRegistrationStep, pk=step_id)
+
     if request.method == "POST":
-        form = CampoEtapaClienteInlineForm(data=request.POST)
+        form = ClientStepFieldInlineForm(data=request.POST)
         if form.is_valid():
-            campo = form.save(commit=False)
-            campo.etapa = etapa
-            campo.save()
-            messages.success(request, f"Campo '{campo.nome_campo}' adicionado à etapa '{etapa.nome}'.")
-            return redirect("system:listar_etapas_cadastro")
-                                                 
+            field_obj = form.save(commit=False)
+            field_obj.step = step
+            field_obj.save()
+            messages.success(request, f"Campo '{field_obj.field_name}' adicionado à etapa '{step.name}'.")
+            return redirect("system:list_registration_steps")
+
         for field, errors in form.errors.items():
             for error in errors:
                 field_label = form.fields[field].label if field in form.fields else field
                 messages.error(request, f"Campo '{field_label}': {error}")
     else:
-        form = CampoEtapaClienteInlineForm()
-    
-    contexto = {
+        form = ClientStepFieldInlineForm()
+
+    context = {
         "form": form,
-        "etapa": etapa,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "stage": step,
+        "user_profile": consultant.profile.name if consultant else None,
     }
-    
-    return render(request, "client/etapas/criar_campo_etapa.html", contexto)
+
+    return render(request, "client/etapas/create_step_field.html", context)
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def editar_campo_etapa(request, pk: int):
-                                            
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar:
+def edit_step_field(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage = user_can_manage_all(request.user, consultant)
+
+    if not can_manage:
         raise PermissionDenied("Você não tem permissão para editar campos.")
-    
-    campo = get_object_or_404(CampoEtapaCliente, pk=pk)
-    
+
+    field_obj = get_object_or_404(ClientStepField, pk=pk)
+
     if request.method == "POST":
-        form = CampoEtapaClienteInlineForm(data=request.POST, instance=campo)
+        form = ClientStepFieldInlineForm(data=request.POST, instance=field_obj)
         if form.is_valid():
             form.save()
-            messages.success(request, f"Campo '{campo.nome_campo}' atualizado com sucesso.")
-            return redirect("system:listar_etapas_cadastro")
-                                                 
+            messages.success(request, f"Campo '{field_obj.field_name}' atualizado com sucesso.")
+            return redirect("system:list_registration_steps")
+
         for field, errors in form.errors.items():
             for error in errors:
                 field_label = form.fields[field].label if field in form.fields else field
                 messages.error(request, f"Campo '{field_label}': {error}")
     else:
-        form = CampoEtapaClienteInlineForm(instance=campo)
-    
-    contexto = {
+        form = ClientStepFieldInlineForm(instance=field_obj)
+
+    context = {
         "form": form,
-        "campo": campo,
-        "etapa": campo.etapa,
-        "perfil_usuario": consultor.perfil.nome if consultor else None,
+        "field_obj": field_obj,
+        "stage": field_obj.step,
+        "user_profile": consultant.profile.name if consultant else None,
     }
-    
-    return render(request, "client/etapas/editar_campo_etapa.html", contexto)
+
+    return render(request, "client/etapas/edit_step_field.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def excluir_campo_etapa(request, pk: int):
-                                   
-    consultor = obter_consultor_usuario(request.user)
-    pode_gerenciar = usuario_pode_gerenciar_todos(request.user, consultor)
-    
-    if not pode_gerenciar:
-        raise PermissionDenied("Você não tem permissão para excluir campos.")
-    
-    campo = get_object_or_404(CampoEtapaCliente, pk=pk)
-    nome_campo = campo.nome_campo
-    campo.delete()
-    messages.success(request, f"Campo '{nome_campo}' excluído com sucesso.")
-    return redirect("system:listar_etapas_cadastro")
+def delete_step_field(request, pk: int):
+    consultant = get_user_consultant(request.user)
+    can_manage = user_can_manage_all(request.user, consultant)
 
+    if not can_manage:
+        raise PermissionDenied("Você não tem permissão para excluir campos.")
+
+    field_obj = get_object_or_404(ClientStepField, pk=pk)
+    field_name = field_obj.field_name
+    field_obj.delete()
+    messages.success(request, f"Campo '{field_name}' excluído com sucesso.")
+    return redirect("system:list_registration_steps")

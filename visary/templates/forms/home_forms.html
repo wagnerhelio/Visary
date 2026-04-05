@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Visary | Meus Formulários{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+    <style>
+    .home-acoes {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        margin-bottom: 24px;
+    }
+
+    .home-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none;
+    }
+
+    .home-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 40px rgba(5, 8, 17, 0.5);
+    }
+
+    .home-card__icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        color: #081423;
+        flex-shrink: 0;
+    }
+
+    .home-card__icon.admin {
+        background: linear-gradient(135deg, #ffc107, #ff9800);
+    }
+
+    .home-card__content h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--text-primary);
+    }
+
+    .home-card__content p {
+        margin: 2px 0 0 0;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+
+    .home-grid {
+        display: grid;
+        gap: 24px;
+    }
+
+    .kpi-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin-bottom: 20px;
+    }
+
+    .kpi-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.22);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .kpi-card span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.35rem;
+        color: var(--accent);
+    }
+
+    .home-section {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 24px;
+    }
+
+    .home-section__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .home-section__header h2 {
+        margin: 0;
+        font-size: 1.05rem;
+        color: var(--text-primary);
+    }
+
+    .home-section__header p {
+        margin: 3px 0 0 0;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
+
+    .home-section__actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .table-wrapper {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .mini-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .mini-table th {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.7rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: rgba(245, 245, 245, 0.5);
+        white-space: nowrap;
+    }
+
+    .mini-table td {
+        padding: 10px 10px;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.85rem;
+        color: rgba(245, 245, 245, 0.88);
+        vertical-align: middle;
+    }
+
+    .mini-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-principal { background: rgba(86, 244, 156, 0.18); color: rgba(86, 244, 156, 0.95); }
+    .badge-dependente { background: rgba(255, 193, 7, 0.18); color: rgba(255, 193, 7, 0.95); }
+    .badge-completo { background: rgba(86, 244, 156, 0.18); color: rgba(86, 244, 156, 0.95); }
+
+    tr.row-dependente td:first-child {
+        padding-left: 16px;
+        border-left: 2px solid rgba(255, 193, 7, 0.25);
+    }
+
+    .progress-cell { min-width: 100px; }
+
+    .progress-bar-cell {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .progress-bar-cell__bar {
+        flex: 1;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .progress-bar-cell__fill {
+        height: 100%;
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+    }
+
+    .progress-bar-cell__label {
+        font-size: 0.78rem;
+        color: rgba(245, 245, 245, 0.7);
+        min-width: 38px;
+    }
+
+    .name-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .name-cell__name {
+        font-weight: 500;
+        color: rgba(245, 245, 245, 0.92);
+        font-size: 0.88rem;
+    }
+
+    .name-cell__sub {
+        font-size: 0.68rem;
+        color: rgba(245, 245, 245, 0.5);
+    }
+
+    .btn-small { padding: 5px 10px; font-size: 0.8rem; }
+
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 8px 32px rgba(5, 8, 17, 0.4);
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    .filtros-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+        align-items: end;
+    }
+    .filtros-grid input,
+    .filtros-grid select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+    .filtros-grid input:focus,
+    .filtros-grid select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+    .filtros-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 12px;
+    }
+    .filtros-actions .btn { width: auto; }
+
+    @media (max-width: 768px) {
+        .filtros-grid { grid-template-columns: 1fr; }
+        .filtros-actions { flex-direction: column; }
+        .filtros-actions .btn { width: 100%; text-align: center; }
+    }
+
+    @media (max-width: 480px) {
+        .home-acoes { grid-template-columns: 1fr; }
+        .home-section__header { flex-direction: column; align-items: flex-start; }
+    }
+    </style>
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div>
+        <h1>Meus Formularios</h1>
+        <p>Gerencie formularios dos seus clientes.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="home-acoes">
+    <a href="{% url 'system:select_trip_client_form' %}" class="home-card">
+        <div class="home-card__icon">&#9998;</div>
+        <div class="home-card__content">
+            <h3>Preencher Formulário</h3>
+            <p>Selecionar trip e cliente</p>
+        </div>
+    </a>
+    <a href="{% url 'system:list_forms' %}" class="home-card">
+        <div class="home-card__icon">&#128196;</div>
+        <div class="home-card__content">
+            <h3>Listar Formularios</h3>
+            <p>Ver todos</p>
+        </div>
+    </a>
+
+</section>
+
+<section class="filtros-card">
+    <form method="get" class="filtros-grid">
+        <input type="text" name="client" value="{{ applied_filters_dict.client }}" placeholder="Nome do cliente" list="datalist-clientes">
+        <select name="country">
+            <option value="">País</option>
+            {% for country in paises_filtro %}
+                <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk|stringformat:"s" %}selected{% endif %}>{{ country.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="tipo_visto">
+            <option value="">Tipo de visto</option>
+            {% for tipo in tipos_visto_filtro %}
+                <option value="{{ tipo.pk }}" {% if applied_filters_dict.visa_type == tipo.pk|stringformat:"s" %}selected{% endif %}>{{ tipo.name }}</option>
+            {% endfor %}
+        </select>
+        <select name="status">
+            <option value="">Status</option>
+            <option value="pendente" {% if applied_filters_dict.status == "pendente" %}selected{% endif %}>Pendente</option>
+            <option value="completo" {% if applied_filters_dict.status == "completo" %}selected{% endif %}>Completo</option>
+        </select>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:home_forms' %}" class="btn btn-outline">Limpar</a>
+        </div>
+    </form>
+</section>
+<datalist id="datalist-clientes">
+    {% for client in clientes_filtro %}
+        <option value="{{ client.full_name }}">
+    {% endfor %}
+</datalist>
+
+<div class="home-grid">
+    <section class="home-section">
+        <div class="kpi-grid">
+            <article class="kpi-card">
+                <span>Total de formulários</span>
+                <strong>{{ total_forms_kpi }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Pendentes</span>
+                <strong>{{ total_pending_kpi }}</strong>
+            </article>
+            <article class="kpi-card">
+                <span>Completos</span>
+                <strong>{{ total_completed_kpi }}</strong>
+            </article>
+        </div>
+    </section>
+
+    {% if visa_form_objs_pendentes %}
+    <section class="home-section">
+        <div class="home-section__header">
+            <div>
+                <h2>Formularios Pendentes</h2>
+                <p>{{ pending_forms|length }} pendente(s)</p>
+            </div>
+            <div class="home-section__actions">
+                <a href="{% url 'system:home_forms' %}" class="btn btn-outline btn-small">Ver Todos</a>
+            </div>
+        </div>
+        <div class="table-wrapper">
+        <table class="mini-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Pais</th>
+                    <th>Tipo de Visto</th>
+                    <th>Progresso</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in pending_forms %}
+                <tr>
+                    <td>
+                        <div class="nome-cell">
+                            <span class="nome-cell__name">{{ item.client_info.client.full_name }}</span>
+                        </div>
+                    </td>
+                    <td>{{ item.trip.destination_country.name }}</td>
+                    <td>{{ item.client_info.visa_type.name }}</td>
+                    <td class="progress-cell">
+                        <div class="progress-bar-cell">
+                            <div class="progress-bar-cell__bar">
+                                <div class="progress-bar-cell__fill" style="width: {% widthratio item.client_info.total_answers item.client_info.total_questions 100 %}%;"></div>
+                            </div>
+                            <span class="progress-bar-cell__label">{% widthratio item.client_info.total_answers item.client_info.total_questions 100 %}%</span>
+                        </div>
+                        <div class="nome-cell__sub">{{ item.client_info.total_answers }}/{{ item.client_info.total_questions }}</div>
+                    </td>
+                    <td>
+                        <a href="{% url 'system:view_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                        <a href="{% url 'system:edit_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-primary btn-small">Preencher</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if visa_form_objs_preenchidos %}
+    <section class="home-section">
+        <div class="home-section__header">
+            <div>
+                <h2>Formularios Preenchidos</h2>
+                <p>{{ completed_forms|length }} preenchido(s)</p>
+            </div>
+            <div class="home-section__actions">
+                <a href="{% url 'system:home_forms' %}" class="btn btn-outline btn-small">Ver Todos</a>
+            </div>
+        </div>
+        <div class="table-wrapper">
+        <table class="mini-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Pais</th>
+                    <th>Tipo de Visto</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in completed_forms %}
+                <tr>
+                    <td>
+                        <div class="nome-cell">
+                            <span class="nome-cell__name">{{ item.client_info.client.full_name }}</span>
+                        </div>
+                    </td>
+                    <td>{{ item.trip.destination_country.name }}</td>
+                    <td>{{ item.client_info.visa_type.name }}</td>
+                    <td>
+                        <span class="badge badge-completo">&#10003; Completo</span>
+                    </td>
+                    <td>
+                        <a href="{% url 'system:view_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                        <a href="{% url 'system:edit_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-outline btn-small">Editar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% endblock %}

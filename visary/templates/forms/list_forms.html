@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Visary | Listar Formulários{% endblock %}
+
+{% block base_styles %}
+    {{ block.super }}
+
+    <style>
+    .formularios-list-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+    }
+
+    .formularios-list-card header {
+        margin-bottom: 20px;
+    }
+
+    .formularios-list-card h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: var(--text-primary);
+    }
+
+    .formularios-list-card p {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .formularios-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .formularios-table th {
+        text-align: left;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(245, 245, 245, 0.6);
+    }
+
+    .formularios-table td {
+        padding: 14px 0;
+        border-bottom: 1px solid var(--border-soft);
+        font-size: 0.9rem;
+        color: rgba(245, 245, 245, 0.88);
+    }
+
+    .formularios-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .btn-small {
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+
+    .empty-state {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px dashed rgba(86, 244, 156, 0.35);
+        color: rgba(245, 245, 245, 0.72);
+        text-align: center;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-warning {
+        background: rgba(255, 193, 7, 0.2);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .badge-principal {
+        background: rgba(86, 244, 156, 0.2);
+        color: rgba(86, 244, 156, 0.95);
+        border: 1px solid rgba(86, 244, 156, 0.4);
+    }
+
+    .badge-dependente {
+        background: rgba(255, 193, 7, 0.2);
+        color: rgba(255, 193, 7, 0.95);
+        border: 1px solid rgba(255, 193, 7, 0.4);
+    }
+
+    .row-dependente td:first-child {
+        padding-left: 20px;
+        border-left: 2px solid rgba(255, 193, 7, 0.25);
+    }
+
+    .viagem-section {
+        margin-bottom: 32px;
+    }
+
+    .viagem-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .viagem-header {
+        background: rgba(86, 244, 156, 0.1);
+        border: 1px solid rgba(86, 244, 156, 0.2);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .viagem-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+    }
+
+    .viagem-header p {
+        margin: 4px 0 0 0;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .filtros-card {
+        background: var(--card-bg);
+        border-radius: 24px;
+        border: 1px solid var(--border-soft);
+        box-shadow: 0 24px 48px rgba(5, 8, 17, 0.5);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .filtros-card header h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 16px 0;
+    }
+    .filtros-form {
+        display: grid;
+        gap: 16px;
+    }
+    .filtros-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    }
+    .filtros-form label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: rgba(245, 245, 245, 0.8);
+        margin-bottom: 6px;
+        display: block;
+    }
+    .filtros-form input,
+    .filtros-form select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(12, 19, 35, 0.72);
+        color: #f5f5f5;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+    .filtros-form input:focus,
+    .filtros-form select:focus {
+        outline: none;
+        border-color: rgba(86, 244, 156, 0.65);
+        box-shadow: 0 0 0 4px rgba(86, 244, 156, 0.12);
+        background: rgba(12, 19, 35, 0.85);
+    }
+    .filtros-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 8px;
+    }
+    .filtros-actions .btn { width: auto; }
+
+    @media (max-width: 768px) {
+        .filtros-grid { grid-template-columns: 1fr; }
+        .filtros-actions { flex-direction: column; }
+        .filtros-actions .btn { width: 100%; text-align: center; }
+    }
+
+    .kpi-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        margin-bottom: 24px;
+    }
+
+    .kpi-card {
+        background: rgba(86, 244, 156, 0.08);
+        border: 1px solid rgba(86, 244, 156, 0.22);
+        border-radius: 14px;
+        padding: 12px 14px;
+    }
+
+    .kpi-card span {
+        display: block;
+        font-size: 0.72rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-card strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.35rem;
+        color: var(--accent);
+    }
+
+    </style>
+{% endblock %}
+
+{% block app_header %}
+<section class="page-header">
+    <div class="page-header__titles">
+        <h1>Listar Formulários</h1>
+        <p>Formulários de todos os clientes</p>
+    </div>
+    <div class="actions-inline">
+        <a href="{% url 'system:home_forms' %}" class="btn btn-outline">Voltar</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block app_content %}
+<section class="filtros-card">
+    <header>
+        <h2>Filtros</h2>
+    </header>
+    <form method="get" class="filtros-form">
+        <div class="filtros-grid">
+            <div>
+                <label for="filtro-cliente">Cliente</label>
+                <input type="text" id="filtro-cliente" name="client" value="{{ applied_filters_dict.client }}" placeholder="Nome do cliente" list="datalist-clientes">
+            </div>
+            <div>
+                <label for="filtro-pais">País</label>
+                <select id="filtro-pais" name="country">
+                    <option value="">País</option>
+                    {% for country in paises_filtro %}
+                        <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk|stringformat:"s" %}selected{% endif %}>{{ country.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="filtro-tipo-visto">Tipo de Visto</label>
+                <select id="filtro-tipo-visto" name="tipo_visto">
+                    <option value="">Tipo de visto</option>
+                    {% for tipo in tipos_visto_filtro %}
+                        <option value="{{ tipo.pk }}" {% if applied_filters_dict.visa_type == tipo.pk|stringformat:"s" %}selected{% endif %}>{{ tipo.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="filtro-status">Status</label>
+                <select id="filtro-status" name="status">
+                    <option value="">Status</option>
+                    <option value="pendente" {% if applied_filters_dict.status == "pendente" %}selected{% endif %}>Pendente</option>
+                    <option value="completo" {% if applied_filters_dict.status == "completo" %}selected{% endif %}>Completo</option>
+                </select>
+            </div>
+        </div>
+        <div class="filtros-actions">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="{% url 'system:list_forms' %}" class="btn btn-outline">Limpar Filtros</a>
+        </div>
+    </form>
+</section>
+<datalist id="datalist-clientes">
+    {% for client in clientes_filtro %}
+        <option value="{{ client.full_name }}">
+    {% endfor %}
+</datalist>
+
+<section class="kpi-grid">
+    <article class="kpi-card">
+        <span>Total de formulários</span>
+        <strong>{{ total_forms_kpi }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Pendentes</span>
+        <strong>{{ total_pending_kpi }}</strong>
+    </article>
+    <article class="kpi-card">
+        <span>Completos</span>
+        <strong>{{ total_completed_kpi }}</strong>
+    </article>
+</section>
+
+{% if visa_form_objs_respostas %}
+{% for item in form_responses %}
+<section class="formularios-list viagem-section">
+    <article class="formularios-list-card">
+        <div class="viagem-header">
+            <h3>{{ item.trip.destination_country.name }}</h3>
+            <p>{{ item.trip.planned_departure_date|date:"d/m/Y" }}</p>
+        </div>
+        <table class="formularios-table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Tipo de Visto</th>
+                    <th>Progresso</th>
+                    <th style="width:{% if can_manage_all %}220px{% else %}180px{% endif %};">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client_info in item.clients %}
+                <tr>
+                    <td>
+                        <strong>{{ client_info.client.full_name }}</strong>
+                    </td>
+                    <td>
+                        {{ client_info.visa_type.name|default:"-" }}
+                    </td>
+                    <td>
+                        <div class="progress-bar-cell">
+                            <div class="progress-bar-cell__bar">
+                                <div class="progress-bar-cell__fill" style="width: {% if client_info.total_questions > 0 %}{% widthratio client_info.total_answers client_info.total_questions 100 %}{% else %}0{% endif %}%;"></div>
+                            </div>
+                            <span class="progress-bar-cell__label">
+                                {% if client_info.total_questions > 0 %}
+                                    {% widthratio client_info.total_answers client_info.total_questions 100 %}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.75rem; color: rgba(245, 245, 245, 0.6); margin-top: 4px;">
+                            {{ client_info.total_answers }} de {{ client_info.total_questions }} questions
+                            {% if client_info.complete %}
+                                <span class="badge badge-success" style="margin-left: 8px;">Completo</span>
+                            {% else %}
+                                <span class="badge badge-warning" style="margin-left: 8px;">Parcial</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <a href="{% url 'system:view_client_form' item.trip.pk client_info.client.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                            <a href="{% url 'system:edit_client_form' item.trip.pk client_info.client.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            {% if can_manage_all %}
+                                <form method="post" action="{% url 'system:delete_form_answers' item.trip.pk client_info.client.pk %}" onsubmit="return confirm('Deseja realmente excluir todas as respostas deste formulário?');" style="margin: 0; display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-small">Excluir</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </article>
+</section>
+{% endfor %}
+{% else %}
+<section class="formularios-list">
+    <article class="formularios-list-card">
+        <header>
+            <h2>Formulários</h2>
+            <p>Formulários preenchidos pelos seus clientes</p>
+        </header>
+        <div class="empty-state">
+            Nenhum formulário preenchido até o momento.
+        </div>
+    </article>
+</section>
+{% endif %}
+{% endblock %}
