@@ -1,440 +1,250 @@
-# CLAUDE.md — Spec Arquitetural e de Domínio do projeto Visary
+# CLAUDE.md
 
-> **Fonte única de verdade técnica do projeto.**
-> Este documento descreve arquitetura, domínios, invariantes, integrações, fluxos críticos e restrições operacionais do sistema **Visary**.
-> Regras de comportamento do agente ficam no `AGENTS.md`.
-
----
-
-## 0. Status da spec
-
-**Projeto:** Visary
-**Tipo:** plataforma web (Django monólito modular) para gestão de consultoria de vistos
-**Escopo atual:** operação completa de consultoria, incluindo onboarding de clientes em etapas configuráveis, gestão de dependentes com vínculo principal/dependente, viagens (país + tipo de visto), processos com checklist por etapas, formulários dinâmicos por tipo de visto, controle financeiro por viagem com propagação automática de pagamento, parceiros indicadores, área do cliente com acesso por CPF e painel administrativo com permissões por módulo/perfil.
-
-Esta spec deve ser atualizada sempre que surgir:
-- nova regra de negócio da consultoria;
-- nova exigência operacional ou legal;
-- nova restrição de integração ou de dados sensíveis;
-- nova decisão estrutural que afete o projeto inteiro.
+> Contexto persistente **do repositório atual**. Leia `AGENTS.md` para o protocolo de execução.
+> **Template genérico:** copie para a raiz de cada projeto Django e preencha as seções.
 
 ---
 
-## 1. Visão do sistema
+## Perfil do projeto (preencher)
 
-O **Visary** é um monólito modular Django para consultorias de vistos, com foco em:
-- identidade única de cliente por CPF;
-- cadastro em etapas configuráveis (wizard dinâmico);
-- gestão de dependentes vinculados a um cliente principal;
-- viagens com país destino e tipo de visto, vinculando múltiplos clientes;
-- processos com checklist de etapas por (viagem, cliente), com progresso calculado;
-- formulários dinâmicos por tipo de visto e respostas por (viagem, cliente, pergunta);
-- controle financeiro com criação automática de registros e propagação de pagamento do principal para dependentes;
-- parceiros indicadores com acompanhamento condicional;
-- área do cliente autenticada por CPF (sessão, sem `auth.User`);
-- painel administrativo com controle de acesso por perfil e módulo.
-
-Arquitetura alvo:
-- **backend:** Django 5.2;
-- **banco principal:** PostgreSQL (produção); SQLite para dev/local (com limitações conhecidas de concorrência);
-- **frontend:** templates Django + JS progressivo;
-- **integrações externas:** serviço de CEP multi-fonte (ViaCEP, BrasilAPI, pycep-correios, brazilcep);
-- **configuração de seeds:** variáveis de ambiente (`.env`) + arquivos JSON em `static/`.
+- **Stack:** Python + Django
+- **Persistência / banco:** (ex.: SQLite local, PostgreSQL — preencher)
+- **Política de schema/migração:** (ex.: migrações versionadas; ou banco local descartável)
+- **Paradigmas:** SDD, TDD, MTV, Design Patterns
+- **Ambiente de execução:** `.venv` obrigatória — nada no global
 
 ---
 
-## 2. Princípios arquiteturais
+## Preparação do ambiente
 
-1. **Monólito modular primeiro.** Não fragmentar o domínio cedo demais.
-2. **Identidade centralizada.** Cliente é único por CPF; perfis e vínculos se acumulam.
-3. **Regras do domínio no backend.** Frontend melhora UX, mas não decide o que é permitido.
-4. **Fluxos críticos com consistência transacional.** Usar `transaction.atomic()` quando o fluxo cria/atualiza múltiplos registros relacionados.
-5. **Segurança por camadas.** Autorização e escopo no backend + templates apenas para exibir.
-6. **Configuração é externa ou persistida.** Preferir modelos/admin para regras configuráveis; nada importante deve ficar hardcoded.
-7. **Integrações são falíveis.** Tratar falhas com fallback e mensagens claras ao usuário.
-8. **Política de idioma dual (inglês no código, português na interface).**
-   - **Backend 100% inglês:** nomes de models, fields, tabelas, variáveis, funções, classes, services, views, forms, URLs, nomes de arquivos, nomes de diretórios — tudo em inglês. Nenhum identificador em português no código-fonte.
-   - **Frontend: texto visível ao usuário em pt-BR.** Labels, placeholders, mensagens de erro, títulos, botões, tooltips, textos de ajuda — tudo em português brasileiro. Texto em inglês na interface do usuário é rejeitado.
-   - **Frontend: código em inglês.** Variáveis JS, classes CSS, IDs de elementos, nomes de funções JS, configurações — tudo em inglês. Apenas o conteúdo textual exibido ao usuário é em pt-BR.
-   - **Respostas do agente em pt-BR.** Toda comunicação do agente com o desenvolvedor deve ser em português brasileiro.
-9. **Código limpo e sem ruído.** Proibido comentários, docstrings e anotações. Código autoexplicativo por nomes claros e funções pequenas.
-10. **Destruição > remendo.** O sistema está em fase inicial. Código legado em português não deve ser ajustado — deve ser reescrito em inglês. Quebrar o sistema durante refatoração é aceitável: erros expostos revelam lógica que precisa ser corrigida. Nunca acochambrar.
-11. **Anti-code-smell rigoroso.** Máximo 25 linhas por método. Máximo 4 argumentos por função. Proibido `except: pass`. Proibido hardcode. Proibido estruturas condicionais complexas (>3 ramos sem refatoração). Classes com responsabilidade única. TDD obrigatório.
+### PowerShell (Windows)
 
----
+```powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001
+```
 
-## 3. Topologia de app/domínios
+**Atenção:** `&&` não funciona no PowerShell (usar `;`). `source` não existe (usar `.\.venv\Scripts\Activate.ps1`). Caminhos com `\`.
 
-A organização do monólito reflete o domínio real do negócio em um app único:
+### `.venv`
 
-- `system/` — domínio completo e infraestrutura: clientes, dependentes, viagens, processos, formulários dinâmicos, financeiro, parceiros, etapas de cadastro, autenticação dual (consultor via `auth.User` sincronizado + cliente via sessão/CPF), permissões por módulo/perfil, views de orquestração, área do cliente, administração, seeds e páginas estruturais.
+```powershell
+# Criar (se não existir):
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 
----
+# Verificar:
+Get-Command python   # deve apontar para .venv\Scripts\
+```
 
-## 4. Identidade, autenticação e modelo de acesso
+### `.env`
 
-### 4.1 Regra central de identidade
-- Cada cliente deve ter **uma única identidade** no sistema.
-- **CPF é o identificador único** de login e negócio (`ClienteConsultoria.cpf` com `unique=True`).
-- É proibido duplicar cadastro para a mesma pessoa (incluindo na sessão temporária durante wizard de cadastro).
+Credenciais e config sensível ficam em `.env` (fora do versionamento). Usar `python-decouple` ou `django-environ`:
 
-### 4.2 Autenticação dual
-
-**Consultores/Assessores:**
-- Login via `UsuarioConsultoria.email` + senha.
-- Verificação em `UsuarioConsultoria` com `check_password()` (hash; fallback migratório de texto plano).
-- Sincronização automática com `auth.User` via `_sync_consultant_user()` para usar `@login_required` e sessão Django.
-- Opção "manter conectado" (2 semanas) ou expirar ao fechar navegador.
-
-**Clientes:**
-- Login via CPF (normalizado para 11 dígitos) ou e-mail.
-- Não usa `auth.User`; dados armazenados na sessão: `cliente_id`, `cliente_nome`, `cliente_cpf`.
-- Dependentes não podem fazer login (mensagem explicativa na tela).
-- Senhas inválidas (`is_password_usable()`) exigem redefinição.
-
-### 4.3 Dependentes com vínculo
-- Dependentes são `ClienteConsultoria` com `cliente_principal` apontando para o titular.
-- Dependente não faz login.
-- Operações e listagens devem respeitar escopo por assessor no backend.
-- Dados financeiros do titular não são exibidos para dependentes.
-
-### 4.4 Permissões por perfil e módulo
-
-Modelos: `Modulo`, `Perfil`, `UsuarioConsultoria` (em `system/models/permission_models.py`).
-
-**Módulos definidos (11):** Clientes, Viagens, Processos, Formularios, Parceiros, Paises de Destino, Tipos de Visto, Tipos de Formulario de Visto, Financeiros, Relatorios, Usuarios.
-
-**Perfis:** Administrador (acesso total), Atendente (acesso restrito).
-
-Invariantes:
-- Autorização deve ocorrer no backend nas views (não apenas via UI).
-- Superuser/staff ou perfil "Administrador" gerencia tudo via `usuario_pode_gerenciar_todos()`.
-- Atendentes veem/editam apenas dados vinculados ao seu assessor via `assessor_responsavel`.
-- Verificação por módulo: `usuario_tem_acesso_modulo()`.
-- Verificação por ownership: `usuario_pode_editar_cliente()`.
+```python
+# settings.py
+from decouple import config
+SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=False, cast=bool)
+```
 
 ---
 
-## 5. Domínios e regras canônicas
+## Arquitetura Django MTV
 
-### 5.1 Cadastro em etapas (wizard dinâmico)
+| Camada | Arquivo | Responsabilidade |
+|---|---|---|
+| Domínio | `models.py` | Persistência e regras de domínio simples |
+| Negócio | `services.py` | Lógica de negócio (**NUNCA** só na view) |
+| Leitura | `selectors.py` | Consultas (`select_related`/`prefetch_related`) |
+| HTTP | `views.py` | Orquestração — views finas |
+| Validação | `forms.py` | Entrada server-side |
+| Rotas | `urls.py` | Namespace por app |
+| Apresentação | `templates/<app>/` | Herdam `base.html` |
+| Estilos/Scripts | `static/<app>/css/`, `static/<app>/js/` | Namespaced por app |
+| Testes | `tests/test_*.py` | Separados por camada (models, services, views, forms) |
+| Automação | `management/commands/` | Comandos administrativos |
 
-Modelos:
-- `EtapaCadastroCliente` (ordem, nome, descrição, `campo_booleano` que mapeia flag do cliente).
-- `CampoEtapaCliente` (campo configurável: nome, tipo, obrigatoriedade; `unique_together = ("etapa", "nome_campo")`).
+**Ordem de implementação:** Models → Forms → Services → Views → URLs → Templates → Static → Tests
 
-Fluxo:
-1. Etapas definem quais campos são visíveis/obrigatórios em cada passo.
-2. View `cadastrar_cliente_view` navega em sequência; dados parciais na sessão (`cliente_dados_temporarios`).
-3. Na etapa "Membros" (`campo_booleano='etapa_membros'`), dependentes são adicionados a `dependentes_temporarios` na sessão.
-4. Ao finalizar, `_criar_cliente_do_banco()` cria principal + dependentes em `transaction.atomic()`.
-5. Cada etapa concluída marca o campo booleano correspondente (ex.: `etapa_dados_pessoais=True`).
-6. Opção "Finalizar e Criar Viagem" redireciona com cliente + dependentes pré-selecionados.
+**TDD (Red-Green-Refactor):** escrever teste que falha → código mínimo para passar → refatorar. Double-loop: Playwright (comportamento do usuário) como externo, unitários por camada como interno.
 
-Invariantes:
-- Validação considera apenas a etapa atual (não exigir campos de outras etapas).
-- CPF é validado contra duplicidade na sessão e no banco.
-- Dependente pode herdar dados do principal (endereço, dispensa senha).
+**Estrutura de testes:**
 
-### 5.1.1 Cliente com papel dual (principal e dependente em momentos distintos)
+```
+<app_name>/tests/
+├── test_models.py
+├── test_services.py
+├── test_selectors.py
+├── test_views.py
+├── test_forms.py
+└── test_commands.py
+```
 
-Um `ClienteConsultoria` pode ser **dependente** em um contexto e **principal** em outro, desde que não simultaneamente na mesma viagem. O campo `cliente_principal` define o vínculo familiar/cadastral, mas **não impede** que o mesmo cliente atue como principal em outra viagem.
-
-Exemplo: um filho cadastrado como dependente do pai pode, posteriormente, viajar sozinho para intercâmbio — nesse caso, uma nova viagem é criada com ele como principal, sem necessidade de recadastro. O histórico completo do cliente permanece vinculado ao mesmo registro.
-
-Invariantes:
-- O papel na viagem (`ClienteViagem.papel`) é independente do vínculo cadastral (`cliente_principal`).
-- Ao criar viagem, o assessor seleciona o principal e pode incluir/excluir dependentes.
-- Um dependente cadastral pode ser selecionado como principal de uma viagem específica.
-- O mesmo se aplica a processos: o processo é criado por (viagem, cliente), e o cliente pode ter papel de principal em uma viagem e dependente em outra.
-
-### 5.2 Viagens e processos (checklist)
-
-Modelos:
-- `PaisDestino` (`nome` unique).
-- `TipoVisto` (`unique_together = ("pais_destino", "nome")`).
-- `Viagem` com M2M para clientes via `ClienteViagem` (through; `unique_together = ("viagem", "cliente")`). Cada `ClienteViagem` pode ter `tipo_visto` específico.
-- `Processo` vinculado a `(viagem, cliente)` com `unique_together`.
-- `StatusProcesso` (etapas reutilizáveis, opcionalmente vinculadas a tipo de visto).
-- `ViagemStatusProcesso` (`unique_together = ("viagem", "status")`) — sincronizado automaticamente via signal.
-- `EtapaProcesso` (checklist executado; `unique_together = ("processo", "status")`; com `concluida`, `prazo_dias`, `data_conclusao`).
-
-Invariantes:
-- Não duplicar processo para a mesma dupla (viagem, cliente).
-- Não duplicar etapa/checklist para o mesmo par (processo, status).
-- Progresso do processo deriva de contagem de etapas concluídas vs total.
-- Status disponíveis por viagem são sincronizados automaticamente ao salvar viagem ou status de processo.
-
-### 5.3 Formulários dinâmicos e respostas
-
-Modelos:
-- `FormularioVisto` (OneToOne com `TipoVisto`).
-- `PerguntaFormulario` (tipos: texto, data, numero, booleano, selecao; `unique_together = ("formulario", "ordem")`).
-- `OpcaoSelecao` (para perguntas tipo "selecao"; `unique_together = ("pergunta", "ordem")`).
-- `RespostaFormulario` (`unique_together = ("viagem", "cliente", "pergunta")`; campos tipados: `resposta_texto`, `resposta_data`, `resposta_numero`, `resposta_booleano`, `resposta_selecao`).
-
-Invariantes:
-- Respostas respeitam o vínculo `(viagem, cliente, pergunta)`.
-- Tipo de resposta deve ser compatível com `tipo_campo` da pergunta.
-- Busca de formulário: tipo_visto do `ClienteViagem` > tipo_visto da `Viagem`.
-- Clientes respondem na área do cliente; assessores visualizam/editam.
-
-### 5.4 Financeiro
-
-Modelos:
-- `Financeiro` com viagem, cliente (opcional), assessor_responsavel, valor, data_pagamento, status e observações.
-- `StatusFinanceiro` (TextChoices): `pendente`, `pago`, `cancelado`.
-
-Regras de criação automática (via signals):
-- Ao vincular clientes a uma viagem (`m2m_changed`), registros financeiros são criados automaticamente.
-- O valor total vai para o **cliente principal** do grupo; dependentes recebem registros com valor zero.
-- Se não há principal, o primeiro cliente recebe o registro.
-- Se a viagem não tem clientes, cria registro com `cliente=None`.
-- Duplicação de registros é evitada.
-
-Propagação de pagamento (signal `propagate_payment_to_dependents`):
-- Quando o registro do **cliente principal** é marcado como `PAGO`, todos os registros dos dependentes vinculados à mesma viagem são marcados como `PAGO` automaticamente.
-- Ocorre apenas em atualização (não criação), apenas quando status=PAGO, e apenas se o cliente é principal.
-
-Dar baixa:
-- Restrito a administradores (`pode_gerenciar_todos`).
-- Form permite definir `data_pagamento`, `status` e `observacoes`.
-
-Dashboard financeiro:
-- Totais de registros, pendentes, pagos; valores via `Sum`.
-- Últimos 10 registros; restrito a administradores.
-
-### 5.5 Parceiros
-
-Modelos:
-- `Partner` com CPF/CNPJ (opcionais), `email` unique, senha hash, segmento (agencia_viagem, consultoria_imigracao, advocacia, educacao, outros).
-- `ClienteConsultoria.parceiro_indicador` indica quem indicou (acompanhamento condicional).
+**Patterns nos serviços:** `@transaction.atomic` em múltiplas escritas, exceção explícita em erro (nunca `None` silencioso), serviço recebe dados já validados pelo Form.
 
 ---
 
-## 6. Signals do sistema
+## Configuração de estáticos e media no `settings.py`
 
-1. **`propagate_payment_to_dependents`** (post_save em `Financeiro`) — propaga status `PAGO` do principal para dependentes na mesma viagem.
-2. **`criar_registro_financeiro`** (post_save em `Viagem`) — cria registros financeiros ao criar viagem com clientes.
-3. **`criar_registro_financeiro_ao_adicionar_cliente`** (m2m_changed em `Viagem.clientes.through`) — cria/atualiza registros financeiros ao adicionar clientes.
-4. **`sincronizar_status_viagem_post_save`** (post_save em `Viagem`) — sincroniza `ViagemStatusProcesso` disponíveis.
-5. **`sincronizar_status_viagem_status`** (post_save em `StatusProcesso`) — atualiza viagens quando um status de processo muda.
-6. **`ensure_initial_system_data`** (post_migrate) — carrega módulos, perfis e usuários do `.env`.
-7. **`ensure_initial_domain_data`** (post_migrate) — carrega países, tipos de visto, parceiros, status de processo, formulários e etapas do `.env` e JSON.
+```python
+# Estáticos
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']        # onde os fontes ficam
+STATIC_ROOT = BASE_DIR / 'staticfiles'           # gerado pelo collectstatic (NÃO editar)
 
----
+# Media (uploads de usuário)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+```
 
-## 7. Integrações externas
+```python
+# urls.py (desenvolvimento)
+from django.conf import settings
+from django.conf.urls.static import static
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
 
-### 7.1 Consulta de CEP
-
-Serviço: `system/services/cep.py` — `buscar_endereco_por_cep(cep)`.
-
-Estratégia multi-fonte com fallback sequencial:
-1. **ViaCEP** (API REST)
-2. **BrasilAPI** (API REST)
-3. **pycep-correios** (biblioteca Python)
-4. **brazilcep** (biblioteca Python)
-
-Regras:
-- Falha em uma fonte tenta a próxima automaticamente.
-- Resposta normalizada para formato padrão (`cep`, `street`, `district`, `city`, `uf`, `complement`).
-- CEP inválido ou todas as fontes falhando deve resultar em mensagem clara ao usuário, sem travar o fluxo.
-- Cada tentativa e falha é logada.
-
-### 7.2 Sem gateway de pagamento
-
-O financeiro é puramente de controle interno (baixa manual). Não há integração com Stripe ou outro gateway.
-
-### 7.3 Importação legada de produção para teste (`criar_seeds_prod`)
-
-Objetivo operacional:
-- espelhar dados de produção no ambiente de teste local em uma carga única;
-- sem sincronização incremental, sem agendamento e sem jobs periódicos.
-
-Fluxo padrão esperado:
-1. `python cleanup.py`
-2. `python manage.py makemigrations`
-3. `python manage.py migrate`
-4. `python manage.py criar_superuser_admin`
-5. `python manage.py criar_seeds_prod`
-
-Configuração mínima obrigatória no `.env`:
-- `LEGACY_DB_HOST`
-- `LEGACY_DB_PORT`
-- `LEGACY_DB_NAME`
-- `LEGACY_DB_USER`
-- `LEGACY_DB_PASSWORD`
-- `LEGACY_IMPORT_SHARED_PASSWORD`
-
-Regras de segurança e operação:
-- Credenciais de SSH (`ssh -p ... user@host`) e de MySQL (`LEGACY_DB_USER/LEGACY_DB_PASSWORD`) são independentes.
-- Nunca assumir que usuário/senha de SSH funcionam no MySQL.
-- Erros de autenticação do MySQL (`1045`) devem ser tratados como problema de credencial/permissão remota, não como falha de mapeamento do import.
-- O import deve ser idempotente por execução (upsert + deduplicação semântica, sem hard reset de domínio) e respeitar constraints de unicidade do sistema atual.
-- O mapeamento legado de tipo de visto deve usar normalização semântica (acentos/hífens/pontuação) para evitar catálogos duplicados que quebrem o vínculo com formulários.
-- A revalidação final do import deve comparar cobertura de formulários por tipo de visto efetivamente usado e completude mínima de perguntas com os JSONs de `static/forms_ini`.
-- O `cleanup.py` deve ser estritamente não destrutivo para código-fonte: remover apenas `__pycache__`, migrations locais e `db.sqlite3`; é proibido strip de comentários/docstrings e encerramento indiscriminado de processos Python.
-- Em execução operacional do agente, comandos `git` (status/diff/log/checkout/reset/rebase etc.) só podem ocorrer com solicitação explícita do usuário na tarefa atual.
-- Execução e instalação de dependências para import devem ocorrer no `.venv` do projeto; não instalar drivers do legado no Python global.
-- Diagnóstico mínimo obrigatório quando `criar_seeds_prod` falhar: `sys.executable`, presença de `mysql-connector-python`/`pymysql` no `.venv`, e confirmação de ausência desses pacotes no Python global.
+**Regras:**
+- **Nunca** colocar arquivos fonte em `STATIC_ROOT` (`staticfiles/`) — é gerado automaticamente.
+- Arquivos fonte ficam em `static/` (raiz) ou `<app>/static/<app>/` (namespaced).
+- Após alterar estáticos: `.\.venv\Scripts\python.exe manage.py collectstatic --noinput`.
+- `media/` e `staticfiles/` ficam no `.gitignore`.
 
 ---
 
-## 8. Segurança e dados sensíveis
+## Estrutura de templates e estáticos
 
-### 8.1 Dados tratados
-O sistema lida com:
-- dados cadastrais pessoais (nome, CPF, data de nascimento, nacionalidade);
-- dados de endereço;
-- dados de passaporte (número, país emissor, datas, autoridade emissora);
-- dados de dependentes (incluindo menores);
-- dados financeiros de assessoria.
+### Templates
 
-### 8.2 Regras obrigatórias
-- Coletar apenas o mínimo necessário.
-- Restringir acesso por perfil e necessidade operacional.
-- Backend filtra por `assessor_responsavel` e verifica módulos/perfil.
-- Templates não decidem permissão; apenas exibem conforme contexto.
-- Dados de passaporte são sensíveis e devem ter controle de acesso adequado.
+```
+templates/
+├── base.html                         # {% block content %}, {% block extra_css %}, {% block extra_js %}
+├── includes/_navbar.html, _footer.html, _messages.html
+├── <app_name>/<entity>_list.html, _detail.html, _form.html, _confirm_delete.html
+└── registration/login.html
+```
 
-### 8.3 Observação sobre exclusão/anonimização
-A spec deve evoluir quando aparecerem requisitos legais explícitos (LGPD: anonimização, exclusão definitiva) não modelados hoje no código. Atualmente não há fluxo de exclusão definitiva implementado.
+### Estáticos (com namespacing)
 
----
+```
+static/
+├── css/base.css                      # Globais
+├── js/base.js
+├── images/logo.svg
+└── <app_name>/                       # Namespace (evita colisão entre apps)
+    ├── css/<entity>_list.css
+    ├── js/<entity>_form.js
+    └── images/
+```
 
-## 9. Mapeamento macro de telas e domínios
-
-O sistema cobre, no mínimo, estes macroblocos funcionais:
-- T01 Landing, login e acesso (consultor via e-mail + cliente via CPF)
-- T02 Cadastro e onboarding por etapas (wizard dinâmico: dados pessoais, endereço, passaporte, membros/dependentes)
-- T03 Área do cliente (dashboard, viagens vinculadas, formulários/respostas e status de processo)
-- T04 Gestão de clientes (home com cards, listagem, visualização, edição, exclusão, dependentes)
-- T05 Gestão de viagens (CRUD + clientes vinculados + formulários por viagem)
-- T06 Gestão de países destino e tipos de visto (CRUD com verificação de exclusão)
-- T07 Gestão de processos e checklist (CRUD + etapas, adicionar/remover, progresso)
-- T08 Gestão de status de processo (CRUD configurável)
-- T09 Formulários dinâmicos (tipos de formulário, perguntas, opções, respostas por viagem/cliente)
-- T10 Gestão de parceiros (CRUD + indicação condicional)
-- T11 Financeiro (home/dashboard, listagem com filtros, dar baixa)
-- T12 Administração (CRUD de usuários, perfis e módulos)
-- T13 Etapas de cadastro configuráveis (CRUD de etapas e campos)
-- T14 Página de acesso negado (403)
-
-Se uma feature nova não se encaixar claramente em um desses domínios, a modelagem precisa ser revisitada antes da implementação.
+Template usa: `{% load static %}` → `{% static '<app_name>/css/file.css' %}`
 
 ---
 
-## 10. Fluxos críticos que exigem cuidado extra
+## Ferramentas de validação
 
-1. Cadastro/edição de cliente quando CPF já existe (validação no banco e na sessão do wizard).
-2. Criação/edição de dependente garantindo vínculo `cliente_principal` e escopo por assessor.
-3. Onboarding transacional: principal + dependentes em `transaction.atomic()`.
-4. Criação de `Processo` duplicado para a mesma dupla (viagem, cliente).
-5. Adição/remoção/edição de `EtapaProcesso` preservando integridade do checklist (`unique_together`).
-6. Persistência de `RespostaFormulario` respeitando vínculo (`viagem`, `cliente`, `pergunta`).
-7. Persistência de resposta com tipo incompatível com `PerguntaFormulario.tipo_campo`.
-8. Baixa/edição em `Financeiro` com permissões corretas no backend e propagação automática.
-9. Signals de criação financeira ao vincular clientes: evitar duplicação e garantir valor no principal.
-10. Sincronização de `ViagemStatusProcesso` ao salvar viagem ou status de processo.
-11. Falha na consulta de CEP: manter cadastro em estado consistente.
-12. Login de cliente: normalização de CPF, bloqueio de dependente, migração de senhas.
-13. Import de produção em `criar_seeds_prod`: validar autenticação em banco legado, preservar constraints locais e evitar mistura com seed de demonstração.
-14. Falha de dependência no import legado: validar escopo de instalação (`.venv` vs global) antes de alterar mapeamentos de domínio.
+| Ferramenta | Instalação (dentro da `.venv`) |
+|---|---|
+| Playwright | `pip install playwright` → `playwright install chromium` → atualizar `requirements.txt` |
+| Context7 (MCP) | Verificar disponibilidade; se indisponível, buscar via web |
 
 ---
 
-## 10.1 Referência visual canônica — Painel de Atendimento
+## PRD — estrutura obrigatória
 
-O **Painel de Atendimento** (`home/home.html`) é a **tela-mestre de design** do sistema. Todo componente de filtro, busca ou interação de seleção em qualquer tela do sistema deve ser visualmente consistente com este painel.
+Criar em `docs/prd/PRD-<NNN>-<slug>.md` (ver detalhes completos em `AGENTS.md` Fase 3):
 
-### Componentes de referência obrigatória:
-
-**Combobox de busca de cliente (`.painel-filtros__combobox`):**
-- Input de texto com ícone SVG de lupa à esquerda, botão "Buscar" e botão "Limpar Filtros".
-- Dropdown customizado (`.dropdown-list`) com itens clicáveis, highlight de texto digitado, e "Nenhum resultado" quando vazio.
-- Hover com `background: rgba(86, 244, 156, 0.15)`.
-- Funcionamento: digitar filtra a lista; clicar seleciona; valor vai para `<select>` hidden que alimenta o form.
-
-**Selects inline (`.painel-filtros select`):**
-- Background semi-transparente: `rgba(255, 255, 255, 0.05)`.
-- Borda: `1px solid rgba(255, 255, 255, 0.12)`.
-- Border-radius: `10px`.
-- Custom arrow via `background-image` SVG.
-- `appearance: none; -webkit-appearance: none`.
-- Hover: `border-color: rgba(86, 244, 156, 0.4)`.
-- Focus: `border-color: rgba(86, 244, 156, 0.6)`.
-
-**Barra de filtros (`.painel-filtros`):**
-- Layout flex horizontal com `gap: 12px`, `flex-wrap: wrap`.
-- Label "FILTRAR POR:" em uppercase, `0.78rem`, `var(--text-secondary)`.
-- Responsivo: `@media (max-width: 768px)` → coluna vertical, inputs `width: 100%`.
-
-### Regra inviolável:
-Qualquer tela que tenha filtro de busca por nome de cliente **deve** usar o componente combobox com dropdown (não `<datalist>`, não `<select>` puro sem busca, não `<input type="text">` sem sugestões). Se a implementação exigir adaptação, o resultado visual e de interação deve ser indistinguível do Painel de Atendimento.
+```md
+# PRD-<NNN>: <Título>
+## Resumo
+## Problema atual
+## Objetivo
+## Contexto consultado (Context7 + Web)
+## Dependências adicionadas
+## Escopo / Fora do escopo
+## Arquivos impactados
+## Riscos e edge cases
+## Regras e restrições (SDD, TDD, MTV, Design Patterns)
+## Critérios de aceite (assertions testáveis)
+## Plano (ordenado por dependência)
+## Comandos de validação
+## Implementado (ao final)
+## Desvios do plano
+```
 
 ---
 
-## 11. Armadilhas conhecidas
+## Reset destrutivo local (somente sob pedido explícito)
 
-- Confiar apenas em bloqueio visual no frontend para permissões/escopo.
-- Misturar regra financeira com renderização de template.
-- Permitir que dependente acesse dados financeiros/administrativos do titular fora do escopo.
-- Persistir respostas fora do vínculo `(viagem, cliente, pergunta)` ou ignorar constraints.
-- Prosseguir com escrita após falha de pré-condições/constraints (falhar cedo).
-- N+1 queries em listagens e páginas que agregam relações.
-- Criar dois clientes para o mesmo CPF (incluindo via sessão temporária do wizard).
-- Expor dados de passaporte sem controle de acesso adequado.
-- Ignorar fallback do serviço de CEP e deixar o fluxo travar sem orientação.
-- Assumir que signals financeiros cobrem todos os cenários de vínculo sem verificar edge cases.
-- Testar concorrência só em SQLite e assumir que produção está coberta.
-- Executar rotina de limpeza que altere código-fonte (ex.: strip de comentários/docstrings) ou finalize processos Python fora do escopo do projeto.
-- Executar comandos `git` sem solicitação explícita do usuário na tarefa atual.
-- Entregar template sem testar responsividade: campos de formulário com largura fixa que estouram em mobile, grids sem `min()` que criam scroll horizontal, inputs sem `box-sizing: border-box` que ultrapassam o container, formulários flex sem fallback para coluna única em telas estreitas.
-- Implementar filtros com `<datalist>` nativo, `<select>` puro ou `<input>` sem sugestões quando o Painel de Atendimento usa combobox com dropdown customizado — o padrão visual do Painel é a referência obrigatória.
-- Assumir que padronização de CSS é suficiente sem validar o HTML renderizado e a interação real do componente contra a tela de referência.
-- Escrever texto visível ao usuário em inglês (labels, placeholders, mensagens, títulos, botões). Todo conteúdo de interface deve ser em pt-BR.
-- Usar nomes em português no código-fonte (models, fields, variáveis, funções, classes, arquivos). Todo identificador no código deve ser em inglês.
-- Adicionar comentários, docstrings ou anotações desnecessárias. Código limpo é autoexplicativo.
-- Usar `except: pass` ou `except Exception: pass`. Erros devem ser tratados explicitamente ou propagados.
-- Hardcode de valores mágicos, strings soltas ou configurações embutidas no código.
-- Estruturas condicionais complexas (>3 ramos `if/elif/else` sem refatoração).
-- Classes/métodos "onipotentes" que acumulam responsabilidades excessivas.
-- Métodos com mais de 25 linhas ou funções com mais de 4 argumentos.
-- Tentar ajustar código legado em português em vez de reescrever em inglês. Compatibilidade retroativa não é necessária.
+```powershell
+.\.venv\Scripts\python.exe clear_migrations.py
+.\.venv\Scripts\python.exe manage.py makemigrations
+.\.venv\Scripts\python.exe manage.py test
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py create_admin_superuser
+.\.venv\Scripts\python.exe manage.py inicial_seed
+.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+```
 
 ---
 
-## 12. Definição mínima de pronto para mudanças sensíveis
+## Validação — checklist (Fase 6 do AGENTS.md)
 
-Uma mudança é considerada pronta quando:
-1. respeita esta spec e o `AGENTS.md`;
-2. não quebra unicidade/relacionamentos (CPF, `cliente_principal`, `Processo`, `EtapaProcesso`, `RespostaFormulario`);
-3. mantém autorização correta no backend (especialmente em financeiro, processos, viagens e administração por módulos/perfis);
-4. valida campos da etapa atual em fluxos de cadastro;
-5. trata falhas de integrações (CEP) sem "meio estado" de cadastro;
-6. possui testes adequados ao risco;
-7. não introduz N+1 queries em listagens ou dashboards.
+1. **Ambiente**: `.venv`, ExecutionPolicy, UTF-8, dependências
+2. **Visual**: Playwright/headless
+3. **Estáticos**: `collectstatic --noinput` OK, sem 404, `findstatic` confirma
+4. **Console browser**: sem erros JS
+5. **Testes**: 0 falhas, 0 erros
+6. **Terminal**: sem stack traces
+7. **ORM/Banco**: `showmigrations`, shell check
+8. **Segurança**: CSRF, server-side, sem hardcode, `.env`
+9. **Verificação cruzada**: sem regressões
 
 ---
 
-## 13. Changelog da spec
+## Estrutura esperada
 
-- **[2026-03-19]** Criação/primeira consolidação da spec do Visary.
-- **[2026-03-19]** Consolidação completa: mapeamento exaustivo de 18 models, 113 URLs, 7 signals, sistema de autenticação dual, wizard de cadastro, formulários dinâmicos, fluxo financeiro com propagação, permissões por módulo/perfil, integrações de CEP multi-fonte e macroblocos de telas.
-- **[2026-03-20]** Adicionada política explícita de importação legada (`criar_seeds_prod`): carga total para teste, variáveis `LEGACY_DB_*`, separação entre credenciais SSH e MySQL, e diagnóstico operacional para erro de autenticação remota.
-- **[2026-03-20]** Reforçada política de ambiente para import legado: dependências obrigatórias no `.venv`, proibição de instalação no Python global e checklist de diagnóstico de execução.
-- **[2026-03-20]** Definida política de segurança do `cleanup.py`: limpeza apenas de artefatos locais (`__pycache__`, migrations locais e `db.sqlite3`), sem mutação de código-fonte e sem encerramento indiscriminado de processos Python.
-- **[2026-03-20]** Definida regra de deduplicação semântica para `TipoVisto` no import legado e revalidação obrigatória de formulários modularizados com base em `static/forms_ini`.
- - **[2026-03-22]** Definida política de migrações: **nunca criar migrações manuais**. Sempre usar `makemigrations` do Django. Código novo em desenvolvimento não deve gerar migrações versionadas; o banco de desenvolvimento local deve ser recriado via `cleanup.py` + `makemigrations` + `migrate`.
-- **[2026-03-22]** Definida política de consistência visual: **todo template novo ou reescrito deve respeitar o design system do projeto** (CSS custom properties: `--card-bg`, `--accent`, `--text-primary`, etc.; cards com `border-radius: 24px`, `box-shadow`, gradientes escuros; botões com estilização consistente; badges coloridos por tipo; inputs com transições). Templates genéricos (bare `{{ form.as_p }}`, classes CSS aleatórias ou inline styles inconsistentes) são rejeitados em revisão.
-- **[2026-03-30]** Definida regra de papel dual de cliente: um `ClienteConsultoria` pode ser dependente cadastral e principal em viagem/processo distinto, sem recadastro.
-- **[2026-03-30]** Definida referência visual canônica: o **Painel de Atendimento** (`home/home.html`) é a tela-mestre de design para filtros, combobox de busca e componentes de listagem. Toda tela com filtros deve replicar o padrão visual e de interação do Painel (combobox com dropdown de sugestões, ícone de busca, selects customizados), não apenas funcionalidade equivalente.
-- **[2026-03-30]** Definido fluxo canônico de Criar Viagem: selecionar cliente principal (combobox) → auto-exibir dependentes vinculados com checkboxes → permitir desmarcar dependentes ou selecionar apenas um dependente como principal da viagem.
-- **[2026-03-30]** Definido fluxo canônico de Novo Processo: selecionar cliente primeiro (combobox) → exibir viagens vinculadas ao cliente → exibir dependentes → criar processo para selecionados.
-- **[2026-03-26]** Definida política de responsividade obrigatória: **todo template deve funcionar corretamente em desktop (1120px+), tablet (768px) e mobile (480px)**. Regras invioláveis: `box-sizing: border-box` em todos os elementos; inputs/selects sempre `width: 100%` dentro do container; grids com `minmax(min(Xpx, 100%), 1fr)` para evitar overflow; formulários em grid com fallback para coluna única em mobile; tabelas envoltas em `.table-responsive` (`overflow-x: auto`); containers com `min-width: 0` para prevenir estouro de flex/grid; proibido `flex: 0 0 <valor fixo>` sem `@media` correspondente. Campos de formulário minúsculos, desalinhados ou que quebrem a viewport em qualquer resolução são rejeitados em revisão.
-- **[2026-03-29]** Definida política de idioma obrigatório: **todo texto visível ao usuário final deve ser em português brasileiro (pt-BR)**. Labels, placeholders, mensagens, títulos, botões, tooltips — tudo em pt-BR. Texto em inglês no frontend é rejeitado em revisão.
-- **[2026-03-30]** Definida política de idioma dual: **backend 100% inglês** (models, fields, variáveis, funções, classes, arquivos, URLs) + **interface do usuário em pt-BR** (labels, mensagens, textos visíveis). Código JS/CSS/configurações em inglês. Respostas do agente em pt-BR. Todo código existente em português deve ser migrado para inglês.
-- **[2026-03-30]** Definida política de código limpo: **proibido comentários e docstrings**. Código autoexplicativo por nomes claros e funções pequenas.
-- **[2026-03-30]** Definida política de destruição e recriação: sistema em fase inicial, pode ser destruído e recriado. Código legado em português deve ser reescrito em inglês, nunca ajustado. Quebrar durante refatoração é aceitável.
-- **[2026-03-30]** Definida política anti-code-smell rigorosa: max 25 linhas/método, max 4 args/função, proibido `except: pass`, proibido hardcode, proibido condicionais complexas, responsabilidade única por classe, TDD obrigatório.
+```
+projeto/
+├── .env                    # Credenciais (fora do git)
+├── .gitignore              # inclui: .env, media/, staticfiles/, db.sqlite3, __pycache__/
+├── requirements.txt
+├── manage.py
+├── <project_config>/       # settings.py, urls.py, wsgi.py
+├── <apps>/
+│   ├── models.py, views.py, forms.py, services.py, selectors.py
+│   ├── urls.py, tests.py
+│   └── management/commands/
+├── templates/
+│   ├── base.html
+│   ├── includes/
+│   └── <app_name>/
+├── static/
+│   ├── css/base.css, js/base.js, images/
+│   └── <app_name>/css/, js/, images/
+├── media/                  # Uploads (fora do git)
+├── staticfiles/            # Gerado por collectstatic (fora do git)
+├── docs/prd/
+├── CLAUDE.md
+└── AGENTS.md
+```
+
+---
+
+## Critérios de falha
+
+**NÃO CONCLUÍDA** quando: sem PRD, sem validação visual, sem console/logs, sem evidência, reset sem pedido, execução inventada, sem pesquisa de contexto, ferramentas não garantidas, lib sem requirements, pacote fora da `.venv`, credenciais hardcodadas, CSRF desabilitado, God Class, CSS/JS inline, `&&` usado no PowerShell, arquivos colocados em `STATIC_ROOT`.
+
+---
+
+### Changelog da spec
+
+```md
+- **[YYYY-MM-DD]** Descrição da decisão ou mudança.
+```

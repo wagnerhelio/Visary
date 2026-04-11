@@ -1,295 +1,455 @@
-# AGENTS.md — Protocolo Operacional do Agente para o projeto Visary
+# AGENTS.md
 
-**Idioma das respostas:** responda sempre em português brasileiro (pt-BR). Toda comunicação do agente com o desenvolvedor deve ser em pt-BR.
-
-**Política de idioma dual (regra inviolável):**
-- **Backend 100% inglês:** models, fields, tabelas, variáveis, funções, classes, services, views, forms, serializers, managers, URLs, nomes de arquivos, nomes de diretórios — tudo em inglês. Nenhum identificador em português no código-fonte Python.
-- **Frontend — texto visível ao usuário em pt-BR:** labels, placeholders, mensagens, títulos, botões, tooltips, textos de ajuda — tudo em português brasileiro.
-- **Frontend — código em inglês:** variáveis JS, classes CSS, IDs de elementos, nomes de funções JS, configurações — tudo em inglês. Apenas o conteúdo textual renderizado para o usuário é em pt-BR.
-- Qualquer código existente que use português em identificadores (nomes de model, field, variável, função, arquivo, URL) deve ser migrado para inglês.
-
-**Código limpo (regra inviolável):**
-- Proibido adicionar comentários, docstrings ou anotações explicativas.
-- Código autoexplicativo: nomes claros, funções pequenas, sem ruído.
-- Exceção única: comentário estritamente necessário para explicar decisão de negócio não-óbvia que não pode ser expressa pelo nome.
-
-**Objetivo:** atuar como arquiteto de software sênior e agente autônomo de implementação/refatoração para o sistema **Visary** (Django monólito modular), preservando coerência de domínio, baixo acoplamento, segurança operacional e integridade de dados.
-
-Este arquivo define **como o agente deve trabalhar**. As regras de arquitetura, domínio, integrações e invariantes do produto ficam no `CLAUDE.md`.
+> Instruções universais e **obrigatórias** para agentes de desenvolvimento (Claude Code, Codex, Cursor, Jules, Copilot).
+> Contexto específico do projeto fica em `CLAUDE.md`.
+> **Nenhuma etapa é opcional.** Pular qualquer fase invalida a entrega.
 
 ---
 
-## 1. Missão do agente
+## Princípios
 
-Sua missão é entregar mudanças que:
-1. respeitem as regras de negócio do domínio Visary;
-2. não criem duplicidade de identidade, vínculo financeiro ou processo;
-3. protejam dados pessoais e sensíveis (CPF, passaporte, dados de dependentes) com minimização e controle de acesso no backend;
-4. mantenham o projeto evolutivo, sem puxadinhos nem débito técnico escondido.
-
-A prioridade de decisão é sempre:
-**segurança do domínio > integridade dos dados > clareza da arquitetura > velocidade de implementação**.
-
----
-
-## 2. Protocolo obrigatório de execução
-
-Para qualquer solicitação, opere nesta ordem.
-
-### Fase 1 — Leitura de contexto e impacto
-
-Antes de alterar qualquer arquivo:
-0. não execute comandos `git` (ex.: `git status`, `git diff`, `git log`) sem solicitação explícita do usuário na tarefa atual;
-1. leia o `CLAUDE.md` e a área do código afetada (models, views, forms, templates, services e signals);
-2. identifique quais domínios serão impactados: `clientes`, `dependentes`, `viagens`, `processos`, `etapas`, `formulários`, `respostas`, `financeiro`, `parceiros`, `permissões/módulos`, `autenticação`;
-3. verifique se a mudança toca alguma regra crítica:
-   - CPF como identificador único do cliente (`ClienteConsultoria.cpf` é `unique`);
-   - dependente vinculado a um cliente principal (`cliente_principal`);
-   - onboarding transacional (principal + dependentes via `transaction.atomic()`);
-   - processo único por (viagem, cliente) em `Processo`;
-   - etapa/checklist única por (processo, status) em `EtapaProcesso`;
-   - respostas de formulário por (viagem, cliente, pergunta) em `RespostaFormulario`;
-   - status financeiro (`StatusFinanceiro`: `pendente`, `pago`, `cancelado`) e propagação do pagamento do principal para dependentes;
-   - signals de criação automática de registros financeiros e sincronização de status de viagem;
-   - permissões e escopo: filtragem por `assessor_responsavel` e autorização por módulo/perfil no backend;
-   - criação/atualização via formulários dinâmicos baseados em `EtapaCadastroCliente`/`CampoEtapaCliente` e `FormularioVisto`/`PerguntaFormulario`;
-   - autenticação dual (consultor via `auth.User` sincronizado + cliente via sessão/CPF);
-   - validação/consulta de CEP via serviço multi-fonte (resiliência e mensagens de erro claras);
-   - importação de dados legados por seed de produção (`criar_seeds_prod`) com extração total e carga total no banco de teste;
-   - consistência semântica de tipo de visto no import legado (normalização de acentos/hífens/pontuação para evitar duplicidade lógica);
-   - consistência de formulários modularizados do sistema atual com as definições estáticas em `visary/static/forms_ini`;
-   - segurança operacional do `cleanup.py` (apenas limpeza de artefatos locais, sem mutar código-fonte e sem matar processos Python indiscriminadamente);
-   - separação explícita entre credenciais SSH e MySQL (login SSH não implica usuário/senha do MySQL);
-   - execução dentro do ambiente virtual do projeto (`.venv`) para evitar dependências instaladas no Python global;
-4. apresente um plano curto e objetivo antes de implementar.
-
-### Fase 2 — Implementação limpa e aderente ao domínio
-
-Ao implementar:
-1. mantenha views finas e delegue regras complexas para `services.py`, `selectors.py`, `managers.py` ou métodos de domínio;
-2. use `transaction.atomic()` em fluxos compostos, especialmente:
-   - onboarding em etapas (cliente principal + dependentes);
-   - criação de cliente + vínculo em viagem + processo + checklist + financeiro;
-   - registro de pagamento e quaisquer efeitos cascata (inclusive signals/propagações);
-   - operações que criam/atualizam múltiplos registros relacionados;
-3. não use hardcode para:
-   - regras configuráveis (quando o projeto já tiver modelo/admin para isso);
-   - chaves e segredos;
-   - mensagens sensíveis que possam vazar dados (prefira mensagens genéricas ao usuário);
-4. trate integrações externas como falíveis e auditáveis (ex.: CEP com 4 fontes de fallback);
-5. garanta que o backend sempre revalide regras críticas, mesmo que a UI já tenha bloqueado a ação;
-6. respeite a arquitetura de signals existente; ao criar novos signals, avalie se o acoplamento implícito é realmente aceitável.
-
-### Fase 2.5 — Validação visual obrigatória (antes de entregar qualquer template)
-
-Quando a tarefa envolve criação ou modificação de templates:
-1. **leia a tela de referência antes de implementar.** O Painel de Atendimento (`home/home.html`) é a referência visual canônica. Leia o HTML/CSS/JS do componente equivalente no Painel antes de criar ou alterar qualquer filtro, busca ou interação de seleção.
-2. **replique o padrão visual e de interação, não apenas a funcionalidade.** Um filtro que "funciona" mas usa `<datalist>` ou `<select>` puro quando o Painel usa combobox com dropdown customizado é uma entrega rejeitada.
-3. **valide o HTML renderizado mentalmente ou via servidor.** Antes de marcar como pronto, confirme que a estrutura HTML produz o resultado visual esperado (classes CSS corretas, hierarquia de elementos, atributos de acessibilidade).
-4. **se o padrão visual não estiver claro, pergunte ao usuário.** É preferível uma pergunta a uma entrega errada. Solicite screenshots ou descrição do comportamento esperado antes de implementar.
-5. **nunca deixe ajustes visuais para depois.** Visual incorreto ou inconsistente não é "detalhe final" — é parte da entrega. Template funcional sem visual correto = entrega incompleta.
-
-### Fase 3 — Validação estrita
-
-Antes de considerar a entrega pronta:
-1. valide impacto de modelagem (unique constraints/relations) e migrações, se aplicável;
-2. verifique risco de N+1 em listagens e dashboards (use `select_related()`/`prefetch_related()` conforme necessário);
-3. confirme consistência de regras em templates versus backend (templates não decidem permissão, apenas exibem);
-4. cubra a mudança com testes de unidade e, quando fizer sentido, testes de integração (o projeto já possui bases em `visary/system/tests`);
-5. verifique erros de integridade em:
-   - arquivos: diagnostics/lints nos arquivos alterados e quebras de import/estilo que afetem execução;
-   - console: ausência de stack traces/erros de runtime nos logs do servidor e, quando houver mudança no frontend, ausência de erros no console do navegador (JS) após carregar a página afetada;
-6. confirme que signals existentes não foram quebrados ou produzem efeitos colaterais indesejados após a mudança.
-7. em tarefas com dependências Python, valide explicitamente:
-   - `sys.executable` apontando para `.venv`;
-   - pacotes críticos instalados no `.venv`;
-   - ausência de instalação indevida no Python global quando o agente tiver instalado pacotes durante a execução.
-
-### Fase 4 — Evolução da spec
-
-Ao terminar:
-1. avalie se a tarefa revelou uma nova regra de negócio ou uma lacuna de arquitetura;
-2. se revelou, proponha explicitamente atualização do `CLAUDE.md` e/ou deste `AGENTS.md`.
-
-Frase de encerramento obrigatória quando houver nova descoberta relevante:
-
-> **"Identifiquei que nosso CLAUDE.md/AGENTS.md precisa evoluir com base nesta iteração [motivo]. Deseja que eu gere a atualização destes arquivos?"**
+- **SDD**: nenhuma implementação sem spec (PRD ou equivalente acordado). O código segue a especificação.
+- **TDD (Red-Green-Refactor)**: ciclo obrigatório para fluxos centrais de domínio:
+  1. **Red**: escrever teste que falha (o comportamento esperado ainda não existe).
+  2. **Green**: escrever o código mínimo para o teste passar.
+  3. **Refactor**: limpar o código mantendo todos os testes verdes.
+  - Double-loop: testes funcionais (Playwright — comportamento do usuário) como loop externo; testes unitários (models, services, views) como loop interno.
+- **MTV (Django)**: lógica de negócio em `services.py` / domínio, nunca só na view ou template.
+- **Design Patterns Django**: Service Objects com `@transaction.atomic`, custom Manager/QuerySet, Form `clean_*` para validação, Mixins de view para reuso. KISS, DRY, YAGNI. Composição sobre herança.
+- **Destruição > remendo**: em fase MVP, código ruim não é ajustado — é reescrito.
 
 ---
 
-## 3. Invariantes que o agente nunca pode violar
+## Prioridade em caso de conflito
 
-### 3.1 Identidade, login e CPF
-- Uma pessoa/entidade de cliente não pode ser duplicada para "resolver problema de negócio".
-- O login do cliente utiliza CPF como identificador único (com normalização no fluxo de autenticação).
-- O sistema deve respeitar `unique=True` do campo `ClienteConsultoria.cpf` e validações correlatas (inclusive na sessão temporária do wizard de cadastro).
-- Dependentes não podem fazer login; apenas clientes principais.
-
-### 3.2 Dependentes, escopo e papel dual
-- Dependentes existem como `ClienteConsultoria` com `cliente_principal` apontando para o principal.
-- Operações e listagens devem respeitar o escopo de assessor no backend (autorização e filtragem corretas via `assessor_responsavel`).
-- Dados financeiros do titular não podem ser exibidos para dependentes.
-- **Papel dual:** um cliente pode ser dependente cadastral (`cliente_principal` preenchido) e simultaneamente atuar como principal em uma viagem/processo diferente. O campo `ClienteViagem.papel` define o papel na viagem, independente do vínculo familiar cadastral. Nunca impedir que um dependente cadastral seja selecionado como principal de uma viagem.
-
-### 3.3 Viagens e processos
-- Existe integridade de processo por viagem e cliente (`unique_together = ("viagem", "cliente")` em `Processo`).
-- O checklist de um processo é consistente por (processo, status) (`unique_together` em `EtapaProcesso`).
-- Status disponíveis por viagem são sincronizados automaticamente via signal (`ViagemStatusProcesso`).
-- O vínculo viagem-cliente via `ClienteViagem` tem `unique_together = ("viagem", "cliente")`.
-
-### 3.4 Financeiro
-- Status financeiros válidos são os definidos em `StatusFinanceiro` (`pendente`, `pago`, `cancelado`).
-- Registros financeiros são criados automaticamente via signals ao vincular clientes a viagens.
-- A propagação de pagamento do principal para dependentes é automática (signal `propagate_payment_to_dependents`) e deve manter consistência sem duplicar registros.
-- Dar baixa é restrito a administradores (verificação no backend, não apenas na UI).
-
-### 3.5 Formulários dinâmicos
-- Respostas de formulário dependem de `(viagem, cliente, pergunta)` (conforme `unique_together` em `RespostaFormulario`).
-- Campos obrigatórios/opcionais em cadastro por etapas seguem `EtapaCadastroCliente`/`CampoEtapaCliente` (não inventar regra no template).
-- Perguntas por formulário respeitam `unique_together = ("formulario", "ordem")`.
-- Opções de seleção respeitam `unique_together = ("pergunta", "ordem")`.
-
-### 3.6 Autenticação dual
-- Consultores autenticam via e-mail e sincronizam com `auth.User` para sessão Django.
-- Clientes autenticam via CPF e usam sessão customizada (sem `auth.User`).
-- Senhas devem ser armazenadas como hash; existe fallback migratório de texto plano.
-- Os dois fluxos de autenticação não podem interferir um no outro.
-
-### 3.7 Integrações e CEP
-- Consulta de CEP usa serviço multi-fonte com fallback sequencial (ViaCEP, BrasilAPI, pycep-correios, brazilcep).
-- Falhas na consulta devem resultar em UX previsível: mensagem clara e não travar o fluxo sem orientação.
-
-### 3.8 Migração legada (seed de produção)
-- A migração para ambiente de teste deve usar fluxo único de carga total (`cleanup -> migrate -> criar_superuser_admin -> criar_seeds_prod`).
-- É proibido introduzir sincronização incremental/periódica quando o objetivo for apenas espelhar produção no teste.
-- O `cleanup.py` deve ser operacionalmente seguro: remover apenas `__pycache__`, migrations locais e `db.sqlite3`; é proibido strip de comentários/docstrings e finalização massiva de processos Python.
-- Credencial SSH e credencial MySQL devem ser tratadas como entidades distintas; nunca assumir equivalência por nome.
-- Antes de concluir implementação, validar conexão MySQL real com as variáveis `LEGACY_DB_*` e registrar erros de autenticação no retorno.
-- Instalação de drivers (`mysql-connector-python`/`pymysql`) deve ocorrer no `.venv`; se instalado fora dele por engano, remover do Python global e registrar no retorno.
-- O mapeamento legado -> `TipoVisto` deve usar chave semântica normalizada (acentos/hífens/pontuação) para não criar duplicidade de catálogo e quebrar vínculo com formulários.
-- A revalidação final deve incluir checagem estrita de formulários: cobertura de `FormularioVisto` para tipos efetivamente usados e completude mínima de perguntas conforme `static/forms_ini`.
+1. Solicitação atual do usuário
+2. Regras de segurança e ambiente
+3. Este `AGENTS.md`
+4. `CLAUDE.md`
+5. Convenções do repositório
 
 ---
 
-## 4. Regras de qualidade de código
+## Preparação do ambiente (regra inviolável)
 
-### Estrutura
-- Prefira monólito modular Django bem organizado a espalhar regra de negócio em arquivos aleatórios.
-- Regras de domínio ficam no backend.
-- **Aparência visual é parte da entrega.** Nunca entregue template funcional sem estilo. Todo template novo ou reescrito deve seguir o design system do projeto: CSS custom properties (`--card-bg`, `--accent`, `--text-primary`, etc.), cards com `border-radius: 24px`, `box-shadow: 0 24px 48px rgba(5,8,17,0.5)`, botões com cores/acentos consistentes, badges coloridos por tipo (verde para ativo/sucesso, amarelo para atenção, vermelho para perigo, etc.), inputs com transições suaves. Templates genéricos (`{{ form.as_p }}` sem estilização, classes CSS inventadas ou inline styles avulsos) são rejeitados em revisão.
-- **Responsividade é obrigatória em toda entrega.** Todo template deve funcionar sem quebra visual em desktop (1120px+), tablet (768px) e mobile (480px). Checklist inviolável antes de entregar qualquer template:
-  1. `box-sizing: border-box` aplicado (`*` ou nos containers relevantes);
-  2. inputs e selects com `width: 100%` dentro do container pai;
-  3. grids com `minmax(min(Xpx, 100%), 1fr)` — nunca `minmax(Xpx, 1fr)` sem `min()`, pois estoura em viewports menores que `Xpx`;
-  4. formulários em grid/flex com `@media (max-width: 768px)` que colapse para coluna única;
-  5. tabelas envoltas em container com `overflow-x: auto` (classe `.table-responsive`);
-  6. containers flex/grid com `min-width: 0` para prevenir estouro;
-  7. proibido `flex: 0 0 <valor fixo>` sem `@media` correspondente que libere em mobile;
-  8. proibido `style="margin-bottom: 2px"` ou hacks de alinhamento — usar gap/padding do grid/flex.
-  Campos minúsculos, desalinhados à direita, ou que quebrem a viewport em qualquer resolução são rejeitados.
-- Templates não carregam regra de negócio complexa; apenas renderizam e exibem.
-- Forms devem ser validados no backend; UI pode ajudar, mas nunca decide o que é permitido.
-- MVT: Models (dados e validações), Views (orquestração e permissão), Templates (apenas renderização).
+### PowerShell — configuração obrigatória (Windows)
 
-### Código limpo e direto
-- Proibido adicionar comentários, docstrings ou anotações. Código autoexplicativo por nomes claros e funções pequenas.
-- Exceção única: comentário para decisão de negócio não-óbvia impossível de expressar pelo nome da função/variável.
-- Todo identificador no código-fonte deve ser em inglês (models, fields, variáveis, funções, classes, arquivos, URLs). Português apenas no texto renderizado ao usuário final.
+```powershell
+# 1. Liberar execução de scripts
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 
-### Limites de complexidade e Anti-Code Smell
-- **Linhas por método:** máximo de 25 linhas. Acima disso, extraia submétodos ou mova para serviço/selector.
-- **Argumentos por função:** máximo de 4. Acima disso, use `dataclasses` ou objetos de contexto.
-- **Responsabilidade única:** cada classe/módulo tem uma responsabilidade. Classes "onipotentes" que acumulam responsabilidades devem ser quebradas.
-- **Consultas ORM:** proibido consultas ao banco dentro de laços `for`. Use `select_related()`/`prefetch_related()`.
-- **Proibido `except: pass` ou `except Exception: pass`.** Erros devem ser tratados explicitamente ou propagados. Silenciar exceções mascara bugs.
-- **Proibido hardcode.** Valores mágicos, strings soltas, configurações embutidas no código — tudo deve ser constante nomeada, `.env`, ou modelo configurável.
-- **Proibido estruturas condicionais complexas.** `if/elif/else` com mais de 3 ramos deve ser refatorado (dict dispatch, polimorfismo, early return).
-- **Signals:** só quando o acoplamento implícito for realmente aceitável. Se uma regra é central para o domínio, não esconder em helper genérico.
+# 2. Forçar encoding UTF-8 (evita corromper templates pt-BR com acentos)
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001
+```
 
-### Política de destruição e recriação
-- O sistema está em fase inicial e pode ser destruído e recriado quantas vezes for necessário.
-- Código legado em português não deve ser "ajustado" — deve ser reescrito em inglês do zero.
-- Nunca acochambrar (realizar tarefa de forma desleixada, apressada ou improvisada). Se o código legado está mal feito, reimplemente corretamente.
-- Quebrar o sistema durante refatoração é aceitável e até desejável: erros expostos significam lógica que precisa ser corrigida.
-- Compatibilidade retroativa com código legado em português não é necessária. Elimine completamente.
+**Armadilhas do PowerShell que o agente DEVE evitar:**
+- **`&&` não existe no PowerShell.** Usar `;` para encadear comandos, ou executar um por vez.
+- **`source` não existe no PowerShell.** Ativar venv com `.\.venv\Scripts\Activate.ps1`.
+- **Caminhos usam `\`**, não `/`. Usar `.\.venv\Scripts\python.exe`, não `./.venv/bin/python`.
 
-### Configuração
-- O que muda por ambiente vai para `settings.py`, `.env` ou configuração persistida.
-- O que muda por consultoria/operação deve ser configurável por modelo/admin/painel, não codificado em constante solta.
+### `.venv` — ambiente virtual (obrigatório)
+
+**Se não existir:**
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+**Se existir:** `.\.venv\Scripts\Activate.ps1`
+
+**Linux/macOS:**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Confirmar: `Get-Command python` (ou `which python`) deve apontar para a `.venv`.
 
 ---
 
-## 5. Política de testes
+## Gestão de dependências (regra inviolável)
 
-Toda mudança relevante deve, no mínimo, considerar testes para:
-- CPF único e login de cliente (incluindo normalização e bloqueio de dependente);
-- criação/edição de dependentes vinculados ao principal;
-- onboarding transacional (principal + dependentes via wizard);
-- criação de `Processo` sem duplicar por (viagem, cliente);
-- adição/remoção de etapas/checklist sem violar constraints;
-- registro financeiro, propagação de pagamento e criação automática via signals;
-- validação de formulários dinâmicos (campos obrigatórios por etapa/tipo);
-- respostas de formulário respeitando vínculo `(viagem, cliente, pergunta)`;
-- permissões por módulo/perfil e escopo por assessor;
-- autenticação dual (consultor vs cliente);
-- fallback de CEP.
+- Instalar: `.\.venv\Scripts\pip.exe install <pacote>` → verificar com `pip show <pacote>` → **atualizar `requirements.txt` imediatamente**.
+- `ModuleNotFoundError` em runtime: instalar → atualizar requirements → re-executar. **Não prosseguir até resolver.**
+- Sincronizar ao iniciar: `pip install -r requirements.txt`.
+- **Nunca** instalar no global, **nunca** `pip install --user`, **nunca** adicionar lib sem atualizar requirements.
+- Se o projeto usar `pyproject.toml`, `Pipfile` ou outro gerenciador, seguir a convenção.
 
-Quando a mudança for crítica, o agente deve informar claramente:
-1. o que foi testado;
-2. o que ainda precisa de teste;
-3. quais riscos permanecem.
+### Variáveis de ambiente e `.env`
 
-TDD obrigatório (test-first):
-1. antes de implementar, adicione/ajuste testes que falhem com o comportamento atual;
-2. implemente a menor mudança possível para fazer os testes passarem;
-3. finalize garantindo que não há regressão para fluxos adjacentes (mesmo quando a mudança parecer localizada).
+- Credenciais e configurações sensíveis ficam em arquivo `.env` na raiz (fora do versionamento).
+- Usar `python-decouple` ou `django-environ` para ler. Exemplo em `settings.py`:
+  ```python
+  from decouple import config
+  SECRET_KEY = config('SECRET_KEY')
+  DEBUG = config('DEBUG', default=False, cast=bool)
+  ```
+- Se o projeto não tiver `.env` e precisar de um, criar com valores de exemplo e informar o usuário.
 
 ---
 
-## 6. O que o agente deve evitar
+## Execução real no terminal (regra inviolável)
 
-- **Criar migrações manuais.** Sempre usar `makemigrations` do Django. Nunca escrever arquivos de migração manualmente.
-- Criar dois clientes para a mesma pessoa (especialmente via CPF, inclusive durante wizard de cadastro).
-- Misturar regra financeira com renderização de template.
-- Confiar apenas em bloqueio visual de frontend para permissões/escopo.
-- Espalhar regras de domínio em templates ou em JavaScript sem validação backend.
-- Acoplar lógica de integração (CEP) diretamente em view gigante.
-- Expor dados de passaporte ou financeiros a dependente fora do escopo.
-- Resolver lacuna de domínio com `if` solto e sem modelagem.
-- Criar status redundantes sem tabela de estados clara.
-- Prosseguir com fluxos quando pré-condições de integridade falharem (ex.: constraints/unique relationships).
-- Quebrar signals existentes ou criar efeitos colaterais não auditáveis.
-- Ignorar o fallback do serviço de CEP e deixar o fluxo travar sem orientação.
-- Testar concorrência só em SQLite e assumir que produção está coberta.
-- Executar `cleanup.py` destrutivo que altere código-fonte (ex.: remover comentários/docstrings) ou finalize processos Python sem escopo explícito.
-- Executar qualquer comando `git` sem pedido explícito do usuário na tarefa atual.
-- Entregar template sem validar responsividade: inputs com largura fixa, grids sem `min()`, formulários flex sem fallback mobile, tabelas sem `overflow-x: auto`, elementos sem `box-sizing: border-box`.
-- **Implementar filtros ou buscas sem antes ler o componente equivalente no Painel de Atendimento (`home/home.html`).** O Painel é a referência visual canônica — usar `<datalist>`, `<select>` puro, ou qualquer padrão divergente sem aprovação explícita do usuário é proibido.
-- **Entregar template com visual "funcional mas diferente" da referência.** Padronização significa resultado visual e interativo indistinguível — não apenas funcionalidade equivalente.
-- **Deixar ajustes visuais para "depois" ou como "melhoria futura".** Visual é parte integral da entrega, nunca secundário.
-- **Assumir que o usuário quer um padrão genérico quando há uma tela de referência no projeto.** Na dúvida, perguntar antes de implementar.
-- **Usar português em identificadores de código.** Nomes de models, fields, variáveis, funções, classes, arquivos, URLs, classes CSS, IDs — tudo em inglês. Português apenas no texto renderizado ao usuário.
-- **Adicionar comentários, docstrings ou anotações.** Código limpo é autoexplicativo. Sem exceções, a não ser decisão de negócio não-óbvia impossível de nomear.
+- Shell padrão: **PowerShell** (Windows) com encoding UTF-8 configurado.
+- **Executar comandos diretamente** — proibido criar `.ps1`, `.bat`, `.cmd`, `.sh` ou scripts auxiliares.
+- Cada etapa reporta: comando exato, diretório, código de saída, trecho de stdout/stderr.
+- Comandos sempre com caminho da `.venv`: `.\.venv\Scripts\python.exe manage.py <comando>`
 
 ---
 
-## 7. Formato esperado das respostas do agente
+## Política de idioma (regra inviolável)
 
-Ao responder uma tarefa técnica, organize a entrega em linguagem objetiva:
-1. contexto e impacto;
-2. plano;
-3. implementação proposta;
-4. riscos e validações;
-5. atualização necessária da spec, se houver.
-
-Se existir conflito entre pedido do usuário e regra estrutural do projeto, explique o conflito e proponha a forma correta de implementar.
+- **Código e nomes técnicos**: inglês (models, fields, variáveis, funções, classes, rotas, arquivos).
+- **Texto visível ao usuário final**: pt-BR (labels, mensagens, títulos, botões).
+- **Respostas ao desenvolvedor**: pt-BR.
+- **Código limpo**: evitar comentários; usar apenas quando decisão não é inferível pela estrutura.
 
 ---
 
-## 8. Fonte de verdade
+## Segurança (regra inviolável)
 
-- **Como trabalhar:** este `AGENTS.md`.
-- **O que o sistema é e como deve funcionar:** `CLAUDE.md`.
-- **Requisitos funcionais e telas:** `README.md`, PRD/mapeamento de telas quando existir no repo.
+- **Nunca** hardcodar `SECRET_KEY`, senhas, tokens, chaves de API. Usar `.env` + `python-decouple`/`django-environ`.
+- **CSRF**: `{% csrf_token %}` em todo formulário POST. Nunca desabilitar sem justificativa.
+- **Validação server-side obrigatória**: frontend bloqueia para UX, backend bloqueia por segurança.
+- **SQL injection**: nunca concatenar strings em queries. Usar ORM ou queries parametrizadas.
+- **XSS**: nunca `|safe` ou `mark_safe()` em dados do usuário sem sanitização.
+- **Auth**: views protegidas com `@login_required`/`@permission_required`. Nunca confiar em esconder botões.
+- **Upload**: validar MIME, extensão e tamanho no backend.
+- **DEBUG**: nunca `True` em produção. Ler de `.env`.
+- **Frontend**: nunca credenciais em JS/HTML. Nunca `innerHTML` com dados do usuário.
 
-Se houver contradição entre código legado e spec atual, o agente deve sinalizar isso explicitamente e priorizar a correção estrutural.
+---
+
+## Estrutura de arquivos frontend (obrigatória)
+
+### Templates (`templates/`)
+
+```
+templates/
+├── base.html                          # Layout raiz com blocos: content, extra_css, extra_js
+├── includes/                          # Fragmentos reutilizáveis (prefixo _)
+│   ├── _navbar.html
+│   ├── _footer.html
+│   └── _messages.html
+├── <app_name>/
+│   ├── <entity>_list.html
+│   ├── <entity>_detail.html
+│   ├── <entity>_form.html
+│   └── <entity>_confirm_delete.html
+└── registration/
+    └── login.html
+```
+
+Herança obrigatória de `base.html`. Nomes em inglês, snake_case.
+
+### Arquivos estáticos (`static/`) — com namespacing por app
+
+**Django exige namespacing** para evitar colisão entre apps com arquivos de mesmo nome.
+
+```
+static/
+├── css/
+│   └── base.css                       # Estilos globais
+├── js/
+│   └── base.js                        # Scripts globais
+├── images/
+│   └── logo.svg
+└── <app_name>/                        # Namespace por app (OBRIGATÓRIO)
+    ├── css/
+    │   └── <entity>_list.css
+    ├── js/
+    │   └── <entity>_form.js
+    └── images/
+```
+
+**Regras críticas:**
+- Carregar via `{% load static %}` e `{% static '<app_name>/css/file.css' %}`.
+- `base.html` carrega `css/base.css` e `js/base.js`. Filhos usam `{% block extra_css %}` / `{% block extra_js %}`.
+- **Nunca** colocar arquivos diretamente em `STATIC_ROOT` — esse diretório é gerado pelo `collectstatic`.
+- **Nunca** CSS/JS inline no template. **Nunca** arquivo monolítico com tudo junto.
+- Cada tela com comportamento específico tem seu próprio arquivo CSS/JS.
+
+### `collectstatic` — comando obrigatório
+
+Após criar ou alterar arquivos estáticos, executar:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py collectstatic --noinput
+```
+
+Na validação (Fase 6), verificar que `collectstatic` roda sem erros e que `STATIC_ROOT` não é o mesmo diretório onde os arquivos fonte estão.
+
+### Media files (uploads de usuário)
+
+Se o projeto tiver upload de arquivos, garantir no `settings.py`:
+
+```python
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+```
+
+E no `urls.py` (desenvolvimento):
+
+```python
+from django.conf import settings
+from django.conf.urls.static import static
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+
+`media/` fica fora do versionamento (adicionar ao `.gitignore`).
+
+---
+
+## Anti-code-smell (regras concretas)
+
+- **Máx. 25 linhas/método, 4 argumentos/função, 300 linhas/arquivo.**
+- **Proibido God Class.** Uma classe faz uma coisa. View orquestra, serviço processa, model persiste.
+- **Proibido condicionais aninhadas (máx. 2 níveis).** Usar early return, guard clauses, dicionários de dispatch.
+- **Proibido `except: pass`** ou `except Exception` genérico sem justificativa. Capturar exceções específicas.
+- **Proibido hardcode de valores configuráveis.** Extrair para `settings.py`, `.env`, constante ou enum.
+- **Proibido N+1**: `select_related`/`prefetch_related`. Proibido queries em loop. Proibido `.all()` sem paginação.
+- **Signals**: só quando acoplamento implícito for aceitável. Regra central explícita no serviço.
+- **Frontend**: proibido CSS/JS inline, arquivo monolítico, seletor CSS por ID para estilo, `innerHTML` com dados do usuário.
+
+---
+
+## Protocolo obrigatório — TODAS as fases
+
+### FASE 0 — Ambiente (uma vez por sessão)
+
+1. PowerShell: `Set-ExecutionPolicy` + encoding UTF-8 + `chcp 65001`.
+2. `.venv` ativa + `pip install -r requirements.txt`.
+3. Confirmar `python`/`pip` apontam para `.venv`.
+
+### FASE 1 — Contexto
+
+Ler `CLAUDE.md`, PRDs, arquivos impactados. Classificar a mudança. Não executar `git` sem pedido.
+
+### FASE 2 — Pesquisa e contexto externo
+
+1. **MCP Context7**: documentação das libs envolvidas (instalar se ausente).
+2. **Busca na internet**: soluções, padrões, issues conhecidas.
+3. Novas libs necessárias: instalar na `.venv`, atualizar `requirements.txt`, registrar no PRD.
+
+### FASE 3 — PRD
+
+Criar `docs/prd/PRD-<NNN>-<slug>.md`:
+
+```md
+# PRD-<NNN>: <Título>
+## Resumo
+## Problema atual
+## Objetivo
+## Contexto consultado
+  - Context7: (o que foi encontrado)
+  - Web: (links e resumos relevantes)
+## Dependências adicionadas
+  - (pacote==versão — motivo) ou "nenhuma"
+## Escopo / Fora do escopo
+## Arquivos impactados
+  - (lista de arquivos que serão criados, alterados ou removidos)
+## Riscos e edge cases
+  - (o que pode dar errado, casos limite, dependências externas frágeis)
+## Regras e restrições (SDD, TDD, MTV, Design Patterns aplicáveis)
+## Critérios de aceite (escritos como assertions testáveis)
+  - [ ] Ao fazer X, o sistema deve Y (verificável por: comando/teste/visual)
+  - [ ] Se Z inválido, o sistema deve retornar erro W
+## Plano (ordenado por dependência — fundações primeiro)
+  - [ ] 1. Models e migrações
+  - [ ] 2. Forms e validação
+  - [ ] 3. Services (lógica de negócio)
+  - [ ] 4. Views e URLs
+  - [ ] 5. Templates e estáticos
+  - [ ] 6. Testes (Red-Green-Refactor)
+  - [ ] 7. Validação completa (Fase 6)
+## Comandos de validação
+  - (quais comandos rodar para verificar os critérios — ex.: test, shell, collectstatic, playwright)
+## Implementado (preencher ao final)
+## Desvios do plano
+```
+
+### FASE 4 — Estratégia
+
+Abordagem, arquivos impactados, testes planejados, riscos. Menor mudança correta.
+
+### FASE 5 — Implementação
+
+Ordem: **Models → Forms → Services → Views → URLs → Templates → Static (CSS/JS) → Tests**.
+
+**Ciclo TDD para fluxos centrais (obrigatório):**
+1. Escrever teste que falha (Red) para o comportamento esperado.
+2. Implementar código mínimo para passar (Green).
+3. Refatorar mantendo testes verdes (Refactor).
+4. Para features com interface: teste funcional (Playwright) como loop externo primeiro.
+
+**Estrutura de testes por camada:**
+
+```
+<app_name>/
+├── tests/
+│   ├── __init__.py
+│   ├── test_models.py       # Validações, propriedades, constraints
+│   ├── test_services.py     # Regras de negócio, fluxos felizes e de erro
+│   ├── test_selectors.py    # Queries, filtros, paginação
+│   ├── test_views.py        # Status codes, redirects, contexto, permissões
+│   ├── test_forms.py        # Validação de entrada, clean_*
+│   └── test_commands.py     # Management commands (se existirem)
+```
+
+Usar `setUp` / `setUpTestData` para dados de teste — nunca hardcodar dados repetidos em cada teste. Se o projeto tiver `factory_boy`, usar factories.
+
+**Patterns obrigatórios nos serviços:**
+- `@transaction.atomic` em fluxos que envolvem múltiplas escritas.
+- Levantar exceção explícita (nunca retornar `None` silencioso) em caso de erro.
+- Serviço recebe dados já validados (pelo Form) — não revalidar o que o Form já fez.
+
+**Regras de implementação:**
+- Views finas; regras de negócio em `services.py` ou domínio.
+- Templates herdam de `base.html`, organizados por app.
+- CSS e JS separados por app/tela em `static/<app_name>/`.
+- Respeitar regras de segurança e anti-code-smell.
+- Biblioteca nova: instalar na `.venv`, atualizar `requirements.txt`, registrar no PRD.
+
+### FASE 6 — Validação completa (a mais importante)
+
+#### 6.1 — Ferramentas
+
+Garantir: ExecutionPolicy, `.venv`, dependências, Playwright + Chromium instalados (na `.venv`, atualizar requirements).
+
+```powershell
+.\.venv\Scripts\pip.exe install playwright
+.\.venv\Scripts\playwright.exe install chromium
+.\.venv\Scripts\python.exe -c "from playwright.sync_api import sync_playwright; print('OK')"
+```
+
+#### 6.2 — Visual (HTML + CSS + JS)
+
+Playwright MCP ou headless. Screenshot. Renderização, responsividade, estados. Se impossível: declarar.
+
+#### 6.3 — Arquivos estáticos
+
+```powershell
+.\.venv\Scripts\python.exe manage.py collectstatic --noinput
+.\.venv\Scripts\python.exe manage.py findstatic css/base.css
+```
+
+Sem 404 para CSS/JS/imagens no browser.
+
+#### 6.4 — Console browser
+
+Sem erros JS críticos. Reportar warnings.
+
+#### 6.5 — Testes
+
+```powershell
+.\.venv\Scripts\python.exe manage.py test --verbosity 2
+```
+
+0 falhas, 0 erros. `ModuleNotFoundError` → instalar + requirements + re-executar.
+
+#### 6.6 — Terminal
+
+Sem stack traces. Servidor sobe sem erros (verificar porta livre).
+
+#### 6.7 — ORM / Banco
+
+```powershell
+.\.venv\Scripts\python.exe manage.py showmigrations
+.\.venv\Scripts\python.exe manage.py shell -c "<verificação>"
+```
+
+#### 6.8 — Verificação cruzada
+
+Re-executar testes. Checar outros endpoints. Corrigir antes de seguir.
+
+### FASE 7 — Atualização do PRD
+
+Marcar `[x]`, preencher Implementado, Dependências, Desvios, evidências.
+
+### FASE 8 — Fechamento
+
+```md
+## Resumo da demanda
+## O que foi implementado
+## Dependências adicionadas ao requirements.txt
+## Validação
+- [ ] Ambiente (.venv, ExecutionPolicy, UTF-8, dependências)
+- [ ] Visual (Playwright/headless)
+- [ ] Estáticos (collectstatic OK, sem 404)
+- [ ] Console browser (sem erros JS)
+- [ ] Testes (0 falhas, 0 erros)
+- [ ] Terminal (sem stack traces)
+- [ ] ORM/Banco (integridade)
+- [ ] Segurança (CSRF, server-side, sem hardcode)
+- [ ] Verificação cruzada (sem regressões)
+## O que NÃO foi validado (e por quê)
+## Pendências
+## Próximo passo sugerido
+```
+
+---
+
+## Debate multiagente interno
+
+| Papel | Pergunta-chave |
+|---|---|
+| **Arquiteto** | Estrutura adequada? Impacto controlado? |
+| **Testador** | Fluxos felizes e de erro cobertos? |
+| **Revisor UI** | Responsivo? CSS/JS separados por tela? |
+| **Revisor Dados** | Migrações coerentes? |
+| **Revisor Segurança** | CSRF? Validação server-side? Sem credenciais expostas? |
+
+---
+
+## Reset destrutivo local (somente sob pedido explícito)
+
+**Não é o fluxo padrão.** Somente quando o usuário pedir e `CLAUDE.md` declarar banco descartável. Executar na ordem (somente comandos existentes):
+
+```powershell
+.\.venv\Scripts\python.exe clear_migrations.py
+.\.venv\Scripts\python.exe manage.py makemigrations
+.\.venv\Scripts\python.exe manage.py test
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py create_admin_superuser
+.\.venv\Scripts\python.exe manage.py inicial_seed
+.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+```
+
+Não editar migrations manualmente. Se comando não existir, reportar.
+
+---
+
+## Proibições
+
+- Pular qualquer fase. Implementar sem PRD. Pular pesquisa de contexto.
+- Fingir execução. Declarar sucesso sem evidência.
+- Criar scripts wrapper. Substituir execução por documentação.
+- Expandir escopo sem registrar. Inventar comandos.
+- `git` sem pedido. Reset destrutivo sem pedido.
+- Instalar no global. `pip install --user`. Lib sem atualizar requirements.
+- Hardcodar credenciais. Desabilitar CSRF. `except: pass`. God Class.
+- CSS/JS inline. Usar `&&` no PowerShell. Colocar arquivos em `STATIC_ROOT`.
+
+---
+
+## Sinais de bloqueio
+
+Reportar **não concluído** quando: servidor não sobe, UI não validável, testes quebram, comandos não existem, ferramentas não instaláveis, PowerShell não permite execução, encoding corrompendo saída, `.venv` não criável, dependência não resolve.
+
+---
+
+## Fonte de verdade
+
+| O quê | Onde |
+|---|---|
+| Como o agente trabalha | Este `AGENTS.md` |
+| O que o projeto é | `CLAUDE.md` |
+| Requisitos | PRDs em `docs/prd/` |
+| Fluxos reais | Código e testes |
