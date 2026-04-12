@@ -4,21 +4,51 @@ import re
 from datetime import date
 from io import BytesIO
 from shutil import which
+from typing import TYPE_CHECKING, Any
 
-import cv2
-import numpy as np
-import pypdfium2 as pdfium
-import pytesseract
-from rapidocr_onnxruntime import RapidOCR
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class PassportExtractionError(Exception):
     pass
 
 
-_OCR_ENGINE: RapidOCR | None = None
+_OCR_ENGINE: Any = None
 _TESSERACT_AVAILABLE: bool | None = None
 _SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".pdf"}
+_OCR_DEPS_MISSING_MSG = (
+    "Dependências de OCR ausentes no ambiente. Instale na .venv: "
+    "opencv-python-headless, numpy, pypdfium2, pytesseract, rapidocr-onnxruntime, Pillow."
+)
+
+
+_cv2: Any = None
+_np: Any = None
+_pdfium: Any = None
+_pytesseract: Any = None
+_RapidOCR_cls: Any = None
+
+
+def _ensure_ocr_stack() -> None:
+    global _cv2, _np, _pdfium, _pytesseract, _RapidOCR_cls
+    if _cv2 is not None:
+        return
+    try:
+        import cv2 as cv2_mod
+        import numpy as np_mod
+        import pypdfium2 as pdfium_mod
+        import pytesseract as pytesseract_mod
+        from rapidocr_onnxruntime import RapidOCR as RapidOCR_cls_mod
+    except ImportError as exc:
+        raise PassportExtractionError(
+            f"{_OCR_DEPS_MISSING_MSG} (faltando: {exc.name})"
+        ) from exc
+    _cv2 = cv2_mod
+    _np = np_mod
+    _pdfium = pdfium_mod
+    _pytesseract = pytesseract_mod
+    _RapidOCR_cls = RapidOCR_cls_mod
 
 
 def extract_passport_data_from_document(uploaded_file) -> dict[str, object]:
@@ -27,6 +57,7 @@ def extract_passport_data_from_document(uploaded_file) -> dict[str, object]:
         raise PassportExtractionError("Arquivo vazio. Envie um PNG, JPG ou PDF de passaporte.")
     if not _is_supported_file(uploaded_file.name):
         raise PassportExtractionError("Formato não suportado. Use PNG, JPG ou PDF.")
+    _ensure_ocr_stack()
     is_pdf = uploaded_file.name.lower().endswith(".pdf")
     images = _extract_images(uploaded_file.name, file_bytes)
     lines_by_source = _collect_lines_multisource(images, file_bytes=file_bytes, is_pdf=is_pdf)
@@ -42,7 +73,7 @@ def _is_supported_file(filename: str) -> bool:
     return any(lowered.endswith(ext) for ext in _SUPPORTED_EXTENSIONS)
 
 
-def _extract_images(filename: str, file_bytes: bytes) -> list[np.ndarray]:
+def _extract_images(filename: str, file_bytes: bytes) -> list[Any]:
     if filename.lower().endswith(".pdf"):
         images = _render_pdf_pages(file_bytes)
         if images:
@@ -54,21 +85,21 @@ def _extract_images(filename: str, file_bytes: bytes) -> list[np.ndarray]:
     return [image]
 
 
-def _render_pdf_pages(file_bytes: bytes, max_pages: int = 2) -> list[np.ndarray]:
-    pdf = pdfium.PdfDocument(BytesIO(file_bytes))
+def _render_pdf_pages(file_bytes: bytes, max_pages: int = 2) -> list[Any]:
+    pdf = _pdfium.PdfDocument(BytesIO(file_bytes))
     try:
-        images: list[np.ndarray] = []
+        images: list[Any] = []
         for index in range(min(len(pdf), max_pages)):
             pil_image = pdf[index].render(scale=2).to_pil().convert("RGB")
-            images.append(np.array(pil_image))
+            images.append(_np.array(pil_image))
         return images
     finally:
         pdf.close()
 
 
-def _decode_image(file_bytes: bytes) -> np.ndarray | None:
-    np_bytes = np.frombuffer(file_bytes, dtype=np.uint8)
-    return cv2.imdecode(np_bytes, cv2.IMREAD_COLOR)
+def _decode_image(file_bytes: bytes) -> Any:
+    np_bytes = _np.frombuffer(file_bytes, dtype=_np.uint8)
+    return _cv2.imdecode(np_bytes, _cv2.IMREAD_COLOR)
 
 
 def _collect_lines_multisource(images, *, file_bytes, is_pdf):
@@ -97,7 +128,7 @@ def _collect_lines_with_tesseract(images):
     for image in images:
         for candidate in _image_candidates_for_ocr(image):
             try:
-                text = pytesseract.image_to_string(candidate, lang="eng", config=config)
+                text = _pytesseract.image_to_string(candidate, lang="eng", config=config)
             except Exception:
                 return []
             lines.extend(line.strip() for line in text.splitlines() if line.strip())
@@ -121,11 +152,11 @@ def _merge_multisource_lines(lines_by_source):
 
 
 def _image_candidates_for_ocr(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    resized = cv2.resize(gray, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
-    _, thresholded = cv2.threshold(resized, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    rgb_original = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    rgb_thresholded = cv2.cvtColor(thresholded, cv2.COLOR_GRAY2RGB)
+    gray = _cv2.cvtColor(image, _cv2.COLOR_BGR2GRAY)
+    resized = _cv2.resize(gray, None, fx=2.0, fy=2.0, interpolation=_cv2.INTER_CUBIC)
+    _, thresholded = _cv2.threshold(resized, 0, 255, _cv2.THRESH_BINARY + _cv2.THRESH_OTSU)
+    rgb_original = _cv2.cvtColor(image, _cv2.COLOR_BGR2RGB)
+    rgb_thresholded = _cv2.cvtColor(thresholded, _cv2.COLOR_GRAY2RGB)
     return [rgb_original, rgb_thresholded]
 
 
@@ -146,7 +177,7 @@ def _is_tesseract_available():
 def _get_ocr_engine():
     global _OCR_ENGINE
     if _OCR_ENGINE is None:
-        _OCR_ENGINE = RapidOCR()
+        _OCR_ENGINE = _RapidOCR_cls()
     return _OCR_ENGINE
 
 

@@ -81,7 +81,16 @@
       "WebFetch(domain:executeautomation.github.io)",
       "WebFetch(domain:testdino.com)",
       "Bash(npx @playwright/mcp@latest --version)",
-      "Bash(claude mcp:*)"
+      "Bash(claude mcp:*)",
+      "Bash(C:/Users/whsf/Documents/GitHub/Visary/.venv/Scripts/python.exe -c \"import sys; print\\(sys.version\\); import cv2\")",
+      "Bash(C:/Users/whsf/Documents/GitHub/Visary/.venv/Scripts/python.exe:*)",
+      "Bash(../.venv/Scripts/python.exe -c \"import django; print\\('django', django.get_version\\(\\)\\)\")",
+      "Bash(../.venv/Scripts/python.exe -c ':*)",
+      "Bash(../.venv/Scripts/python.exe manage.py check)",
+      "Bash(../.venv/Scripts/python.exe manage.py makemigrations)",
+      "Bash(../.venv/Scripts/python.exe manage.py migrate)",
+      "Bash(../.venv/Scripts/python.exe manage.py create_admin_superuser)",
+      "Bash(../.venv/Scripts/python.exe manage.py runserver 0.0.0.0:8000)"
     ]
   }
 }
