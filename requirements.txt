@@ -1,6 +1,7 @@
 # Visary direct dependencies (pip installs transitive packages).
 
 Django==4.1.13
+python-decouple==3.8
 python-dotenv==1.1.1
 requests==2.32.5
 tzdata==2025.2
@@ -11,9 +12,6 @@ pycep-correios==5.2.0
 
 # Importacao legada MySQL (system/management/commands/seed_legacy.py — LEGACY_DB_*).
 PyMySQL==1.1.2
-
-# visary/cleanup.py (limpeza local; import opcional).
-psutil==5.9.8
 
 # Passport OCR (system/services/passport_ocr.py); rapidocr-onnxruntime also needs opencv-python.
 numpy==2.3.3

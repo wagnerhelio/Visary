@@ -140,35 +140,14 @@ O **Visary** é uma plataforma completa para empresas de consultoria de vistos g
 ## 📁 Estrutura do Projeto
 
 ```
-Visary/
-├── visary/                    # Aplicação principal
-│   ├── system/              # App único do sistema (domínio + autenticação + permissões)
-│   │   ├── models/         # Modelos de permissão
-│   │   ├── views/          # Views do sistema
-│   │   ├── forms/          # Formulários de sistema
-│   │   ├── services/       # Serviços (ex: busca CEP, OCR, senhas)
-│   │   ├── management/     # Comandos personalizados
-│   │   └── migrations/
-│   ├── templates/          # Templates HTML
-│   │   ├── admin/
-│   │   ├── client/
-│   │   ├── forms/
-│   │   ├── partners/
-│   │   ├── process/
-│   │   ├── travel/
-│   │   └── ...
-│   ├── static/             # Arquivos estáticos
-│   │   ├── logo/
-│   │   ├── icons/
-│   │   ├── forms_ini/     # Formulários iniciais (JSON)
-│   │   └── etapas_cliente_ini/  # Etapas iniciais (JSON)
-│   ├── visary/            # Configurações Django
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   └── ...
-│   └── manage.py
-├── requirements.txt        # Dependências Python
-├── .env_exemple          # Exemplo de variáveis de ambiente
+Visary/                       # Raiz do repositório = projeto Django
+├── manage.py
+├── visary/                   # Pacote de configuração (settings, urls, wsgi)
+├── system/                   # App de domínio
+├── templates/
+├── static/
+├── requirements.txt
+├── .env.example              # Exemplo de variáveis de ambiente
 └── README.md
 ```
 
@@ -206,18 +185,19 @@ pip install -r requirements.txt
 
 Crie um arquivo `.env` e configure apenas dados sensíveis.
 
+Ver `.env.example` na raiz. Exemplo mínimo:
+
 ```env
-SECRET_KEY=sua-chave-secreta-aqui
-DEBUG=True
-ALLOWED_HOSTS=*
+DJANGO_SECRET_KEY=sua-chave-secreta-aqui
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
 SYSTEM_SEED_USERS_PASSWORDS='{"juliana.lopes@visary.com.br":"senha"}'
 SYSTEM_SEED_PARTNER_PASSWORDS='{"bni@hotmail.com":"senha"}'
 ```
 
-5. **Execute as migrações:**
+5. **Execute as migrações** (na raiz do projeto, onde está `manage.py`):
 
 ```bash
-cd visary
 python manage.py makemigrations
 python manage.py migrate
 ```
@@ -225,7 +205,7 @@ python manage.py migrate
 6. **Crie o superusuário inicial:**
 
 ```bash
-python manage.py criar_superuser_admin
+python manage.py create_admin_superuser
 ```
 
 Este comando cria/atualiza o usuário:
@@ -243,27 +223,27 @@ O sistema sobe limpo após `migrate`. Rode apenas as seeds desejadas:
 python manage.py initial_seeds
 
 # ou execute por seed especifica
-python manage.py seed_modulos
-python manage.py seed_perfis
-python manage.py seed_usuarios_consultoria
-python manage.py seed_paises
-python manage.py seed_tipos_visto
-python manage.py seed_status_processo
-python manage.py seed_formularios_visto
-python manage.py seed_etapas_cliente
-python manage.py seed_parceiros
+python manage.py seed_modules
+python manage.py seed_profiles
+python manage.py seed_consultancy_users
+python manage.py seed_countries
+python manage.py seed_visa_types
+python manage.py seed_process_status
+python manage.py seed_visa_forms
+python manage.py seed_client_steps
+python manage.py seed_partners
 ```
 
 Seeds especificas por filtro:
 
 ```bash
-python manage.py seed_paises --nome "Canada"
-python manage.py seed_tipos_visto --nome "F1 (visto oficial de estudante)"
-python manage.py seed_status_processo --nome "Processo finalizado"
-python manage.py seed_formularios_visto --tipo-visto "F1 (visto oficial de estudante)"
-python manage.py seed_formularios_visto --arquivo FORMULARIO_EUA_F1.json
-python manage.py seed_parceiros --email "bni@hotmail.com"
-python manage.py seed_etapas_cliente --nome "Dados Pessoais"
+python manage.py seed_countries --nome "Canada"
+python manage.py seed_visa_types --nome "F1 (visto oficial de estudante)"
+python manage.py seed_process_status --nome "Processo finalizado"
+python manage.py seed_visa_forms --tipo-visto "F1 (visto oficial de estudante)"
+python manage.py seed_visa_forms --arquivo FORMULARIO_EUA_F1.json
+python manage.py seed_partners --email "bni@hotmail.com"
+python manage.py seed_client_steps --nome "Dados Pessoais"
 ```
 
 ## ▶️ Execução
@@ -276,10 +256,7 @@ python manage.py seed_etapas_cliente --nome "Dados Pessoais"
 # ou
 source .venv/bin/activate     # Linux/Mac
 
-# Entre no diretório visary
-cd visary
-
-# Execute o servidor
+# Na raiz do repositório (onde está manage.py)
 python manage.py runserver 0.0.0.0:8000
 ```
 
@@ -288,6 +265,7 @@ O sistema estará disponível em: `http://localhost:8000`
 ### Acesso Inicial
 
 - **URL:** http://localhost:8000
+- **Admin Django:** http://localhost:8000/django-admin/ (superusuário criado com `create_admin_superuser`)
 - **Login:** `admin` / `admin`
 - Após login, você será redirecionado para a home do sistema
 
@@ -363,7 +341,7 @@ O sistema utiliza um modelo de permissões baseado em:
 
 ### Configuração Inicial
 
-As definições não sensíveis ficam em JSON em `visary/static/modulos_ini/`, `visary/static/perfis_ini/`, `visary/static/usuarios_consultoria_ini/`, `visary/static/paises_destino_ini/`, `visary/static/tipos_visto_ini/`, `visary/static/parceiros_ini/`, `visary/static/status_processo_ini/`, `visary/static/forms_ini/` e `visary/static/etapas_cliente_ini/`.
+As definições não sensíveis ficam em JSON em `static/modulos_ini/`, `static/perfis_ini/`, `static/usuarios_consultoria_ini/`, `static/paises_destino_ini/`, `static/tipos_visto_ini/`, `static/parceiros_ini/`, `static/status_processo_ini/`, `static/forms_ini/` e `static/etapas_cliente_ini/`.
 
 As únicas variáveis de seed no `.env` são as senhas:
 
@@ -414,12 +392,12 @@ SYSTEM_SEED_PARTNER_PASSWORDS='{"email":"senha"}'
 
 ## 🔧 Comandos Personalizados
 
-### criar_superuser_admin
+### create_admin_superuser
 
 Cria ou atualiza o superusuário padrão do Django:
 
 ```bash
-python manage.py criar_superuser_admin
+python manage.py create_admin_superuser
 ```
 
 **Credenciais padrão:**
@@ -477,8 +455,8 @@ Implementado em: `system/services/cep.py`
 
 - **Banco de dados:** SQLite (desenvolvimento). Configure PostgreSQL/MySQL para produção.
 - **Arquivos estáticos:** Em desenvolvimento, servidos automaticamente. Configure para produção.
-- **DEBUG:** Mantenha `False` em produção.
-- **SECRET_KEY:** Gere uma nova chave secreta para produção.
+- **DJANGO_DEBUG:** Mantenha `False` em produção.
+- **DJANGO_SECRET_KEY:** Gere uma nova chave secreta para produção.
 
 ## 🐛 Troubleshooting
 
@@ -513,8 +491,4 @@ Para dúvidas ou suporte, entre em contato com a equipe de desenvolvimento.
 ---
 
 **Versão:** 1.0  
-**Última atualização:** Janeiro 2026
-
-clear; python cleanup.py; python manage.py makemigrations; python manage.py migrate; python manage.py criar_superuser_admin; python manage.py criar_seeds_test; python manage.py runserver 0.0.0.0:8000
-
-clear; python cleanup.py; python manage.py makemigrations; python manage.py migrate; python manage.py criar_superuser_admin; python manage.py runserver 0.0.0.0:8000
+**Última atualização:** Abril 2026

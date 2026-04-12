@@ -10,41 +10,51 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Produto:** Visary — sistema web de gestão de consultoria de vistos (clientes, viagens, processos, formulários dinâmicos, parceiros, financeiro).
 - **Stack:** Django 4.1.13, Python 3.x, SQLite (dev). Frontend server-rendered (templates Django + CSS/JS por tela). OCR de passaporte via PaddleOCR/EasyOCR/PassportEye. Playwright para validação E2E.
-- **Banco local é descartável** em dev. Migrações são regeneradas pelo fluxo `cleanup.py` (ver abaixo). Em produção isso muda — NÃO assumir descartabilidade fora do ambiente local do dev.
+- **Banco local é descartável** em dev. Migrações são regeneradas pelo fluxo `clear_migrations.py` (ver abaixo). Em produção isso muda — NÃO assumir descartabilidade fora do ambiente local do dev.
 - **Idioma:** identificadores técnicos (models, fields, views, services, comandos, nomes de arquivo) em **inglês**. Rotas URL, labels, mensagens, `verbose_name` e texto visível ao usuário final em **pt-BR**. Respostas ao desenvolvedor em pt-BR.
 
 ---
 
 ## Layout real do repositório
 
+**Raiz do Git = projeto Django:** `manage.py` na raiz, pacote de config `visary/`, app `system/` ao lado de `templates/` e `static/`.
+
 ```
-Visary/
-├── AGENTS.md                 # Protocolo universal (fases obrigatórias)
-├── CLAUDE.md                 # Este arquivo
-├── README.md                 # Visão funcional (pode estar defasado em versões)
+Visary/                       # ⚠️ cwd de TODOS os comandos manage.py
+├── AGENTS.md
+├── CLAUDE.md
+├── README.md
 ├── requirements.txt
-└── visary/                   # ⚠️ cwd de TODOS os comandos manage.py
-    ├── manage.py
-    ├── cleanup.py            # Script destrutivo local (ver seção)
-    ├── db.sqlite3            # Dev (fora do git)
-    ├── visary/               # Project config (settings.py, urls.py)
-    ├── system/               # App único com TODO o domínio
-    │   ├── models/           # Split por área (client, travel, process, form, ...)
-    │   ├── views/            # Split por fluxo (client_views, travel_views, form_views, ...)
-    │   ├── forms/
-    │   ├── services/         # cep, passport_ocr, form_prefill, form_responses, form_stages, legacy_markers
-    │   ├── management/commands/  # Seeds + create_admin_superuser + initial_seeds
-    │   ├── migrations/
-    │   ├── templatetags/dict_filters.py
-    │   ├── signals.py
-    │   ├── tests/
-    │   └── urls.py           # app_name="system"
-    ├── consultancy/          # ⚠️ App esqueleto, ATUALMENTE VAZIO (models/views/services/forms todos sem arquivos). Não está em INSTALLED_APPS.
-    ├── templates/            # base.html + includes/ + pastas por fluxo (client/, travel/, process/, forms/, partners/, ...)
-    └── static/               # base + <namespace>/css/|js/|images/ e ...ini/ JSONs de seed
+├── .env                      # local (fora do git); ver `.env.example`
+├── manage.py
+├── clear_migrations.py       # Reset destrutivo local (ver seção)
+├── db.sqlite3                # Dev (fora do git)
+├── visary/                   # Pacote de config Django (settings, urls, wsgi, asgi)
+│   ├── settings.py
+│   ├── urls.py
+│   ├── wsgi.py
+│   └── asgi.py
+├── system/                   # App único com TODO o domínio
+│   ├── models/
+│   ├── views/
+│   ├── forms/
+│   ├── services/
+│   ├── selectors/            # Consultas de leitura reutilizáveis
+│   ├── utils/
+│   ├── middleware.py
+│   ├── management/commands/
+│   ├── migrations/
+│   ├── templatetags/dict_filters.py
+│   ├── signals.py
+│   ├── tests/
+│   └── urls.py               # app_name="system"
+├── templates/
+├── static/
+├── staticfiles/              # collectstatic (fora do git)
+└── media/                    # uploads (fora do git)
 ```
 
-**Fato importante:** todo o domínio vive em `system/`. `consultancy/` é um app planejado mas não implementado — NÃO criar modelos/views ali sem decisão explícita do usuário. Se precisar adicionar código de domínio, coloque em `system/` a menos que a tarefa diga o contrário.
+**Fato importante:** todo o domínio vive em `system/`. Se precisar adicionar código de domínio, coloque em `system/` a menos que a tarefa diga o contrário.
 
 ---
 
@@ -52,18 +62,18 @@ Visary/
 
 Execução manda que ver `AGENTS.md` (ExecutionPolicy, UTF-8, `.venv`, sem `&&`, sem `source`, sem scripts wrapper).
 
-Todos os `manage.py` rodam com **cwd = `visary/`**:
+Todos os `manage.py` rodam com **cwd = raiz do repositório `Visary/`** (onde está `manage.py`):
 
 ```powershell
-cd visary
-..\.venv\Scripts\Activate.ps1             # ou .\.venv\Scripts\Activate.ps1 da raiz
-..\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
-..\.venv\Scripts\python.exe manage.py makemigrations
-..\.venv\Scripts\python.exe manage.py migrate
-..\.venv\Scripts\python.exe manage.py collectstatic --noinput
-..\.venv\Scripts\python.exe manage.py test --verbosity 2
-..\.venv\Scripts\python.exe manage.py test system.tests.test_models        # um módulo
-..\.venv\Scripts\python.exe manage.py test system.tests.test_services.FormStagesTests.test_progress  # um teste
+cd C:\Users\...\Visary
+.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+.\.venv\Scripts\python.exe manage.py makemigrations
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py collectstatic --noinput
+.\.venv\Scripts\python.exe manage.py test --verbosity 2
+.\.venv\Scripts\python.exe manage.py test system.tests.test_models
+.\.venv\Scripts\python.exe manage.py test system.tests.test_services.FormStagesTests.test_progress
 ```
 
 ### Comandos de management do projeto (nomes REAIS, em inglês)
@@ -85,25 +95,25 @@ cd visary
 
 ⚠️ **README.md** ainda cita nomes antigos em português (`criar_superuser_admin`, `seed_modulos`, etc.) — esses **NÃO existem mais**. A migração para inglês já aconteceu (commit `847a544`). Use os nomes da tabela acima.
 
-### `cleanup.py` — reset destrutivo local
+### `clear_migrations.py` — reset destrutivo local
 
-`visary/cleanup.py` (executado com `.\.venv\Scripts\python.exe cleanup.py` a partir de `visary/`) faz, nesta ordem:
-
-1. Remove todos os `__pycache__/` recursivamente.
-2. Apaga **todos os arquivos de migration** (exceto `__init__.py`) em qualquer pasta `migrations/`.
-3. Tenta matar processos que seguram `db.sqlite3` (via `psutil`) e deleta o arquivo.
-
-Há também um stripper de comentários/docstrings embutido no módulo (`strip_comments_and_docstrings`) usado por outras rotinas — **não é chamado** por `clean()` / `main()`. `main()` só roda o passo destrutivo simples.
-
-**Só rode `cleanup.py` sob pedido explícito do usuário.** Depois dele, o fluxo típico é:
+Script na **raiz do repo** (ao lado de `manage.py`). Executar com **cwd = raiz do projeto**:
 
 ```powershell
-.\.venv\Scripts\python.exe cleanup.py
-..\.venv\Scripts\python.exe manage.py makemigrations
-..\.venv\Scripts\python.exe manage.py migrate
-..\.venv\Scripts\python.exe manage.py create_admin_superuser
-..\.venv\Scripts\python.exe manage.py initial_seeds
-..\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
+.\.venv\Scripts\python.exe clear_migrations.py
+```
+
+Em ordem aproximada: remove arquivos SQLite do projeto (`db.sqlite3` e variantes), `__pycache__/`, arquivos em `migrations/` exceto `__init__.py`, e artefatos locais (`staticfiles/`, `media/`, caches de teste, etc.). Em Windows, se o banco estiver bloqueado, tenta encerrar processos Python vinculados ao repositório (e em último caso outros processos Python).
+
+**Só rode sob pedido explícito do usuário.** Fluxo típico depois:
+
+```powershell
+.\.venv\Scripts\python.exe clear_migrations.py
+.\.venv\Scripts\python.exe manage.py makemigrations
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py create_admin_superuser
+.\.venv\Scripts\python.exe manage.py initial_seeds
+.\.venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000
 ```
 
 ---
@@ -130,7 +140,7 @@ Há também um stripper de comentários/docstrings embutido no módulo (`strip_c
 - **ConsultancyClient** tem senha própria para a "área do cliente". Dependentes são modelados como `ConsultancyClient` com FK para um "cliente principal".
 - **Trip** tem N clientes via `TripClient` (M2M com principal marcável). Um **Process** é único por (Trip, Client) e calcula progresso a partir das `ProcessStage` (checklist) cujos templates vêm de `ProcessStatus` vinculáveis a `VisaType`.
 - **VisaForm** é 1:1 com `VisaType`. Perguntas ordenadas (`FormQuestion`) com tipos configuráveis; respostas (`FormAnswer`) são persistidas por `(client, trip, question)`. Etapas do formulário ficam em `VisaFormStage`.
-- **Permissões**: `Profile` agrupa flags CRUD (`pode_criar`, `pode_visualizar`, `pode_atualizar`, `pode_excluir`) e liga em `Module`s. Views validam permissão — nunca confiar em esconder botões.
+- **Permissões**: `Profile` agrupa flags CRUD (`can_create`, `can_view`, `can_update`, `can_delete`) e liga em `Module`s. Views validam permissão — nunca confiar em esconder botões.
 
 ### Rotas e APIs JSON
 
@@ -150,23 +160,15 @@ Todas sob namespace `system:` (ver `system/urls.py`). Endpoints JSON úteis para
 
 ---
 
-## Estado conhecido do `settings.py` (⚠️ divergências)
+## Estado do `settings.py` (pós PRD-001)
 
-`visary/visary/settings.py` hoje tem:
-
-- `SECRET_KEY` **hardcoded** + `DEBUG = True` + `ALLOWED_HOSTS = ['*']`. `load_dotenv()` é chamado mas os valores não são lidos via `decouple`/`environ`.
-- Sem `STATIC_ROOT` definido (só `STATIC_URL` e `STATICFILES_DIRS`). `collectstatic` **vai falhar** até isso ser corrigido.
-- Sem `MEDIA_URL`/`MEDIA_ROOT` mesmo com upload de passaporte/OCR em uso.
-- `INSTALLED_APPS` tem apenas `system` — `consultancy` não está registrado.
-- `CSRF_TRUSTED_ORIGINS` inclui um domínio ngrok específico.
-
-Essas são dívidas conhecidas. **Não "corrija" como efeito colateral** de outra tarefa — tratar explicitamente via PRD quando for o alvo. Seguir as regras de `AGENTS.md` (ler `.env`, não hardcodar) ao tocar no settings.
+`visary/settings.py` usa **`python-decouple`** com `RepositoryEnv(BASE_DIR / ".env")`, define `STATIC_ROOT`/`MEDIA_*`, `LOGIN_*` com namespace `system:`, e admin do projeto em **`/django-admin/`** (ver `visary/urls.py`). Variáveis principais: `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, etc. (ver `.env.example`).
 
 ---
 
 ## Dependências
 
-`requirements.txt` na raiz do repo está codificado em **UTF-16** (não UTF-8 puro). Ao ler/editar, preservar encoding. Destaques da stack além de Django:
+`requirements.txt` na raiz do repo: tratar como texto; se o arquivo estiver em **UTF-16** em algum clone, preserve o encoding ao editar. Destaques da stack além de Django:
 
 - **OCR**: `paddleocr`, `paddlepaddle`, `paddlex`, `easyocr`, `PassportEye`, `pytesseract`, `rapidocr-onnxruntime`, `opencv-*`, `onnxruntime` — pesado, instalar só quando necessário.
 - **CEP**: (o código usa ViaCEP/BrasilAPI via `requests` + libs `pycep-correios`, `brazilcep` se instaladas).
@@ -192,11 +194,10 @@ Regra: nova lib → `.\.venv\Scripts\pip.exe install <pkg>` → `pip show` → *
 
 ## Critérios de falha (além dos de `AGENTS.md`)
 
-- Criar código de domínio em `consultancy/` sem decisão explícita.
+- Criar código de domínio fora de `system/` sem decisão explícita.
 - Usar nomes antigos de comando em português (`criar_superuser_admin`, `seed_modulos`, etc.).
-- Rodar `cleanup.py` sem pedido explícito.
-- Editar `requirements.txt` sem preservar o encoding UTF-16 atual.
-- "Consertar" `settings.py` como efeito colateral de outra tarefa.
+- Rodar `clear_migrations.py` sem pedido explícito.
+- Editar `requirements.txt` sem preservar o encoding do arquivo quando for UTF-16.
 - Assumir que `README.md` é fonte de verdade sobre comandos — o código é.
 
 ---
@@ -204,5 +205,7 @@ Regra: nova lib → `.\.venv\Scripts\pip.exe install <pkg>` → `pip show` → *
 ### Changelog da spec
 
 ```md
-- [2026-04-12] Reescrito /init para refletir estado real: app único `system`, comandos em inglês, cleanup.py destrutivo, divergências conhecidas em settings.py, encoding UTF-16 de requirements.txt.
+- [2026-04-12] Reescrito /init para refletir estado real: app único `system`, comandos em inglês, divergências conhecidas em settings.py, encoding UTF-16 de requirements.txt.
+- [2026-04-12] Layout raiz = Django; settings via decouple; STATIC_ROOT/MEDIA; `django-admin/`, rotas sem prefixo `/system/`; middleware e selectors.
+- [2026-04-12] `clear_migrations.py` substitui `cleanup.py`; sem dependência de psutil para esse fluxo.
 ```
