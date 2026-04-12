@@ -5,9 +5,19 @@ python-dotenv==1.1.1
 requests==2.32.5
 tzdata==2025.2
 
-# Passport OCR (system/services/passport_ocr.py)
+# CEP — todas as fontes em system/services/cep.py (ViaCEP/BrasilAPI usam requests acima).
+brazilcep==7.0.1
+pycep-correios==5.2.0
+
+# Importacao legada MySQL (system/management/commands/seed_legacy.py — LEGACY_DB_*).
+PyMySQL==1.1.2
+
+# visary/cleanup.py (limpeza local; import opcional).
+psutil==5.9.8
+
+# Passport OCR (system/services/passport_ocr.py); rapidocr-onnxruntime also needs opencv-python.
 numpy==2.3.3
-opencv-python-headless==4.13.0.92
+opencv-python==4.13.0.92
 pillow==11.3.0
 pypdfium2==5.6.0
 pytesseract==0.3.13
