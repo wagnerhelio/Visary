@@ -337,7 +337,7 @@
                 <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk|stringformat:"s" %}selected{% endif %}>{{ country.name }}</option>
             {% endfor %}
         </select>
-        <select name="tipo_visto">
+        <select name="visa_type">
             <option value="">Tipo de visto</option>
             {% for tipo in visa_types_filter %}
                 <option value="{{ tipo.pk }}" {% if applied_filters_dict.visa_type == tipo.pk|stringformat:"s" %}selected{% endif %}>{{ tipo.name }}</option>

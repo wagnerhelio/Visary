@@ -265,7 +265,7 @@
             </div>
             <div>
                 <label for="filtro-tipo-visto">Tipo de Visto</label>
-                <select id="filtro-tipo-visto" name="tipo_visto">
+                <select id="filtro-tipo-visto" name="visa_type">
                     <option value="">Tipo de visto</option>
                     {% for tipo in visa_types_filter %}
                         <option value="{{ tipo.pk }}" {% if applied_filters_dict.visa_type == tipo.pk|stringformat:"s" %}selected{% endif %}>{{ tipo.name }}</option>

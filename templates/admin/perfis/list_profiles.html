@@ -249,8 +249,8 @@
                 <label for="ativo">Status</label>
                 <select id="ativo" name="active">
                     <option value="">Todos</option>
-                    <option value="true" {% if filters_dict.is_active == 'true' %}selected{% endif %}>Ativo</option>
-                    <option value="false" {% if filters_dict.is_active == 'false' %}selected{% endif %}>Inativo</option>
+                    <option value="true" {% if filters_dict.active == 'true' %}selected{% endif %}>Ativo</option>
+                    <option value="false" {% if filters_dict.active == 'false' %}selected{% endif %}>Inativo</option>
                 </select>
             </div>
         </div>

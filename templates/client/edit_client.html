@@ -422,13 +422,13 @@
                         document.querySelector('[name="cidade"]');
     
     
-    let ufField = getFieldById('{{ form.uf.id_for_label }}');
+    let ufField = getFieldById('{{ form.state.id_for_label }}');
     if (!ufField) {
-        ufField = document.querySelector('[name="uf"]');
+        ufField = document.querySelector('[name="state"]');
     }
     if (!ufField) {
-        
-        ufField = document.querySelector('[id*="uf"], [name*="uf"]');
+
+        ufField = document.querySelector('[id*="state"], [name*="state"]');
     }
     const numeroField = document.getElementById('{{ form.street_number.id_for_label }}');
     const complementoField = document.getElementById('{{ form.complement.id_for_label }}');
@@ -449,7 +449,7 @@
             logradouro: getFieldById('{{ form.street.id_for_label }}') || document.querySelector('[name="logradouro"]'),
             bairro: getFieldById('{{ form.district.id_for_label }}') || document.querySelector('[name="bairro"]'),
             cidade: getFieldById('{{ form.city.id_for_label }}') || document.querySelector('[name="cidade"]'),
-            uf: getFieldById('{{ form.uf.id_for_label }}') || document.querySelector('[name="uf"]') || document.querySelector('[id*="uf"], [name*="uf"]')
+            uf: getFieldById('{{ form.state.id_for_label }}') || document.querySelector('[name="state"]') || document.querySelector('[id*="state"], [name*="state"]')
         };
 
         
@@ -498,7 +498,7 @@
                             if (campo && data.city) preencherCampo(campo, data.city);
                             break;
                         case 'uf':
-                            campo = getFieldById('{{ form.uf.id_for_label }}') || document.querySelector('[name="uf"]') || document.querySelector('[id*="uf"], [name*="uf"]');
+                            campo = getFieldById('{{ form.state.id_for_label }}') || document.querySelector('[name="state"]') || document.querySelector('[id*="state"], [name*="state"]');
                             if (campo && data.uf) preencherCampo(campo, data.uf.toUpperCase());
                             break;
                     }

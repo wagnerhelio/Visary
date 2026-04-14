@@ -241,22 +241,22 @@
                 <input type="text" id="email" name="email" value="{{ filters_dict.email }}" placeholder="E-mail do usuário">
             </div>
             <div>
-                <label for="perfil">Perfil</label>
-                <select id="perfil" name="perfil">
+                <label for="profile_obj">Perfil</label>
+                <select id="profile_obj" name="profile_obj">
                     <option value="">Todos</option>
                     {% for profile_obj in profiles %}
-                        <option value="{{ profile_obj.pk }}" {% if filters_dict.profile == profile_obj.pk|stringformat:"s" %}selected{% endif %}>
+                        <option value="{{ profile_obj.pk }}" {% if filters_dict.profile_obj == profile_obj.pk|stringformat:"s" %}selected{% endif %}>
                             {{ profile_obj.name }}
                         </option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label for="ativo">Status</label>
-                <select id="ativo" name="active">
+                <label for="active">Status</label>
+                <select id="active" name="active">
                     <option value="">Todos</option>
-                    <option value="true" {% if filters_dict.is_active == 'true' %}selected{% endif %}>Ativo</option>
-                    <option value="false" {% if filters_dict.is_active == 'false' %}selected{% endif %}>Inativo</option>
+                    <option value="true" {% if filters_dict.active == 'true' %}selected{% endif %}>Ativo</option>
+                    <option value="false" {% if filters_dict.active == 'false' %}selected{% endif %}>Inativo</option>
                 </select>
             </div>
         </div>
@@ -285,7 +285,7 @@
                 <tr>
                     <td>{{ user_obj.name }}</td>
                     <td>{{ user_obj.email }}</td>
-                    <td>{{ user_obj.perfil.name }}</td>
+                    <td>{{ user_obj.profile.name }}</td>
                     <td>
                         <span class="status-badge {% if user_obj.is_active %}ativo{% else %}inativo{% endif %}">
                             {% if user_obj.is_active %}Ativo{% else %}Inativo{% endif %}

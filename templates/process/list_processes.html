@@ -343,18 +343,18 @@
         <div class="filtros-grid">
             <div>
                 <label for="cliente">Cliente</label>
-                <input type="text" id="cliente" name="client" value="{{ applied_filters_dict.client }}" placeholder="Nome do cliente" list="datalist-clientes">
+                <input type="text" id="cliente" name="client" value="{{ applied_filters.client }}" placeholder="Nome do cliente" list="datalist-clientes">
             </div>
             <div>
                 <label for="viagem">Viagem</label>
-                <input type="text" id="viagem" name="trip" value="{{ applied_filters_dict.trip }}" placeholder="País ou tipo de visto">
+                <input type="text" id="viagem" name="trip" value="{{ applied_filters.trip }}" placeholder="País ou tipo de visto">
             </div>
             <div>
                 <label for="assessor">Assessor</label>
                 <select id="assessor" name="advisor">
                     <option value="">Todos</option>
                     {% for advisor in advisors %}
-                        <option value="{{ advisor.pk }}" {% if applied_filters_dict.advisor == advisor.pk|stringformat:"s" %}selected{% endif %}>
+                        <option value="{{ advisor.pk }}" {% if applied_filters.advisor == advisor.pk|stringformat:"s" %}selected{% endif %}>
                             {{ advisor.name }}
                         </option>
                     {% endfor %}
@@ -460,7 +460,7 @@
             {% empty %}
                 <tr>
                     <td colspan="{% if can_manage_all %}8{% else %}7{% endif %}" class="empty-state">
-                        {% if applied_filters_dict.client or applied_filters.trip or applied_filters.advisor %}
+                        {% if applied_filters.client or applied_filters.trip or applied_filters.advisor %}
                             Nenhum processo encontrado com os filtros aplicados. <a href="{% url 'system:list_processes' %}">Limpar filtros</a>.
                         {% else %}
                             Nenhum processo cadastrado até o momento. <a href="{% url 'system:create_process' %}">Cadastre o primeiro processo</a>.

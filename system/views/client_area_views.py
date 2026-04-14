@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.db.models import Case, IntegerField, Value, When
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -30,6 +31,112 @@ def _get_client_form(trip, client):
     return _get_form_by_visa_type(client_visa_type, active_only=False)
 
 
+def _answer_has_value(answer):
+    return bool(
+        answer.answer_text
+        or answer.answer_date
+        or answer.answer_number is not None
+        or answer.answer_boolean is not None
+        or answer.answer_select_id
+    )
+
+
+def _build_member_form_progress(trip, member_client):
+    visa_form = _get_client_form(trip, member_client)
+    if not visa_form or not visa_form.is_active:
+        return {
+            "is_complete": False,
+            "overview_label": "Formulário indisponível",
+            "badge_class": "pendente",
+            "current_stage_name": None,
+            "total_questions": 0,
+            "total_pending_questions": 0,
+            "stage_progress": [],
+        }
+
+    questions_qs = visa_form.questions.filter(is_active=True).order_by("order", "question")
+    questions = list(questions_qs)
+    if not questions:
+        return {
+            "is_complete": True,
+            "overview_label": "Sem perguntas pendentes",
+            "badge_class": "respondido",
+            "current_stage_name": None,
+            "total_questions": 0,
+            "total_pending_questions": 0,
+            "stage_progress": [],
+        }
+
+    answers_by_question = {
+        answer.question_id: answer
+        for answer in FormAnswer.objects.filter(
+            trip=trip,
+            client=member_client,
+            question_id__in=[q.pk for q in questions],
+        ).select_related("answer_select")
+    }
+
+    stage_items = build_stage_items(visa_form)
+    current_stage_name = None
+    total_questions = 0
+    total_answered = 0
+    stage_progress = []
+
+    for stage_item in stage_items:
+        stage_questions = list(filter_questions_by_stage(questions_qs, stage_item))
+
+        answered_count = 0
+        for question in stage_questions:
+            answer = answers_by_question.get(question.pk)
+            if answer and _answer_has_value(answer):
+                answered_count += 1
+
+        pending_count = max(len(stage_questions) - answered_count, 0)
+        is_current = False
+        if pending_count > 0 and current_stage_name is None:
+            current_stage_name = stage_item["name"]
+            is_current = True
+
+        stage_progress.append(
+            {
+                "name": stage_item["name"],
+                "total_questions": len(stage_questions),
+                "pending_questions": pending_count,
+                "is_current": is_current,
+                "is_complete": pending_count == 0,
+            }
+        )
+        total_questions += len(stage_questions)
+        total_answered += answered_count
+
+    total_pending = max(total_questions - total_answered, 0)
+    if total_pending > 0:
+        overview_label = (
+            f"Etapa atual: {current_stage_name}"
+            if current_stage_name
+            else "Formulário pendente"
+        )
+        return {
+            "is_complete": False,
+            "overview_label": overview_label,
+            "badge_class": "pendente",
+            "current_stage_name": current_stage_name,
+            "total_questions": total_questions,
+            "total_pending_questions": total_pending,
+            "stage_progress": stage_progress,
+        }
+
+    return {
+        "is_complete": True,
+        "overview_label": "Formulário concluído",
+        "badge_class": "respondido",
+        "current_stage_name": None,
+        "total_questions": total_questions,
+        "total_pending_questions": 0,
+        "stage_progress": stage_progress,
+    }
+
+
 def client_dashboard(request):
     client = _get_client_from_session(request)
     if not client:
@@ -54,9 +161,49 @@ def client_dashboard(request):
         .order_by("-planned_departure_date")
     )
 
+    trip_clients = (
+        TripClient.objects.filter(trip__in=trips)
+        .select_related("trip", "client")
+        .order_by(
+            "trip_id",
+            Case(
+                When(role="primary", then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+            "client__first_name",
+            "client__last_name",
+        )
+    )
+
+    members_by_trip_id = {}
+    for trip_client in trip_clients:
+        progress = _build_member_form_progress(trip_client.trip, trip_client.client)
+        members_by_trip_id.setdefault(trip_client.trip_id, []).append(
+            {
+                "client": trip_client.client,
+                "role": trip_client.role,
+                "role_label": trip_client.get_role_display(),
+                "form_overview_label": progress["overview_label"],
+                "form_badge_class": progress["badge_class"],
+                "current_stage_name": progress["current_stage_name"],
+                "total_questions": progress["total_questions"],
+                "total_pending_questions": progress["total_pending_questions"],
+                "stage_progress": progress["stage_progress"],
+            }
+        )
+
+    trip_cards = [
+        {
+            "trip": trip,
+            "members": members_by_trip_id.get(trip.pk, []),
+        }
+        for trip in trips
+    ]
+
     context = {
         "client": client,
-        "trips": trips,
+        "trip_cards": trip_cards,
     }
 
     return render(request, "client_area/dashboard.html", context)

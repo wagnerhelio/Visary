@@ -109,6 +109,8 @@
             display: grid;
             grid-template-columns: 1fr;
             max-width: 600px;
+            width: 100%;
+            margin-inline: auto;
         }
 
         .grid-inline {
@@ -607,6 +609,7 @@
                     }
                     selectElement.appendChild(option);
                 });
+                selectElement.dataset.selectedValue = '';
                 selectElement.disabled = false;
             })
             .catch(err => {
@@ -635,7 +638,9 @@
             const tipoVistoSelectId = this.dataset.tipoVistoSelect;
             const tipoVistoSelectDependente = document.getElementById(tipoVistoSelectId);
             if (tipoVistoSelectDependente) {
-                tipoVistoSelectDependente.dataset.selectedValue = '';
+                if (!tipoVistoSelectDependente.dataset.selectedValue) {
+                    tipoVistoSelectDependente.dataset.selectedValue = '';
+                }
                 carregarTiposVisto(tipoVistoSelectDependente, paisId);
             }
         });

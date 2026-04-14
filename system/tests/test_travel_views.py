@@ -1,4 +1,5 @@
 from datetime import date
+from urllib.parse import parse_qs, urlparse
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -115,3 +116,40 @@ class CreateTripViewTests(TestCase):
         self.assertEqual(trip_client.role, "primary")
         self.assertIsNone(trip_client.trip_primary_client)
         self.assertEqual(trip_client.visa_type, self.visa_type)
+
+    def test_save_and_create_process_redirects_with_primary_client_and_trip(self):
+        dependent = ConsultancyClient.objects.create(
+            assigned_advisor=self.consultant,
+            first_name="Dependente",
+            last_name="Cliente",
+            cpf="222.222.222-22",
+            birth_date=date(1992, 2, 2),
+            nationality="Brasileira",
+            phone="(11) 98888-7777",
+            email="dependente.cliente@example.test",
+            password="!",
+            created_by=self.user,
+            primary_client=self.client_obj,
+        )
+
+        response = self.client.post(
+            reverse("system:create_trip"),
+            {
+                "assigned_advisor": self.consultant.pk,
+                "advisory_fee": "500.00",
+                "clients": [self.client_obj.pk, dependent.pk],
+                "destination_country": self.country.pk,
+                "visa_type": self.visa_type.pk,
+                "planned_departure_date": "2026-06-01",
+                "planned_return_date": "2026-06-20",
+                "notes": "",
+                "action": "save_and_create_process",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        parsed = urlparse(response.url)
+        query = parse_qs(parsed.query)
+        self.assertEqual(parsed.path, reverse("system:create_process"))
+        self.assertEqual(query.get("trip_id"), [str(TripClient.objects.get(client=self.client_obj).trip_id)])
+        self.assertEqual(query.get("client_id"), [str(self.client_obj.pk)])

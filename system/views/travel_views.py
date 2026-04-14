@@ -645,6 +645,19 @@ def _redirect_after_create_trip_to_process(trip, separate_trips):
                 f"?client_id={client_id}&trip_id={client_trip.pk}"
             )
 
+    primary_client_id = TripClient.objects.filter(
+        trip=trip,
+        role="primary",
+    ).values_list("client_id", flat=True).first()
+    if not primary_client_id:
+        primary_client_id = trip.clients.values_list("pk", flat=True).first()
+
+    if primary_client_id:
+        return redirect(
+            f"{reverse('system:create_process')}"
+            f"?client_id={primary_client_id}&trip_id={trip.pk}"
+        )
+
     return redirect(f"{reverse('system:create_process')}?trip_id={trip.pk}")
 
 

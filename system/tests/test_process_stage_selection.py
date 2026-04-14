@@ -125,6 +125,17 @@ class CreateProcessStageSelectionTests(TestCase):
         self.assertContains(response, "Triagem")
         self.assertContains(response, "Documentos")
 
+    def test_create_process_with_only_trip_id_prefills_primary_client(self):
+        response = self.client.get(
+            reverse("system:create_process"),
+            {"trip_id": self.trip.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["preselected_client"])
+        self.assertContains(response, 'id="id_client"')
+        self.assertNotContains(response, 'id="busca-cliente-input"')
+
     def test_api_process_status_returns_visa_type_stages_when_trip_has_no_specific_statuses(self):
         response = self.client.get(
             reverse("system:api_process_status"),

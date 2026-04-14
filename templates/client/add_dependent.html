@@ -114,8 +114,8 @@
             {% csrf_token %}
 
             <div>
-                <label for="dependente_id">Cliente Dependente *</label>
-                <select name="dependente_id" id="dependente_id" required>
+                <label for="dependent_id">Cliente Dependente *</label>
+                <select name="dependent_id" id="dependent_id" required>
                     <option value="">Selecione um cliente</option>
                     {% for client in available_clients %}
                         <option value="{{ client.pk }}">{{ client.full_name }} (CPF: {{ client.cpf }})</option>

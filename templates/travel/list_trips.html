@@ -341,8 +341,8 @@
                 </select>
             </div>
             <div>
-                <label for="tipo_visto">Tipo de Visto</label>
-                <select id="tipo_visto" name="tipo_visto">
+                <label for="visa_type">Tipo de Visto</label>
+                <select id="visa_type" name="visa_type">
                     <option value="">Todos</option>
                     {% for tipo in visa_types %}
                         <option value="{{ tipo.pk }}" {% if applied_filters_dict.visa_type == tipo.pk %}selected{% endif %}>
@@ -356,11 +356,11 @@
                 <input type="text" id="cliente" name="client" value="{{ applied_filters_dict.client }}" placeholder="Nome do cliente" list="datalist-clientes">
             </div>
             <div>
-                <label for="parceiro">Parceiro Vinculado</label>
-                <select id="parceiro" name="partner">
+                <label for="partner_obj">Parceiro Vinculado</label>
+                <select id="partner_obj" name="partner_obj">
                     <option value="">Todos</option>
                     {% for partner_obj in partners %}
-                        <option value="{{ partner_obj.pk }}" {% if applied_filters_dict.partner == partner_obj.pk %}selected{% endif %}>
+                        <option value="{{ partner_obj.pk }}" {% if applied_filters_dict.partner_obj == partner_obj.pk %}selected{% endif %}>
                             {% if partner_obj.company_name %}{{ partner_obj.company_name }}{% else %}{{ partner_obj.contact_name }}{% endif %}
                         </option>
                     {% endfor %}

@@ -419,6 +419,28 @@ def _determine_preselected_client(client_id, trip_id) -> bool:
     return False
 
 
+def _resolve_client_id_for_trip(client_id, trip_id):
+    if client_id or not trip_id:
+        return client_id
+
+    with suppress(ValueError, TypeError):
+        trip_id_int = int(trip_id)
+        primary_client_id = TripClient.objects.filter(
+            trip_id=trip_id_int,
+            role="primary",
+        ).values_list("client_id", flat=True).first()
+        if primary_client_id:
+            return str(primary_client_id)
+
+        first_client_id = Trip.objects.filter(pk=trip_id_int).values_list(
+            "clients__pk", flat=True
+        ).first()
+        if first_client_id:
+            return str(first_client_id)
+
+    return client_id
+
+
 def _get_available_trip_stages(trip_id) -> list:
     if not trip_id:
         return []
@@ -448,6 +470,7 @@ def create_process(request):
 
     client_id = request.GET.get("client_id")
     trip_id = request.GET.get("trip_id")
+    client_id = _resolve_client_id_for_trip(client_id, trip_id)
 
     if request.method == "POST":
         if redirect_response := _process_create_post(request, client_id, trip_id):

@@ -152,6 +152,61 @@
             color: var(--text-secondary);
         }
 
+        .form-progress-summary {
+            display: grid;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .stage-dropdown {
+            margin-top: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            background: rgba(12, 19, 35, 0.45);
+            overflow: hidden;
+        }
+
+        .stage-dropdown summary {
+            cursor: pointer;
+            list-style: none;
+            padding: 8px 10px;
+            font-size: 0.78rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .stage-dropdown summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .stage-dropdown-content {
+            padding: 0 10px 10px;
+        }
+
+        .stage-progress-list {
+            display: grid;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .stage-progress-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .stage-progress-item.current .stage-name {
+            color: rgba(255, 193, 7, 0.95);
+            font-weight: 600;
+        }
+
+        .stage-progress-item.done .stage-name {
+            color: rgba(86, 244, 156, 0.9);
+        }
+
         .viajante-actions {
             display: flex;
             gap: 8px;
@@ -228,9 +283,10 @@
     <a href="{% url 'system:client_logout' %}" class="btn btn-outline">Sair</a>
 </div>
 
-{% if trips %}
+{% if trip_cards %}
     <div class="viagens-grid">
-        {% for trip in trips %}
+        {% for item in trip_cards %}
+            {% with trip=item.trip members=item.members %}
             <div class="viagem-card">
                 <div class="viagem-header">
                     <h3>{{ trip.destination_country.name }}</h3>
@@ -254,11 +310,33 @@
 
                 {% if trip.visa_type.form %}
                 <div class="viajantes-section">
-                    {% for c in trip.clients.all %}
+                    {% for member in members %}
                         <div class="viajante-card">
                             <div class="viajante-info">
-                                <span class="viajante-nome">{{ c.name }}</span>
-                                <span class="viajante-cpf">{{ c.cpf }}</span>
+                                <span class="viajante-nome">
+                                    {{ member.client.full_name }}
+                                    {% if member.role == "primary" %}
+                                        <span class="badge-principal">{{ member.role_label }}</span>
+                                    {% else %}
+                                        <span class="badge-dependente">{{ member.role_label }}</span>
+                                    {% endif %}
+                                </span>
+                                <span class="viajante-cpf">CPF: {{ member.client.cpf }}</span>
+                                <div class="form-progress-summary">
+                                    <span class="status-badge {{ member.form_badge_class }}">{{ member.form_overview_label }}</span>
+                                    <span class="viajante-cpf">Pendentes no total: {{ member.total_pending_questions }} de {{ member.total_questions }}</span>
+                                    <details class="stage-dropdown">
+                                        <summary>Ver etapas do formulário</summary>
+                                        <div class="stage-dropdown-content">
+                                            {% for stage in member.stage_progress %}
+                                                <div class="stage-progress-item {% if stage.is_current %}current{% elif stage.is_complete %}done{% endif %}">
+                                                    <span class="stage-name">{{ stage.name }}{% if stage.is_current %} (Atual){% endif %}</span>
+                                                    <span class="stage-count">{{ stage.pending_questions }} pendente(s) de {{ stage.total_questions }}</span>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </details>
+                                </div>
                             </div>
                             <div class="viajante-actions">
                                 <a href="{% url 'system:client_view_form' trip.pk %}" class="btn btn-primary">
@@ -274,6 +352,7 @@
                     </div>
                 {% endif %}
             </div>
+            {% endwith %}
         {% endfor %}
     </div>
 {% else %}
