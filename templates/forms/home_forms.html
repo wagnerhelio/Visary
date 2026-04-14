@@ -226,6 +226,18 @@
     }
 
     .btn-small { padding: 5px 10px; font-size: 0.8rem; }
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .action-buttons .btn.btn-small {
+        white-space: nowrap;
+        word-break: keep-all;
+        overflow-wrap: normal;
+        flex: 0 0 auto;
+        max-width: 100%;
+    }
 
     .filtros-card {
         background: var(--card-bg);
@@ -276,6 +288,14 @@
     @media (max-width: 480px) {
         .home-acoes { grid-template-columns: 1fr; }
         .home-section__header { flex-direction: column; align-items: flex-start; }
+        .action-buttons {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .action-buttons .btn.btn-small {
+            width: 100%;
+            text-align: center;
+        }
     }
     </style>
 {% endblock %}
@@ -295,7 +315,7 @@
         <div class="home-card__icon">&#9998;</div>
         <div class="home-card__content">
             <h3>Preencher Formulário</h3>
-            <p>Selecionar trip e cliente</p>
+            <p>Selecionar viagem e cliente</p>
         </div>
     </a>
     <a href="{% url 'system:list_forms' %}" class="home-card">
@@ -400,8 +420,10 @@
                         <div class="nome-cell__sub">{{ item.client_info.total_answers }}/{{ item.client_info.total_questions }}</div>
                     </td>
                     <td>
-                        <a href="{% url 'system:view_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-outline btn-small">Visualizar</a>
-                        <a href="{% url 'system:edit_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-primary btn-small">Preencher</a>
+                        <div class="action-buttons">
+                            <a href="{% url 'system:view_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                            <a href="{% url 'system:edit_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-primary btn-small">Preencher</a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -447,8 +469,10 @@
                         <span class="badge badge-completo">&#10003; Completo</span>
                     </td>
                     <td>
-                        <a href="{% url 'system:view_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-outline btn-small">Visualizar</a>
-                        <a href="{% url 'system:edit_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-outline btn-small">Editar</a>
+                        <div class="action-buttons">
+                            <a href="{% url 'system:view_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-outline btn-small">Visualizar</a>
+                            <a href="{% url 'system:edit_client_form' item.trip.pk item.client_info.client.pk %}" class="btn btn-outline btn-small">Editar</a>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}

@@ -87,7 +87,7 @@
 <section class="page-header">
     <div class="page-header__titles">
         <h1>Criar Formulário</h1>
-        <p>Selecione uma trip e um cliente para preencher o formulário</p>
+        <p>Selecione uma viagem e um cliente para preencher o formulário</p>
     </div>
     <div class="actions-inline">
         <a href="{% url 'system:home_forms' %}" class="btn btn-outline">Voltar</a>
@@ -154,7 +154,7 @@
             viagensData[viagemId].forEach(function(cliente) {
                 const option = document.createElement('option');
                 option.value = cliente.id;
-                option.textContent = cliente.full_name;
+                option.textContent = cliente.nome;
                 clienteSelect.appendChild(option);
             });
         }
@@ -163,7 +163,7 @@
 {% else %}
 <section class="form-section">
     <div class="empty-state">
-        <p>Nenhuma trip com formulário disponível encontrada para seus clientes.</p>
+        <p>Nenhuma viagem com formulário disponível encontrada para seus clientes.</p>
         <p style="margin-top: 12px; font-size: 0.85rem;">
             Certifique-se de que existem viagens cadastradas com tipos de visto que possuem formulários ativos.
         </p>

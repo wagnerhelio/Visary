@@ -1604,7 +1604,49 @@ def edit_client_form(request, trip_id: int, client_id: int):
         )
         return redirect("system:list_trip_forms", trip_id=trip_id)
 
+    trip_client_link = TripClient.objects.select_related("trip_primary_client").filter(
+        trip=trip,
+        client=client,
+    ).first()
+    is_trip_dependent = bool(trip_client_link and trip_client_link.role == "dependent")
+    trip_primary_client = (
+        trip_client_link.trip_primary_client
+        if trip_client_link and trip_client_link.role == "dependent"
+        else None
+    )
+
     if request.method == "POST":
+        if request.POST.get("action") == "replicate_primary":
+            copied, skipped, primary_client = _copy_form_answers_from_primary_client(
+                trip,
+                client,
+                form_obj,
+            )
+            if primary_client is None:
+                messages.error(
+                    request,
+                    "Não foi possível replicar: este cliente não está como dependente com principal definido na viagem.",
+                )
+            elif copied == 0 and skipped == 0:
+                messages.info(
+                    request,
+                    f"O cliente principal {primary_client.full_name} ainda não possui respostas para replicar.",
+                )
+            else:
+                messages.success(
+                    request,
+                    f"Replicação concluída a partir de {primary_client.full_name}: {copied} campo(s) preenchido(s) e {skipped} preservado(s).",
+                )
+
+            stage_param = (
+                f"?stage={current_stage['token'].replace(':', '%3A')}"
+                if current_stage
+                else ""
+            )
+            return redirect(
+                f"{reverse('system:edit_client_form', args=[trip_id, client_id])}{stage_param}"
+            )
+
         saved_answers, errors = _process_form_answers(
             request, trip, client, questions, existing_answers
         )
@@ -1660,6 +1702,8 @@ def edit_client_form(request, trip_id: int, client_id: int):
         "next_stage": next_stage,
         "prev_stage": prev_stage,
         "stage_index": stage_index,
+        "is_trip_dependent": is_trip_dependent,
+        "trip_primary_client": trip_primary_client,
     }
 
     return render(request, "travel/edit_client_form.html", context)
@@ -1678,6 +1722,68 @@ def _find_next_stage(stage_items, current_stage):
         if item["token"] == current_stage["token"] and i + 1 < len(stage_items):
             return stage_items[i + 1]
     return None
+
+
+def _form_answer_is_empty(answer):
+    return (
+        not answer.answer_text
+        and answer.answer_date is None
+        and answer.answer_number is None
+        and answer.answer_boolean is None
+        and answer.answer_select_id is None
+    )
+
+
+def _copy_form_answers_from_primary_client(trip, target_client, form_obj):
+    trip_client = TripClient.objects.select_related("trip_primary_client").filter(
+        trip=trip,
+        client=target_client,
+    ).first()
+    if not trip_client or trip_client.role != "dependent" or not trip_client.trip_primary_client:
+        return 0, 0, None
+
+    primary_client = trip_client.trip_primary_client
+    question_ids = list(form_obj.questions.filter(is_active=True).values_list("pk", flat=True))
+
+    source_answers = FormAnswer.objects.filter(
+        trip=trip,
+        client=primary_client,
+        question_id__in=question_ids,
+    ).order_by("question_id")
+    target_answers = {
+        answer.question_id: answer
+        for answer in FormAnswer.objects.filter(
+            trip=trip,
+            client=target_client,
+            question_id__in=question_ids,
+        )
+    }
+
+    copied = 0
+    skipped = 0
+    for source in source_answers:
+        target = target_answers.get(source.question_id)
+        if target and not _form_answer_is_empty(target):
+            skipped += 1
+            continue
+
+        if target is None:
+            target = FormAnswer(
+                trip=trip,
+                client=target_client,
+                question_id=source.question_id,
+            )
+            target_answers[source.question_id] = target
+
+        target.answer_text = source.answer_text
+        target.answer_date = source.answer_date
+        target.answer_number = source.answer_number
+        target.answer_boolean = source.answer_boolean
+        target.answer_select = source.answer_select
+        target.save()
+        copied += 1
+
+    return copied, skipped, primary_client
 
 
 @login_required

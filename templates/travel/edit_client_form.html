@@ -295,6 +295,15 @@
     {% endif %}
     <div class="header-actions">
         <a href="{% url 'system:list_trip_forms' trip.pk %}" class="btn btn-outline">Voltar</a>
+        {% if is_trip_dependent and trip_primary_client %}
+            <form method="post" action="{{ request.path }}?stage={{ current_stage.token|urlencode|default:'' }}">
+                {% csrf_token %}
+                <input type="hidden" name="stage_token" value="{{ current_stage.token|default:'' }}">
+                <button type="submit" name="action" value="replicate_primary" class="btn btn-primary">
+                    Replicar dados do cliente principal
+                </button>
+            </form>
+        {% endif %}
         {% if can_manage_all %}
             <form method="post" action="{% url 'system:delete_form_answers' trip.pk client.pk %}" onsubmit="return confirm('Deseja realmente excluir todas as respostas deste formulário?');">
                 {% csrf_token %}
