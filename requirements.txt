@@ -21,3 +21,6 @@ pypdfium2==5.6.0
 pytesseract==0.3.13
 rapidocr-onnxruntime==1.4.4
 pdfminer.six==20250506
+
+# E2E / visual validation.
+playwright==1.58.0

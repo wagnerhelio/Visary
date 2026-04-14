@@ -264,21 +264,21 @@
             </tr>
             </thead>
             <tbody>
-            {% for module_obj in modulos %}
+            {% for module_obj in modules %}
                 <tr>
                     <td>{{ module_obj.order }}</td>
                     <td><strong>{{ module_obj.name }}</strong></td>
                     <td>{{ module_obj.description|truncatewords:10|default:"-" }}</td>
-                    <td>{{ module_obj.perfis.count }}</td>
+                    <td>{{ module_obj.profiles.count }}</td>
                     <td>
-                        <span class="status-badge {% if modulo.is_active %}ativo{% else %}inativo{% endif %}">
-                            {% if modulo.is_active %}Ativo{% else %}Inativo{% endif %}
+                        <span class="status-badge {% if module_obj.is_active %}ativo{% else %}inativo{% endif %}">
+                            {% if module_obj.is_active %}Ativo{% else %}Inativo{% endif %}
                         </span>
                     </td>
                     <td>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <a href="{% url 'system:edit_module' modulo.pk %}" class="btn btn-outline btn-small">Editar</a>
-                            <form method="post" action="{% url 'system:delete_module' modulo.pk %}" onsubmit="return confirm('Deseja realmente excluir este módulo?');" style="margin: 0;">
+                            <a href="{% url 'system:edit_module' module_obj.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            <form method="post" action="{% url 'system:delete_module' module_obj.pk %}" onsubmit="return confirm('Deseja realmente excluir este módulo?');" style="margin: 0;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-danger btn-small">Excluir</button>
                             </form>

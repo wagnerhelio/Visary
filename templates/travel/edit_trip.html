@@ -260,10 +260,10 @@
         tipoVistoSelect.innerHTML = '<option value="">Carregando...</option>';
 
         try {
-            const resp = await fetch(`{% url 'system:api_visa_types' %}?pais=${paisId}`);
+            const resp = await fetch(`{% url 'system:api_visa_types' %}?pais_id=${paisId}`);
             const data = await resp.json();
 
-            if (!resp.ok) {
+            if (!resp.ok || !Array.isArray(data)) {
                 console.error('Erro ao carregar tipos de visto:', data.error);
                 tipoVistoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
                 return;

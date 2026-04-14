@@ -215,7 +215,7 @@
             <h2>Clientes Vinculados</h2>
             <p>Clientes que foram indicados por este parceiro</p>
         </header>
-        {% if clients_vinculados %}
+        {% if linked_clients %}
             <table>
                 <thead>
                     <tr>
@@ -227,7 +227,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for client in clientes_vinculados %}
+                    {% for client in linked_clients %}
                         <tr>
                             <td>
                                 <strong>{{ client.full_name }}</strong>
@@ -236,7 +236,7 @@
                             <td>{{ client.phone }}</td>
                             <td>{{ client.assigned_advisor.name|default:"-" }}</td>
                             <td>
-                                <a href="{% url 'system:view_client' cliente.pk %}" class="btn btn-primary btn-small">Visualizar</a>
+                                <a href="{% url 'system:view_client' client.pk %}" class="btn btn-primary btn-small">Visualizar</a>
                             </td>
                         </tr>
                     {% endfor %}

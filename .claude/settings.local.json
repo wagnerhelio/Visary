@@ -90,7 +90,8 @@
       "Bash(./.venv/Scripts/python.exe manage.py makemigrations)",
       "Bash(./.venv/Scripts/python.exe manage.py migrate)",
       "Bash(./.venv/Scripts/python.exe manage.py create_admin_superuser)",
-      "Bash(./.venv/Scripts/python.exe manage.py runserver 0.0.0.0:8000)"
+      "Bash(./.venv/Scripts/python.exe manage.py runserver 0.0.0.0:8000)",
+      "Bash(./.venv/Scripts/python.exe:*)"
     ]
   }
 }

@@ -373,7 +373,7 @@
     <div class="actions-inline">
         <a href="{% url 'system:home_clients' %}" class="btn btn-outline">Voltar</a>
         {% if can_edit %}
-            <a href="{% url 'system:edit_client' cliente.pk %}" class="btn btn-primary">Editar</a>
+            <a href="{% url 'system:edit_client' client.pk %}" class="btn btn-primary">Editar</a>
         {% endif %}
     </div>
 </section>
@@ -466,7 +466,7 @@
             <p>Lembretes e anotações vinculados ao cliente</p>
         </header>
         {% if can_edit %}
-        <form method="post" action="{% url 'system:create_reminder' cliente.pk %}" class="lembrete-form">
+        <form method="post" action="{% url 'system:create_reminder' client.pk %}" class="lembrete-form">
             {% csrf_token %}
             <div>
                 <label for="lembrete-texto">Novo lembrete</label>
@@ -521,7 +521,7 @@
             <h2>Viagens</h2>
             <p>Viagens vinculadas ao cliente</p>
         </header>
-        {% if viagens %}
+        {% if trips %}
         <div class="table-responsive">
             <table>
                 <thead>
@@ -536,7 +536,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for trip in viagens %}
+                    {% for trip in trips %}
                     <tr>
                         <td>{{ trip.destination_country.name }}</td>
                         <td>{{ trip.visa_type.name }}</td>
@@ -572,7 +572,7 @@
             <h2>Processos</h2>
             <p>Processos de visto vinculados ao cliente</p>
         </header>
-        {% if process_objs %}
+        {% if processes %}
         <div class="table-responsive">
             <table>
                 <thead>
@@ -669,7 +669,7 @@
     </section>
     {% endif %}
 
-    {% if clients_vinculados %}
+    {% if linked_clients %}
     <section class="card">
         <header>
             <h2>Clientes Vinculados</h2>

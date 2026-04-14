@@ -503,20 +503,20 @@
                 <div class="dropdown-list" id="filtro-cliente-dropdown">
                     <div class="dropdown-item" data-value="" onclick="selecionarClienteDropdown(this)">Todos os Clientes</div>
                     {% for item in client_filter_options %}
-                    <div class="dropdown-item" data-value="{{ client.pk }}" data-principal-pk="{% if client.principal_pk %}{{ client.principal_pk }}{% endif %}" onclick="selecionarClienteDropdown(this)">{{ client.full_name }}</div>
+                    <div class="dropdown-item" data-value="{{ item.pk }}" data-principal-pk="{% if item.principal_pk %}{{ item.principal_pk }}{% endif %}" onclick="selecionarClienteDropdown(this)">{{ item.full_name }}</div>
                     {% endfor %}
                 </div>
                 <select id="filtro-cliente" name="client" onchange="aplicarFiltrosPainel()" style="display:none;">
                     <option value="">Todos os Clientes</option>
                     {% for item in client_filter_options %}
-                    <option value="{{ client.pk }}" data-principal-pk="{% if client.principal_pk %}{{ client.principal_pk }}{% endif %}" {% if panel_filters.client == cliente.pk|stringformat:"s" %}selected{% endif %}>{{ client.full_name }}</option>
+                    <option value="{{ item.pk }}" data-principal-pk="{% if item.principal_pk %}{{ item.principal_pk }}{% endif %}" {% if panel_filters.client == item.pk|stringformat:"s" %}selected{% endif %}>{{ item.full_name }}</option>
                     {% endfor %}
                 </select>
             </div>
             <select id="filtro-visto" name="visa_type" onchange="aplicarFiltrosPainel()">
                 <option value="">Todos os Vistos</option>
                 {% for item in visa_filter_options %}
-                <option value="{{ visto.pk }}" {% if panel_filters.visa_type == visto.pk|stringformat:"s" %}selected{% endif %}>{{ visto.name }}</option>
+                <option value="{{ item.pk }}" {% if panel_filters.visa_type == item.pk|stringformat:"s" %}selected{% endif %}>{{ item.name }}</option>
                 {% endfor %}
             </select>
             <select id="filtro-formulario" name="visa_form_obj" onchange="aplicarFiltrosPainel()">
@@ -585,7 +585,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% if visa_form_objs_pendentes %}
+                {% if pending_forms %}
                 {% for item in pending_forms %}
                 <tr>
                     <td>
@@ -639,7 +639,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% if visa_form_objs_preenchidos %}
+                {% if completed_forms %}
                 {% for item in completed_forms %}
                 <tr>
                     <td>
@@ -667,7 +667,7 @@
         </div>
     </section>
 
-    {% if process_objs %}
+    {% if processes %}
     <section class="painel-section" id="sec-processos">
         <div class="painel-section__header">
             <div>

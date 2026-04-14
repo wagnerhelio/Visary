@@ -5,6 +5,7 @@
 
 {% block base_styles %}
     {{ block.super }}
+    <link rel="stylesheet" href="{% static 'system/css/home_clients_mobile.css' %}">
     <style>
     .home-acoes {
         display: grid;
@@ -357,7 +358,7 @@
         </div>
     </section>
 
-    {% if clients_com_status %}
+    {% if clients_with_status %}
     <section class="home-section" id="sec-clientes">
         <div class="home-section__header">
             <div>
@@ -471,4 +472,16 @@
 
 
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if clear_client_register_draft %}
+<script data-clear-client-register-draft data-draft-key="visary-client-register-draft-v1-{{ request.user.pk }}">
+(function() {
+    var marker = document.querySelector('[data-clear-client-register-draft]');
+    if (!marker || !window.localStorage) return;
+    window.localStorage.removeItem(marker.dataset.draftKey);
+}());
+</script>
+{% endif %}
 {% endblock %}

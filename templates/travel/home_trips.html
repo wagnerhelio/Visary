@@ -293,13 +293,13 @@
     <form method="get" class="filtros-grid">
         <select name="country">
             <option value="">País</option>
-            {% for country in paises %}
+            {% for country in countries %}
                 <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk %}selected{% endif %}>{{ country.name }}</option>
             {% endfor %}
         </select>
         <select name="tipo_visto">
             <option value="">Tipo de visto</option>
-            {% for tipo in tipos_visto %}
+            {% for tipo in visa_types %}
                 <option value="{{ tipo.pk }}" {% if applied_filters_dict.visa_type == tipo.pk %}selected{% endif %}>{{ tipo.name }}</option>
             {% endfor %}
         </select>
@@ -319,7 +319,7 @@
     </form>
 </section>
 <datalist id="datalist-clientes">
-    {% for client in clientes %}
+    {% for client in clients %}
         <option value="{{ client.full_name }}">
     {% endfor %}
 </datalist>
@@ -356,8 +356,8 @@
         </div>
     </section>
 
-    {% if viagens %}
-    <section class="home-section">
+    {% if trips %}
+    <section class="home-section" id="sec-viagens">
         <div class="home-section__header">
             <div>
                 <h2>Minhas Viagens</h2>
@@ -389,7 +389,7 @@
                         {% with clients=item.trip.clients.all %}
                             {% if clients %}
                                 <div class="family-stack">
-                                    {% for client in clientes %}
+                                    {% for client in clients %}
                                         <div class="family-member">
                                             <span class="family-member__name">{{ client.full_name }}</span>
                                         </div>

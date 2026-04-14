@@ -244,8 +244,8 @@
                 <label for="perfil">Perfil</label>
                 <select id="perfil" name="perfil">
                     <option value="">Todos</option>
-                    {% for profile_obj in perfis %}
-                        <option value="{{ profile_obj.pk }}" {% if filters_dict.profile == perfil.pk|stringformat:"s" %}selected{% endif %}>
+                    {% for profile_obj in profiles %}
+                        <option value="{{ profile_obj.pk }}" {% if filters_dict.profile == profile_obj.pk|stringformat:"s" %}selected{% endif %}>
                             {{ profile_obj.name }}
                         </option>
                     {% endfor %}

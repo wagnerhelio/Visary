@@ -1,0 +1,294 @@
+@media (max-width: 640px) {
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .app-main {
+        padding: 10px;
+    }
+
+    .sidebar-toggle {
+        margin-bottom: 16px;
+        border-radius: 8px;
+    }
+
+    .page-header {
+        margin-bottom: 18px;
+    }
+
+    .page-header h1 {
+        font-size: 1.3rem;
+        line-height: 1.18;
+    }
+
+    .page-header p,
+    .painel-section__header p,
+    .painel-section__note {
+        font-size: 0.78rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .painel-grid {
+        gap: 14px;
+    }
+
+    .painel-section {
+        padding: 12px;
+        border-radius: 8px;
+        box-shadow: 0 8px 20px rgba(5, 8, 17, 0.32);
+    }
+
+    .painel-section__header {
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .painel-section__actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .painel-section__actions .btn,
+    .painel-mini-table .btn {
+        width: 100%;
+        min-height: 36px;
+        border-radius: 8px;
+    }
+
+    #painel-filtros-form {
+        gap: 0;
+    }
+
+    .painel-filtros,
+    .painel-filtros__combobox {
+        width: 100%;
+        min-width: 0;
+        gap: 8px;
+    }
+
+    .painel-filtros__label,
+    .stat-card__label,
+    .painel-mini-table td::before {
+        letter-spacing: 0;
+    }
+
+    .painel-filtros select,
+    .painel-filtros__combobox .search-wrapper,
+    .painel-filtros__combobox input[type="text"],
+    .painel-filtros__combobox .btn-buscar,
+    .painel-filtros__reset {
+        width: 100%;
+        min-width: 0;
+        flex: 1 1 auto;
+        border-radius: 8px;
+    }
+
+    .painel-filtros__combobox input[type="text"] {
+        padding-right: 34px;
+    }
+
+    .painel-filtros__combobox .clear-btn {
+        right: 10px;
+    }
+
+    .painel-filtros__combobox .dropdown-list {
+        left: 0;
+        right: 0;
+        width: 100%;
+        border-radius: 8px;
+    }
+
+    .stats-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 0;
+    }
+
+    .stat-card {
+        min-width: 0;
+        padding: 10px 8px;
+        border-radius: 8px;
+    }
+
+    .stat-card__value {
+        font-size: 1.2rem;
+        line-height: 1.15;
+        overflow-wrap: anywhere;
+    }
+
+    .stat-card__value.money {
+        font-size: 0.95rem;
+    }
+
+    .stat-card__label {
+        font-size: 0.62rem;
+        line-height: 1.25;
+    }
+
+    .table-wrapper {
+        overflow: visible;
+    }
+
+    .painel-mini-table,
+    .painel-mini-table thead,
+    .painel-mini-table tbody,
+    .painel-mini-table tr,
+    .painel-mini-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .painel-mini-table thead {
+        display: none;
+    }
+
+    .painel-mini-table tr {
+        margin-bottom: 10px;
+        padding: 10px;
+        border: 1px solid var(--border-soft);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.035);
+    }
+
+    .painel-mini-table tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .painel-mini-table td {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .painel-mini-table td:last-child {
+        border-bottom: 0;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .painel-mini-table td::before {
+        flex: 0 0 42%;
+        color: rgba(245, 245, 245, 0.55);
+        content: "";
+        font-size: 0.68rem;
+        font-weight: 700;
+        line-height: 1.35;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .painel-mini-table .empty-state {
+        display: block;
+        padding: 14px;
+        text-align: center;
+    }
+
+    .painel-mini-table .empty-state::before {
+        content: none;
+    }
+
+    .name-cell,
+    .nome-cell,
+    .family-stack {
+        min-width: 0;
+        text-align: right;
+    }
+
+    .progress-cell {
+        min-width: 0;
+    }
+
+    .progress-bar-cell {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .badge {
+        white-space: normal;
+        text-align: center;
+    }
+
+    #sec-form-pendentes td:nth-child(1)::before,
+    #sec-form-preenchidos td:nth-child(1)::before,
+    #sec-processos td:nth-child(1)::before,
+    #sec-clientes td:nth-child(1)::before {
+        content: "Cliente";
+    }
+
+    #sec-form-pendentes td:nth-child(2)::before,
+    #sec-form-preenchidos td:nth-child(2)::before,
+    #sec-processos td:nth-child(2)::before,
+    #sec-viagens td:nth-child(1)::before {
+        content: "Pais";
+    }
+
+    #sec-form-pendentes td:nth-child(3)::before,
+    #sec-form-preenchidos td:nth-child(3)::before,
+    #sec-processos td:nth-child(3)::before,
+    #sec-viagens td:nth-child(2)::before {
+        content: "Tipo de Visto";
+    }
+
+    #sec-form-pendentes td:nth-child(4)::before,
+    #sec-processos td:nth-child(4)::before {
+        content: "Progresso";
+    }
+
+    #sec-form-preenchidos td:nth-child(4)::before {
+        content: "Status";
+    }
+
+    #sec-clientes td:nth-child(2)::before {
+        content: "Financeiro";
+    }
+
+    #sec-clientes td:nth-child(3)::before {
+        content: "Formulario";
+    }
+
+    #sec-clientes td:nth-child(4)::before {
+        content: "Parceiro";
+    }
+
+    #sec-clientes td:nth-child(5)::before {
+        content: "Telefone";
+    }
+
+    #sec-viagens td:nth-child(3)::before {
+        content: "Data Ida";
+    }
+
+    #sec-viagens td:nth-child(4)::before {
+        content: "Data Retorno";
+    }
+
+    #sec-viagens td:nth-child(5)::before {
+        content: "Clientes";
+    }
+
+    #sec-form-pendentes td:nth-child(5)::before,
+    #sec-form-preenchidos td:nth-child(5)::before,
+    #sec-processos td:nth-child(6)::before,
+    #sec-clientes td:nth-child(6)::before,
+    #sec-viagens td:nth-child(6)::before {
+        content: "Acoes";
+    }
+
+    .painel-mini-table .empty-state::before {
+        content: none !important;
+    }
+}
+
+@media (max-width: 340px) {
+    .stats-row {
+        grid-template-columns: 1fr;
+    }
+}

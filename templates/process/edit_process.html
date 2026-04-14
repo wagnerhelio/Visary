@@ -263,7 +263,7 @@
             <div>
                 <label for="assigned_advisor">Assessor Responsável</label>
                 <select id="assigned_advisor" name="assigned_advisor" required>
-                    {% for advisor in advisors_disponiveis %}
+                    {% for advisor in available_advisors %}
                         <option value="{{ advisor.pk }}" {% if advisor.pk == process_obj.assigned_advisor.pk %}selected{% endif %}>
                             {{ advisor.name }}
                         </option>
@@ -377,7 +377,7 @@
             {% endfor %}
         </div>
 
-        {% if stages_com_datas %}
+        {% if stages_with_dates %}
         <form method="post" id="form-salvar-tudo" action="{% url 'system:edit_process' process_obj.pk %}" style="margin-top: 24px;" onsubmit="return coletarValoresTodasEtapas(event);">
             {% csrf_token %}
             <button type="submit" name="salvar_tudo" value="1" class="btn btn-primary" id="btn-salvar-tudo">Salvar Todas as Etapas</button>
@@ -386,7 +386,7 @@
         {% endif %}
     </article>
 
-    {% if stages_disponiveis %}
+    {% if available_stages %}
     <article class="card">
         <header style="margin-bottom: 20px;">
             <h2>Etapas Disponíveis para Adicionar</h2>
@@ -458,7 +458,7 @@ function atualizarEstadoEtapa(etapaId, concluida) {
     
     
     if (concluida) {
-        const dataConclusaoInput = document.getElementById('etapa_' + etapaId + '_data');
+            const dataConclusaoInput = document.getElementById('stage_' + etapaId + '_date');
         if (dataConclusaoInput && !dataConclusaoInput.value) {
             
             const today = new Date();
@@ -472,40 +472,40 @@ function atualizarEstadoEtapa(etapaId, concluida) {
 }
 
 function _coletarCamposEtapa(form, etapaId) {
-    form.querySelectorAll(`input[name^="etapa_${etapaId}_"]`).forEach(function(el) { el.remove(); });
+    form.querySelectorAll(`input[name^="stage_${etapaId}_"]`).forEach(function(el) { el.remove(); });
 
-    const checkbox = document.getElementById('etapa_' + etapaId + '_completed');
+    const checkbox = document.getElementById('stage_' + etapaId + '_completed_val_bool');
     if (checkbox) {
         const h = document.createElement('input');
         h.type = 'hidden';
-        h.name = 'etapa_' + etapaId + '_completed';
+        h.name = 'stage_' + etapaId + '_completed_val_bool';
         h.value = checkbox.checked ? 'on' : '';
         form.appendChild(h);
     }
 
-    const prazo = document.getElementById('etapa_' + etapaId + '_deadline');
+    const prazo = document.getElementById('stage_' + etapaId + '_deadline');
     if (prazo) {
         const h = document.createElement('input');
         h.type = 'hidden';
-        h.name = 'etapa_' + etapaId + '_deadline';
+        h.name = 'stage_' + etapaId + '_deadline';
         h.value = prazo.value.trim() || '0';
         form.appendChild(h);
     }
 
-    const data = document.getElementById('etapa_' + etapaId + '_data');
+    const data = document.getElementById('stage_' + etapaId + '_date');
     if (data) {
         const h = document.createElement('input');
         h.type = 'hidden';
-        h.name = 'etapa_' + etapaId + '_data';
+        h.name = 'stage_' + etapaId + '_date';
         h.value = data.value.trim() || '';
         form.appendChild(h);
     }
 
-    const obs = document.getElementById('etapa_' + etapaId + '_notes');
+    const obs = document.getElementById('stage_' + etapaId + '_notes');
     if (obs) {
         const h = document.createElement('input');
         h.type = 'hidden';
-        h.name = 'etapa_' + etapaId + '_notes';
+        h.name = 'stage_' + etapaId + '_notes';
         h.value = obs.value.trim() || '';
         form.appendChild(h);
     }
@@ -514,7 +514,7 @@ function _coletarCamposEtapa(form, etapaId) {
 function salvarEtapa(etapaId) {
     const form = document.getElementById('form-salvar-tudo');
     if (!form) return;
-    form.querySelectorAll('input[name^="etapa_"]').forEach(function(el) { el.remove(); });
+    form.querySelectorAll('input[name^="stage_"]').forEach(function(el) { el.remove(); });
     _coletarCamposEtapa(form, etapaId);
     const salvarEtapaInput = document.createElement('input');
     salvarEtapaInput.type = 'hidden';
@@ -534,7 +534,7 @@ function coletarValoresTodasEtapas(event) {
     const form = document.getElementById('form-salvar-tudo');
     if (!form) return false;
 
-    form.querySelectorAll('input[name^="etapa_"]').forEach(function(el) { el.remove(); });
+    form.querySelectorAll('input[name^="stage_"]').forEach(function(el) { el.remove(); });
 
     document.querySelectorAll('.etapa-item[data-etapa-id]').forEach(function(etapaItem) {
         _coletarCamposEtapa(form, etapaItem.dataset.etapaId);

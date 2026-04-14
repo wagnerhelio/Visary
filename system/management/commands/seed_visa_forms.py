@@ -14,6 +14,7 @@ from system.models import (
     VisaFormStage,
     VisaType,
 )
+from system.services.form_prefill_rules import should_prefill_from_client
 
 DISPLAY_RULE_KEY_MAP = {
     "tipo": "type",
@@ -248,6 +249,8 @@ class Command(BaseCommand):
     def _sync_questions(self, form, form_item, stage_map):
         for q_item in form_item.get("perguntas", []):
             stage_order = q_item.get("etapa")
+            if should_prefill_from_client(q_item.get("pergunta", "")):
+                stage_order = 1
             stage_obj = stage_map.get(stage_order) if stage_order else None
 
             raw_type = q_item["tipo_campo"]

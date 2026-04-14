@@ -242,7 +242,7 @@
     <div class="header-actions" style="margin-top: 16px; display: flex; gap: 8px;">
         <a href="{% url 'system:list_trip_forms' trip.pk %}" class="btn btn-outline">Voltar</a>
         {% if can_manage_all %}
-            <a href="{% url 'system:edit_client_form' trip.pk cliente.pk %}" class="btn btn-primary">Editar Formulário</a>
+            <a href="{% url 'system:edit_client_form' trip.pk client.pk %}" class="btn btn-primary">Editar Formulário</a>
         {% endif %}
     </div>
 </div>

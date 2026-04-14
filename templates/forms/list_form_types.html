@@ -212,7 +212,7 @@
         <input type="text" name="search" value="{{ applied_filters_dict.search }}" placeholder="Tipo de visto">
         <select name="country">
             <option value="">País</option>
-            {% for country in paises %}
+            {% for country in countries %}
                 <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk|stringformat:"s" %}selected{% endif %}>{{ country.name }}</option>
             {% endfor %}
         </select>
@@ -245,11 +245,11 @@
             <tbody>
             {% for visa_form_item in visa_forms %}
                 <tr>
-                    <td>{{ visa_form_obj.visa_type.name }}</td>
-                    <td>{{ visa_form_obj.visa_type.destination_country.name }}</td>
-                    <td>{% with n=visa_form_obj.questions.count %}{{ n }} pergunta{{ n|pluralize:"s" }}{% endwith %}</td>
+                    <td>{{ visa_form_item.visa_type.name }}</td>
+                    <td>{{ visa_form_item.visa_type.destination_country.name }}</td>
+                    <td>{% with n=visa_form_item.questions.count %}{{ n }} pergunta{{ n|pluralize:"s" }}{% endwith %}</td>
                     <td>
-                        {% if visa_form_obj.is_active %}
+                        {% if visa_form_item.is_active %}
                             <span style="color: var(--accent);">Ativo</span>
                         {% else %}
                             <span style="color: var(--text-secondary);">Inativo</span>
@@ -258,8 +258,8 @@
                     {% if can_manage_all %}
                         <td>
                             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                <a href="{% url 'system:edit_form' visa_form_obj.pk %}" class="btn btn-outline btn-small">Editar</a>
-                                <form method="post" action="{% url 'system:delete_form' visa_form_obj.pk %}" onsubmit="return confirm('Deseja realmente excluir o formulário de {{ visa_form_obj.visa_type.name }}?');" style="margin: 0; display: inline;">
+                                <a href="{% url 'system:edit_form' visa_form_item.pk %}" class="btn btn-outline btn-small">Editar</a>
+                                <form method="post" action="{% url 'system:delete_form' visa_form_item.pk %}" onsubmit="return confirm('Deseja realmente excluir o formulário de {{ visa_form_item.visa_type.name }}?');" style="margin: 0; display: inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-danger btn-small">Excluir</button>
                                 </form>

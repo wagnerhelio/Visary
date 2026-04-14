@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods
 
 from system.forms import ProcessForm
+from system.forms.process_forms import get_available_statuses_for_trip
 from system.models import (
     ConsultancyClient,
     TripClient,
@@ -20,7 +21,6 @@ from system.models import (
     Process,
     ProcessStatus,
     Trip,
-    TripProcessStatus,
 )
 from system.models import ConsultancyUser
 from system.views.client_views import list_clients, get_user_consultant, user_can_manage_all
@@ -265,13 +265,7 @@ def _create_stages_if_needed(process: Process):
     if process.stages.exists():
         return
 
-    status_vinculados = TripProcessStatus.objects.filter(
-        trip=process.trip,
-        is_active=True
-    ).select_related('status').order_by('status__order', 'status__name')
-
-    for trip_status in status_vinculados:
-        status = trip_status.status
+    for status in get_available_statuses_for_trip(process.trip_id):
         deadline = max(status.default_deadline_days, 0)
 
         ProcessStage.objects.get_or_create(
@@ -429,15 +423,7 @@ def _get_available_trip_stages(trip_id) -> list:
     if not trip_id:
         return []
 
-    try:
-        status_vinculados = TripProcessStatus.objects.filter(
-            trip_id=trip_id,
-            is_active=True
-        ).select_related('status').order_by('status__order', 'status__name')
-
-        return [trip_status.status for trip_status in status_vinculados]
-    except (Trip.DoesNotExist, ValueError):
-        return []
+    return get_available_statuses_for_trip(trip_id)
 
 
 def _prepare_create_process_context(consultant, form, client_id, trip_id) -> dict:
@@ -648,19 +634,14 @@ def remove_process_stage(request, process_pk: int, stage_pk: int):
 
 
 def _get_available_stages_to_add(process: Process):
-    status_vinculados = TripProcessStatus.objects.filter(
-        trip=process.trip,
-        is_active=True
-    ).select_related('status').order_by('status__order', 'status__name')
-
     status_ids_existentes = set(
         process.stages.values_list('status_id', flat=True)
     )
 
     return [
-        trip_status.status
-        for trip_status in status_vinculados
-        if trip_status.status.pk not in status_ids_existentes
+        status
+        for status in get_available_statuses_for_trip(process.trip_id)
+        if status.pk not in status_ids_existentes
     ]
 
 
@@ -678,15 +659,18 @@ def add_process_stage(request, process_pk: int, status_pk: int):
     if not can_manage_all and (not consultant or process.assigned_advisor_id != consultant.pk):
         raise PermissionDenied("Você não tem permissão para adicionar etapas a este processo.")
 
-    trip_status = get_object_or_404(
-        TripProcessStatus.objects.filter(
-            trip=process.trip,
-            status_id=status_pk,
-            is_active=True
-        )
+    status = next(
+        (
+            available_status
+            for available_status in get_available_statuses_for_trip(process.trip_id)
+            if available_status.pk == status_pk
+        ),
+        None,
     )
 
-    status = trip_status.status
+    if status is None:
+        messages.error(request, "Etapa indisponível para esta viagem.")
+        return redirect("system:edit_process", pk=process.pk)
 
     if ProcessStage.objects.filter(process=process, status=status).exists():
         messages.error(request, f"Etapa '{status.name}' já existe neste processo.")
@@ -752,19 +736,14 @@ def api_process_status(request):
         return JsonResponse({"error": "ID da viagem não fornecido."}, status=400)
 
     try:
-        status_vinculados = TripProcessStatus.objects.filter(
-            trip_id=trip_id,
-            is_active=True
-        ).select_related('status').order_by('status__order', 'status__name')
-
         status_list = [
             {
-                "id": vs.status.pk,
-                "name": vs.status.name,
-                "default_deadline_days": vs.status.default_deadline_days,
-                "ordem": vs.status.order,
+                "id": status.pk,
+                "name": status.name,
+                "default_deadline_days": status.default_deadline_days,
+                "ordem": status.order,
             }
-            for vs in status_vinculados
+            for status in get_available_statuses_for_trip(trip_id)
         ]
 
         return JsonResponse(status_list, safe=False)

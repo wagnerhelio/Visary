@@ -160,6 +160,15 @@ class ScopedVsGlobalListingsTests(TestCase):
         self.assertIn(self.cliente_a.full_name, nomes)
         self.assertNotIn(self.cliente_b.full_name, nomes)
 
+    def test_home_clientes_renderiza_lista_de_clientes_vinculados(self):
+        self.client.force_login(self.auth_user_a)
+
+        response = self.client.get(reverse("system:home_clients"))
+
+        self.assertContains(response, '<section class="home-section" id="sec-clientes">')
+        self.assertContains(response, self.cliente_a.full_name)
+        self.assertNotContains(response, self.cliente_b.full_name)
+
     def test_listar_clientes_exibe_todos_os_clientes_independente_do_assessor(self):
         self.client.force_login(self.auth_user_a)
 
@@ -179,6 +188,35 @@ class ScopedVsGlobalListingsTests(TestCase):
         viagens_ids = {item["trip"].pk for item in response.context["trips_with_info"]}
         self.assertIn(self.viagem_a.pk, viagens_ids)
         self.assertIn(self.viagem_b.pk, viagens_ids)
+
+    def test_home_viagens_renderiza_lista_de_viagens_vinculadas(self):
+        self.client.force_login(self.auth_user_a)
+
+        response = self.client.get(reverse("system:home_trips"))
+
+        self.assertContains(response, "<h2>Minhas Viagens</h2>")
+        self.assertContains(response, self.pais.name)
+        self.assertContains(response, self.tipo_visto.name)
+
+    def test_home_processos_renderiza_lista_de_processos_vinculados(self):
+        self.client.force_login(self.auth_user_a)
+
+        response = self.client.get(reverse("system:home_processes"))
+
+        self.assertContains(response, "<h2>Meus Processos</h2>")
+        self.assertContains(response, self.cliente_a.full_name)
+        self.assertNotContains(response, self.cliente_b.full_name)
+
+    def test_painel_principal_renderiza_secoes_com_dados_vinculados(self):
+        self.client.force_login(self.auth_user_a)
+
+        response = self.client.get(reverse("system:home"))
+
+        self.assertContains(response, '<section class="painel-section" id="sec-processos">')
+        self.assertContains(response, '<section class="painel-section" id="sec-clientes">')
+        self.assertContains(response, '<section class="painel-section" id="sec-viagens">')
+        self.assertContains(response, self.cliente_a.full_name)
+        self.assertContains(response, self.pais.name)
 
     def test_listar_processos_exibe_processos_de_todos_os_assessores(self):
         self.client.force_login(self.auth_user_a)

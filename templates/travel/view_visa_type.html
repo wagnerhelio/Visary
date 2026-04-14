@@ -240,7 +240,7 @@
             <h2>Viagens Vinculadas</h2>
             <p>{{ total_trips }} viagem{{ total_trips|pluralize }} cadastrada{{ total_trips|pluralize }}</p>
         </header>
-        {% if viagens %}
+        {% if trips %}
             <table>
                 <thead>
                     <tr>
@@ -252,7 +252,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for trip in viagens %}
+                    {% for trip in trips %}
                         <tr>
                             <td>{{ trip.planned_departure_date|date:"d/m/Y" }}</td>
                             <td>{{ trip.destination_country.name }}</td>

@@ -192,7 +192,7 @@
             </div>
         </article>
 
-        {% if viagens %}
+        {% if trips %}
         <article class="card">
             <header>
                 <h2>Viagens Vinculadas</h2>
@@ -209,7 +209,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for trip in viagens %}
+                    {% for trip in trips %}
                         <tr>
                             <td>{{ trip.planned_departure_date|date:"d/m/Y" }}</td>
                             <td>{{ trip.visa_type.name }}</td>
@@ -230,7 +230,7 @@
         </article>
         {% endif %}
 
-        {% if tipos_visto %}
+        {% if visa_types %}
         <article class="card">
             <header>
                 <h2>Tipos de Visto Vinculados</h2>
@@ -244,7 +244,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for visa_type in tipos_visto %}
+                    {% for visa_type in visa_types %}
                         <tr>
                             <td>{{ visa_type.name }}</td>
                             <td>

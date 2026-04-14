@@ -117,7 +117,7 @@
                 <label for="dependente_id">Cliente Dependente *</label>
                 <select name="dependente_id" id="dependente_id" required>
                     <option value="">Selecione um cliente</option>
-                    {% for client in clientes_disponiveis %}
+                    {% for client in available_clients %}
                         <option value="{{ client.pk }}">{{ client.full_name }} (CPF: {{ client.cpf }})</option>
                     {% endfor %}
                 </select>

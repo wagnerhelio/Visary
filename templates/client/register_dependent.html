@@ -96,20 +96,20 @@
             </p>
         </div>
 
-        {% if dependentes %}
+        {% if dependents %}
         <div class="dependentes-list">
             <h3 style="margin: 0 0 12px 0; font-size: 1.1rem; color: var(--text-primary);">
                 Dependentes Cadastrados ({{ dependents.count }})
             </h3>
-            {% for dependent in dependentes %}
+            {% for dependent in dependents %}
                 <div class="dependente-item">
                     <div>
                         <strong>{{ dependent.name }}</strong>
-                        {% if dependente.email %}
+                        {% if dependent.email %}
                             <br><span style="font-size: 0.85rem; color: var(--text-secondary);">{{ dependent.email }}</span>
                         {% endif %}
                     </div>
-                    <a href="{% url 'system:edit_client' dependente.pk %}" class="btn btn-outline btn-small">Editar</a>
+                    <a href="{% url 'system:edit_client' dependent.pk %}" class="btn btn-outline btn-small">Editar</a>
                 </div>
             {% endfor %}
         </div>

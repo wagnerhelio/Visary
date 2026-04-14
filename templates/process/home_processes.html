@@ -316,8 +316,8 @@
 
 <section class="filtros-card">
     <form method="get" class="filtros-grid">
-        <input type="text" name="client" value="{{ applied_filters_dict.client }}" placeholder="Nome do cliente" list="datalist-clientes">
-        <input type="text" name="trip" value="{{ applied_filters_dict.trip }}" placeholder="País ou tipo de visto">
+        <input type="text" name="client" value="{{ applied_filters.client }}" placeholder="Nome do cliente" list="datalist-clientes">
+        <input type="text" name="trip" value="{{ applied_filters.trip }}" placeholder="País ou tipo de visto">
         <div class="filtros-actions">
             <button type="submit" class="btn btn-primary">Filtrar</button>
             <a href="{% url 'system:home_processes' %}" class="btn btn-outline">Limpar</a>
@@ -326,7 +326,7 @@
 </section>
 
 <datalist id="datalist-clientes">
-    {% for client in clientes %}
+    {% for client in clients %}
         <option value="{{ client.full_name }}">
     {% endfor %}
 </datalist>
@@ -349,8 +349,8 @@
         </div>
     </section>
 
-    {% if process_objs %}
-    <section class="home-section">
+    {% if processes %}
+    <section class="home-section" id="sec-processos">
         <div class="home-section__header">
             <div>
                 <h2>Meus Processos</h2>

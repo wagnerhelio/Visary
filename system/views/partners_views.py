@@ -10,6 +10,10 @@ from system.models import Partner
 from system.views.client_views import get_user_consultant, user_can_manage_all, user_has_module_access
 
 
+def _segment_choices():
+    return Partner._meta.get_field("segment").choices
+
+
 def _apply_partner_filters(partners, request):
     filters = {
         "search": request.GET.get("search", "").strip(),
@@ -57,7 +61,7 @@ def home_partners(request):
         "user_profile": consultant.profile.name if consultant else None,
         "can_manage_all": can_manage_all,
         "applied_filters_dict": applied_filters,
-        "segments": Partner.SEGMENT_CHOICES,
+        "segmentos": _segment_choices(),
     }
 
     return render(request, "partners/home_partners.html", context)
@@ -104,7 +108,7 @@ def list_partners(request):
         "user_profile": consultant.profile.name if consultant else None,
         "can_manage_all": can_manage_all,
         "applied_filters_dict": applied_filters,
-        "segments": Partner.SEGMENT_CHOICES,
+        "segmentos": _segment_choices(),
     }
 
     return render(request, "partners/list_partners.html", context)

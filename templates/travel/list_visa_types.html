@@ -206,7 +206,7 @@
         <input type="text" name="search" value="{{ applied_filters_dict.search }}" placeholder="Nome do tipo de visto">
         <select name="country">
             <option value="">País</option>
-            {% for country in paises %}
+            {% for country in countries %}
                 <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk|stringformat:"s" %}selected{% endif %}>{{ country.name }}</option>
             {% endfor %}
         </select>
@@ -236,7 +236,7 @@
             </tr>
             </thead>
             <tbody>
-            {% for tipo in tipos_visto %}
+            {% for tipo in visa_types %}
                 <tr>
                     <td>{{ tipo.destination_country.name }}</td>
                     <td>{{ tipo.name }}</td>

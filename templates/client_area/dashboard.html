@@ -228,9 +228,9 @@
     <a href="{% url 'system:client_logout' %}" class="btn btn-outline">Sair</a>
 </div>
 
-{% if viagens %}
+{% if trips %}
     <div class="viagens-grid">
-        {% for trip in viagens %}
+        {% for trip in trips %}
             <div class="viagem-card">
                 <div class="viagem-header">
                     <h3>{{ trip.destination_country.name }}</h3>

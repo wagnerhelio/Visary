@@ -196,7 +196,7 @@
         <input type="text" name="search" value="{{ applied_filters_dict.search }}" placeholder="Nome do tipo de visto">
         <select name="country">
             <option value="">País</option>
-            {% for country in paises %}
+            {% for country in countries %}
                 <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk|stringformat:"s" %}selected{% endif %}>{{ country.name }}</option>
             {% endfor %}
         </select>
@@ -212,14 +212,14 @@
     </form>
 </section>
 
-{% if tipos_visto %}
+{% if visa_types %}
 <section class="home-list">
     <div class="home-list__header">
         <h2>Tipos de visto mais recentes</h2>
         <p>Últimos tipos de visto cadastrados</p>
     </div>
     <ul>
-        {% for tipo in tipos_visto %}
+        {% for tipo in visa_types %}
         <li>
             <div>
                 <strong>{{ tipo.name }}</strong>

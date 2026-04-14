@@ -196,7 +196,7 @@
         <input type="text" name="search" value="{{ applied_filters_dict.search }}" placeholder="Tipo de visto">
         <select name="country">
             <option value="">País</option>
-            {% for country in paises %}
+            {% for country in countries %}
                 <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk|stringformat:"s" %}selected{% endif %}>{{ country.name }}</option>
             {% endfor %}
         </select>
@@ -212,7 +212,7 @@
     </form>
 </section>
 
-{% if visa_form_objs %}
+{% if visa_forms %}
 <section class="home-list">
     <div class="home-list__header">
         <h2>Tipos de formulário mais recentes</h2>
@@ -222,10 +222,10 @@
         {% for visa_form_item in visa_forms %}
         <li>
             <div>
-                <strong>{{ visa_form_obj.visa_type.name }}</strong>
-                <span style="color: var(--text-secondary); font-size: 0.82rem; margin-left: 8px;">({{ visa_form_obj.visa_type.destination_country.name }})</span>
+                <strong>{{ visa_form_item.visa_type.name }}</strong>
+                <span style="color: var(--text-secondary); font-size: 0.82rem; margin-left: 8px;">({{ visa_form_item.visa_type.destination_country.name }})</span>
             </div>
-            {% if visa_form_obj.is_active %}
+            {% if visa_form_item.is_active %}
                 <span class="badge-ativo">Ativo</span>
             {% else %}
                 <span class="badge-inativo">Inativo</span>

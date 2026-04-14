@@ -494,7 +494,7 @@
                             <a href="{% url 'system:create_trip' %}?clientes={{ item.client.pk }}" class="btn btn-primary btn-small">
                                 Criar Viagem
                             </a>
-                            {% with viagens=item.client.viagens.all %}
+                            {% with viagens=item.client.trips.all %}
                                 {% if viagens %}
                                     {% for trip in viagens %}
                                         {% if forloop.first %}

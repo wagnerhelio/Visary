@@ -312,13 +312,13 @@
         <input type="text" name="client" value="{{ applied_filters_dict.client }}" placeholder="Nome do cliente" list="datalist-clientes">
         <select name="country">
             <option value="">País</option>
-            {% for country in paises_filtro %}
+            {% for country in countries_filter %}
                 <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk|stringformat:"s" %}selected{% endif %}>{{ country.name }}</option>
             {% endfor %}
         </select>
         <select name="tipo_visto">
             <option value="">Tipo de visto</option>
-            {% for tipo in tipos_visto_filtro %}
+            {% for tipo in visa_types_filter %}
                 <option value="{{ tipo.pk }}" {% if applied_filters_dict.visa_type == tipo.pk|stringformat:"s" %}selected{% endif %}>{{ tipo.name }}</option>
             {% endfor %}
         </select>
@@ -334,7 +334,7 @@
     </form>
 </section>
 <datalist id="datalist-clientes">
-    {% for client in clientes_filtro %}
+    {% for client in clients_filter %}
         <option value="{{ client.full_name }}">
     {% endfor %}
 </datalist>
@@ -357,7 +357,7 @@
         </div>
     </section>
 
-    {% if visa_form_objs_pendentes %}
+    {% if pending_forms %}
     <section class="home-section">
         <div class="home-section__header">
             <div>
@@ -410,7 +410,7 @@
     </section>
     {% endif %}
 
-    {% if visa_form_objs_preenchidos %}
+    {% if completed_forms %}
     <section class="home-section">
         <div class="home-section__header">
             <div>

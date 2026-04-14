@@ -1,52 +1,90 @@
-import re
-import unicodedata
 from decimal import Decimal, InvalidOperation
 
 from system.models import FormAnswer, SelectOption
+from system.services.form_prefill_rules import normalize_text, should_prefill_from_client
 
 
-def normalize_text(value):
-    text = unicodedata.normalize("NFKD", str(value or ""))
-    text = text.encode("ascii", "ignore").decode("ascii")
-    text = text.lower().strip()
-    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+def _question_is_stage_one(question):
+    return bool(question.stage_id and question.stage and question.stage.order == 1)
 
 
-def _prefill_raw_value(question, client):
-    q = normalize_text(question.question)
-    values = [
-        ("cpf", client.cpf),
-        ("email", client.email),
-        ("telefone secundario", client.secondary_phone),
-        ("telefone", client.phone),
-        ("cep", client.zip_code),
-        ("logradouro", client.street),
-        ("endereco", client.street),
-        ("numero", client.street_number),
-        ("complemento", client.complement),
-        ("bairro", client.district),
-        ("cidade emissao", client.passport_issuing_city),
-        ("cidade", client.city),
-        ("estado", client.state),
-        ("uf", client.state),
-        ("data de nascimento", client.birth_date),
-        ("nacionalidade", client.nationality),
-        ("sobrenome", client.last_name),
-        ("nome completo", client.full_name),
-        ("nome", client.first_name),
-        ("tipo de passaporte", client.passport_type_other or client.passport_type),
-        ("numero do passaporte", client.passport_number),
-        ("pais emissor", client.passport_issuing_country),
-        ("data emissao", client.passport_issue_date),
-        ("data validade", client.passport_expiry_date),
-        ("valido ate", client.passport_expiry_date),
-        ("autoridade", client.passport_authority),
-        ("orgao emissor", client.passport_authority),
-    ]
-    for key, value in values:
-        if key in q and value not in (None, ""):
-            return value
-    if "passaporte roubado" in q:
+def _build_full_address(client):
+    parts = []
+    street_line = " ".join(
+        p for p in [client.street, client.street_number] if p
+    ).strip()
+    if street_line:
+        parts.append(street_line)
+    if client.complement:
+        parts.append(client.complement)
+    if client.district:
+        parts.append(client.district)
+    city_state = " / ".join(p for p in [client.city, client.state] if p).strip()
+    if city_state:
+        parts.append(city_state)
+    if client.zip_code:
+        parts.append(f"CEP {client.zip_code}")
+    return ", ".join(parts).strip()
+
+
+def _prefill_raw_value(question_text, client):
+    q = normalize_text(question_text)
+    if not should_prefill_from_client(q):
+        return None
+
+    if q in {"nome", "primeiro nome"}:
+        return client.first_name
+    if q == "sobrenome":
+        return client.last_name
+    if q == "nome completo":
+        return client.full_name
+    if q == "cpf":
+        return client.cpf
+    if q in {"email", "e mail"}:
+        return client.email
+    if q in {"telefone", "telefone celular", "telefone residencial"}:
+        return client.phone
+    if q == "telefone secundario":
+        return client.secondary_phone
+    if "data de nascimento" in q:
+        return client.birth_date
+    if "nacionalidade" in q:
+        return client.nationality
+
+    if "cep" in q:
+        return client.zip_code
+    if "logradouro" in q:
+        return client.street
+    if q in {"numero", "numero da casa"}:
+        return client.street_number
+    if "complemento" in q:
+        return client.complement
+    if "bairro" in q:
+        return client.district
+    if "cidade e estado em que reside" in q:
+        return " / ".join(p for p in [client.city, client.state] if p)
+    if "endereco" in q:
+        return _build_full_address(client)
+
+    if "tipo de passaporte" in q:
+        return client.passport_type_other or client.passport_type
+    if "numero" in q and "passaporte" in q:
+        return client.passport_number
+    if (
+        "pais que emitiu" in q
+        or "pais referente" in q
+        or "pais emissor" in q
+    ):
+        return client.passport_issuing_country
+    if "data de emissao" in q:
+        return client.passport_issue_date
+    if "data de validade" in q or "data de expiracao" in q or "valido ate" in q:
+        return client.passport_expiry_date
+    if "cidade de emissao" in q:
+        return client.passport_issuing_city
+    if "local de emissao" in q or "autoridade" in q or "orgao emissor" in q:
+        return client.passport_authority
+    if "roubado" in q and "passaporte" in q:
         return "sim" if client.passport_stolen else "nao"
     return None
 
@@ -96,7 +134,9 @@ def prefill_form_answers(trip, client, questions, existing_answers):
     for question in questions:
         if question.pk in existing_answers:
             continue
-        raw_value = _prefill_raw_value(question, client)
+        if not _question_is_stage_one(question):
+            continue
+        raw_value = _prefill_raw_value(question.question, client)
         if raw_value in (None, ""):
             continue
         answer = FormAnswer(trip=trip, client=client, question=question)

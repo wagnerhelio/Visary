@@ -209,10 +209,14 @@ def home_visa_types(request):
 
 
 def _apply_country_filters(countries, request):
+    iso_code = (
+        request.GET.get("iso_code", "").strip()
+        or request.GET.get("codigo_iso", "").strip()
+    )
     filters = {
         "search": request.GET.get("search", "").strip(),
         "status": request.GET.get("status", "").strip(),
-        "iso_code": request.GET.get("iso_code", "").strip(),
+        "iso_code": iso_code,
     }
 
     if filters["search"]:
@@ -300,6 +304,8 @@ def create_visa_type(request):
 
 def _process_individual_visa_types(trip, selected_clients, separate_trip_member_ids, request):
     members_with_different_visa = []
+    selected_clients = list(selected_clients)
+    primary_client = _choose_trip_primary_client(selected_clients)
 
     for client in selected_clients:
         if client.pk in separate_trip_member_ids:
@@ -320,10 +326,32 @@ def _process_individual_visa_types(trip, selected_clients, separate_trip_member_
             TripClient.objects.update_or_create(
                 trip=trip,
                 client=client,
-                defaults={"visa_type": client_visa_type},
+                defaults=_trip_client_defaults(client, client_visa_type, primary_client),
             )
 
     return members_with_different_visa
+
+
+def _choose_trip_primary_client(clients):
+    for client in clients:
+        if client.is_primary:
+            return client
+    return clients[0] if clients else None
+
+
+def _trip_client_defaults(client, visa_type, primary_client):
+    if not primary_client or client.pk == primary_client.pk:
+        return {
+            "visa_type": visa_type,
+            "role": "primary",
+            "trip_primary_client": None,
+        }
+
+    return {
+        "visa_type": visa_type,
+        "role": "dependent",
+        "trip_primary_client": primary_client,
+    }
 
 
 def _process_separate_trips(trip, separate_member_ids, request):
@@ -382,6 +410,8 @@ def _process_separate_trips(trip, separate_member_ids, request):
                 trip=separate_trip,
                 client=member_client,
                 visa_type=separate_trip.visa_type,
+                role="primary",
+                trip_primary_client=None,
             )
             created_trips.append(separate_trip)
 
@@ -517,8 +547,12 @@ def _prepare_form_with_clients(request, form, client_ids_str):
     return form
 
 
+def _get_preselected_client_ids_param(request):
+    return request.GET.get("clients", "") or request.GET.get("clientes", "")
+
+
 def _get_clients_and_trip_members(request):
-    if request.method == "GET" and (client_ids := request.GET.get("clients", "")):
+    if request.method == "GET" and (client_ids := _get_preselected_client_ids_param(request)):
         return _prepare_preselected_clients(client_ids)
     return [], []
 
@@ -648,7 +682,7 @@ def _prepare_create_trip_context(form, consultant, preselected_clients, trip_mem
 def create_trip(request):
     consultant = get_user_consultant(request.user)
 
-    if request.method == "GET" and request.GET.get("clients"):
+    if request.method == "GET" and _get_preselected_client_ids_param(request):
         _clear_client_registration_flags(request)
         request.session.save()
         _clear_client_registration_flags(request)
@@ -660,12 +694,12 @@ def create_trip(request):
             return redirect_response
     else:
         form = TripForm(user=request.user)
-        if client_ids := request.GET.get("clients", ""):
+        if client_ids := _get_preselected_client_ids_param(request):
             form = _prepare_form_with_clients(request, form, client_ids)
 
     preselected_clients, trip_members = _get_clients_and_trip_members(request)
 
-    if request.method == "GET" and request.GET.get("clients"):
+    if request.method == "GET" and _get_preselected_client_ids_param(request):
         phrases_to_remove = [
             "cadastro finalizado com sucesso",
             "cadastro finalizado",
@@ -1422,7 +1456,11 @@ def delete_trip(request, pk: int):
 @login_required
 @require_GET
 def api_visa_types(request):
-    country_id = request.GET.get("country", "").strip()
+    country_id = (
+        request.GET.get("country", "")
+        or request.GET.get("pais_id", "")
+        or request.GET.get("pais", "")
+    ).strip()
 
     if not country_id:
         return JsonResponse({"error": "Informe um país."}, status=400)

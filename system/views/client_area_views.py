@@ -27,7 +27,7 @@ def _get_client_from_session(request):
 
 def _get_client_form(trip, client):
     client_visa_type = _get_client_visa_type(trip, client)
-    return _get_form_by_visa_type(client_visa_type, only_active=False)
+    return _get_form_by_visa_type(client_visa_type, active_only=False)
 
 
 def client_dashboard(request):

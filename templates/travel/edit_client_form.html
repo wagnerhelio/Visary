@@ -296,7 +296,7 @@
     <div class="header-actions">
         <a href="{% url 'system:list_trip_forms' trip.pk %}" class="btn btn-outline">Voltar</a>
         {% if can_manage_all %}
-            <form method="post" action="{% url 'system:delete_form_answers' trip.pk cliente.pk %}" onsubmit="return confirm('Deseja realmente excluir todas as respostas deste formulário?');">
+            <form method="post" action="{% url 'system:delete_form_answers' trip.pk client.pk %}" onsubmit="return confirm('Deseja realmente excluir todas as respostas deste formulário?');">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-danger">Excluir Respostas</button>
             </form>

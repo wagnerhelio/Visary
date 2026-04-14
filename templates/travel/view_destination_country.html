@@ -195,7 +195,7 @@
             <h2>Tipos de Visto Vinculados</h2>
             <p>{{ total_visa_types }} tipo{{ total_visa_types|pluralize }} de visto cadastrado{{ total_visa_types|pluralize }}</p>
         </header>
-        {% if tipos_visto %}
+        {% if visa_types %}
             <table>
                 <thead>
                     <tr>
@@ -205,7 +205,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for tipo in tipos_visto %}
+                    {% for tipo in visa_types %}
                         <tr>
                             <td>{{ tipo.name }}</td>
                             <td>
@@ -234,7 +234,7 @@
             <h2>Viagens Vinculadas</h2>
             <p>{{ total_trips }} viagem{{ total_trips|pluralize }} cadastrada{{ total_trips|pluralize }}</p>
         </header>
-        {% if viagens %}
+        {% if trips %}
             <table>
                 <thead>
                     <tr>
@@ -246,7 +246,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for trip in viagens %}
+                    {% for trip in trips %}
                         <tr>
                             <td>{{ trip.planned_departure_date|date:"d/m/Y" }}</td>
                             <td>{{ trip.visa_type.name }}</td>

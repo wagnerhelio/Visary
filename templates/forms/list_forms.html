@@ -258,7 +258,7 @@
                 <label for="filtro-pais">País</label>
                 <select id="filtro-pais" name="country">
                     <option value="">País</option>
-                    {% for country in paises_filtro %}
+                    {% for country in countries_filter %}
                         <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk|stringformat:"s" %}selected{% endif %}>{{ country.name }}</option>
                     {% endfor %}
                 </select>
@@ -267,7 +267,7 @@
                 <label for="filtro-tipo-visto">Tipo de Visto</label>
                 <select id="filtro-tipo-visto" name="tipo_visto">
                     <option value="">Tipo de visto</option>
-                    {% for tipo in tipos_visto_filtro %}
+                    {% for tipo in visa_types_filter %}
                         <option value="{{ tipo.pk }}" {% if applied_filters_dict.visa_type == tipo.pk|stringformat:"s" %}selected{% endif %}>{{ tipo.name }}</option>
                     {% endfor %}
                 </select>
@@ -288,7 +288,7 @@
     </form>
 </section>
 <datalist id="datalist-clientes">
-    {% for client in clientes_filtro %}
+    {% for client in clients_filter %}
         <option value="{{ client.full_name }}">
     {% endfor %}
 </datalist>
@@ -308,7 +308,7 @@
     </article>
 </section>
 
-{% if visa_form_objs_respostas %}
+{% if form_responses %}
 {% for item in form_responses %}
 <section class="formularios-list viagem-section">
     <article class="formularios-list-card">

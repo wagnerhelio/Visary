@@ -382,9 +382,9 @@
                     <div class="dependente-checkbox-item" style="{% if membro.role == 'primary' %}background: rgba(86, 244, 156, 0.08); border-color: rgba(86, 244, 156, 0.25);{% endif %}">
                         {% if membro.role == 'primary' %}
                             <input type="checkbox" checked disabled style="width: 18px; height: 18px; accent-color: rgba(86, 244, 156, 0.8);">
-                            <input type="hidden" name="clientes" value="{{ membro.client.pk }}">
+                            <input type="hidden" name="clients" value="{{ membro.client.pk }}">
                         {% else %}
-                            <input type="checkbox" id="membro-{{ membro.client.pk }}" name="clientes" value="{{ membro.client.pk }}" checked style="width: 18px; height: 18px; accent-color: rgba(86, 244, 156, 0.8); cursor: pointer;">
+                            <input type="checkbox" id="membro-{{ membro.client.pk }}" name="clients" value="{{ membro.client.pk }}" checked style="width: 18px; height: 18px; accent-color: rgba(86, 244, 156, 0.8); cursor: pointer;">
                         {% endif %}
                         <label {% if membro.role != 'primary' %}for="membro-{{ membro.client.pk }}"{% endif %} style="cursor: {% if membro.role == 'primary' %}default{% else %}pointer{% endif %}; font-size: 0.92rem; color: var(--text-primary); text-transform: none; letter-spacing: normal; font-weight: 500; margin-bottom: 0;">
                             {{ membro.client.full_name }}
@@ -426,7 +426,7 @@
                         </div>
                         <button type="button" class="btn-trocar" onclick="trocarCliente()">Trocar</button>
                     </div>
-                    <input type="hidden" name="clientes" id="principal-hidden-input" value="">
+                    <input type="hidden" name="clients" id="principal-hidden-input" value="">
                 </div>
 
                 <!-- Dependents section (populated dynamically) -->
@@ -486,7 +486,7 @@
                                 style="padding: 8px 16px; background: rgba(86, 244, 156, 0.2); border: 1px solid rgba(86, 244, 156, 0.4); border-radius: 8px; color: rgba(86, 244, 156, 0.95); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;"
                                 onmouseover="this.style.background='rgba(86, 244, 156, 0.3)'; this.style.borderColor='rgba(86, 244, 156, 0.6)';"
                                 onmouseout="this.style.background='rgba(86, 244, 156, 0.2)'; this.style.borderColor='rgba(86, 244, 156, 0.4)';">
-                                📋 Replicar dados da trip principal
+                                Replicar dados da trip principal
                             </button>
                         </div>
                         
@@ -543,7 +543,7 @@
                         
                         <div style="margin-top: 16px; padding: 12px; background: rgba(86, 244, 156, 0.15); border: 1px solid rgba(86, 244, 156, 0.4); border-radius: 8px;">
                             <p style="margin: 0; font-size: 0.9rem; color: rgba(86, 244, 156, 0.95);">
-                                <strong>ℹ️ Informação:</strong> Se o tipo de visto deste membro for diferente do tipo de visto da trip principal, uma trip separada será criada automaticamente.
+                                <strong>Informação:</strong> Se o tipo de visto deste membro for diferente do tipo de visto da trip principal, uma trip separada será criada automaticamente.
                             </p>
                         </div>
                     </div>
@@ -588,14 +588,23 @@
             return;
         }
 
-        fetch(`{% url 'system:api_visa_types' %}?pais=${paisId}`)
-            .then(resp => resp.json())
-            .then(data => {
+        fetch(`{% url 'system:api_visa_types' %}?pais_id=${paisId}`)
+            .then(resp => resp.json().then(data => ({ ok: resp.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok || !Array.isArray(data)) {
+                    throw new Error(data && data.error ? data.error : 'Resposta inválida ao carregar tipos de visto.');
+                }
+                
+                const selectedValue = selectElement.dataset.selectedValue || selectElement.value;
+                
                 selectElement.innerHTML = '<option value="">Selecione o tipo de visto</option>';
                 data.forEach(tipo => {
                     const option = document.createElement('option');
                     option.value = tipo.id;
                     option.textContent = tipo.name;
+                    if (String(tipo.id) === String(selectedValue)) {
+                        option.selected = true;
+                    }
                     selectElement.appendChild(option);
                 });
                 selectElement.disabled = false;
@@ -609,11 +618,13 @@
     
     paisSelect.addEventListener('change', function() {
         const paisId = this.value;
+        tipoVistoSelect.dataset.selectedValue = '';
         carregarTiposVisto(tipoVistoSelect, paisId);
     });
 
     
     if (paisSelect.value) {
+        tipoVistoSelect.dataset.selectedValue = tipoVistoSelect.value;
         carregarTiposVisto(tipoVistoSelect, paisSelect.value);
     }
 
@@ -624,6 +635,7 @@
             const tipoVistoSelectId = this.dataset.tipoVistoSelect;
             const tipoVistoSelectDependente = document.getElementById(tipoVistoSelectId);
             if (tipoVistoSelectDependente) {
+                tipoVistoSelectDependente.dataset.selectedValue = '';
                 carregarTiposVisto(tipoVistoSelectDependente, paisId);
             }
         });
@@ -645,15 +657,11 @@
 
         if (paisDependente && paisPrincipal) {
             paisDependente.value = paisPrincipal;
+            if (tipoVistoDependente) {
+                tipoVistoDependente.dataset.selectedValue = tipoVistoPrincipal;
+            }
             
             paisDependente.dispatchEvent(new Event('change', { bubbles: true }));
-            
-            
-            setTimeout(() => {
-                if (tipoVistoDependente && tipoVistoPrincipal) {
-                    tipoVistoDependente.value = tipoVistoPrincipal;
-                }
-            }, 500);
         }
 
         if (dataViagemDependente && dataViagemPrincipal) {
@@ -673,7 +681,7 @@
 
 
             const originalText = this.textContent;
-            this.textContent = '✅ Dados replicados!';
+            this.textContent = 'Dados replicados';
             this.style.background = 'rgba(86, 244, 156, 0.4)';
             setTimeout(() => {
                 this.textContent = originalText;
@@ -705,19 +713,19 @@
         function renderDropdown(filtro) {
             const termo = (filtro || '').toLowerCase();
             const filtrados = termo
-                ? todosClientes.filter(c => c.name.toLowerCase().includes(termo))
+                ? todosClientes.filter(c => c.nome.toLowerCase().includes(termo))
                 : todosClientes;
 
             if (filtrados.length === 0) {
                 dropdownClientes.innerHTML = '<div class="dropdown-item no-results">Nenhum cliente encontrado</div>';
             } else {
                 dropdownClientes.innerHTML = filtrados.map(c => {
-                    let nomeHtml = c.name;
+                    let nomeHtml = c.nome;
                     if (termo) {
                         const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-                        nomeHtml = c.name.replace(regex, '<span class="highlight">$1</span>');
+                        nomeHtml = c.nome.replace(regex, '<span class="highlight">$1</span>');
                     }
-                    return `<div class="dropdown-item" data-id="${c.id}" data-nome="${c.name}">${nomeHtml}</div>`;
+                    return `<div class="dropdown-item" data-id="${c.id}" data-nome="${c.nome}">${nomeHtml}</div>`;
                 }).join('');
             }
 
@@ -731,7 +739,7 @@
         dropdownClientes.addEventListener('click', (e) => {
             const item = e.target.closest('.dropdown-item[data-id]');
             if (!item) return;
-            selecionarPrincipal(parseInt(item.dataset.id), item.dataset.name);
+            selecionarPrincipal(parseInt(item.dataset.id), item.dataset.nome);
         });
 
         document.addEventListener('click', (e) => {
@@ -757,7 +765,7 @@
                     if (dependentes.length > 0) {
                         dependentesList.innerHTML = dependentes.map(d => `
                             <div class="dependente-checkbox-item">
-                                <input type="checkbox" id="dep-${d.id}" name="clientes" value="${d.id}" checked>
+                                <input type="checkbox" id="dep-${d.id}" name="clients" value="${d.id}" checked>
                                 <label for="dep-${d.id}">${d.name}</label>
                             </div>
                         `).join('');

@@ -102,7 +102,7 @@
         <header>
             <h2>Viagens</h2>
         </header>
-        {% if client_viagens %}
+        {% if client_trips %}
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -115,7 +115,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item in cliente_viagens %}
+                        {% for item in client_trips %}
                             <tr>
                                 <td>{{ item.trip.destination_country.name }}</td>
                                 <td>{{ item.visa_type.name|default:item.trip.visa_type.name }}</td>
@@ -142,7 +142,7 @@
         <header>
             <h2>Processos</h2>
         </header>
-        {% if process_objs %}
+        {% if processes %}
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -182,7 +182,7 @@
         <header>
             <h2>Formulários</h2>
         </header>
-        {% if visa_form_objs_resumo %}
+        {% if forms_summary %}
             <div class="table-wrapper">
                 <table>
                     <thead>

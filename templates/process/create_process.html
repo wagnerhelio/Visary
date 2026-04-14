@@ -613,8 +613,8 @@
                             Selecione as stages que deseja incluir no processo
                         </span>
                     </label>
-                    <div class="etapas-checklist" id="etapas-checklist">
-                        {% if stages_disponiveis and form.selected_stages.field.choices %}
+                    <div class="stages-checklist" id="etapas-checklist">
+                        {% if available_stages and form.selected_stages.field.choices %}
                             {% for choice in form.selected_stages %}
                                 <label>
                                     {{ choice.tag }}
@@ -685,7 +685,7 @@
     // All clients from the form queryset
     const todosClientes = [
         {% for client in form.client.field.queryset %}
-        { id: {{ client.pk }}, nome: "{{ client.full_name|escapejs }}" },
+        { id: {{ client.pk }}, name: "{{ client.full_name|escapejs }}" },
         {% endfor %}
     ];
 
@@ -709,7 +709,7 @@
                     const regex = new RegExp(`(${termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
                     nomeHtml = c.name.replace(regex, '<span class="highlight">$1</span>');
                 }
-                return `<div class="dropdown-item" data-id="${c.id}" data-nome="${c.name}">${nomeHtml}</div>`;
+                return `<div class="dropdown-item" data-id="${c.id}" data-name="${c.name}">${nomeHtml}</div>`;
             }).join('');
         }
 

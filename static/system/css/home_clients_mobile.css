@@ -1,0 +1,200 @@
+@media (max-width: 640px) {
+    .home-acoes,
+    .home-grid,
+    .kpi-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .home-card,
+    .home-section,
+    .filtros-card {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding: 16px;
+        border-radius: 8px;
+        box-sizing: border-box;
+        overflow: hidden;
+    }
+
+    .home-card {
+        align-items: flex-start;
+    }
+
+    .home-card__content,
+    .kpi-card,
+    .home-section__header,
+    .home-section__actions {
+        min-width: 0;
+    }
+
+    .kpi-card {
+        border-radius: 8px;
+    }
+
+    .kpi-card span,
+    .home-card__content h3,
+    .home-card__content p {
+        overflow-wrap: anywhere;
+    }
+
+    .table-wrapper {
+        overflow: visible;
+    }
+
+    .mini-table,
+    .mini-table thead,
+    .mini-table tbody,
+    .mini-table tr,
+    .mini-table td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .mini-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 0;
+    }
+
+    .mini-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    .mini-table tr {
+        padding: 12px;
+        margin-bottom: 12px;
+        border: 1px solid var(--border-soft);
+        border-radius: 8px;
+        background: rgba(12, 19, 35, 0.46);
+    }
+
+    .mini-table tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .mini-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 0.84rem;
+        line-height: 1.35;
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .mini-table td:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .mini-table td::before {
+        content: "";
+        flex: 0 0 42%;
+        max-width: 42%;
+        color: rgba(245, 245, 245, 0.58);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        line-height: 1.3;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .mini-table td:nth-child(1)::before { content: "Nome"; }
+    .mini-table td:nth-child(2)::before { content: "Progresso"; }
+    .mini-table td:nth-child(3)::before { content: "Financeiro"; }
+    .mini-table td:nth-child(4)::before { content: "Formulario"; }
+    .mini-table td:nth-child(5)::before { content: "Parceiro"; }
+    .mini-table td:nth-child(6)::before { content: "Telefone"; }
+    .mini-table td:nth-child(7)::before { content: "E-mail"; }
+    .mini-table td:nth-child(8)::before { content: "Cadastro"; }
+    .mini-table td:nth-child(9)::before { content: "Acoes"; }
+
+    .nome-cell,
+    .name-cell {
+        min-width: 0;
+        align-items: flex-end;
+        text-align: right;
+    }
+
+    .nome-cell__name,
+    .name-cell__name,
+    .nome-cell__sub,
+    .name-cell__sub {
+        overflow-wrap: anywhere;
+    }
+
+    .progress-bar-cell {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+
+    .progress-bar-cell__bar {
+        max-width: 96px;
+    }
+
+    .badge {
+        white-space: normal;
+        text-align: center;
+    }
+
+    .mini-table td:last-child > div {
+        justify-content: stretch !important;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .mini-table td:last-child .btn {
+        flex: 1 1 100%;
+        width: 100%;
+        text-align: center;
+        white-space: normal;
+    }
+}
+
+@media (max-width: 360px) {
+    .home-card,
+    .home-section,
+    .filtros-card {
+        padding: 14px;
+    }
+
+    .mini-table td {
+        display: block;
+        text-align: left;
+    }
+
+    .mini-table td::before {
+        display: block;
+        max-width: none;
+        margin-bottom: 6px;
+    }
+
+    .nome-cell,
+    .name-cell,
+    .progress-bar-cell {
+        align-items: flex-start;
+        justify-content: flex-start;
+        text-align: left;
+    }
+}

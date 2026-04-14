@@ -276,34 +276,34 @@
             </tr>
             </thead>
             <tbody>
-            {% for profile_obj in perfis %}
+            {% for profile_obj in profiles %}
                 <tr>
                     <td><strong>{{ profile_obj.name }}</strong></td>
                     <td>{{ profile_obj.description|truncatewords:10|default:"-" }}</td>
                     <td>
-                        {% for module_obj in perfil.modulos.all|slice:":3" %}
+                        {% for module_obj in profile_obj.modules.all|slice:":3" %}
                             <span class="permissions-badge">{{ module_obj.name }}</span>
                         {% endfor %}
-                        {% if perfil.modulos.count > 3 %}
-                            <span class="permissions-badge">+{{ profile_obj.modulos.count|add:"-3" }}</span>
+                        {% if profile_obj.modules.count > 3 %}
+                            <span class="permissions-badge">+{{ profile_obj.modules.count|add:"-3" }}</span>
                         {% endif %}
                     </td>
                     <td>
-                        {% if perfil.can_create %}<span class="permissions-badge">Criar</span>{% endif %}
-                        {% if perfil.can_view %}<span class="permissions-badge">Ver</span>{% endif %}
-                        {% if perfil.pode_atualizar %}<span class="permissions-badge">Editar</span>{% endif %}
-                        {% if perfil.can_delete %}<span class="permissions-badge">Excluir</span>{% endif %}
+                        {% if profile_obj.can_create %}<span class="permissions-badge">Criar</span>{% endif %}
+                        {% if profile_obj.can_view %}<span class="permissions-badge">Ver</span>{% endif %}
+                        {% if profile_obj.can_update %}<span class="permissions-badge">Editar</span>{% endif %}
+                        {% if profile_obj.can_delete %}<span class="permissions-badge">Excluir</span>{% endif %}
                     </td>
                     <td>{{ profile_obj.users.count }}</td>
                     <td>
-                        <span class="status-badge {% if perfil.is_active %}ativo{% else %}inativo{% endif %}">
-                            {% if perfil.is_active %}Ativo{% else %}Inativo{% endif %}
+                        <span class="status-badge {% if profile_obj.is_active %}ativo{% else %}inativo{% endif %}">
+                            {% if profile_obj.is_active %}Ativo{% else %}Inativo{% endif %}
                         </span>
                     </td>
                     <td>
                         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                            <a href="{% url 'system:edit_profile' perfil.pk %}" class="btn btn-outline btn-small">Editar</a>
-                            <form method="post" action="{% url 'system:delete_profile' perfil.pk %}" onsubmit="return confirm('Deseja realmente excluir este perfil?');" style="margin: 0;">
+                            <a href="{% url 'system:edit_profile' profile_obj.pk %}" class="btn btn-outline btn-small">Editar</a>
+                            <form method="post" action="{% url 'system:delete_profile' profile_obj.pk %}" onsubmit="return confirm('Deseja realmente excluir este perfil?');" style="margin: 0;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-danger btn-small">Excluir</button>
                             </form>

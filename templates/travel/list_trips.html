@@ -333,7 +333,7 @@
                 <label for="pais">País de Destino</label>
                 <select id="pais" name="country">
                     <option value="">Todos</option>
-                    {% for country in paises %}
+                    {% for country in countries %}
                         <option value="{{ country.pk }}" {% if applied_filters_dict.country == country.pk %}selected{% endif %}>
                             {{ country.name }}
                         </option>
@@ -344,7 +344,7 @@
                 <label for="tipo_visto">Tipo de Visto</label>
                 <select id="tipo_visto" name="tipo_visto">
                     <option value="">Todos</option>
-                    {% for tipo in tipos_visto %}
+                    {% for tipo in visa_types %}
                         <option value="{{ tipo.pk }}" {% if applied_filters_dict.visa_type == tipo.pk %}selected{% endif %}>
                             {{ tipo.destination_country.name }} - {{ tipo.name }}
                         </option>
@@ -376,7 +376,7 @@
     </form>
 </section>
 <datalist id="datalist-clientes">
-    {% for client in clientes %}
+    {% for client in clients %}
         <option value="{{ client.full_name }}">
     {% endfor %}
 </datalist>
@@ -432,7 +432,7 @@
                         {% with clients=item.trip.clients.all %}
                             {% if clients %}
                                 <div class="family-stack">
-                                    {% for client in clientes %}
+                                    {% for client in clients %}
                                         <div class="family-member">
                                             <span class="family-member__name">{{ client.full_name }}</span>
                                         </div>

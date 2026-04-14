@@ -38,6 +38,54 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+CLIENT_STEP_FIELD_MAP = {
+    "assessor_responsavel": "assigned_advisor",
+    "nome": "first_name",
+    "sobrenome": "last_name",
+    "data_nascimento": "birth_date",
+    "nacionalidade": "nationality",
+    "telefone": "phone",
+    "telefone_secundario": "secondary_phone",
+    "senha": "password",
+    "confirmar_senha": "confirm_password",
+    "parceiro_indicador": "referring_partner",
+    "cep": "zip_code",
+    "logradouro": "street",
+    "numero": "street_number",
+    "complemento": "complement",
+    "bairro": "district",
+    "cidade": "city",
+    "uf": "state",
+    "tipo_passaporte": "passport_type",
+    "tipo_passaporte_outro": "passport_type_other",
+    "numero_passaporte": "passport_number",
+    "pais_emissor_passaporte": "passport_issuing_country",
+    "data_emissao_passaporte": "passport_issue_date",
+    "valido_ate_passaporte": "passport_expiry_date",
+    "autoridade_passaporte": "passport_authority",
+    "cidade_emissao_passaporte": "passport_issuing_city",
+    "passaporte_roubado": "passport_stolen",
+    "observacoes": "notes",
+}
+
+CLIENT_STEP_BOOLEAN_MAP = {
+    "etapa_dados_pessoais": "step_personal_data",
+    "etapa_endereco": "step_address",
+    "etapa_passaporte": "step_passport",
+    "etapa_membros": "step_members",
+}
+
+
+def _client_step_form_field_name(field_name: str) -> str:
+    return CLIENT_STEP_FIELD_MAP.get(field_name, field_name)
+
+
+def _client_step_flag(boolean_field: str | None) -> str | None:
+    if not boolean_field:
+        return boolean_field
+    return CLIENT_STEP_BOOLEAN_MAP.get(boolean_field, boolean_field)
+
+
 class InvalidDependentsError(Exception):
     pass
 
@@ -376,6 +424,9 @@ def home_clients(request):
     total_no_records_kpi = sum(
         1 for item in clients_with_status if item["financial_status"] == "Sem registros"
     )
+    clear_client_register_draft = request.session.pop("clear_client_register_draft", False)
+    if clear_client_register_draft:
+        request.session.modified = True
 
     return render(request, "client/home_clients.html", {
         "total_clients": total_clients_kpi,
@@ -390,6 +441,7 @@ def home_clients(request):
         "filters_dict": filters,
         "advisors": advisors,
         "progressos": progress_list,
+        "clear_client_register_draft": clear_client_register_draft,
     })
 
 
@@ -733,7 +785,7 @@ def _create_client_from_session(request) -> ConsultancyClient | None:
 
 def _configure_form_fields(form, current_step):
     step_fields_dict = {
-        field_cfg.field_name: field_cfg
+        _client_step_form_field_name(field_cfg.field_name): field_cfg
         for field_cfg in ClientStepField.objects.filter(
             step=current_step, is_active=True
         ).order_by("order", "field_name")
@@ -751,7 +803,8 @@ def _configure_form_fields(form, current_step):
 
 def _save_step_to_session(form, current_step, request):
     step_field_names = set(
-        ClientStepField.objects.filter(
+        _client_step_form_field_name(field_name)
+        for field_name in ClientStepField.objects.filter(
             step=current_step, is_active=True
         ).values_list("field_name", flat=True)
     )
@@ -769,8 +822,8 @@ def _save_step_to_session(form, current_step, request):
         else:
             updated_data[field] = value
 
-    if current_step.boolean_field:
-        updated_data[current_step.boolean_field] = True
+    if flag_name := _client_step_flag(current_step.boolean_field):
+        updated_data[flag_name] = True
 
     _save_session_temp_data(request, updated_data)
     _log_completed_step_summary(request, current_step, form.cleaned_data, updated_data)
@@ -781,7 +834,7 @@ def _advance_to_next_step(current_step, steps, request_path, request):
         messages.success(request, f"Etapa '{current_step.name}' concluída!")
         return redirect(f"{request_path}?stage_id={next_step.pk}")
 
-    if current_step.boolean_field == 'step_members':
+    if _client_step_flag(current_step.boolean_field) == 'step_members':
         messages.success(request, f"Etapa '{current_step.name}' concluída! Você pode adicionar dependentes abaixo.")
         return redirect(f"{request_path}?stage_id={current_step.pk}")
 
@@ -861,7 +914,7 @@ def _create_dependent_from_db(
 
         first_step = ClientRegistrationStep.objects.filter(is_active=True).order_by("order").first()
         if first_step and first_step.boolean_field:
-            setattr(dependent, first_step.boolean_field, True)
+            setattr(dependent, _client_step_flag(first_step.boolean_field), True)
 
         dependent.save()
 
@@ -882,6 +935,13 @@ def _mark_completed_steps(client: ConsultancyClient, temp_data: dict):
     for boolean_field in boolean_fields:
         if temp_data.get(boolean_field):
             setattr(client, boolean_field, True)
+
+
+def _stage_is_completed(stage, temp_data: dict) -> bool:
+    return bool(
+        temp_data.get(stage.boolean_field)
+        or temp_data.get(_client_step_flag(stage.boolean_field))
+    )
 
 
 def _process_temp_dependents(request, client: ConsultancyClient) -> int:
@@ -1087,6 +1147,7 @@ def _finalize_client_registration(request, client: ConsultancyClient, create_tri
         request.session.pop("client_temp_data", None)
     if "temp_dependents" in request.session:
         request.session.pop("temp_dependents", None)
+    request.session["clear_client_register_draft"] = True
     request.session.modified = True
 
     if num_dependents > 0:
@@ -1132,6 +1193,13 @@ def _prepare_context(steps, current_step, step_fields, form, client, consultant)
         if step_index < len(steps_list) - 1
         else None
     )
+    display_fields = [
+        {
+            "config": step_field,
+            "form_field_name": _client_step_form_field_name(step_field.field_name),
+        }
+        for step_field in step_fields
+    ]
 
     return {
         "form": form,
@@ -1140,6 +1208,7 @@ def _prepare_context(steps, current_step, step_fields, form, client, consultant)
         "previous_stage": previous_step,
         "next_stage": next_step,
         "stage_fields": step_fields,
+        "display_fields": display_fields,
         "client": client,
         "user_profile": consultant.profile.name if consultant else None,
     }
@@ -1214,14 +1283,20 @@ def _configure_dependent_form_fields(dependent_form, first_step, steps):
         _configure_form_fields(dependent_form, first_step)
         return
 
-    dependent_steps = steps.filter(is_active=True).exclude(boolean_field='step_members').order_by("order")
+    dependent_steps = [
+        step for step in steps.filter(is_active=True).order_by("order")
+        if _client_step_flag(step.boolean_field) != "step_members"
+    ]
     dependent_field_names = set()
     for step in dependent_steps:
         step_fields = ClientStepField.objects.filter(step=step, is_active=True).exclude(field_name="referring_partner")
-        dependent_field_names.update(step_fields.values_list("field_name", flat=True))
+        dependent_field_names.update(
+            _client_step_form_field_name(field_name)
+            for field_name in step_fields.values_list("field_name", flat=True)
+        )
 
     first_step_fields_dict = {
-        field_cfg.field_name: field_cfg
+        _client_step_form_field_name(field_cfg.field_name): field_cfg
         for field_cfg in ClientStepField.objects.filter(step=first_step, is_active=True)
     }
 
@@ -1310,8 +1385,9 @@ def _save_dependent(form, primary_client, first_step, user, use_primary_data=Fal
     dependent.save()
 
     if first_step.boolean_field:
-        setattr(dependent, first_step.boolean_field, True)
-        dependent.save(update_fields=[first_step.boolean_field])
+        flag_name = _client_step_flag(first_step.boolean_field)
+        setattr(dependent, flag_name, True)
+        dependent.save(update_fields=[flag_name])
 
 
 def _store_temp_dependent_in_session(request, dependent_data: dict):
@@ -1461,7 +1537,10 @@ def _process_dependent_registration(request, current_step, temp_client, steps):
         return _process_valid_dependent(request, dependent_post_form, current_step), None
 
     logger.error(f"Formulário de dependente inválido: {dependent_post_form.errors}")
-    step_field_names = set(first_step_fields.values_list("field_name", flat=True))
+    step_field_names = {
+        _client_step_form_field_name(field_name)
+        for field_name in first_step_fields.values_list("field_name", flat=True)
+    }
     _show_form_errors(
         request,
         dependent_post_form,
@@ -1485,7 +1564,10 @@ def _prepare_dependents_context(request, current_step, temp_client, steps, conte
 
     temp_dependents = request.session.get("temp_dependents", [])
 
-    dependent_steps = steps.filter(is_active=True).exclude(boolean_field='step_members').order_by("order")
+    dependent_steps = [
+        step for step in steps.filter(is_active=True).order_by("order")
+        if _client_step_flag(step.boolean_field) != "step_members"
+    ]
     dependent_fields = []
     for step in dependent_steps:
         step_fields = ClientStepField.objects.filter(
@@ -1524,6 +1606,7 @@ def _process_registration_cancellation(request):
     _add_debug_log(request, "Cadastro cancelado pelo usuário")
 
     _clear_session_temp_data(request)
+    request.session["clear_client_register_draft"] = True
 
     if "temp_dependents" in request.session:
         request.session.pop("temp_dependents", None)
@@ -1657,7 +1740,7 @@ def _prepare_final_context(request, current_step, temp_client, steps, context, d
     temp_data = _get_session_temp_data(request)
     context['temp_data'] = temp_data
 
-    if current_step.boolean_field == 'step_members' and temp_client:
+    if _client_step_flag(current_step.boolean_field) == 'step_members' and temp_client:
         _prepare_dependents_context(
             request, current_step, temp_client, steps, context, dependent_form
         )
@@ -1761,7 +1844,7 @@ def _process_other_steps_finalization(request, form, current_step, step_field_na
 
 
 def _process_finalization(request, form, current_step, steps, step_field_names, dependent_form=None, create_trip=False):
-    if current_step.boolean_field == 'step_members':
+    if _client_step_flag(current_step.boolean_field) == 'step_members':
         redirect_response = _process_members_step_finalization(request, current_step, steps, create_trip)
         _add_debug_log(request, f"Finalização step_members - Redirect retornado: {redirect_response is not None}")
         if redirect_response:
@@ -1777,7 +1860,7 @@ def _process_finalization(request, form, current_step, steps, step_field_names, 
 
 
 def _process_advance_step(request, form, current_step, steps):
-    if current_step.boolean_field == 'step_members':
+    if _client_step_flag(current_step.boolean_field) == 'step_members':
         _add_debug_log(request, "Etapa 'Adicionar Membros' - permanecendo na mesma página para adicionar dependentes")
         return redirect(f"{request.path}?stage_id={current_step.pk}"), None, None
 
@@ -1812,11 +1895,11 @@ def _process_post_client_registration(request, current_step, steps, step_field_n
     if action in ("cancel", "cancelar"):
         return _process_registration_cancellation(request), None, None
 
-    if action == "remove_dependent" and current_step.boolean_field == 'step_members':
+    if action == "remove_dependent" and _client_step_flag(current_step.boolean_field) == 'step_members':
         return _process_remove_dependent(request, current_step), None, None
 
     if action == "edit_dependent":
-        if current_step.boolean_field == 'step_members':
+        if _client_step_flag(current_step.boolean_field) == 'step_members':
             return _process_edit_dependent(request, current_step), None, None
         messages.error(request, "Ação inválida para esta etapa.")
         return redirect(f"{request.path}?stage_id={current_step.pk}"), None, None
@@ -1825,7 +1908,7 @@ def _process_post_client_registration(request, current_step, steps, step_field_n
     temp_client = _create_client_from_session(request)
 
     if (
-        current_step.boolean_field == 'step_members'
+        _client_step_flag(current_step.boolean_field) == 'step_members'
         and temp_client
         and form_type == "dependent"
     ):
@@ -1844,7 +1927,7 @@ def _process_post_client_registration(request, current_step, steps, step_field_n
         return redirect_response, None, None
 
     if (
-        current_step.boolean_field == "step_members"
+        _client_step_flag(current_step.boolean_field) == "step_members"
         and form_type == "dependent"
         and dependent_form is not None
         and dependent_form.errors
@@ -1858,7 +1941,7 @@ def _process_post_client_registration(request, current_step, steps, step_field_n
         return redirect_result
 
     next_step = steps.filter(order__gt=current_step.order).first()
-    if not next_step and current_step.boolean_field != 'step_members':
+    if not next_step and _client_step_flag(current_step.boolean_field) != 'step_members':
         _add_debug_log(request, "Última etapa detectada sem botão finalizar - processando finalização automaticamente")
         if form.is_valid():
             _save_step_to_session(form, current_step, request)
@@ -1896,7 +1979,7 @@ def register_client_view(request):
         step=current_step, is_active=True
     ).order_by("order", "field_name")
 
-    step_field_names = {f.field_name for f in step_fields}
+    step_field_names = {_client_step_form_field_name(f.field_name) for f in step_fields}
     has_zip_in_step = 'zip_code' in step_field_names
     has_password_in_step = 'password' in step_field_names
 
@@ -2059,7 +2142,10 @@ def edit_client_view(request, pk: int):
 @login_required
 @require_GET
 def api_search_zip(request):
-    zip_code = request.GET.get("zip_code", "").strip()
+    zip_code = (
+        request.GET.get("zip_code", "")
+        or request.GET.get("cep", "")
+    ).strip()
 
     if not zip_code:
         return JsonResponse({"error": "Informe um CEP."}, status=400)
@@ -2175,7 +2261,10 @@ def register_dependent(request, pk: int):
             messages.success(request, f"{form.cleaned_data['first_name']} cadastrado como dependente com sucesso.")
             return redirect("system:register_dependent", pk=primary_client.pk)
 
-        step_field_names = set(step_fields.values_list("field_name", flat=True))
+        step_field_names = {
+            _client_step_form_field_name(field_name)
+            for field_name in step_fields.values_list("field_name", flat=True)
+        }
         _show_form_errors(
             request,
             form,

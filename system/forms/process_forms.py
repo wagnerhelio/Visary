@@ -2,6 +2,7 @@ import logging
 
 from django import forms
 from django.contrib.auth.models import User
+from django.db.models import Q
 
 from system.models import (
     ConsultancyClient,
@@ -15,6 +16,33 @@ from system.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def get_available_statuses_for_trip(trip_id):
+    if not trip_id:
+        return []
+
+    try:
+        trip = Trip.objects.only("id", "visa_type_id").get(pk=trip_id)
+    except (Trip.DoesNotExist, ValueError, TypeError):
+        return []
+
+    trip_statuses = list(
+        TripProcessStatus.objects.filter(trip=trip, is_active=True)
+        .select_related("status")
+        .order_by("status__order", "status__name")
+    )
+    if trip_statuses:
+        return [trip_status.status for trip_status in trip_statuses]
+
+    status_filter = Q(visa_type__isnull=True)
+    if trip.visa_type_id:
+        status_filter |= Q(visa_type_id=trip.visa_type_id)
+
+    return list(
+        ProcessStatus.objects.filter(status_filter, is_active=True)
+        .order_by("order", "name")
+    )
 
 
 class ProcessForm(forms.ModelForm):
@@ -62,14 +90,10 @@ class ProcessForm(forms.ModelForm):
             self.fields["selected_stages"].widget = forms.HiddenInput()
             self.fields["selected_stages"].choices = []
             return
-        statuses = (
-            TripProcessStatus.objects.filter(trip_id=trip_id, is_active=True)
-            .select_related("status")
-            .order_by("status__order", "status__name")
-        )
-        choices = [(vs.status.pk, vs.status.name) for vs in statuses]
-        self.fields["selected_stages"].choices = choices
+        statuses = get_available_statuses_for_trip(trip_id)
+        choices = [(status.pk, status.name) for status in statuses]
         self.fields["selected_stages"].widget = forms.CheckboxSelectMultiple()
+        self.fields["selected_stages"].choices = choices
         if not self.instance.pk and not self.data:
             self.fields["selected_stages"].initial = [str(pk) for pk, _ in choices]
 
@@ -238,12 +262,7 @@ class ProcessForm(forms.ModelForm):
         if selected:
             statuses = ProcessStatus.objects.filter(pk__in=[int(s) for s in selected])
         else:
-            trip_statuses = (
-                TripProcessStatus.objects.filter(trip=process.trip, is_active=True)
-                .select_related("status")
-                .order_by("status__order", "status__name")
-            )
-            statuses = [ts.status for ts in trip_statuses]
+            statuses = get_available_statuses_for_trip(process.trip_id)
 
         for status in statuses:
             ProcessStage.objects.get_or_create(

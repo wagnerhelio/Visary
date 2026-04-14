@@ -125,7 +125,7 @@
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 1
       },
       {
         "ordem": 15,
@@ -249,7 +249,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 4
+        "etapa": 1
       },
       {
         "ordem": 29,
@@ -265,7 +265,7 @@
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 4
+        "etapa": 1
       },
       {
         "ordem": 31,
@@ -273,7 +273,7 @@
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 4
+        "etapa": 1
       },
       {
         "ordem": 32,
@@ -289,7 +289,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 1
       },
       {
         "ordem": 34,
@@ -297,7 +297,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 1
       },
       {
         "ordem": 35,
@@ -305,7 +305,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 1
       },
       {
         "ordem": 36,
@@ -329,7 +329,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 1
       },
       {
         "ordem": 39,
@@ -350,7 +350,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 5
+        "etapa": 1
       },
       {
         "ordem": 41,
@@ -371,7 +371,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 5
+        "etapa": 1
       },
       {
         "ordem": 43,
@@ -431,7 +431,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 6
+        "etapa": 1
       },
       {
         "ordem": 49,
@@ -519,7 +519,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 10
+        "etapa": 1
       },
       {
         "ordem": 60,
@@ -1003,7 +1003,7 @@
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 1
       },
       {
         "ordem": 116,
@@ -1034,7 +1034,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 1
       },
       {
         "ordem": 119,
@@ -1066,7 +1066,7 @@
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 1
       },
       {
         "ordem": 123,
@@ -1097,7 +1097,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 1
       },
       {
         "ordem": 126,
@@ -1129,7 +1129,7 @@
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 1
       },
       {
         "ordem": 130,
@@ -1160,7 +1160,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 1
       },
       {
         "ordem": 133,

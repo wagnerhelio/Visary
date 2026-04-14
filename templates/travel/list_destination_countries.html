@@ -204,7 +204,7 @@
 <section class="filtros-card">
     <form method="get" class="filtros-grid">
         <input type="text" name="search" value="{{ applied_filters_dict.search }}" placeholder="Nome do país">
-        <input type="text" name="codigo_iso" value="{{ applied_filters_dict.iso_code }}" placeholder="Código ISO">
+        <input type="text" name="iso_code" value="{{ applied_filters_dict.iso_code }}" placeholder="Código ISO">
         <select name="status">
             <option value="">Status</option>
             <option value="ativo" {% if applied_filters_dict.status == "ativo" %}selected{% endif %}>Ativo</option>
@@ -230,7 +230,7 @@
             </tr>
             </thead>
             <tbody>
-            {% for country in paises %}
+            {% for country in countries %}
                 <tr>
                     <td>{{ country.name }}</td>
                     <td>{{ country.iso_code|default:"--" }}</td>
