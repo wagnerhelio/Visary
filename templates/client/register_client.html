@@ -332,15 +332,15 @@
             </div>
         </header>
         {% if current_stage.name == 'Adicionar Membros' and client and dependent_form %}
-        <div id="senha-cliente-principal-data" data-tem-senha="{{ client.senha|yesno:'true,false' }}" style="display:none" aria-hidden="true"></div>
+        <div id="senha-cliente-principal-data" data-tem-senha="{{ client.password|yesno:'true,false' }}" style="display:none" aria-hidden="true"></div>
         <div id="endereco-cliente-principal-data"
-             data-cep="{{ client.cep|default:'' }}"
-             data-logradouro="{{ client.street|default:'' }}"
-             data-numero="{{ client.street_number|default:'' }}"
-             data-complemento="{{ client.complement|default:'' }}"
-             data-bairro="{{ client.district|default:'' }}"
-             data-cidade="{{ client.city|default:'' }}"
-             data-uf="{{ client.uf|default:'' }}"
+             data-cep="{{ client.zip_code|default:'' }}"
+             data-street="{{ client.street|default:'' }}"
+             data-street-number="{{ client.street_number|default:'' }}"
+             data-complement="{{ client.complement|default:'' }}"
+             data-district="{{ client.district|default:'' }}"
+             data-city="{{ client.city|default:'' }}"
+             data-uf="{{ client.state|default:'' }}"
              style="display:none" aria-hidden="true"></div>
         <div style="margin-bottom: 32px; padding: 24px; background: rgba(86, 244, 156, 0.1); border: 1px solid rgba(86, 244, 156, 0.3); border-radius: 12px;">
             <h3 style="margin: 0 0 16px 0; font-size: 1.2rem; color: rgba(86, 244, 156, 0.95);">Adicionar Membros (Dependentes)</h3>
@@ -354,7 +354,13 @@
                 {% for dep in temp_dependents %}
                     <div style="padding: 12px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <strong>{{ dep.name|default:"Sem nome" }}</strong>
+                            <strong>
+                                {% if dep.first_name or dep.last_name %}
+                                    {{ dep.first_name }} {{ dep.last_name }}
+                                {% else %}
+                                    {{ dep.name|default:"Sem nome" }}
+                                {% endif %}
+                            </strong>
                             {% if dep.cpf %}
                                 <br><span style="font-size: 0.85rem; color: var(--text-secondary);">CPF: {{ dep.cpf }}</span>
                             {% endif %}
@@ -427,9 +433,9 @@
 
 
                     {% for dep_stage in dependent_stages %}
-                        <div class="{% if not forloop.first %}cadastro-margin-top-24{% endif %}{% if stage_dep.boolean_field == 'stage_address' or dep_stage.name == 'Endereço' %} etapa-dependente-endereco{% endif %}">
+                        <div class="{% if not forloop.first %}cadastro-margin-top-24{% endif %}{% if dep_stage.boolean_field == 'etapa_endereco' or dep_stage.boolean_field == 'step_address' or dep_stage.name == 'Endereço' %} etapa-dependente-endereco{% endif %}">
                             {% if client %}
-                                {% if stage_dep.boolean_field == 'stage_address' or dep_stage.name == 'Endereço' %}
+                                {% if dep_stage.boolean_field == 'etapa_endereco' or dep_stage.boolean_field == 'step_address' or dep_stage.name == 'Endereço' %}
                                     <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
                                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
                                             <input type="checkbox"
@@ -453,15 +459,15 @@
                                 {{ dep_stage.name }}
                             </h5>
 
-                            {% for stage_field in dependent_fields %}
-                                {% if stage_field_obj.step.pk == dep_stage.pk and stage_field.field_name in dependent_form.fields %}
-                                    {% with field=dependent_form|get_form_field:stage_field.field_name %}
+                            {% for field_info in dependent_display_fields %}
+                                {% if field_info.config.step.pk == dep_stage.pk and field_info.form_field_name in dependent_form.fields %}
+                                    {% with stage_field=field_info.config field_name=field_info.form_field_name field=dependent_form|get_form_field:field_info.form_field_name %}
                                         {% if field %}
-                                            {% if stage_field_obj.field_name == 'referring_partner' %}
-                                            {% elif stage_field.field_name == 'cep' %}
+                                            {% if field_name == 'referring_partner' %}
+                                            {% elif field_name == 'zip_code' %}
                                                 <div class="grid-inline">
                                                     <div>
-                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                         <div style="display: flex; gap: 8px; align-items: flex-start;">
                                                             <div style="flex: 1;">
                                                                 {{ field }}
@@ -472,12 +478,12 @@
                                                         </div>
                                                         {{ field.errors }}
                                                     </div>
-                                                    {% for c in dependent_fields %}
-                                                        {% if c.step.pk == dep_stage.pk and c.field_name == 'uf' %}
-                                                            {% with uf_field=dependent_form|get_form_field:'uf' %}
+                                                    {% for state_info in dependent_display_fields %}
+                                                        {% if state_info.config.step.pk == dep_stage.pk and state_info.form_field_name == 'state' %}
+                                                            {% with uf_field=dependent_form|get_form_field:state_info.form_field_name %}
                                                                 {% if uf_field %}
                                                                     <div>
-                                                                        <label for="{{ uf_field.id_for_label }}">{{ uf_field.label }}{% if c.is_required %} *{% endif %}</label>
+                                                                        <label for="{{ uf_field.id_for_label }}">{{ uf_field.label }}{% if state_info.config.is_required %} *{% endif %}</label>
                                                                         {{ uf_field }}
                                                                         {{ uf_field.errors }}
                                                                     </div>
@@ -486,61 +492,47 @@
                                                         {% endif %}
                                                     {% endfor %}
                                                 </div>
-                                            {% elif stage_field.field_name == 'uf' %}
-                                                {% with zip_in_stage=False %}
-                                                    {% for c in dependent_fields %}
-                                                        {% if c.step.pk == dep_stage.pk and c.field_name == 'cep' %}
-                                                            {% with zip_in_stage=True %}{% endwith %}
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                    {% if not zip_in_stage %}
-                                                        <div>
-                                                            <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
-                                                            {{ field }}
-                                                            {{ field.errors }}
-                                                        </div>
-                                                    {% endif %}
-                                                {% endwith %}
-                                            {% elif stage_field.field_name == 'email' %}
+                                            {% elif field_name == 'state' and field_info.render_with_zip %}
+                                            {% elif field_name == 'email' %}
                                                 <div id="email-dependente-container">
-                                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                     {{ field }}
                                                     {{ field.errors }}
                                                 </div>
-                                            {% elif stage_field.field_name == 'senha' %}
+                                            {% elif field_name == 'password' %}
                                                 <div class="grid-inline" id="senha-dependente-container">
                                                     <div>
-                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                         {{ field }}
                                                         {{ field.errors }}
                                                     </div>
-                                                    {% with confirmar_senha_field=dependent_form|get_form_field:'confirmar_senha' %}
+                                                    {% with confirmar_senha_field=dependent_form|get_form_field:'confirm_password' %}
                                                         {% if confirmar_senha_field %}
                                                             <div>
-                                                                <label for="{{ confirmar_senha_field.id_for_label }}">{{ confirmar_senha_field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                                <label for="{{ confirmar_senha_field.id_for_label }}">{{ confirmar_senha_field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                                 {{ confirmar_senha_field }}
                                                                 {{ confirmar_senha_field.errors }}
                                                             </div>
                                                         {% endif %}
                                                     {% endwith %}
                                                 </div>
-                                            {% elif stage_field.field_name == 'confirmar_senha' %}
+                                            {% elif field_name == 'confirm_password' %}
                                                 
-                                            {% elif stage_field.field_name == 'tipo_passaporte_outro' %}
+                                            {% elif field_name == 'passport_type_other' %}
                                                 <div id="div-tipo-passaporte-outro-dependente" style="display: none;">
-                                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                     {{ field }}
                                                     {{ field.errors }}
                                                 </div>
-                                            {% elif stage_field.field_name == 'telefone' or stage_field.field_name == 'telefone_secundario' or stage_field.field_name == 'data_nascimento' or stage_field.field_name == 'nacionalidade' or stage_field.field_name == 'data_emissao_passaporte' or stage_field.field_name == 'valido_ate_passaporte' %}
+                                            {% elif field_name == 'phone' or field_name == 'secondary_phone' or field_name == 'birth_date' or field_name == 'nationality' or field_name == 'passport_issue_date' or field_name == 'passport_expiry_date' %}
                                                 <div>
-                                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                     {{ field }}
                                                     {{ field.errors }}
                                                 </div>
                                             {% else %}
                                                 <div>
-                                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                    <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                     {{ field }}
                                                     {{ field.errors }}
                                                 </div>
@@ -620,8 +612,8 @@
                 const emailContainer = root.querySelector('#email-dependente-container');
                 const senhaContainer = root.querySelector('#senha-dependente-container');
                 const emailField = emailContainer ? emailContainer.querySelector('input[name="email"]') : null;
-                const senhaField = senhaContainer ? senhaContainer.querySelector('input[name="senha"]') : null;
-                const confirmarSenhaField = senhaContainer ? senhaContainer.querySelector('input[name="confirmar_senha"]') : null;
+                const senhaField = senhaContainer ? senhaContainer.querySelector('input[name="password"]') : null;
+                const confirmarSenhaField = senhaContainer ? senhaContainer.querySelector('input[name="confirm_password"]') : null;
 
                 if (emailContainer) emailContainer.style.display = usarDados ? 'none' : '';
                 if (senhaContainer) senhaContainer.style.display = usarDados ? 'none' : '';
@@ -673,12 +665,12 @@
                     if (!formDependente || !enderecoData) return;
 
                     const cepInput = formDependente.querySelector('[name="zip_code"]');
-                    const logradouroInput = formDependente.querySelector('[name="logradouro"]');
-                    const numeroInput = formDependente.querySelector('[name="number"]');
-                    const complementoInput = formDependente.querySelector('[name="complemento"]');
-                    const bairroInput = formDependente.querySelector('[name="bairro"]');
-                    const cidadeInput = formDependente.querySelector('[name="cidade"]');
-                    const ufInput = formDependente.querySelector('[name="uf"]');
+                    const logradouroInput = formDependente.querySelector('[name="street"]');
+                    const numeroInput = formDependente.querySelector('[name="street_number"]');
+                    const complementoInput = formDependente.querySelector('[name="complement"]');
+                    const bairroInput = formDependente.querySelector('[name="district"]');
+                    const cidadeInput = formDependente.querySelector('[name="city"]');
+                    const ufInput = formDependente.querySelector('[name="state"]');
                     const btnBuscarCep = formDependente.querySelector('.btn-buscar-cep-dependente');
 
                     if (checkboxUsarEndereco.checked) {
@@ -888,10 +880,10 @@
                                     return;
                                 }
                                 const campos = {
-                                    logradouro: formDependente.querySelector('[name="logradouro"]'),
-                                    bairro: formDependente.querySelector('[name="bairro"]'),
-                                    cidade: formDependente.querySelector('[name="cidade"]'),
-                                    uf: formDependente.querySelector('[name="uf"]')
+                                    street: formDependente.querySelector('[name="street"]'),
+                                    district: formDependente.querySelector('[name="district"]'),
+                                    city: formDependente.querySelector('[name="city"]'),
+                                    state: formDependente.querySelector('[name="state"]')
                                 };
                                 function preencherCampo(field, value) {
                                     if (field && value) {
@@ -903,7 +895,7 @@
                                 preencherCampo(campos.street, data.street);
                                 preencherCampo(campos.district, data.district);
                                 preencherCampo(campos.city, data.city);
-                                preencherCampo(campos.uf, (data.uf || '').toUpperCase());
+                                preencherCampo(campos.state, (data.state || data.uf || '').toUpperCase());
                             } catch (e) {
                                 console.error('Erro ao buscar CEP:', e);
                                 alert('Erro ao buscar CEP. Tente novamente.');
@@ -926,15 +918,15 @@
             function initTipoPassaporteDependente() {
                 const formDependente = document.getElementById('form-dependente');
                 if (!formDependente) return;
-                const tipoPassaporteSelect = formDependente.querySelector('[name="tipo_passaporte"]');
+                const tipoPassaporteSelect = formDependente.querySelector('[name="passport_type"]');
                 const tipoPassaporteOutroDiv = document.getElementById('div-tipo-passaporte-outro-dependente');
-                const tipoPassaporteOutroField = formDependente.querySelector('[name="tipo_passaporte_outro"]');
+                const tipoPassaporteOutroField = formDependente.querySelector('[name="passport_type_other"]');
                 if (!tipoPassaporteSelect || !tipoPassaporteOutroDiv) {
                     setTimeout(initTipoPassaporteDependente, 100);
                     return;
                 }
                 function toggleTipoPassaporteOutro() {
-                    if (tipoPassaporteSelect.value === 'outro') {
+                    if (tipoPassaporteSelect.value === 'other' || tipoPassaporteSelect.value === 'outro') {
                         tipoPassaporteOutroDiv.style.display = 'block';
                         if (tipoPassaporteOutroField) {
                             tipoPassaporteOutroField.required = true;
@@ -995,7 +987,13 @@
                     {% for dep in temp_dependents %}
                         <div style="padding: 12px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
                             <div>
-                                <strong>{{ dep.name|default:"Sem nome" }}</strong>
+                                <strong>
+                                    {% if dep.first_name or dep.last_name %}
+                                        {{ dep.first_name }} {{ dep.last_name }}
+                                    {% else %}
+                                        {{ dep.name|default:"Sem nome" }}
+                                    {% endif %}
+                                </strong>
                                 {% if dep.email %}
                                     <br><span style="font-size: 0.85rem; color: var(--text-secondary);">{{ dep.email }}</span>
                                 {% endif %}
@@ -1057,9 +1055,9 @@
                         {% endwith %}
 
                         {% for dep_stage in dependent_stages %}
-                            <div class="{% if not forloop.first %}cadastro-margin-top-24{% endif %}{% if stage_dep.boolean_field == 'stage_address' or dep_stage.name == 'Endereço' %} etapa-dependente-endereco{% endif %}">
+                            <div class="{% if not forloop.first %}cadastro-margin-top-24{% endif %}{% if dep_stage.boolean_field == 'stage_address' or dep_stage.name == 'Endereço' %} etapa-dependente-endereco{% endif %}">
                             {% if client %}
-                                {% if stage_dep.boolean_field == 'stage_address' or dep_stage.name == 'Endereço' %}
+                                {% if dep_stage.boolean_field == 'stage_address' or dep_stage.name == 'Endereço' %}
                                     <div style="margin-bottom: 20px; padding: 16px; background: rgba(86, 244, 156, 0.05); border: 1px solid rgba(86, 244, 156, 0.2); border-radius: 8px;">
                                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0;">
                                             <input type="checkbox"
@@ -1084,14 +1082,14 @@
                                 </h5>
 
                                 {% for stage_field in dependent_fields %}
-                                    {% if stage_field_obj.step.pk == dep_stage.pk and stage_field.field_name in dependent_form.fields %}
+                                    {% if stage_field.step.pk == dep_stage.pk and stage_field.field_name in dependent_form.fields %}
                                         {% with field=dependent_form|get_form_field:stage_field.field_name %}
                                             {% if field %}
-                                                {% if stage_field_obj.field_name == 'referring_partner' %}
+                                                {% if stage_field.field_name == 'referring_partner' %}
                                                 {% elif stage_field.field_name == 'cep' %}
                                                     <div class="grid-inline">
                                                         <div>
-                                                            <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                            <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                             <div style="display: flex; gap: 8px; align-items: flex-start;">
                                                                 <div style="flex: 1;">
                                                                     {{ field }}
@@ -1125,7 +1123,7 @@
                                                         {% endfor %}
                                                         {% if not zip_in_stage %}
                                                             <div>
-                                                                <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                                <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                                 {{ field }}
                                                                 {{ field.errors }}
                                                             </div>
@@ -1133,21 +1131,21 @@
                                                     {% endwith %}
                                                 {% elif stage_field.field_name == 'email' %}
                                                     <div id="email-dependente-container">
-                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                         {{ field }}
                                                         {{ field.errors }}
                                                     </div>
                                                 {% elif stage_field.field_name == 'senha' %}
                                                     <div class="grid-inline" id="senha-dependente-container">
                                                         <div>
-                                                            <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                            <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                             {{ field }}
                                                             {{ field.errors }}
                                                         </div>
                                                         {% with confirmar_senha_field=dependent_form|get_form_field:'confirmar_senha' %}
                                                             {% if confirmar_senha_field %}
                                                                 <div>
-                                                                    <label for="{{ confirmar_senha_field.id_for_label }}">{{ confirmar_senha_field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                                    <label for="{{ confirmar_senha_field.id_for_label }}">{{ confirmar_senha_field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                                     {{ confirmar_senha_field }}
                                                                     {{ confirmar_senha_field.errors }}
                                                                 </div>
@@ -1158,19 +1156,19 @@
                                                     
                                                 {% elif stage_field.field_name == 'tipo_passaporte_outro' %}
                                                     <div id="div-tipo-passaporte-outro-dependente" style="display: none;">
-                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                         {{ field }}
                                                         {{ field.errors }}
                                                     </div>
                                                 {% elif stage_field.field_name == 'telefone' or stage_field.field_name == 'telefone_secundario' or stage_field.field_name == 'data_nascimento' or stage_field.field_name == 'nacionalidade' or stage_field.field_name == 'data_emissao_passaporte' or stage_field.field_name == 'valido_ate_passaporte' %}
                                                     <div>
-                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                         {{ field }}
                                                         {{ field.errors }}
                                                     </div>
                                                 {% else %}
                                                     <div>
-                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field_obj.is_required %} *{% endif %}</label>
+                                                        <label for="{{ field.id_for_label }}">{{ field.label }}{% if stage_field.is_required %} *{% endif %}</label>
                                                         {{ field }}
                                                         {{ field.errors }}
                                                     </div>
@@ -1281,10 +1279,10 @@
                                         return;
                                     }
                                     const campos = {
-                                        logradouro: formDependente.querySelector('[name="logradouro"]'),
-                                        bairro: formDependente.querySelector('[name="bairro"]'),
-                                        cidade: formDependente.querySelector('[name="cidade"]'),
-                                        uf: formDependente.querySelector('[name="uf"]')
+                                        street: formDependente.querySelector('[name="street"]'),
+                                        district: formDependente.querySelector('[name="district"]'),
+                                        city: formDependente.querySelector('[name="city"]'),
+                                        state: formDependente.querySelector('[name="state"]')
                                     };
                                     function preencherCampo(field, value) {
                                         if (field && value) {
@@ -1296,7 +1294,7 @@
                                     preencherCampo(campos.street, data.street);
                                     preencherCampo(campos.district, data.district);
                                     preencherCampo(campos.city, data.city);
-                                    preencherCampo(campos.uf, (data.uf || '').toUpperCase());
+                                    preencherCampo(campos.state, (data.state || data.uf || '').toUpperCase());
                                 } catch (e) {
                                     console.error('Erro ao buscar CEP:', e);
                                     alert('Erro ao buscar CEP. Tente novamente.');
@@ -1319,15 +1317,15 @@
                 function initTipoPassaporteDependente() {
                     const formDependente = document.getElementById('form-dependente');
                     if (!formDependente) return;
-                    const tipoPassaporteSelect = formDependente.querySelector('[name="tipo_passaporte"]');
+                    const tipoPassaporteSelect = formDependente.querySelector('[name="passport_type"]');
                     const tipoPassaporteOutroDiv = document.getElementById('div-tipo-passaporte-outro-dependente');
-                    const tipoPassaporteOutroField = formDependente.querySelector('[name="tipo_passaporte_outro"]');
+                    const tipoPassaporteOutroField = formDependente.querySelector('[name="passport_type_other"]');
                     if (!tipoPassaporteSelect || !tipoPassaporteOutroDiv) {
                         setTimeout(initTipoPassaporteDependente, 100);
                         return;
                     }
                     function toggleTipoPassaporteOutro() {
-                        if (tipoPassaporteSelect.value === 'outro') {
+                        if (tipoPassaporteSelect.value === 'other' || tipoPassaporteSelect.value === 'outro') {
                             tipoPassaporteOutroDiv.style.display = 'block';
                             if (tipoPassaporteOutroField) {
                                 tipoPassaporteOutroField.required = true;
@@ -1723,7 +1721,7 @@
             }
             
             function toggleTipoPassaporteOutro() {
-                if (tipoPassaporteSelect.value === 'outro') {
+                if (tipoPassaporteSelect.value === 'other' || tipoPassaporteSelect.value === 'outro') {
                     tipoPassaporteOutroDiv.style.display = 'block';
                     if (tipoPassaporteOutroField) {
                         tipoPassaporteOutroField.required = true;

@@ -407,7 +407,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 6
+        "etapa": 1
       },
       {
         "ordem": 44,
@@ -447,7 +447,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 6
+        "etapa": 1
       },
       {
         "ordem": 49,

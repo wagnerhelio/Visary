@@ -9,7 +9,7 @@ from system.models import ConsultancyClient, ConsultancyUser, Profile
 User = get_user_model()
 
 
-class HomeClientsMobileCssTests(TestCase):
+class HomeSectionsMobileCssTests(TestCase):
     def setUp(self):
         self.profile = Profile.objects.create(
             name="Atendente Mobile",
@@ -45,8 +45,17 @@ class HomeClientsMobileCssTests(TestCase):
         )
         self.client.force_login(self.user)
 
-    def test_home_clients_loads_mobile_stylesheet(self):
-        response = self.client.get(reverse("system:home_clients"))
+    def test_home_sections_load_shared_mobile_stylesheet(self):
+        url_names = [
+            "system:home_clients",
+            "system:home_forms",
+            "system:home_processes",
+            "system:home_trips",
+        ]
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "system/css/home_clients_mobile.css")
+        for url_name in url_names:
+            with self.subTest(url_name=url_name):
+                response = self.client.get(reverse(url_name))
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "system/css/home_sections_mobile.css")

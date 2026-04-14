@@ -1214,6 +1214,25 @@ def _prepare_context(steps, current_step, step_fields, form, client, consultant)
     }
 
 
+def _build_dependent_display_fields(dependent_fields):
+    zip_step_ids = {
+        field_cfg.step_id
+        for field_cfg in dependent_fields
+        if _client_step_form_field_name(field_cfg.field_name) == "zip_code"
+    }
+    return [
+        {
+            "config": field_cfg,
+            "form_field_name": _client_step_form_field_name(field_cfg.field_name),
+            "render_with_zip": (
+                _client_step_form_field_name(field_cfg.field_name) == "state"
+                and field_cfg.step_id in zip_step_ids
+            ),
+        }
+        for field_cfg in dependent_fields
+    ]
+
+
 def _show_form_errors(request, form, step_field_names, prefix="", step_name: str | None = None):
     if "password" in step_field_names:
         step_field_names.add("confirm_password")
@@ -1287,23 +1306,18 @@ def _configure_dependent_form_fields(dependent_form, first_step, steps):
         step for step in steps.filter(is_active=True).order_by("order")
         if _client_step_flag(step.boolean_field) != "step_members"
     ]
-    dependent_field_names = set()
+    dependent_fields_dict = {}
     for step in dependent_steps:
         step_fields = ClientStepField.objects.filter(step=step, is_active=True).exclude(field_name="referring_partner")
-        dependent_field_names.update(
-            _client_step_form_field_name(field_name)
-            for field_name in step_fields.values_list("field_name", flat=True)
-        )
-
-    first_step_fields_dict = {
-        _client_step_form_field_name(field_cfg.field_name): field_cfg
-        for field_cfg in ClientStepField.objects.filter(step=first_step, is_active=True)
-    }
+        dependent_fields_dict.update({
+            _client_step_form_field_name(field_cfg.field_name): field_cfg
+            for field_cfg in step_fields
+        })
 
     for field_name, field in dependent_form.fields.items():
-        if field_cfg := first_step_fields_dict.get(field_name):
+        if field_cfg := dependent_fields_dict.get(field_name):
             field.required = field_cfg.is_required
-        elif field_name in dependent_field_names:
+        else:
             field.required = False
 
 
@@ -1470,7 +1484,15 @@ def _get_primary_client_for_dependent(temp_data, temp_client, use_primary_data):
     return primary_client
 
 
-def _ensure_advisor_in_form(dependent_post_form, temp_client, temp_data, primary_client, request, first_step):
+def _ensure_advisor_in_form(
+    dependent_post_form,
+    temp_client,
+    temp_data,
+    primary_client,
+    request,
+    first_step,
+    steps,
+):
     if dependent_post_form.data.get('assigned_advisor'):
         return dependent_post_form
 
@@ -1491,7 +1513,7 @@ def _ensure_advisor_in_form(dependent_post_form, temp_client, temp_data, primary
             use_primary_data=use_primary_data
         )
         _remove_referring_partner(dependent_post_form)
-        _configure_form_fields(dependent_post_form, first_step)
+        _configure_dependent_form_fields(dependent_post_form, first_step, steps)
 
     return dependent_post_form
 
@@ -1509,7 +1531,7 @@ def _process_dependent_registration(request, current_step, temp_client, steps):
     )
 
     dependent_post_form = _ensure_advisor_in_form(
-        dependent_post_form, temp_client, temp_data, primary_client, request, first_step
+        dependent_post_form, temp_client, temp_data, primary_client, request, first_step, steps
     )
 
     first_step_fields = ClientStepField.objects.filter(
@@ -1594,7 +1616,9 @@ def _prepare_dependents_context(request, current_step, temp_client, steps, conte
     context['first_stage'] = first_step
     context['first_stage_fields'] = first_step_fields
     context['dependent_fields'] = dependent_fields
+    context['dependent_display_fields'] = _build_dependent_display_fields(dependent_fields)
     context['dependent_steps'] = dependent_steps
+    context['dependent_stages'] = dependent_steps
     context['dependent_form'] = dependent_form
     context['temp_dependents'] = temp_dependents
     context['dependentes'] = []

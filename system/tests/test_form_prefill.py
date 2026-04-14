@@ -17,6 +17,7 @@ from system.models import (
     VisaType,
 )
 from system.services.form_prefill import prefill_form_answers
+from system.services.form_prefill_rules import should_prefill_from_client
 
 User = get_user_model()
 
@@ -153,3 +154,13 @@ class FormPrefillTests(TestCase):
         prefill_form_answers(self.trip, self.client_obj, questions, existing_answers)
 
         self.assertFalse(FormAnswer.objects.filter(question=q_birthplace).exists())
+
+    def test_prefill_rules_keep_passport_country_and_exclude_employer_phone(self):
+        self.assertTrue(should_prefill_from_client("País que emitiu o passaporte"))
+        self.assertTrue(should_prefill_from_client("Telefone Primário"))
+        self.assertFalse(should_prefill_from_client("Telefone do empregador ou escola"))
+        self.assertFalse(
+            should_prefill_from_client(
+                "Informe nome completo, data de nascimento e parentesco dos seus acompanhantes na viagem"
+            )
+        )

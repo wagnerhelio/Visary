@@ -5,6 +5,7 @@
 
 {% block base_styles %}
     {{ block.super }}
+    <link rel="stylesheet" href="{% static 'system/css/home_sections_mobile.css' %}">
     <style>
     .home-acoes {
         display: grid;
@@ -340,7 +341,7 @@
 </datalist>
 
 <div class="home-grid">
-    <section class="home-section">
+    <section class="home-section" id="sec-formularios-pendentes">
         <div class="kpi-grid">
             <article class="kpi-card">
                 <span>Total de formulários</span>
@@ -358,7 +359,7 @@
     </section>
 
     {% if pending_forms %}
-    <section class="home-section">
+    <section class="home-section" id="sec-formularios-preenchidos">
         <div class="home-section__header">
             <div>
                 <h2>Formularios Pendentes</h2>

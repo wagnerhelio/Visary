@@ -12,6 +12,7 @@ RELATION_CONTEXT_TOKENS = {
     "filhos",
     "parente",
     "acompanhante",
+    "acompanhantes",
     "supervisor",
     "responsavel",
     "contato n 1",
@@ -34,8 +35,19 @@ def normalize_text(value):
     return re.sub(r"[^a-z0-9]+", " ", text).strip()
 
 
+def _contains_term(text, term):
+    words = text.split()
+    term_words = term.split()
+    if not term_words or len(term_words) > len(words):
+        return False
+    if len(term_words) == 1:
+        return term_words[0] in words
+    span = len(term_words)
+    return any(words[idx: idx + span] == term_words for idx in range(len(words) - span + 1))
+
+
 def _contains_any(text, tokens):
-    return any(token in text for token in tokens)
+    return any(_contains_term(text, token) for token in tokens)
 
 
 def _is_address_question(question_text):
@@ -57,9 +69,18 @@ def _is_address_question(question_text):
 
 def _is_passport_question(question_text):
     q = normalize_text(question_text)
-    if "passaporte" not in q:
-        return False
     if _contains_any(q, RELATION_CONTEXT_TOKENS):
+        return False
+    exact_passport_fields = {
+        "orgao emissor",
+        "autoridade",
+        "local de emissao autoridade emissora",
+        "local de emissao",
+        "cidade de emissao",
+    }
+    if q in exact_passport_fields:
+        return True
+    if "passaporte" not in q:
         return False
     return any(
         token in q
@@ -100,6 +121,8 @@ def should_prefill_from_client(question_text):
         "email",
         "e mail",
         "telefone",
+        "telefone primario",
+        "telefone principal",
         "telefone secundario",
         "telefone celular",
         "telefone residencial",
@@ -113,8 +136,6 @@ def should_prefill_from_client(question_text):
     if "data de nascimento" in q and "nascimento do" not in q and "nascimento de" not in q:
         return True
     if "nacionalidade" in q and "outra" not in q:
-        return True
-    if "telefone" in q and "ultimos cinco anos" not in q and "trabalho" not in q:
         return True
     if _is_address_question(q):
         return True

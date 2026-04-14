@@ -42,7 +42,13 @@ def _prefill_raw_value(question_text, client):
         return client.cpf
     if q in {"email", "e mail"}:
         return client.email
-    if q in {"telefone", "telefone celular", "telefone residencial"}:
+    if q in {
+        "telefone",
+        "telefone primario",
+        "telefone principal",
+        "telefone celular",
+        "telefone residencial",
+    }:
         return client.phone
     if q == "telefone secundario":
         return client.secondary_phone

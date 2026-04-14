@@ -265,7 +265,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 4
+        "etapa": 1
       },
       {
         "ordem": 31,
