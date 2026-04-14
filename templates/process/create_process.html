@@ -449,7 +449,7 @@
 <section class="page-header">
     <div class="page-header__titles">
         <h1>Criar Processo</h1>
-        <p>Selecione o cliente e depois a trip vinculada.</p>
+        <p>Selecione o cliente e depois a viagem vinculada.</p>
     </div>
     <div class="actions-inline">
         <a href="{% url 'system:home_processes' %}" class="btn btn-outline">Voltar</a>
@@ -476,7 +476,7 @@
             {% if preselected_client and preselected_trip %}
             <div style="margin-bottom: 16px; padding: 12px; background: rgba(86, 244, 156, 0.15); border: 1px solid rgba(86, 244, 156, 0.4); border-radius: 8px;">
                 <p style="margin: 0; font-size: 0.9rem; color: rgba(86, 244, 156, 0.95);">
-                    <strong>Informação:</strong> Cliente e trip foram pré-selecionados. Verifique os dados antes de criar o process_obj.
+                    <strong>Informação:</strong> Cliente e viagem foram pré-selecionados. Verifique os dados antes de criar o processo.
                 </p>
             </div>
             {% endif %}
@@ -547,7 +547,7 @@
                         </div>
                     {% endif %}
                     <p style="margin: 8px 0 0 0; color: var(--text-secondary); font-size: 0.85rem;">
-                        A trip esta vinculada e não pode ser alterada.
+                        A viagem está vinculada e não pode ser alterada.
                     </p>
                 {% else %}
                     <div class="viagem-section" id="viagem-section">

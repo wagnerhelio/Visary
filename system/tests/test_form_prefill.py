@@ -155,12 +155,64 @@ class FormPrefillTests(TestCase):
 
         self.assertFalse(FormAnswer.objects.filter(question=q_birthplace).exists())
 
-    def test_prefill_rules_keep_passport_country_and_exclude_employer_phone(self):
-        self.assertTrue(should_prefill_from_client("País que emitiu o passaporte"))
+    def test_prefill_rules_limit_to_direct_applicant_personal_fields(self):
+        self.assertFalse(should_prefill_from_client("País que emitiu o passaporte"))
+        self.assertFalse(should_prefill_from_client("Número do Passaporte"))
+        self.assertFalse(should_prefill_from_client("Endereço completo"))
+        self.assertFalse(should_prefill_from_client("Endereço completo do empregador ou escola"))
+        self.assertFalse(should_prefill_from_client("CEP da instituição"))
         self.assertTrue(should_prefill_from_client("Telefone Primário"))
         self.assertFalse(should_prefill_from_client("Telefone do empregador ou escola"))
+        self.assertFalse(should_prefill_from_client("1- Data de nascimento (Dia/Mês/Ano)"))
         self.assertFalse(
             should_prefill_from_client(
                 "Informe nome completo, data de nascimento e parentesco dos seus acompanhantes na viagem"
             )
         )
+
+    def test_prefill_does_not_duplicate_applicant_data_in_repeated_contact_blocks(self):
+        q_name = FormQuestion.objects.create(
+            form=self.form,
+            stage=self.stage_one,
+            order=1,
+            question="Nome",
+            field_type="text",
+            is_required=True,
+            is_active=True,
+        )
+        q_contact_name = FormQuestion.objects.create(
+            form=self.form,
+            stage=self.stage_one,
+            order=50,
+            question="Primeiro nome",
+            field_type="text",
+            is_required=False,
+            is_active=True,
+        )
+        q_phone = FormQuestion.objects.create(
+            form=self.form,
+            stage=self.stage_one,
+            order=51,
+            question="Telefone",
+            field_type="text",
+            is_required=False,
+            is_active=True,
+        )
+        q_contact_phone = FormQuestion.objects.create(
+            form=self.form,
+            stage=self.stage_one,
+            order=52,
+            question="Telefone",
+            field_type="text",
+            is_required=False,
+            is_active=True,
+        )
+
+        questions = self.form.questions.filter(is_active=True).select_related("stage").order_by("order")
+        existing_answers = {}
+        prefill_form_answers(self.trip, self.client_obj, questions, existing_answers)
+
+        self.assertTrue(FormAnswer.objects.filter(question=q_name, answer_text="Maria").exists())
+        self.assertFalse(FormAnswer.objects.filter(question=q_contact_name).exists())
+        self.assertTrue(FormAnswer.objects.filter(question=q_phone, answer_text="(11) 99999-8888").exists())
+        self.assertFalse(FormAnswer.objects.filter(question=q_contact_phone).exists())

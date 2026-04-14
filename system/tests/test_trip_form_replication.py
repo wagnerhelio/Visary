@@ -57,20 +57,30 @@ class TripFormReplicationTests(TestCase):
             created_by=self.user,
         )
         self.form = VisaForm.objects.create(visa_type=self.visa_type, is_active=True)
-        self.stage = VisaFormStage.objects.create(form=self.form, name="Dados da Viagem", order=2)
+        self.personal_stage = VisaFormStage.objects.create(form=self.form, name="Dados Pessoais", order=1)
+        self.travel_stage = VisaFormStage.objects.create(form=self.form, name="Dados da Viagem", order=2)
         self.question = FormQuestion.objects.create(
             form=self.form,
-            stage=self.stage,
+            stage=self.travel_stage,
             question="Objetivo detalhado da viagem",
             field_type="text",
             is_required=False,
             order=1,
             is_active=True,
         )
+        self.personal_question = FormQuestion.objects.create(
+            form=self.form,
+            stage=self.personal_stage,
+            question="Nome",
+            field_type="text",
+            is_required=True,
+            order=2,
+            is_active=True,
+        )
 
         self.primary_client = ConsultancyClient.objects.create(
             assigned_advisor=self.consultant,
-            first_name="Cliente",
+            first_name="Principal",
             last_name="Principal",
             cpf="100.200.300-40",
             birth_date=date(1990, 1, 1),
@@ -82,7 +92,7 @@ class TripFormReplicationTests(TestCase):
         )
         self.dependent_client = ConsultancyClient.objects.create(
             assigned_advisor=self.consultant,
-            first_name="Cliente",
+            first_name="Dependente",
             last_name="Dependente",
             cpf="100.200.300-41",
             birth_date=date(1995, 1, 1),
@@ -122,6 +132,12 @@ class TripFormReplicationTests(TestCase):
             question=self.question,
             answer_text="Dados da viagem do cliente principal",
         )
+        FormAnswer.objects.create(
+            trip=self.trip,
+            client=self.primary_client,
+            question=self.personal_question,
+            answer_text="Principal",
+        )
 
         self.client.force_login(self.user)
 
@@ -130,7 +146,7 @@ class TripFormReplicationTests(TestCase):
             reverse("system:edit_client_form", args=[self.trip.pk, self.dependent_client.pk]),
             {
                 "action": "replicate_primary",
-                "stage_token": f"stage:{self.stage.pk}",
+                "stage_token": f"stage:{self.travel_stage.pk}",
             },
         )
 
@@ -141,3 +157,33 @@ class TripFormReplicationTests(TestCase):
             question=self.question,
         )
         self.assertEqual(dependent_answer.answer_text, "Dados da viagem do cliente principal")
+        dependent_personal_answer = FormAnswer.objects.get(
+            trip=self.trip,
+            client=self.dependent_client,
+            question=self.personal_question,
+        )
+        self.assertEqual(dependent_personal_answer.answer_text, "Dependente")
+
+    def test_replicate_primary_preserves_dependent_existing_answers(self):
+        FormAnswer.objects.create(
+            trip=self.trip,
+            client=self.dependent_client,
+            question=self.question,
+            answer_text="Resposta própria do dependente",
+        )
+
+        response = self.client.post(
+            reverse("system:edit_client_form", args=[self.trip.pk, self.dependent_client.pk]),
+            {
+                "action": "replicate_primary",
+                "stage_token": f"stage:{self.travel_stage.pk}",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        dependent_answer = FormAnswer.objects.get(
+            trip=self.trip,
+            client=self.dependent_client,
+            question=self.question,
+        )
+        self.assertEqual(dependent_answer.answer_text, "Resposta própria do dependente")

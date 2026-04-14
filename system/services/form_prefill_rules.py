@@ -27,6 +27,55 @@ FOREIGN_ADDRESS_TOKENS = {
     "exterior",
 }
 
+NON_APPLICANT_CONTEXT_TOKENS = RELATION_CONTEXT_TOKENS | {
+    "acompanhante",
+    "acompanhantes",
+    "alternativo",
+    "empresa",
+    "empregador",
+    "emergencial",
+    "escola",
+    "instituicao",
+    "instituicoes",
+    "mae",
+    "organizacao",
+    "pai",
+    "patrocinador",
+    "patrocinada",
+    "patrocinado",
+    "pessoa s",
+}
+
+BLOCKED_PREFILL_TOKENS = {
+    "cep",
+    "endereco",
+    "bairro",
+    "complemento",
+    "logradouro",
+    "passaporte",
+    "rua",
+}
+
+DIRECT_CLIENT_PREFILL_FIELDS = {
+    "nome": "first_name",
+    "primeiro nome": "first_name",
+    "sobrenome": "last_name",
+    "cpf": "cpf",
+    "email": "email",
+    "e mail": "email",
+    "telefone": "phone",
+    "telefone celular": "phone",
+    "telefone primario": "phone",
+    "telefone principal": "phone",
+    "telefone residencial": "phone",
+    "telefone secundario": "secondary_phone",
+    "data de nascimento": "birth_date",
+    "data de nascimento dia mes ano": "birth_date",
+    "nacionalidade": "nationality",
+    "qual a sua nacionalidade": "nationality",
+    "pais de nacionalidade": "nationality",
+}
+
 
 def normalize_text(value):
     text = unicodedata.normalize("NFKD", str(value or ""))
@@ -103,42 +152,24 @@ def _is_passport_question(question_text):
     )
 
 
-def should_prefill_from_client(question_text):
+def get_client_prefill_field(question_text):
     q = normalize_text(question_text)
     if not q:
-        return False
-    if _contains_any(q, RELATION_CONTEXT_TOKENS):
-        return False
+        return None
+    if q[0].isdigit():
+        return None
+    if _contains_any(q, NON_APPLICANT_CONTEXT_TOKENS):
+        return None
     if _contains_any(q, FOREIGN_ADDRESS_TOKENS):
-        return False
+        return None
+    if _contains_any(q, BLOCKED_PREFILL_TOKENS):
+        return None
+    if "outra data de nascimento" in q:
+        return None
+    if "outros enderecos de e mail" in q:
+        return None
+    return DIRECT_CLIENT_PREFILL_FIELDS.get(q)
 
-    if q in {
-        "nome",
-        "primeiro nome",
-        "sobrenome",
-        "nome completo",
-        "cpf",
-        "email",
-        "e mail",
-        "telefone",
-        "telefone primario",
-        "telefone principal",
-        "telefone secundario",
-        "telefone celular",
-        "telefone residencial",
-        "data de nascimento",
-        "data de nascimento dia mes ano",
-        "qual a sua nacionalidade",
-        "nacionalidade",
-    }:
-        return True
 
-    if "data de nascimento" in q and "nascimento do" not in q and "nascimento de" not in q:
-        return True
-    if "nacionalidade" in q and "outra" not in q:
-        return True
-    if _is_address_question(q):
-        return True
-    if _is_passport_question(q):
-        return True
-    return False
+def should_prefill_from_client(question_text):
+    return get_client_prefill_field(question_text) is not None

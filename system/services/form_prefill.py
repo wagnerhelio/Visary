@@ -1,97 +1,34 @@
 from decimal import Decimal, InvalidOperation
 
 from system.models import FormAnswer, SelectOption
-from system.services.form_prefill_rules import normalize_text, should_prefill_from_client
+from system.services.form_prefill_rules import get_client_prefill_field, normalize_text
 
 
 def _question_is_stage_one(question):
     return bool(question.stage_id and question.stage and question.stage.order == 1)
 
 
-def _build_full_address(client):
-    parts = []
-    street_line = " ".join(
-        p for p in [client.street, client.street_number] if p
-    ).strip()
-    if street_line:
-        parts.append(street_line)
-    if client.complement:
-        parts.append(client.complement)
-    if client.district:
-        parts.append(client.district)
-    city_state = " / ".join(p for p in [client.city, client.state] if p).strip()
-    if city_state:
-        parts.append(city_state)
-    if client.zip_code:
-        parts.append(f"CEP {client.zip_code}")
-    return ", ".join(parts).strip()
-
-
 def _prefill_raw_value(question_text, client):
-    q = normalize_text(question_text)
-    if not should_prefill_from_client(q):
+    field_name = get_client_prefill_field(question_text)
+    if not field_name:
         return None
 
-    if q in {"nome", "primeiro nome"}:
+    if field_name == "first_name":
         return client.first_name
-    if q == "sobrenome":
+    if field_name == "last_name":
         return client.last_name
-    if q == "nome completo":
-        return client.full_name
-    if q == "cpf":
+    if field_name == "cpf":
         return client.cpf
-    if q in {"email", "e mail"}:
+    if field_name == "email":
         return client.email
-    if q in {
-        "telefone",
-        "telefone primario",
-        "telefone principal",
-        "telefone celular",
-        "telefone residencial",
-    }:
+    if field_name == "phone":
         return client.phone
-    if q == "telefone secundario":
+    if field_name == "secondary_phone":
         return client.secondary_phone
-    if "data de nascimento" in q:
+    if field_name == "birth_date":
         return client.birth_date
-    if "nacionalidade" in q:
+    if field_name == "nationality":
         return client.nationality
-
-    if "cep" in q:
-        return client.zip_code
-    if "logradouro" in q:
-        return client.street
-    if q in {"numero", "numero da casa"}:
-        return client.street_number
-    if "complemento" in q:
-        return client.complement
-    if "bairro" in q:
-        return client.district
-    if "cidade e estado em que reside" in q:
-        return " / ".join(p for p in [client.city, client.state] if p)
-    if "endereco" in q:
-        return _build_full_address(client)
-
-    if "tipo de passaporte" in q:
-        return client.passport_type_other or client.passport_type
-    if "numero" in q and "passaporte" in q:
-        return client.passport_number
-    if (
-        "pais que emitiu" in q
-        or "pais referente" in q
-        or "pais emissor" in q
-    ):
-        return client.passport_issuing_country
-    if "data de emissao" in q:
-        return client.passport_issue_date
-    if "data de validade" in q or "data de expiracao" in q or "valido ate" in q:
-        return client.passport_expiry_date
-    if "cidade de emissao" in q:
-        return client.passport_issuing_city
-    if "local de emissao" in q or "autoridade" in q or "orgao emissor" in q:
-        return client.passport_authority
-    if "roubado" in q and "passaporte" in q:
-        return "sim" if client.passport_stolen else "nao"
     return None
 
 
@@ -135,12 +72,31 @@ def _assign_prefill_value(answer, question, raw_value):
     return False
 
 
+def _answer_has_value(answer):
+    return (
+        bool(answer.answer_text)
+        or answer.answer_date is not None
+        or answer.answer_number is not None
+        or answer.answer_boolean is not None
+        or answer.answer_select_id is not None
+    )
+
+
 def prefill_form_answers(trip, client, questions, existing_answers):
     updated = False
+    used_fields = {
+        get_client_prefill_field(answer.question.question)
+        for answer in existing_answers.values()
+        if _answer_has_value(answer)
+    }
+    used_fields.discard(None)
     for question in questions:
         if question.pk in existing_answers:
             continue
         if not _question_is_stage_one(question):
+            continue
+        prefill_field = get_client_prefill_field(question.question)
+        if not prefill_field or prefill_field in used_fields:
             continue
         raw_value = _prefill_raw_value(question.question, client)
         if raw_value in (None, ""):
@@ -150,5 +106,6 @@ def prefill_form_answers(trip, client, questions, existing_answers):
             continue
         answer.save()
         existing_answers[question.pk] = answer
+        used_fields.add(prefill_field)
         updated = True
     return updated, existing_answers

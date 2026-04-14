@@ -876,7 +876,9 @@ def _create_dependent_from_db(
                 _, errors = next(iter(dependent_form.errors.items()))
                 error_msg = errors[0] if errors else None
 
-            logger.error(f"Formulário de dependente inválido para {dependent_name}: {dependent_form.errors}")
+            logger.debug(
+                f"Formulário de dependente inválido para {dependent_name}: {dependent_form.errors}"
+            )
             return None, error_msg or "Falha ao validar os dados do dependente."
 
         dependent = dependent_form.save(commit=False)
@@ -1558,7 +1560,7 @@ def _process_dependent_registration(request, current_step, temp_client, steps):
 
         return _process_valid_dependent(request, dependent_post_form, current_step), None
 
-    logger.error(f"Formulário de dependente inválido: {dependent_post_form.errors}")
+    logger.debug(f"Formulário de dependente inválido: {dependent_post_form.errors}")
     step_field_names = {
         _client_step_form_field_name(field_name)
         for field_name in first_step_fields.values_list("field_name", flat=True)

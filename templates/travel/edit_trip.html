@@ -165,7 +165,7 @@
 <section class="page-header">
     <div class="page-header__titles">
         <h1>Editar Viagem</h1>
-        <p>Atualize os dados da trip para {{ trip.destination_country.name }}.</p>
+        <p>Atualize os dados da viagem para {{ trip.destination_country.name }}.</p>
     </div>
     <div class="actions-inline">
         <a href="{% url 'system:list_trips' %}" class="btn btn-outline">Voltar</a>
@@ -207,7 +207,7 @@
             </div>
             <div class="grid-inline">
                 <div>
-                    <label for="{{ form.planned_departure_date.id_for_label }}">Data prevista da trip *</label>
+                    <label for="{{ form.planned_departure_date.id_for_label }}">Data prevista da viagem *</label>
                     {{ form.planned_departure_date }}
                     {{ form.planned_departure_date.errors }}
                 </div>

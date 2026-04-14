@@ -300,7 +300,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="stage_token" value="{{ current_stage.token|default:'' }}">
                 <button type="submit" name="action" value="replicate_primary" class="btn btn-primary">
-                    Replicar dados do cliente principal
+                    Replicar respostas compartilhadas da viagem principal
                 </button>
             </form>
         {% endif %}

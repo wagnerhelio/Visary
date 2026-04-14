@@ -31,6 +31,7 @@ from system.models import (
 )
 from system.selectors import active_partners_ordered
 from system.services.form_prefill import prefill_form_answers
+from system.services.form_prefill_rules import should_prefill_from_client
 from system.services.form_responses import (
     update_answer_by_type as _update_answer_by_type_svc,
     build_question_state,
@@ -1747,6 +1748,12 @@ def _form_answer_is_empty(answer):
     )
 
 
+def _question_can_replicate_from_primary(question):
+    if question.stage_id and question.stage and question.stage.order == 1:
+        return False
+    return not should_prefill_from_client(question.question)
+
+
 def _copy_form_answers_from_primary_client(trip, target_client, form_obj):
     trip_client = TripClient.objects.select_related("trip_primary_client").filter(
         trip=trip,
@@ -1756,7 +1763,16 @@ def _copy_form_answers_from_primary_client(trip, target_client, form_obj):
         return 0, 0, None
 
     primary_client = trip_client.trip_primary_client
-    question_ids = list(form_obj.questions.filter(is_active=True).values_list("pk", flat=True))
+    questions = list(
+        form_obj.questions.filter(is_active=True)
+        .select_related("stage")
+        .order_by("order")
+    )
+    question_ids = [
+        question.pk
+        for question in questions
+        if _question_can_replicate_from_primary(question)
+    ]
 
     source_answers = FormAnswer.objects.filter(
         trip=trip,
