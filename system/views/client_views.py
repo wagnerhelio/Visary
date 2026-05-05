@@ -1735,13 +1735,20 @@ def _extract_advisor_id_from_session(initial_data):
 
 
 def _create_get_form(request, current_step, initial_data):
-    form = ConsultancyClientForm(data=initial_data, instance=None, user=request.user)
+    # IMPORTANT: on GET we must keep the form unbound.
+    # Rendering `field.errors` triggers validation; if we pass `data=...` here,
+    # the page shows "Este campo é obrigatório." as a fixed message even before submit.
+    form = ConsultancyClientForm(
+        data=None,
+        initial=initial_data or None,
+        instance=None,
+        user=request.user,
+    )
 
     advisor_id_session = _extract_advisor_id_from_session(initial_data) if initial_data else None
 
     if advisor_id_session and initial_data:
         initial_data['assigned_advisor'] = advisor_id_session
-        form = ConsultancyClientForm(data=initial_data, instance=None, user=request.user)
         form.fields["assigned_advisor"].initial = advisor_id_session
 
     _configure_form_fields(form, current_step)

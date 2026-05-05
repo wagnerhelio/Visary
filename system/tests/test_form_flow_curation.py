@@ -1,4 +1,5 @@
 import json
+from contextlib import redirect_stderr, redirect_stdout
 from html import unescape
 from io import StringIO
 
@@ -7,6 +8,7 @@ from django.core.management import call_command
 from django.template import Context, Template
 from django.test import SimpleTestCase, TestCase
 
+from system.management.commands.seed_visa_forms import Command as SeedVisaFormsCommand
 from system.models import (
     ConsultancyClient,
     ConsultancyUser,
@@ -208,11 +210,13 @@ class FormAnswerVisibilityTests(TestCase):
 
 class VisaFormSeedCurationTests(TestCase):
     def test_eua_b1_b2_seed_uses_legacy_stage_sequence_from_json(self):
-        call_command(
-            "seed_visa_forms",
-            file="FORMULARIO_EUA_B1_B2.json",
-            stdout=StringIO(),
-        )
+        silence = StringIO()
+        with redirect_stdout(silence), redirect_stderr(silence):
+            call_command(
+                "seed_visa_forms",
+                file="FORMULARIO_EUA_B1_B2.json",
+                stdout=silence,
+            )
 
         form = VisaForm.objects.get(
             visa_type__name="B1 / B2 (Turismo, Negocios ou Estudos Recreativos)"
@@ -237,7 +241,137 @@ class VisaFormSeedCurationTests(TestCase):
         self.assertFalse(
             FormQuestion.objects.filter(
                 form=form,
-                order__in=[88, 91, 93, 102, 105],
+                question__in=[
+                    "Endereço completo do empregador anterior",
+                    "CEP do empregador anterior",
+                    "Telefone do empregador anterior",
+                    "Endereço completo da Instituição",
+                    "CEP da Instituição",
+                ],
                 stage__order=1,
             ).exists()
+        )
+
+        stage_one_questions = list(
+            FormQuestion.objects.filter(form=form, stage__order=1, is_active=True)
+            .order_by("order")
+            .values_list("question", flat=True)
+        )
+        self.assertEqual(
+            stage_one_questions[:7],
+            [
+                "Nome",
+                "Sobrenome",
+                "Nomes Anteriores",
+                "E-mail",
+                "Você usou outros e-mails nos últimos cinco anos",
+                "Sexo",
+                "Você possui conta em alguma rede social? Se sim, informar a plataforma e nome de usuário",
+            ],
+        )
+
+    def test_seed_preserves_question_identity_when_order_changes(self):
+        profile = Profile.objects.create(name="Perfil", is_active=True)
+        consultant = ConsultancyUser.objects.create(
+            name="Consultor",
+            email="consultor.seed@test.com",
+            profile=profile,
+            password="!",
+            is_active=True,
+        )
+        user = User.objects.create_user(
+            username="seed@test.com",
+            email="seed@test.com",
+            password="SenhaForte123!",
+        )
+        country = DestinationCountry.objects.create(
+            name="País Teste",
+            iso_code="TST",
+            is_active=True,
+            created_by=user,
+        )
+        visa_type = VisaType.objects.create(
+            destination_country=country,
+            name="Visto Teste",
+            description="",
+            is_active=True,
+            created_by=user,
+        )
+        form = VisaForm.objects.create(visa_type=visa_type, is_active=True)
+        stage = VisaFormStage.objects.create(form=form, name="Dados", order=1)
+        q_address = FormQuestion.objects.create(
+            form=form,
+            stage=stage,
+            question="Endereço(rua/quadra/avenida)",
+            field_type="text",
+            order=1,
+        )
+        q_phone = FormQuestion.objects.create(
+            form=form,
+            stage=stage,
+            question="Telefone Primário",
+            field_type="text",
+            order=2,
+        )
+        client = ConsultancyClient.objects.create(
+            assigned_advisor=consultant,
+            first_name="Cliente",
+            last_name="Teste",
+            cpf="300.300.300-30",
+            birth_date="1990-01-01",
+            nationality="Brasileira",
+            phone="(62) 99999-0000",
+            email="cliente.seed@test.com",
+            password="!",
+            created_by=user,
+        )
+        trip = Trip.objects.create(
+            assigned_advisor=consultant,
+            destination_country=country,
+            visa_type=visa_type,
+            planned_departure_date="2026-07-10",
+            planned_return_date="2026-07-20",
+            advisory_fee=1000,
+            created_by=user,
+        )
+        FormAnswer.objects.create(
+            trip=trip,
+            client=client,
+            question=q_phone,
+            answer_text="(62) 99999-0000",
+        )
+
+        command = SeedVisaFormsCommand()
+        command._sync_questions(
+            form,
+            {
+                "tipo_visto": "Visto Teste",
+                "perguntas": [
+                    {
+                        "ordem": 1,
+                        "pergunta": "Telefone Primário",
+                        "tipo_campo": "texto",
+                        "etapa": 1,
+                        "ativo": True,
+                    },
+                    {
+                        "ordem": 2,
+                        "pergunta": "Endereço(rua/quadra/avenida)",
+                        "tipo_campo": "texto",
+                        "etapa": 1,
+                        "ativo": True,
+                    },
+                ],
+            },
+            {1: stage},
+            type("JsonFile", (), {"name": "teste.json"})(),
+        )
+
+        q_phone.refresh_from_db()
+        q_address.refresh_from_db()
+        self.assertEqual(q_phone.order, 1)
+        self.assertEqual(q_address.order, 2)
+        self.assertEqual(
+            FormAnswer.objects.get(trip=trip, client=client).question_id,
+            q_phone.pk,
         )

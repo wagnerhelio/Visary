@@ -26,10 +26,6 @@ def _build_full_address(client):
     return _join_non_empty([street, client.district, city_state, client.zip_code], ", ")
 
 
-def _question_is_stage_one(question):
-    return bool(question.stage_id and question.stage and question.stage.order == 1)
-
-
 def _prefill_raw_value(question_text, client):
     field_name = get_client_prefill_field(question_text)
     if not field_name:
@@ -59,6 +55,10 @@ def _prefill_raw_value(question_text, client):
         return client.district
     if field_name == "zip_code":
         return client.zip_code
+    if field_name == "city":
+        return client.city
+    if field_name == "state":
+        return client.state
     if field_name == "city_state":
         return _join_non_empty([client.city, client.state], " - ")
     if field_name == "passport_type":
@@ -130,8 +130,69 @@ def _answer_has_value(answer):
     )
 
 
-def prefill_form_answers(trip, client, questions, existing_answers):
+def _direct_prefill_values(client):
+    return {
+        "first_name": client.first_name,
+        "last_name": client.last_name,
+        "cpf": client.cpf,
+        "email": client.email,
+        "phone": client.phone,
+        "secondary_phone": client.secondary_phone,
+        "birth_date": client.birth_date,
+        "nationality": client.nationality,
+        "full_address": _build_full_address(client),
+        "street_address": _build_street_address(client),
+        "district": client.district,
+        "zip_code": client.zip_code,
+        "city": client.city,
+        "state": client.state,
+        "city_state": _join_non_empty([client.city, client.state], " - "),
+    }
+
+
+def _answer_display_token(answer):
+    return normalize_text(answer.get_answer_display())
+
+
+def _sync_existing_prefill_answers(trip, client, existing_answers):
     updated = False
+    direct_values = _direct_prefill_values(client)
+    direct_value_tokens = {
+        normalize_text(value)
+        for value in direct_values.values()
+        if value not in (None, "")
+    }
+
+    for question_id, answer in list(existing_answers.items()):
+        if not _answer_has_value(answer):
+            continue
+
+        prefill_field = get_client_prefill_field(answer.question.question)
+        if prefill_field:
+            raw_value = _prefill_raw_value(answer.question.question, client)
+            if raw_value in (None, ""):
+                continue
+            current_token = _answer_display_token(answer)
+            expected_token = normalize_text(raw_value)
+            if current_token != expected_token and _assign_prefill_value(
+                answer,
+                answer.question,
+                raw_value,
+            ):
+                answer.save()
+                updated = True
+            continue
+
+        if _answer_display_token(answer) in direct_value_tokens:
+            answer.delete()
+            existing_answers.pop(question_id, None)
+            updated = True
+
+    return updated
+
+
+def prefill_form_answers(trip, client, questions, existing_answers):
+    updated = _sync_existing_prefill_answers(trip, client, existing_answers)
     used_fields = {
         get_client_prefill_field(answer.question.question)
         for answer in existing_answers.values()
@@ -140,8 +201,6 @@ def prefill_form_answers(trip, client, questions, existing_answers):
     used_fields.discard(None)
     for question in questions:
         if question.pk in existing_answers:
-            continue
-        if not _question_is_stage_one(question):
             continue
         prefill_field = get_client_prefill_field(question.question)
         if not prefill_field or prefill_field in used_fields:

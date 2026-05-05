@@ -1269,6 +1269,7 @@ def _build_form_completion_info(form_obj, trip, client):
             question_id__in=[question.pk for question in questions],
         ).select_related("answer_select", "question")
     }
+    prefill_form_answers(trip, client, questions, answers)
     visible_questions = get_visible_questions(questions, answers)
     visible_question_ids = {question.pk for question in visible_questions}
     total_answers = sum(
@@ -1311,7 +1312,16 @@ def _get_form_data(trip, client, stage_token=None):
 
     prefill_form_answers(trip, client, questions, existing_answers)
 
+    question_state = build_question_state(questions, {}, existing_answers)
     stage_items = build_stage_items(form_obj)
+    stage_items = [
+        stage_item
+        for stage_item in stage_items
+        if any(
+            is_question_visible(question, question_state)
+            for question in filter_questions_by_stage(questions, stage_item)
+        )
+    ]
     current_stage = resolve_stage_token(stage_items, stage_token)
     stage_questions = filter_questions_by_stage(questions, current_stage)
 

@@ -5,6 +5,7 @@
 
 {% block base_styles %}
     {{ block.super }}
+    <link rel="stylesheet" href="{% static 'system/css/client_form_wizard.css' %}">
     <style>
         .form-header {
             background: var(--card-bg);
@@ -26,52 +27,6 @@
             color: var(--text-secondary);
             font-size: 0.9rem;
             margin: 0;
-        }
-
-        .stage-nav {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid var(--border-soft);
-        }
-
-        .stage-nav a, .stage-nav span {
-            padding: 8px 16px;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            text-decoration: none;
-            transition: all 0.2s ease;
-        }
-
-        .stage-nav a {
-            background: rgba(86, 244, 156, 0.1);
-            border: 1px solid rgba(86, 244, 156, 0.3);
-            color: rgba(86, 244, 156, 0.9);
-        }
-
-        .stage-nav a:hover {
-            background: rgba(86, 244, 156, 0.2);
-            border-color: rgba(86, 244, 156, 0.5);
-        }
-
-        .stage-nav span {
-            background: rgba(86, 244, 156, 0.25);
-            border: 1px solid rgba(86, 244, 156, 0.5);
-            color: rgba(86, 244, 156, 1);
-        }
-
-        .stage-nav .disabled {
-            opacity: 0.4;
-            pointer-events: none;
-        }
-
-        .stage-progress {
-            margin-top: 12px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
         }
 
         .formulario-card {
@@ -138,6 +93,20 @@
             font-weight: 600;
             color: var(--text-primary);
             margin-bottom: 8px;
+        }
+
+        .question-ref {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            padding: 4px 8px;
+            margin-right: 10px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: rgba(255, 255, 255, 0.82);
         }
 
         .form-group label .is_required {
@@ -292,21 +261,16 @@
         }
 
         @media (max-width: 768px) {
+            .form-header {
+                padding: 18px;
+            }
+
             .formulario-card {
                 padding: 18px;
             }
 
             .form-group textarea {
                 min-height: 70px;
-            }
-
-            .stage-nav {
-                gap: 6px;
-            }
-
-            .stage-nav a, .stage-nav span {
-                padding: 6px 12px;
-                font-size: 0.8rem;
             }
 
             .form-actions {
@@ -330,28 +294,36 @@
     {% endif %}
     <p>Viagem para {{ trip.destination_country.name }} - {{ trip.planned_departure_date|date:"d/m/Y" }}</p>
     {% if stage_items %}
-    <div class="stage-nav">
-        {% if prev_stage %}
-            <a href="{{ request.path }}?stage={{ prev_stage.token|urlencode }}">← {{ prev_stage.name }}</a>
-        {% else %}
-            <span class="disabled">← Anterior</span>
-        {% endif %}
-        <span>Etapa {{ stage_index|add:1 }} de {{ stage_items|length }}: {{ current_stage.name }}</span>
-        {% if next_stage %}
-            <a href="{{ request.path }}?stage={{ next_stage.token|urlencode }}">{{ next_stage.name }} →</a>
-        {% else %}
-            <span class="disabled">Finalizar →</span>
-        {% endif %}
-    </div>
-    <div class="stage-progress">
-        {% for item in stage_items %}
-            {% if item.token == current_stage.token %}
-                <strong>{{ item.name }}</strong>
-            {% else %}
-                {{ item.name }}
-            {% endif %}
-            {% if not forloop.last %} › {% endif %}
-        {% endfor %}
+    <div class="client-form-wizard" data-client-form-wizard>
+        <div class="client-form-wizard__scroller" role="group" aria-label="Navegação pelas etapas">
+            <button
+                type="button"
+                class="client-form-wizard__scroll-btn client-form-wizard__scroll-btn--left"
+                aria-label="Etapas anteriores"
+                data-scroll-left
+            >
+                ‹
+            </button>
+            <nav class="etapas-navegacao" aria-label="Etapas do formulário" data-stage-scroll-container>
+            {% for item in stage_items %}
+                <a
+                    class="etapa-item {% if item.token == current_stage.token %}ativa{% elif forloop.counter0 < stage_index %}concluida{% endif %}"
+                    href="{{ request.path }}?client_id={{ form_client.pk|default:client.pk }}&stage={{ item.token|urlencode }}"
+                >
+                    <span class="etapa-numero" aria-hidden="true">{{ forloop.counter }}</span>
+                    <span class="etapa-nome">{{ item.name }}</span>
+                </a>
+            {% endfor %}
+            </nav>
+            <button
+                type="button"
+                class="client-form-wizard__scroll-btn client-form-wizard__scroll-btn--right"
+                aria-label="Próximas etapas"
+                data-scroll-right
+            >
+                ›
+            </button>
+        </div>
     </div>
     {% endif %}
     <div class="header-actions">
@@ -369,8 +341,16 @@
         <input type="hidden" name="stage_token" value="{{ current_stage.token|default:'' }}">
 
         {% for question in questions %}
-            <div class="form-group" data-ordem="{{ question.order }}" data-rule='{{ question.display_rule|json_attr }}'>
+            <div
+                class="form-group"
+                data-ordem="{{ question.order }}"
+                data-ref-id="{{ question.display_rule.ref_id|default:'' }}"
+                data-rule='{{ question.display_rule|json_attr }}'
+            >
                 <label for="question_{{ question.pk }}">
+                    {% if question.display_rule.ref_id %}
+                        <span class="question-ref" title="ID da pergunta">{{ question.display_rule.ref_id }}</span>
+                    {% endif %}
                     {{ question.question }}
                     {% if question.is_required %}
                         <span class="obrigatorio">*</span>
@@ -521,6 +501,76 @@
 {{ question_state|json_script:"visary-question-state" }}
 <script>
 (function() {
+    function getContainer(wizard) {
+        return wizard.querySelector('[data-stage-scroll-container]') || wizard.querySelector('.etapas-navegacao');
+    }
+
+    function updateScrollButtons(wizard) {
+        var container = getContainer(wizard);
+        if (!container) return;
+        var leftBtn = wizard.querySelector('[data-scroll-left]');
+        var rightBtn = wizard.querySelector('[data-scroll-right]');
+        if (!leftBtn || !rightBtn) return;
+
+        var maxScroll = Math.max(container.scrollWidth - container.clientWidth, 0);
+        var pos = container.scrollLeft;
+        var atStart = pos <= 2;
+        var atEnd = pos >= (maxScroll - 2);
+
+        leftBtn.disabled = atStart;
+        rightBtn.disabled = atEnd;
+        leftBtn.style.opacity = atStart ? '0.35' : '1';
+        rightBtn.style.opacity = atEnd ? '0.35' : '1';
+    }
+
+    function scrollByPage(wizard, dir) {
+        var container = getContainer(wizard);
+        if (!container) return;
+        var amount = Math.max(container.clientWidth * 0.75, 240);
+        container.scrollBy({ left: dir * amount, behavior: 'smooth' });
+    }
+
+    function scrollToActiveStep(wizard) {
+        var container = getContainer(wizard);
+        if (!container) return;
+        var wizard = document.querySelector('[data-client-form-wizard]');
+        var active = container.querySelector('.etapa-item.ativa');
+        if (!active || !active.scrollIntoView) return;
+        try {
+            active.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+        } catch (e) {
+            active.scrollIntoView();
+        }
+    }
+
+    function initWizard() {
+        var wizard = document.querySelector('[data-client-form-wizard]');
+        if (!wizard) return;
+        var container = getContainer(wizard);
+        if (!container) return;
+
+        var leftBtn = wizard.querySelector('[data-scroll-left]');
+        var rightBtn = wizard.querySelector('[data-scroll-right]');
+        if (leftBtn) leftBtn.addEventListener('click', function() { scrollByPage(wizard, -1); });
+        if (rightBtn) rightBtn.addEventListener('click', function() { scrollByPage(wizard, 1); });
+
+        container.addEventListener('scroll', function() { updateScrollButtons(wizard); }, { passive: true });
+        window.addEventListener('resize', function() { updateScrollButtons(wizard); });
+
+        scrollToActiveStep(wizard);
+        updateScrollButtons(wizard);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initWizard);
+    } else {
+        initWizard();
+    }
+})();
+</script>
+
+<script>
+(function() {
     var initialStateEl = document.getElementById('visary-question-state');
     var initialState = {};
     if (initialStateEl) {
@@ -655,11 +705,22 @@
             var val = data[name];
             var radios = form.querySelectorAll('input[name="' + name + '"][type="radio"]');
             if (radios.length > 0) {
-                radios.forEach(function(r) { r.checked = (r.value === val); });
+                radios.forEach(function(r) {
+                    var shouldCheck = (r.value === val);
+                    if (r.checked !== shouldCheck) {
+                        r.checked = shouldCheck;
+                        r.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                });
                 restored = true;
             } else {
                 var el = form.querySelector('[name="' + name + '"]');
-                if (el && !el.value && val) { el.value = val; restored = true; }
+                if (el && !el.value && val) {
+                    el.value = val;
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                    restored = true;
+                }
             }
         });
         if (restored) showBanner('Rascunho restaurado automaticamente.');

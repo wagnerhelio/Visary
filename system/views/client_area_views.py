@@ -89,6 +89,8 @@ def _build_member_form_progress(trip, member_client):
         ).select_related("answer_select")
     }
 
+    prefill_form_answers(trip, member_client, questions, answers_by_question)
+
     stage_items = build_stage_items(visa_form)
     current_stage_name = None
     total_questions = 0
@@ -102,6 +104,8 @@ def _build_member_form_progress(trip, member_client):
             for question in filter_questions_by_stage(questions_qs, stage_item)
             if is_question_visible(question, question_state)
         ]
+        if not stage_questions:
+            continue
 
         answered_count = 0
         for question in stage_questions:
@@ -276,7 +280,17 @@ def client_view_form(request, trip_id: int):
 
     prefill_form_answers(trip, target_client, questions, existing_answers)
 
+    question_state = build_question_state(questions, {}, existing_answers)
     stage_items = build_stage_items(visa_form)
+    stage_items = [
+        stage_item
+        for stage_item in stage_items
+        if any(
+            is_question_visible(question, question_state)
+            for question in filter_questions_by_stage(questions, stage_item)
+        )
+    ]
+
     stage_token = request.GET.get("stage")
     current_stage = resolve_stage_token(stage_items, stage_token)
     stage_questions = filter_questions_by_stage(questions, current_stage)
@@ -307,7 +321,7 @@ def client_view_form(request, trip_id: int):
         "all_questions": questions,
         "existing_answers": existing_answers,
         "answer_ids": answer_ids,
-        "question_state": build_question_state(questions, {}, existing_answers),
+        "question_state": question_state,
         "stage_items": stage_items,
         "current_stage": current_stage,
         "next_stage": next_stage,
@@ -388,6 +402,16 @@ def client_save_answer(request, trip_id: int):
 
     next_action = request.POST.get("next_action")
     if next_action == "next" and current_stage:
+        state = build_question_state(state_questions, request.POST, existing_answers)
+        stage_items = [
+            stage_item
+            for stage_item in stage_items
+            if any(
+                is_question_visible(question, state)
+                for question in filter_questions_by_stage(questions, stage_item)
+            )
+        ]
+        current_stage = resolve_stage_token(stage_items, stage_token)
         next_stage = None
         for i, item in enumerate(stage_items):
             if item["token"] == current_stage["token"] and i + 1 < len(stage_items):

@@ -71,6 +71,8 @@ DIRECT_CLIENT_PREFILL_FIELDS = {
     "endereco rua quadra avenida": "street_address",
     "bairro": "district",
     "cep": "zip_code",
+    "cidade de residencia": "city",
+    "estado de residencia": "state",
     "cidade e estado em que reside": "city_state",
     "passaporte": "passport_number",
     "numero do passaporte": "passport_number",

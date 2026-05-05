@@ -147,7 +147,23 @@ class Command(BaseCommand):
         ).update(is_active=False)
 
     def _sync_questions(self, form, form_item, stage_map, json_file):
-        active_question_orders = set()
+        existing_questions = list(
+            FormQuestion.objects.filter(form=form).order_by("order", "pk")
+        )
+        questions_by_text = {}
+        for existing_question in existing_questions:
+            questions_by_text.setdefault(
+                self._normalize(existing_question.question), []
+            ).append(existing_question)
+
+        temporary_order_start = (
+            max([q.order for q in existing_questions], default=0) + 10000
+        )
+        for offset, existing_question in enumerate(existing_questions, start=1):
+            existing_question.order = temporary_order_start + offset
+            existing_question.save(update_fields=["order", "updated_at"])
+
+        active_question_pks = set()
         for q_item in form_item.get("perguntas", []):
             stage_order = q_item.get("etapa")
             if stage_order:
@@ -168,18 +184,28 @@ class Command(BaseCommand):
             raw_type = q_item["tipo_campo"]
             field_type = FIELD_TYPE_MAP.get(raw_type, raw_type)
 
-            question, _ = FormQuestion.objects.get_or_create(
-                form=form,
-                order=q_item["ordem"],
-            )
+            question_key = self._normalize(q_item["pergunta"])
+            question_matches = questions_by_text.get(question_key, [])
+            question = question_matches.pop(0) if question_matches else None
+            if question is None:
+                question = FormQuestion(form=form, order=q_item["ordem"])
+
+            question.order = q_item["ordem"]
             question.question = q_item["pergunta"]
             question.field_type = field_type
             question.is_required = q_item.get("obrigatorio", False)
             question.is_active = q_item.get("ativo", True)
-            question.display_rule = _translate_display_rule(q_item.get("regra_exibicao"))
+            display_rule = _translate_display_rule(q_item.get("regra_exibicao"))
+            ref_id = q_item.get("ref_id")
+            if ref_id:
+                if isinstance(display_rule, dict):
+                    display_rule = {**display_rule, "ref_id": str(ref_id)}
+                else:
+                    display_rule = {"ref_id": str(ref_id)}
+            question.display_rule = display_rule
             question.stage = stage_obj
             question.save()
-            active_question_orders.add(question.order)
+            active_question_pks.add(question.pk)
 
             if field_type != "select":
                 SelectOption.objects.filter(question=question).update(is_active=False)
@@ -200,7 +226,7 @@ class Command(BaseCommand):
             ).update(is_active=False)
 
         FormQuestion.objects.filter(form=form).exclude(
-            order__in=active_question_orders
+            pk__in=active_question_pks
         ).update(is_active=False)
 
     def _normalize(self, value):

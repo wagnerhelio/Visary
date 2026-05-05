@@ -10,6 +10,7 @@ from system.models import (
     DestinationCountry,
     FormQuestion,
     FormAnswer,
+    SelectOption,
     Profile,
     Trip,
     TripClient,
@@ -90,6 +91,15 @@ class ClientAreaDashboardTests(TestCase):
             order=2,
             is_active=True,
         )
+        FormQuestion.objects.create(
+            form=self.visa_form,
+            stage=self.stage,
+            question="CPF",
+            field_type="text",
+            is_required=True,
+            order=10,
+            is_active=True,
+        )
 
         self.primary_client = ConsultancyClient.objects.create(
             assigned_advisor=self.consultant,
@@ -155,10 +165,50 @@ class ClientAreaDashboardTests(TestCase):
         self.assertContains(response, "Principal")
         self.assertContains(response, "Dependente")
         self.assertContains(response, "Etapa atual: Dados iniciais")
-        self.assertContains(response, "Pendentes no total: 2 de 2")
+        self.assertContains(response, "Pendentes no total: 2 de 3")
         self.assertContains(response, "Dados iniciais (Atual)")
         self.assertContains(response, "Documentos")
+        self.assertContains(response, "1 pendente(s) de 2")
         self.assertContains(response, "1 pendente(s) de 1")
+
+    def test_dashboard_hides_empty_stages_and_hides_spouse_stage_when_single(self):
+        married_stage = VisaFormStage.objects.create(
+            form=self.visa_form,
+            name="Dados do Cônjuge",
+            order=3,
+            is_active=True,
+        )
+        civil_status = FormQuestion.objects.create(
+            form=self.visa_form,
+            stage=self.stage,
+            question="Estado Civil",
+            field_type="select",
+            is_required=True,
+            order=20,
+            is_active=True,
+        )
+        opt_single = SelectOption.objects.create(question=civil_status, text="Solteiro(a)", order=1, is_active=True)
+        SelectOption.objects.create(question=civil_status, text="Casado(a)", order=2, is_active=True)
+        FormQuestion.objects.create(
+            form=self.visa_form,
+            stage=married_stage,
+            question="Nome do cônjuge",
+            field_type="text",
+            is_required=False,
+            order=21,
+            is_active=True,
+            display_rule={"type": "show_if", "question_order": 20, "value": ["Casado(a)"]},
+        )
+        FormAnswer.objects.create(
+            trip=self.trip,
+            client=self.primary_client,
+            question=civil_status,
+            answer_select=opt_single,
+        )
+
+        response = self.client.get(reverse("system:client_dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Dados do Cônjuge")
 
     def test_dashboard_links_each_member_form_with_client_id(self):
         response = self.client.get(reverse("system:client_dashboard"))
@@ -227,3 +277,22 @@ class ClientAreaDashboardTests(TestCase):
                 answer_text="Resposta do dependente",
             ).exists()
         )
+
+    def test_client_view_form_renders_wizard_stepper_links_and_hides_breadcrumb(self):
+        response = self.client.get(
+            reverse("system:client_view_form", args=[self.trip.pk]),
+            {"client_id": self.primary_client.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="client-form-wizard"')
+        self.assertContains(response, 'class="etapas-navegacao"')
+        self.assertContains(
+            response,
+            f'?client_id={self.primary_client.pk}&stage=stage%3A{self.stage.pk}',
+        )
+        self.assertContains(
+            response,
+            f'?client_id={self.primary_client.pk}&stage=stage%3A{self.stage_two.pk}',
+        )
+        self.assertNotContains(response, " › ")

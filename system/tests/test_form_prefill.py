@@ -106,7 +106,7 @@ class FormPrefillTests(TestCase):
             role="primary",
         )
 
-    def test_prefill_only_stage_one_and_blocks_foreign_address(self):
+    def test_prefill_direct_client_fields_across_stages_and_blocks_foreign_address(self):
         q_cpf = FormQuestion.objects.create(
             form=self.form,
             stage=self.stage_one,
@@ -145,7 +145,62 @@ class FormPrefillTests(TestCase):
 
         self.assertTrue(FormAnswer.objects.filter(question=q_cpf, answer_text="123.456.789-00").exists())
         self.assertFalse(FormAnswer.objects.filter(question=q_us_address).exists())
-        self.assertFalse(FormAnswer.objects.filter(question=q_email_stage_two).exists())
+        self.assertTrue(FormAnswer.objects.filter(question=q_email_stage_two, answer_text="maria.silva@test.com").exists())
+
+    def test_prefill_repairs_shifted_existing_direct_answers(self):
+        q_phone = FormQuestion.objects.create(
+            form=self.form,
+            stage=self.stage_one,
+            order=1,
+            question="Telefone Primário",
+            field_type="text",
+            is_required=True,
+            is_active=True,
+        )
+        FormAnswer.objects.create(
+            trip=self.trip,
+            client=self.client_obj,
+            question=q_phone,
+            answer_text="Rua Teste, 100, Apto 12",
+        )
+
+        questions = self.form.questions.filter(is_active=True).select_related("stage")
+        existing_answers = {
+            answer.question_id: answer
+            for answer in FormAnswer.objects.filter(trip=self.trip, client=self.client_obj)
+        }
+        prefill_form_answers(self.trip, self.client_obj, questions, existing_answers)
+
+        self.assertEqual(
+            FormAnswer.objects.get(question=q_phone).answer_text,
+            "(11) 99999-8888",
+        )
+
+    def test_prefill_removes_shifted_client_value_from_unmapped_question(self):
+        q_state = FormQuestion.objects.create(
+            form=self.form,
+            stage=self.stage_one,
+            order=1,
+            question="Estado",
+            field_type="text",
+            is_required=True,
+            is_active=True,
+        )
+        FormAnswer.objects.create(
+            trip=self.trip,
+            client=self.client_obj,
+            question=q_state,
+            answer_text="123.456.789-00",
+        )
+
+        questions = self.form.questions.filter(is_active=True).select_related("stage")
+        existing_answers = {
+            answer.question_id: answer
+            for answer in FormAnswer.objects.filter(trip=self.trip, client=self.client_obj)
+        }
+        prefill_form_answers(self.trip, self.client_obj, questions, existing_answers)
+
+        self.assertFalse(FormAnswer.objects.filter(question=q_state).exists())
 
     def test_prefill_does_not_fill_birthplace_question(self):
         q_birthplace = FormQuestion.objects.create(
@@ -171,6 +226,9 @@ class FormPrefillTests(TestCase):
         self.assertFalse(should_prefill_from_client("Endereço completo do empregador ou escola"))
         self.assertFalse(should_prefill_from_client("CEP da instituição"))
         self.assertTrue(should_prefill_from_client("Telefone Primário"))
+        self.assertTrue(should_prefill_from_client("Cidade de residência"))
+        self.assertTrue(should_prefill_from_client("Estado de residência"))
+        self.assertFalse(should_prefill_from_client("Cidade natal"))
         self.assertFalse(should_prefill_from_client("Telefone do empregador ou escola"))
         self.assertFalse(should_prefill_from_client("1- Data de nascimento (Dia/Mês/Ano)"))
         self.assertFalse(

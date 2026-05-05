@@ -90,7 +90,8 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.1"
       },
       {
         "ordem": 2,
@@ -98,7 +99,8 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.2"
       },
       {
         "ordem": 3,
@@ -106,7 +108,8 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.3"
       },
       {
         "ordem": 4,
@@ -114,7 +117,8 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.4"
       },
       {
         "ordem": 5,
@@ -126,7 +130,8 @@
           "Masculino",
           "Feminino"
         ],
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.5"
       },
       {
         "ordem": 6,
@@ -134,7 +139,8 @@
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.6"
       },
       {
         "ordem": 7,
@@ -142,7 +148,8 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.7"
       },
       {
         "ordem": 8,
@@ -150,7 +157,8 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.8"
       },
       {
         "ordem": 9,
@@ -158,7 +166,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.9"
       },
       {
         "ordem": 10,
@@ -175,7 +184,8 @@
           "Viúvo(a)",
           "Divorciado"
         ],
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.10"
       },
       {
         "ordem": 11,
@@ -183,34 +193,114 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.11"
       },
       {
         "ordem": 12,
-        "pergunta": "Sobrenome do cônjuge anterior",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 13,
-        "pergunta": "Primeiro Nome do cônjuge anterior",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 14,
         "pergunta": "Data de Nascimento",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.12"
+      },
+      {
+        "ordem": 13,
+        "pergunta": "1- Data de nascimento (Dia/Mês/Ano)",
+        "tipo_campo": "data",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.13"
+      },
+      {
+        "ordem": 14,
+        "pergunta": "1- Endereço atual",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.14"
       },
       {
         "ordem": 15,
+        "pergunta": "2- Data de nascimento (Dia/Mês/Ano)",
+        "tipo_campo": "data",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.15"
+      },
+      {
+        "ordem": 16,
+        "pergunta": "2- Endereço atual",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.16"
+      },
+      {
+        "ordem": 17,
+        "pergunta": "3- Data de nascimento (Dia/Mês/Ano)",
+        "tipo_campo": "data",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.17"
+      },
+      {
+        "ordem": 18,
+        "pergunta": "3- Endereço atual",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.18"
+      },
+      {
+        "ordem": 19,
+        "pergunta": "Sobrenome do cônjuge anterior",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.1"
+      },
+      {
+        "ordem": 20,
+        "pergunta": "Primeiro Nome do cônjuge anterior",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.2"
+      },
+      {
+        "ordem": 21,
         "pergunta": "Tipo de Relacionamento",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -219,202 +309,341 @@
           "União estável",
           "Casamento"
         ],
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.3"
       },
       {
-        "ordem": 16,
+        "ordem": 22,
         "pergunta": "Data do início do casamento ou união estável (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.4"
       },
       {
-        "ordem": 17,
+        "ordem": 23,
         "pergunta": "Data do término do casamento ou união estável (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.5"
       },
       {
-        "ordem": 18,
+        "ordem": 24,
         "pergunta": "Qual a data em que você se casou ou iniciou sua união estável?",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.6"
       },
       {
-        "ordem": 19,
+        "ordem": 25,
         "pergunta": "Sobrenome do cônjuge atual, divorciado ou falecido",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.7"
       },
       {
-        "ordem": 20,
+        "ordem": 26,
         "pergunta": "Primeiro Nome do cônjuge atual, divorciado ou falecido",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.8"
       },
       {
-        "ordem": 21,
+        "ordem": 27,
         "pergunta": "Data de nascimento do cônjuge",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.9"
       },
       {
-        "ordem": 22,
+        "ordem": 28,
         "pergunta": "País de nascimento do cônjuge",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.10"
       },
       {
-        "ordem": 23,
+        "ordem": 29,
         "pergunta": "Endereço atual do cônjuge",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.11"
       },
       {
-        "ordem": 24,
+        "ordem": 30,
         "pergunta": "Ocupação atual do cônjuge",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.12"
       },
       {
-        "ordem": 25,
+        "ordem": 31,
         "pergunta": "Viaja com você para o Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.13"
       },
       {
-        "ordem": 26,
+        "ordem": 32,
         "pergunta": "Você já foi casado(a) ou possuiu uma outra união estável anteriormente?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 2
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 10,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)"
+          ]
+        },
+        "ref_id": "2.14"
       },
       {
-        "ordem": 27,
-        "pergunta": "Clique no item, caso ele se aplique ao seu caso",
-        "tipo_campo": "selecao",
-        "obrigatorio": false,
-        "ativo": true,
-        "opcoes": [
-          "Já foi preso(a) ou acusado(a) por qualquer crime em qualquer país?",
-          "Já fez parte do exército, milícia, polícia ou unidade de defesa?",
-          "Já trabalhou no governo em alguma área relacionada à segurança?",
-          "Já ocupou posição de autoridade no governo, judiciário ou partido político?",
-          "Em tempos de paz ou guerra, esteve envolvido em crimes que lesa a humanidade?",
-          "Não se aplica."
-        ],
-        "etapa": 13
-      },
-      {
-        "ordem": 28,
+        "ordem": 33,
         "pergunta": "Número do Passaporte",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 4,
+        "ref_id": "4.1"
       },
       {
-        "ordem": 29,
+        "ordem": 34,
         "pergunta": "País referente ao passaporte",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 4,
+        "ref_id": "4.2"
       },
       {
-        "ordem": 30,
+        "ordem": 35,
         "pergunta": "Data de emissão do passaporte",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 4,
+        "ref_id": "4.3"
       },
       {
-        "ordem": 31,
+        "ordem": 36,
         "pergunta": "Data de expiração do passaporte",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 4,
+        "ref_id": "4.4"
       },
       {
-        "ordem": 32,
+        "ordem": 37,
         "pergunta": "Como você quer que seja feita a devolução do seu passaporte?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 4
+        "etapa": 4,
+        "ref_id": "4.5"
       },
       {
-        "ordem": 33,
+        "ordem": 38,
         "pergunta": "Endereço completo",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 5,
+        "ref_id": "5.1"
       },
       {
-        "ordem": 34,
+        "ordem": 39,
         "pergunta": "Bairro",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 5,
+        "ref_id": "5.2"
       },
       {
-        "ordem": 35,
+        "ordem": 40,
         "pergunta": "CEP",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 5,
+        "ref_id": "5.3"
       },
       {
-        "ordem": 36,
+        "ordem": 41,
         "pergunta": "Cidade e estado",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.4"
       },
       {
-        "ordem": 37,
+        "ordem": 42,
         "pergunta": "País",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.5"
       },
       {
-        "ordem": 38,
+        "ordem": 43,
         "pergunta": "Telefone Primário",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 5,
+        "ref_id": "5.6"
       },
       {
-        "ordem": 39,
+        "ordem": 44,
         "pergunta": "Tipo",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -424,18 +653,20 @@
           "Trabalho",
           "Celular"
         ],
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.7"
       },
       {
-        "ordem": 40,
+        "ordem": 45,
         "pergunta": "Telefone Secundário",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 5,
+        "ref_id": "5.8"
       },
       {
-        "ordem": 41,
+        "ordem": 46,
         "pergunta": "Tipo",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -445,18 +676,20 @@
           "Trabalho",
           "Celular"
         ],
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.9"
       },
       {
-        "ordem": 42,
+        "ordem": 47,
         "pergunta": "E-mail",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 5,
+        "ref_id": "5.10"
       },
       {
-        "ordem": 43,
+        "ordem": 48,
         "pergunta": "Motivo da Viagem",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -466,26 +699,29 @@
           "Negócios",
           "Estudo por menos de seis meses"
         ],
-        "etapa": 6
+        "etapa": 6,
+        "ref_id": "6.1"
       },
       {
-        "ordem": 44,
+        "ordem": 49,
         "pergunta": "Data da entrada no Canadá (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 6
+        "etapa": 6,
+        "ref_id": "6.2"
       },
       {
-        "ordem": 45,
+        "ordem": 50,
         "pergunta": "Data da saída do Canadá (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 6
+        "etapa": 6,
+        "ref_id": "6.3"
       },
       {
-        "ordem": 46,
+        "ordem": 51,
         "pergunta": "Quem custeará sua viagem?",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -497,114 +733,240 @@
           "Ambos (Pai e Mãe)",
           "Outro"
         ],
-        "etapa": 6
+        "etapa": 6,
+        "ref_id": "6.4"
       },
       {
-        "ordem": 47,
+        "ordem": 52,
         "pergunta": "Fundos disponíveis para a sua visita (em dólares canadenses)",
         "tipo_campo": "numero",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 6
+        "etapa": 6,
+        "ref_id": "6.5"
       },
       {
-        "ordem": 48,
+        "ordem": 53,
         "pergunta": "Nome, endereço e relação com pessoa(s) ou instituição(ões) que visitarei",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 7,
+        "ref_id": "7.1"
       },
       {
-        "ordem": 49,
+        "ordem": 54,
         "pergunta": "Você realizou algum estudo após o Ensino Médio (incluindo universidades e estudos técnicos)",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 8
+        "etapa": 8,
+        "ref_id": "8.1"
       },
       {
-        "ordem": 50,
+        "ordem": 55,
         "pergunta": "Data de início do curso (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 9
-      },
-      {
-        "ordem": 51,
-        "pergunta": "Data do término do curso (Dia/Mês/Ano)",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 10
-      },
-      {
-        "ordem": 52,
-        "pergunta": "Área de Estudos",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 11
-      },
-      {
-        "ordem": 53,
-        "pergunta": "Nome da Instituição de Ensino",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 11
-      },
-      {
-        "ordem": 54,
-        "pergunta": "Cidade da Instituição de Ensino",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 11
-      },
-      {
-        "ordem": 55,
-        "pergunta": "País da Instituição de Ensino",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 11
+        "etapa": 9,
+        "ref_id": "9.1"
       },
       {
         "ordem": 56,
-        "pergunta": "Qual a sua ocupação ou profissão atual?",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 11
-      },
-      {
-        "ordem": 57,
-        "pergunta": "Nome do empregador ou escola?",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 11
-      },
-      {
-        "ordem": 58,
-        "pergunta": "Data de admissão no trabalho ou início dos estudos?",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 11
-      },
-      {
-        "ordem": 59,
         "pergunta": "Endereço completo do empregador ou escola",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 9,
+        "ref_id": "9.2"
+      },
+      {
+        "ordem": 57,
+        "pergunta": "Data do término do curso (Dia/Mês/Ano)",
+        "tipo_campo": "data",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "10.1"
+      },
+      {
+        "ordem": 58,
+        "pergunta": "Área de Estudos",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.1"
+      },
+      {
+        "ordem": 59,
+        "pergunta": "Nome da Instituição de Ensino",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.2"
       },
       {
         "ordem": 60,
+        "pergunta": "Cidade da Instituição de Ensino",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.3"
+      },
+      {
+        "ordem": 61,
+        "pergunta": "País da Instituição de Ensino",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.4"
+      },
+      {
+        "ordem": 62,
+        "pergunta": "Qual a sua ocupação ou profissão atual?",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.5"
+      },
+      {
+        "ordem": 63,
+        "pergunta": "Nome do empregador ou escola?",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.6"
+      },
+      {
+        "ordem": 64,
+        "pergunta": "Data de admissão no trabalho ou início dos estudos?",
+        "tipo_campo": "data",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.7"
+      },
+      {
+        "ordem": 65,
         "pergunta": "Você exerceu alguma atividade profissional ou estudo nos últimos 10 anos?",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -620,335 +982,645 @@
           "Desertei",
           "Outro"
         ],
-        "etapa": 11
+        "etapa": 9,
+        "ref_id": "9.3"
       },
       {
-        "ordem": 61,
+        "ordem": 66,
         "pergunta": "1 - Ocupação ou profissão",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.8"
       },
       {
-        "ordem": 62,
+        "ordem": 67,
         "pergunta": "Nome do empregador ou Instituição de Ensino",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.9"
       },
       {
-        "ordem": 63,
+        "ordem": 68,
         "pergunta": "Cidade",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.10"
       },
       {
-        "ordem": 64,
+        "ordem": 69,
         "pergunta": "País",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.11"
       },
       {
-        "ordem": 65,
+        "ordem": 70,
         "pergunta": "Data de início da ocupação / Estudo (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.12"
       },
       {
-        "ordem": 66,
+        "ordem": 71,
         "pergunta": "Data do término da ocupação / Estudo (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.13"
       },
       {
-        "ordem": 67,
+        "ordem": 72,
         "pergunta": "2 - Ocupação anterior",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.14"
       },
       {
-        "ordem": 68,
+        "ordem": 73,
         "pergunta": "Nome do empregador",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.15"
       },
       {
-        "ordem": 69,
+        "ordem": 74,
         "pergunta": "Cidade",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.16"
       },
       {
-        "ordem": 70,
+        "ordem": 75,
         "pergunta": "País",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.17"
       },
       {
-        "ordem": 71,
+        "ordem": 76,
         "pergunta": "Data de início da ocupação (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.18"
       },
       {
-        "ordem": 72,
+        "ordem": 77,
         "pergunta": "Data do término da ocupação (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.19"
       },
       {
-        "ordem": 73,
+        "ordem": 78,
         "pergunta": "3 - Ocupação anterior",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.20"
       },
       {
-        "ordem": 74,
+        "ordem": 79,
         "pergunta": "Nome do empregador",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.21"
       },
       {
-        "ordem": 75,
+        "ordem": 80,
         "pergunta": "Cidade",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.22"
       },
       {
-        "ordem": 76,
+        "ordem": 81,
         "pergunta": "País",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.23"
       },
       {
-        "ordem": 77,
+        "ordem": 82,
         "pergunta": "Data de início da ocupação (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.24"
       },
       {
-        "ordem": 78,
+        "ordem": 83,
         "pergunta": "Data do término da ocupação (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 65,
+          "valor": [
+            "Sim",
+            "Apenas estudei",
+            "Sou aposentado(a)",
+            "Ainda estou servindo",
+            "Completei tempo de servico",
+            "Problemas médicos",
+            "Desertei",
+            "Outro"
+          ]
+        },
+        "ref_id": "11.25"
       },
       {
-        "ordem": 79,
+        "ordem": 84,
         "pergunta": "Nos últimos dois anos, você ou algum membro da família tiveram tuberculose ou contato próximo com alguém com tuberculose?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.1"
       },
       {
-        "ordem": 80,
+        "ordem": 85,
         "pergunta": "Você tem algum distúrbio físico ou mental que demandaria serviços sociais ou de saúde (que não sejam simples medicação) durante sua estadia no Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.2"
       },
       {
-        "ordem": 81,
+        "ordem": 86,
         "pergunta": "Já teve um visto negado para o Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.3"
       },
       {
-        "ordem": 82,
+        "ordem": 87,
         "pergunta": "Já teve a entrada recusada, ou foi obrigado(a) a deixar o Canadá ou qualquer outro país?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.4"
       },
       {
-        "ordem": 83,
+        "ordem": 88,
         "pergunta": "Já solicitou algum visto para o Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.5"
       },
       {
-        "ordem": 84,
+        "ordem": 89,
         "pergunta": "Caso tenha respondido \"Sim\" a qualquer uma das perguntas acima, especifique",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.6"
       },
       {
-        "ordem": 85,
+        "ordem": 90,
         "pergunta": "Já teve algum visto negado para algum outro país?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.7"
       },
       {
-        "ordem": 86,
+        "ordem": 91,
+        "pergunta": "Clique no item, caso ele se aplique ao seu caso",
+        "tipo_campo": "selecao",
+        "obrigatorio": false,
+        "ativo": true,
+        "opcoes": [
+          "Já foi preso(a) ou acusado(a) por qualquer crime em qualquer país?",
+          "Já fez parte do exército, milícia, polícia ou unidade de defesa?",
+          "Já trabalhou no governo em alguma área relacionada à segurança?",
+          "Já ocupou posição de autoridade no governo, judiciário ou partido político?",
+          "Em tempos de paz ou guerra, esteve envolvido em crimes que lesa a humanidade?",
+          "Não se aplica."
+        ],
+        "etapa": 13,
+        "ref_id": "13.1"
+      },
+      {
+        "ordem": 92,
         "pergunta": "Em caso afirmativo, por favor informe o nome do país, tipo de visto e data da negativa",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 85,
+          "pergunta_ordem": 90,
           "valor": "sim"
         },
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.2"
       },
       {
-        "ordem": 87,
+        "ordem": 93,
         "pergunta": "Você tem ou já teve visto americano aprovado nos últimos 10 anos?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.3"
       },
       {
-        "ordem": 88,
+        "ordem": 94,
         "pergunta": "Você visitou os EUA nos últimos 10 anos?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.4"
       },
       {
-        "ordem": 89,
+        "ordem": 95,
         "pergunta": "Liste os países visitados nos últimos 05 anos",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.5"
       },
       {
-        "ordem": 90,
+        "ordem": 96,
         "pergunta": "2- a) Caso tenha servido ao exército, milícia, polícia ou unidade de defesa, detalhe sua função",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.6"
       },
       {
-        "ordem": 91,
+        "ordem": 97,
         "pergunta": "2- b) Caso tenha recebido algum treinamento especial, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.7"
       },
       {
-        "ordem": 92,
+        "ordem": 98,
         "pergunta": "2- c) Caso tenha participado em alguma forma de combate, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.8"
       },
       {
-        "ordem": 93,
+        "ordem": 99,
         "pergunta": "2- d) Por quê deixou de servir?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.9"
       },
       {
-        "ordem": 94,
+        "ordem": 100,
         "pergunta": "3- Caso já tenha participado ou testemunhado maus tratos a prisioneiros ou civis, pilhagem ou violação de edifícios religiosos, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.10"
       },
       {
-        "ordem": 95,
+        "ordem": 101,
         "pergunta": "4- Caso já tenha sido membro de partido político ou outro grupo ou organização, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.11"
       },
       {
-        "ordem": 96,
+        "ordem": 102,
         "pergunta": "5- Caso já tenha ocupado um cargo no governo, judiciário ou empresa pública, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.12"
       },
       {
-        "ordem": 97,
+        "ordem": 103,
         "pergunta": "6- Caso você ou algum membro de sua família que esteja acompanhando tenha cometido, sido preso ou acusado por qualquer crime, detalhe",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.13"
       },
       {
-        "ordem": 98,
+        "ordem": 104,
         "pergunta": "Nome completo de sua mãe",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.1"
       },
       {
-        "ordem": 99,
+        "ordem": 105,
         "pergunta": "Data de nascimento de sua mãe (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.2"
       },
       {
-        "ordem": 100,
+        "ordem": 106,
         "pergunta": "País de nascimento de sua mãe",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.3"
       },
       {
-        "ordem": 101,
+        "ordem": 107,
         "pergunta": "Estado Civil de sua mãe",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -960,58 +1632,65 @@
           "Viúvo(a)",
           "União Estável"
         ],
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.4"
       },
       {
-        "ordem": 102,
+        "ordem": 108,
         "pergunta": "Endereço atual de sua mãe",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.5"
       },
       {
-        "ordem": 103,
+        "ordem": 109,
         "pergunta": "Ocupação atual da sua mãe",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.6"
       },
       {
-        "ordem": 104,
+        "ordem": 110,
         "pergunta": "Sua mãe vai acompanhar você ao Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.7"
       },
       {
-        "ordem": 105,
+        "ordem": 111,
         "pergunta": "Nome completo de seu pai",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.8"
       },
       {
-        "ordem": 106,
+        "ordem": 112,
         "pergunta": "Data de nascimento de seu pai (Dia/Mês/Ano)",
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.9"
       },
       {
-        "ordem": 107,
+        "ordem": 113,
         "pergunta": "País de nascimento de seu pai",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.10"
       },
       {
-        "ordem": 108,
+        "ordem": 114,
         "pergunta": "Estado Civil de seu pai",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -1023,42 +1702,47 @@
           "Viúvo(a)",
           "União Estável"
         ],
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.11"
       },
       {
-        "ordem": 109,
+        "ordem": 115,
         "pergunta": "Endereço atual de seu pai",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.12"
       },
       {
-        "ordem": 110,
+        "ordem": 116,
         "pergunta": "Ocupação atual de seu pai",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.13"
       },
       {
-        "ordem": 111,
+        "ordem": 117,
         "pergunta": "Seu pai vai acompanhar você ao Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.14"
       },
       {
-        "ordem": 112,
+        "ordem": 118,
         "pergunta": "Você possui filhos?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.1"
       },
       {
-        "ordem": 113,
+        "ordem": 119,
         "pergunta": "Quantos filhos você possui?",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -1069,34 +1753,29 @@
           "3",
           "Acima de 3"
         ],
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.2"
       },
       {
-        "ordem": 114,
+        "ordem": 120,
         "pergunta": "1- Nome completo",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.3"
       },
       {
-        "ordem": 115,
-        "pergunta": "1- Data de nascimento (Dia/Mês/Ano)",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 116,
+        "ordem": 121,
         "pergunta": "1- País de nascimento",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.4"
       },
       {
-        "ordem": 117,
+        "ordem": 122,
         "pergunta": "1- Estado Civil",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -1108,58 +1787,47 @@
           "Viúvo(a)",
           "União Estável"
         ],
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.5"
       },
       {
-        "ordem": 118,
-        "pergunta": "1- Endereço atual",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 119,
+        "ordem": 123,
         "pergunta": "1- Ocupação atual",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.6"
       },
       {
-        "ordem": 120,
+        "ordem": 124,
         "pergunta": "1- Vai acompanhar você ao Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.7"
       },
       {
-        "ordem": 121,
+        "ordem": 125,
         "pergunta": "2- Nome completo",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.8"
       },
       {
-        "ordem": 122,
-        "pergunta": "2- Data de nascimento (Dia/Mês/Ano)",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 123,
+        "ordem": 126,
         "pergunta": "2- País de nascimento",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.9"
       },
       {
-        "ordem": 124,
+        "ordem": 127,
         "pergunta": "2- Estado Civil",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -1171,58 +1839,47 @@
           "Viúvo(a)",
           "União Estável"
         ],
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.10"
       },
       {
-        "ordem": 125,
-        "pergunta": "2- Endereço atual",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 126,
+        "ordem": 128,
         "pergunta": "2- Ocupação atual",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.11"
       },
       {
-        "ordem": 127,
+        "ordem": 129,
         "pergunta": "2- Vai acompanhar você ao Canadá?",
         "tipo_campo": "booleano",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.12"
       },
       {
-        "ordem": 128,
+        "ordem": 130,
         "pergunta": "3- Nome completo",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.13"
       },
       {
-        "ordem": 129,
-        "pergunta": "3- Data de nascimento (Dia/Mês/Ano)",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 130,
+        "ordem": 131,
         "pergunta": "3- País de nascimento",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.14"
       },
       {
-        "ordem": 131,
+        "ordem": 132,
         "pergunta": "3- Estado Civil",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -1234,15 +1891,8 @@
           "Viúvo(a)",
           "União Estável"
         ],
-        "etapa": 15
-      },
-      {
-        "ordem": 132,
-        "pergunta": "3- Endereço atual",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
+        "etapa": 15,
+        "ref_id": "15.15"
       },
       {
         "ordem": 133,
@@ -1250,7 +1900,8 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.16"
       },
       {
         "ordem": 134,
@@ -1258,7 +1909,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.17"
       },
       {
         "ordem": 135,
@@ -1266,7 +1918,8 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 15
+        "etapa": 15,
+        "ref_id": "15.18"
       },
       {
         "ordem": 136,
@@ -1274,7 +1927,8 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.1"
       },
       {
         "ordem": 137,
@@ -1282,7 +1936,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.2"
       },
       {
         "ordem": 138,
@@ -1290,7 +1945,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.3"
       },
       {
         "ordem": 139,
@@ -1298,7 +1954,8 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.4"
       },
       {
         "ordem": 140,
@@ -1306,7 +1963,8 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.5"
       },
       {
         "ordem": 141,
@@ -1314,7 +1972,8 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.6"
       },
       {
         "ordem": 142,
@@ -1328,7 +1987,8 @@
           "Nenhum",
           "Ambos os idiomas"
         ],
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.7"
       },
       {
         "ordem": 143,
@@ -1336,7 +1996,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.8"
       }
     ]
   }

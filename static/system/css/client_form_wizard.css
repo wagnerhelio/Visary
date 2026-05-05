@@ -1,0 +1,191 @@
+.client-form-wizard {
+    display: grid;
+    gap: 14px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-soft);
+}
+
+.client-form-wizard__scroller {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.client-form-wizard__scroll-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(12, 19, 35, 0.55);
+    color: rgba(245, 245, 245, 0.9);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    font-weight: 800;
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.client-form-wizard__scroll-btn:hover:enabled {
+    transform: translateY(-1px);
+    border-color: rgba(86, 244, 156, 0.35);
+    background: rgba(12, 19, 35, 0.7);
+}
+
+.client-form-wizard__scroll-btn:disabled {
+    cursor: default;
+}
+
+.etapas-navegacao {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    align-items: stretch;
+    margin: 0;
+    padding: 0 2px 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.etapas-navegacao::-webkit-scrollbar {
+    height: 6px;
+}
+
+.etapas-navegacao::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.etapas-navegacao::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+}
+
+.etapas-navegacao::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.26);
+}
+
+.etapa-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 62px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-primary);
+    text-decoration: none;
+    transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    flex: 0 0 auto;
+    width: 156px;
+}
+
+.etapa-item:hover {
+    transform: translateY(-1px);
+    border-color: rgba(86, 244, 156, 0.45);
+}
+
+.etapa-numero {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.09);
+    color: rgba(245, 245, 245, 0.74);
+    font-size: 0.82rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.etapa-nome {
+    min-width: 0;
+    color: rgba(245, 245, 245, 0.72);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.18;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.etapa-item.ativa {
+    border-color: rgba(86, 244, 156, 0.7);
+    background: linear-gradient(135deg, rgba(86, 244, 156, 0.95), rgba(52, 195, 255, 0.9));
+    color: #081423;
+}
+
+.etapa-item.ativa .etapa-numero {
+    background: rgba(8, 20, 35, 0.16);
+    color: #081423;
+}
+
+.etapa-item.ativa .etapa-nome {
+    color: #081423;
+}
+
+.etapa-item.concluida {
+    border-color: rgba(86, 244, 156, 0.45);
+    background: rgba(86, 244, 156, 0.12);
+}
+
+.etapa-item.concluida .etapa-numero {
+    background: rgba(86, 244, 156, 0.24);
+    color: rgba(86, 244, 156, 0.98);
+}
+
+.etapa-item.concluida .etapa-nome {
+    color: rgba(86, 244, 156, 0.95);
+}
+
+@media (max-width: 768px) {
+    .client-form-wizard {
+        gap: 12px;
+    }
+
+    .client-form-wizard__scroll-btn {
+        display: none;
+    }
+
+    .etapas-navegacao {
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+    }
+
+    .etapas-navegacao::-webkit-scrollbar {
+        display: none;
+    }
+
+    .etapa-item {
+        flex: 0 0 auto;
+        width: 132px;
+        min-height: 56px;
+        padding: 8px;
+        scroll-snap-align: center;
+    }
+
+    .etapa-numero {
+        width: 26px;
+        height: 26px;
+        font-size: 0.76rem;
+    }
+
+    .etapa-nome {
+        font-size: 0.7rem;
+        line-height: 1.12;
+    }
+}
+
+@media (max-width: 380px) {
+    .etapa-item {
+        width: 118px;
+    }
+}

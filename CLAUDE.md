@@ -11,33 +11,33 @@
 
 ## 1. Identidade do projeto
 
-- **Nome:** `<PROJECT_NAME>`
-- **Objetivo:** `<SYSTEM_GOAL>`
-- **Tipo de produto:** `<PRODUCT_TYPE>`
-- **Stack:** Python + Django `<VERSION>`
+- **Nome:** Visary
+- **Objetivo:** gestão de clientes, viagens, processos e formulários de visto para assessoria consular.
+- **Tipo de produto:** sistema interno de consultoria/assessoria consular com área administrativa, parceiros e área do cliente.
+- **Stack:** Python + Django
 - **Frontend:** server-rendered com templates Django + CSS/JS por tela
 - **Banco local:** SQLite (descartável em dev)
-- **Banco produção:** `<DB_PROD>`
-- **Integrações externas:** `<INTEGRATIONS>`
+- **Banco produção:** não documentado neste repositório.
+- **Integrações externas:** ViaCEP, OCR de passaporte e importação/curadoria de dados legados locais.
 - **Ambiente operacional:** Windows + PowerShell (`.venv` obrigatória)
 - **Idioma técnico:** inglês
 - **Idioma da interface:** português pt-BR
-- **Criticidade:** `<LOW | MEDIUM | HIGH>`
+- **Criticidade:** média.
 
 ---
 
 ## 2. Política local do projeto
 
-Este projeto adota um regime de operação **`<MODE>`**.
+Este projeto adota um regime de operação **control-first com rastreabilidade e validação visual obrigatória para UI**.
 
 > Exemplos de modo: `control-first`, `MVP destrutivo local`, `alta rastreabilidade`, `validação visual obrigatória`
 
 ### Isso significa:
-- `<DESCREVER O QUE O MODO IMPLICA>`
-- `<DESCREVER RESTRIÇÕES ESPECÍFICAS>`
+- mudanças relevantes exigem PRD em `docs/prd/`, testes automatizados e evidências reais;
+- fluxos de UI exigem validação visual em desktop/mobile quando viável; o legado local em `visary-back` e `visary-front` é fonte de comparação para fluxos migrados.
 
 ### Regra local principal:
-- `<REGRA MAIS IMPORTANTE DO PROJETO>`
+- manter coerência entre seeds JSON, modelos dinâmicos e comportamento validado no browser.
 
 ---
 
@@ -55,8 +55,8 @@ Este projeto adota um regime de operação **`<MODE>`**.
 ├── manage.py
 ├── clear_migrations.py     # reset destrutivo local
 ├── db.sqlite3              # dev (fora do git)
-├── <config_package>/       # settings.py, urls.py, wsgi.py
-├── <app>/                  # app principal de domínio
+├── visary/                 # settings.py, urls.py, wsgi.py
+├── system/                 # app principal de domínio
 │   ├── models/
 │   ├── views/
 │   ├── forms/
@@ -69,19 +69,21 @@ Este projeto adota um regime de operação **`<MODE>`**.
 ├── templates/
 │   ├── base.html
 │   ├── includes/
-│   └── <fluxos>/
+│   └── fluxos Django
 ├── static/
 │   ├── css/base.css
 │   ├── js/base.js
-│   └── <app>/css/, <app>/js/
+│   ├── forms_ini/          # seeds dos formulários de visto
+│   ├── etapas_cliente_ini/ # seeds das etapas de cadastro
+│   └── system/css/, system/js/
 ├── staticfiles/            # collectstatic (fora do git)
 ├── media/                  # uploads (fora do git)
 └── docs/prd/
 ```
 
 ### Fatos estruturais importantes
-- `<FATO_1>` (ex: "todo o domínio vive em `system/`")
-- `<FATO_2>` (ex: "seeds JSON ficam em `static/<namespace>_ini/`")
+- todo o domínio Django vive em `system/`;
+- seeds JSON de domínio ficam em `static/*_ini/`; formulários de visto são dinâmicos e definidos por `VisaForm`, `VisaFormStage`, `FormQuestion`, `SelectOption` e `FormAnswer`.
 
 ---
 
@@ -89,7 +91,7 @@ Este projeto adota um regime de operação **`<MODE>`**.
 
 ### Diretriz arquitetural central
 
-`<DESCREVER>` (ex: "Monólito Django com app única seguindo padrão MVT com camada de services")
+Monólito Django com app única seguindo padrão MVT com camada de services/selectors.
 
 ### Ownership
 
@@ -107,7 +109,7 @@ Este projeto adota um regime de operação **`<MODE>`**.
 ### Proibições locais
 - lógica de negócio em template ou JavaScript de interface
 - lógica de negócio concentrada só na view
-- `<PROIBIÇÃO_ESPECÍFICA_DO_PROJETO>`
+- alterar seeds de formulários sem rodar `seed_visa_forms` e testes de curadoria.
 
 ---
 
@@ -127,7 +129,7 @@ Este projeto adota um regime de operação **`<MODE>`**.
 - comentários redundantes explicando o óbvio
 - docstrings desnecessárias
 - CSS/JS inline sem justificativa
-- `<PROIBIÇÃO_ESPECÍFICA>`
+- mover perguntas de etapa para viabilizar pré-preenchimento; o pré-preenchimento deve funcionar sem quebrar a sequência do legado.
 
 ---
 
@@ -157,22 +159,29 @@ Este projeto adota um regime de operação **`<MODE>`**.
 ### Seeds e setup
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py <comando_superuser>
-.\.venv\Scripts\python.exe manage.py <comando_seed_agregador>
+.\.venv\Scripts\python.exe manage.py create_admin_superuser
+.\.venv\Scripts\python.exe manage.py initial_seeds
 ```
 
 ### Comandos individuais de seed
 
 | Comando | Função |
 |---|---|
-| `<COMANDO_1>` | `<FUNÇÃO_1>` |
-| `<COMANDO_2>` | `<FUNÇÃO_2>` |
+| `seed_client_steps` | Popula etapas de cadastro do cliente |
+| `seed_visa_forms` | Popula formulários de visto a partir de `static/forms_ini` |
+| `seed_visa_types` | Popula tipos de visto |
+| `seed_countries` | Popula países de destino |
+| `seed_consultancy_users` | Popula usuários de consultoria |
+| `seed_partners` | Popula parceiros |
+| `seed_modules` | Popula módulos |
+| `seed_profiles` | Popula perfis |
+| `seed_process_status` | Popula status de processo |
 
 ### Comandos legados (NÃO usar)
 
 | Comando legado | Substituído por |
 |---|---|
-| `<LEGADO_1>` | `<NOVO_1>` |
+| Laravel/React legado em `visary-back` e `visary-front` | Django server-rendered neste repositório |
 
 ---
 
@@ -197,7 +206,7 @@ chcp 65001
 |---|---|---|
 | Playwright / browser MCP | sim, quando houver UI | validação visual e E2E |
 | Context7 ou MCP documental | sim, quando envolver libs | documentação atualizada |
-| `<FERRAMENTA>` | `<SIM/NÃO>` | `<USO>` |
+| PowerShell | sim | shell operacional no Windows |
 
 ### Configuração de estáticos
 
@@ -220,18 +229,18 @@ MEDIA_ROOT = BASE_DIR / 'media'
 ## 8. Política local de banco, seeds e schema
 
 ### Banco local
-- `<DESCREVER>` (ex: "SQLite descartável — reset destrutivo permitido sob demanda")
+- SQLite de desenvolvimento em `db.sqlite3`; reset destrutivo somente sob pedido explícito.
 
 ### Seeds
-- comando agregador: `manage.py <SEED_COMMAND>`
-- comandos individuais: `<LISTA>`
+- comando agregador: `manage.py initial_seeds`
+- comandos individuais: ver tabela de comandos de seed.
 - ordem de execução respeita dependências entre apps
 - cada seed registra claramente o que fez
 
 ### Schema
 - migrações: **proibidas por padrão**
-- reset destrutivo: `<PERMITIDO_SOB_PEDIDO | PROIBIDO>`
-- condições para exceção: `<DESCREVER>`
+- reset destrutivo: permitido somente sob pedido explícito.
+- condições para exceção: autorização explícita do usuário e validação posterior completa.
 
 ### Reset destrutivo local (somente sob pedido explícito)
 
@@ -240,8 +249,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 .\.venv\Scripts\python.exe manage.py makemigrations
 .\.venv\Scripts\python.exe manage.py test --verbosity 2
 .\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py <comando_superuser>
-.\.venv\Scripts\python.exe manage.py <comando_seed>
+.\.venv\Scripts\python.exe manage.py create_admin_superuser
+.\.venv\Scripts\python.exe manage.py initial_seeds
 .\.venv\Scripts\python.exe manage.py runserver <HOST:PORT>
 ```
 
@@ -288,7 +297,7 @@ Marcar como **NÃO CONCLUÍDA** quando:
 - `&&` usado no PowerShell
 - arquivos colocados em `STATIC_ROOT`
 - comando legado usado em vez do atual
-- `<CRITÉRIO_ESPECÍFICO_DO_PROJETO>`
+- alteração de seeds sem reseed e sem teste de curadoria.
 
 ---
 
@@ -312,5 +321,5 @@ Este arquivo deve ser: **factual, enxuto, específico, verificável** e livre de
 ### Changelog da spec
 
 ```md
-- **[<DATA>]** CLAUDE.md criado: <DESCRIÇÃO>.
+- **[2026-05-05]** CLAUDE.md atualizado com fatos reais do projeto Visary, comandos de seed e regra de curadoria dos formulários.
 ```

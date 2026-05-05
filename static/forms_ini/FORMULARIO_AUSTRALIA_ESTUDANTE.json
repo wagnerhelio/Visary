@@ -86,70 +86,24 @@
     "perguntas": [
       {
         "ordem": 1,
-        "pergunta": "Em que país você está neste momento da sua aplicação de visto?",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 2,
-        "pergunta": "Qual o seu status imigratório?",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 3,
-        "pergunta": "Você está solicitando este visto devido o encerramento das atividades do seu prestador de educação australiano?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 4,
-        "pergunta": "Você recebe ou receberá financiamento parcial ou total do Governo Australiano(Commonwealth)?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 5,
-        "pergunta": "Sobrenome",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 6,
-        "pergunta": "Nome",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 7,
         "pergunta": "Você já possuiu outro nome?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.1"
       },
       {
-        "ordem": 8,
+        "ordem": 2,
         "pergunta": "Caso positivo, qual?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.2"
       },
       {
-        "ordem": 9,
+        "ordem": 3,
         "pergunta": "Sexo",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -158,50 +112,38 @@
           "Masculino",
           "Feminino"
         ],
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.3"
       },
       {
-        "ordem": 10,
-        "pergunta": "Data de Nascimento (Dia/Mês/Ano)",
-        "tipo_campo": "data",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 11,
-        "pergunta": "Você já possui outra data de nascimento?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 12,
+        "ordem": 4,
         "pergunta": "Caso afirmativo, qual?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.4"
       },
       {
-        "ordem": 13,
+        "ordem": 5,
         "pergunta": "Cidade e estado de Nascimento",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.5"
       },
       {
-        "ordem": 14,
+        "ordem": 6,
         "pergunta": "País de Nascimento",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.6"
       },
       {
-        "ordem": 15,
+        "ordem": 7,
         "pergunta": "Estado Civil",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -215,188 +157,283 @@
           "Viúvo(a)",
           "Divorciado"
         ],
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.7"
       },
       {
-        "ordem": 16,
+        "ordem": 8,
         "pergunta": "Caso esteja em uma relação estável. Qual a data de inicio da relação?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.8"
       },
       {
-        "ordem": 17,
-        "pergunta": "Nacionalidade",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 18,
+        "ordem": 9,
         "pergunta": "Você possui outra nacionalidade?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.9"
       },
       {
-        "ordem": 19,
+        "ordem": 10,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 18,
+          "pergunta_ordem": 9,
           "valor": "sim"
         },
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.10"
       },
       {
-        "ordem": 20,
-        "pergunta": "CPF",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 21,
+        "ordem": 11,
         "pergunta": "Língua de preferência, em caso de entrevista:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.11"
       },
       {
-        "ordem": 22,
-        "pergunta": "Passaporte",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 23,
-        "pergunta": "País da Emissão",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 24,
-        "pergunta": "Data de emissão do passaporte",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 25,
-        "pergunta": "Data de validade do passaporte",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 26,
-        "pergunta": "Orgão emissor",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 27,
-        "pergunta": "RG",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 28,
+        "ordem": 12,
         "pergunta": "Orgão emissor (RG)",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.12"
       },
       {
-        "ordem": 29,
-        "pergunta": "Endereço completo",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 30,
-        "pergunta": "Cidade e estado em que reside",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 31,
-        "pergunta": "CEP",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 32,
+        "ordem": 13,
         "pergunta": "País que reside, atualmente",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.13"
       },
       {
-        "ordem": 33,
-        "pergunta": "Telefone Primário",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 34,
-        "pergunta": "Telefone Secundário",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 35,
+        "ordem": 14,
         "pergunta": "Telefone trabalho",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.14"
       },
       {
-        "ordem": 36,
-        "pergunta": "E-mail",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 37,
+        "ordem": 15,
         "pergunta": "Endereço completo onde ficará na Austrália: (caso saiba)",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.15"
+      },
+      {
+        "ordem": 16,
+        "pergunta": "Passaporte",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "ref_id": "2.1"
+      },
+      {
+        "ordem": 17,
+        "pergunta": "País da Emissão",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "ref_id": "2.2"
+      },
+      {
+        "ordem": 18,
+        "pergunta": "Data de emissão do passaporte",
+        "tipo_campo": "data",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "ref_id": "2.3"
+      },
+      {
+        "ordem": 19,
+        "pergunta": "Data de validade do passaporte",
+        "tipo_campo": "data",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "ref_id": "2.4"
+      },
+      {
+        "ordem": 20,
+        "pergunta": "Orgão emissor",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "ref_id": "2.5"
+      },
+      {
+        "ordem": 21,
+        "pergunta": "RG",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "ref_id": "2.6"
+      },
+      {
+        "ordem": 22,
+        "pergunta": "Em que país você está neste momento da sua aplicação de visto?",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.1"
+      },
+      {
+        "ordem": 23,
+        "pergunta": "Qual o seu status imigratório?",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.2"
+      },
+      {
+        "ordem": 24,
+        "pergunta": "Você está solicitando este visto devido o encerramento das atividades do seu prestador de educação australiano?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.3"
+      },
+      {
+        "ordem": 25,
+        "pergunta": "Você recebe ou receberá financiamento parcial ou total do Governo Australiano(Commonwealth)?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.4"
+      },
+      {
+        "ordem": 26,
+        "pergunta": "Sobrenome",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.5"
+      },
+      {
+        "ordem": 27,
+        "pergunta": "Nome",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.6"
+      },
+      {
+        "ordem": 28,
+        "pergunta": "Data de Nascimento (Dia/Mês/Ano)",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.7"
+      },
+      {
+        "ordem": 29,
+        "pergunta": "Você já possui outra data de nascimento?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.8"
+      },
+      {
+        "ordem": 30,
+        "pergunta": "Nacionalidade",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.9"
+      },
+      {
+        "ordem": 31,
+        "pergunta": "CPF",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.10"
+      },
+      {
+        "ordem": 32,
+        "pergunta": "Endereço completo",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.11"
+      },
+      {
+        "ordem": 33,
+        "pergunta": "Cidade e estado em que reside",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.12"
+      },
+      {
+        "ordem": 34,
+        "pergunta": "CEP",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.13"
+      },
+      {
+        "ordem": 35,
+        "pergunta": "Telefone Primário",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.14"
+      },
+      {
+        "ordem": 36,
+        "pergunta": "Telefone Secundário",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.15"
+      },
+      {
+        "ordem": 37,
+        "pergunta": "E-mail",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.16"
       },
       {
         "ordem": 38,
@@ -404,330 +441,173 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 3
+        "etapa": 3,
+        "ref_id": "3.17"
       },
       {
         "ordem": 39,
-        "pergunta": "Você tem filhos?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
+        "pergunta": "Por favor, informe o nome do país e o tipo de visto",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
         "ativo": true,
-        "etapa": 8
+        "etapa": 3,
+        "ref_id": "3.18"
       },
       {
         "ordem": 40,
-        "pergunta": "Em caso afirmativo, por favor informe o nome completo e data de nascimento de cada um deles. E se viajarão com você.",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 8
-      },
-      {
-        "ordem": 41,
-        "pergunta": "Detalhe a seguir os seus parentes que ficam no Brasil.",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 8
-      },
-      {
-        "ordem": 42,
-        "pergunta": "Você ficará hospedado na casa de algum parente ou amigo durante a sua viagem?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 9
-      },
-      {
-        "ordem": 43,
-        "pergunta": "Você tem algum parente na Austrália?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 9
-      },
-      {
-        "ordem": 44,
-        "pergunta": "Você já aplicou para algum tipo de visto australiano?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 9
-      },
-      {
-        "ordem": 45,
-        "pergunta": "Qual foi a situação final da solicitação?",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 46,
-        "pergunta": "Qual o tipo de visto solicitado?",
-        "tipo_campo": "selecao",
-        "obrigatorio": false,
-        "ativo": true,
-        "opcoes": [
-          "Visitor",
-          "Student",
-          "Work",
-          "Transit",
-          "Outros"
-        ],
-        "etapa": 6
-      },
-      {
-        "ordem": 47,
-        "pergunta": "Você possui um visto australiano válido?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 48,
-        "pergunta": "Você está aguardando a resposta de algum processo de visto australiano atualmente?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 49,
-        "pergunta": "Caso tenha respondido Sim, especifique os dados abaixo:",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "regra_exibicao": {
-          "tipo": "mostrar_se",
-          "pergunta_ordem": 48,
-          "valor": "sim"
-        },
-        "etapa": 6
-      },
-      {
-        "ordem": 50,
-        "pergunta": "Você, ou outra pessoa incluída neste processo, já esteve na Austrália por um período maior que o concedido no visto, ou então desrespeitou alguma regra consular durante sua estadia? - Teve a entrada negada, ou o visto negado para a Austrália?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 51,
-        "pergunta": "Caso tenha respondido Sim, especifique:",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "regra_exibicao": {
-          "tipo": "mostrar_se",
-          "pergunta_ordem": 50,
-          "valor": "sim"
-        },
-        "etapa": 6
-      },
-      {
-        "ordem": 52,
-        "pergunta": "Qual o tipo de visto solicitado?",
-        "tipo_campo": "selecao",
-        "obrigatorio": false,
-        "ativo": true,
-        "opcoes": [
-          "Visitor",
-          "Student",
-          "Work",
-          "Transit",
-          "Outros"
-        ],
-        "etapa": 6
-      },
-      {
-        "ordem": 53,
-        "pergunta": "Você já teve algum visto aprovado para outro país?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 54,
-        "pergunta": "Por favor, informe o nome do país e o tipo de visto",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 55,
-        "pergunta": "Você já teve algum visto negado para qualquer país?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 56,
-        "pergunta": "Por favor, informe o nome do país e o tipo de visto",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 57,
-        "pergunta": "Você possui algum visto aprovado neste momento?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 58,
-        "pergunta": "Por favor, informe o nome do país e o tipo de visto",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 59,
         "pergunta": "Que tipo de intercâmbio irá realizar?",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 3
+        "etapa": 3,
+        "ref_id": "3.19"
       },
       {
-        "ordem": 60,
+        "ordem": 41,
         "pergunta": "Data da sua viagem à Austrália?",
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 3
+        "etapa": 3,
+        "ref_id": "3.20"
       },
       {
-        "ordem": 61,
+        "ordem": 42,
         "pergunta": "Duração da sua viagem?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 3
+        "etapa": 3,
+        "ref_id": "3.21"
       },
       {
-        "ordem": 62,
-        "pergunta": "Você levará algum dependente familiar na sua viagem e no seu visto?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 4
-      },
-      {
-        "ordem": 63,
-        "pergunta": "Favor informar o seu histórico escolar atual, tal como faculdade ou curso de especialização: (Fora da Austrália)",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 4
-      },
-      {
-        "ordem": 64,
-        "pergunta": "Você já estudou na Austrália?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 4
-      },
-      {
-        "ordem": 65,
-        "pergunta": "Qual curso você pretende fazer enquanto estiver na Austrália?",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 4
-      },
-      {
-        "ordem": 66,
-        "pergunta": "Nome da instituição",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 4
-      },
-      {
-        "ordem": 67,
-        "pergunta": "Início do curso",
-        "tipo_campo": "data",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 4
-      },
-      {
-        "ordem": 68,
-        "pergunta": "Termino do curso",
-        "tipo_campo": "data",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 4
-      },
-      {
-        "ordem": 69,
-        "pergunta": "Você já recebeu o eCOE",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 4
-      },
-      {
-        "ordem": 70,
-        "pergunta": "Informe os motivos centrais de ter escolhido a Austrália como destino para a viagem (em inglês para que não seja necessária tradução e com, no máximo 2000 caracteres)",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 9
-      },
-      {
-        "ordem": 71,
-        "pergunta": "Nome de um contato emergencial no Brasil",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 9
-      },
-      {
-        "ordem": 72,
-        "pergunta": "Qual o parentesco/relação com você?",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 9
-      },
-      {
-        "ordem": 73,
+        "ordem": 43,
         "pergunta": "Endereço completo do contato emergencial.",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 3
+        "etapa": 3,
+        "ref_id": "3.22"
       },
       {
-        "ordem": 74,
+        "ordem": 44,
         "pergunta": "Telefone do contato emergencial",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 3
+        "etapa": 3,
+        "ref_id": "3.23"
       },
       {
-        "ordem": 75,
+        "ordem": 45,
+        "pergunta": "Endereço completo, com o CEP:",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.24"
+      },
+      {
+        "ordem": 46,
+        "pergunta": "Telefone:",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.25"
+      },
+      {
+        "ordem": 47,
+        "pergunta": "Serviu uma das forças militares patrocinados pelo estado ou milícia privada, submetido(a) a qualquer treinamento militar ou paramilitar, ou treinamento no uso de armas ou explosivos, excepto no curso de serviço militar obrigatório?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.26"
+      },
+      {
+        "ordem": 48,
+        "pergunta": "Você levará algum dependente familiar na sua viagem e no seu visto?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 4,
+        "ref_id": "4.1"
+      },
+      {
+        "ordem": 49,
+        "pergunta": "Favor informar o seu histórico escolar atual, tal como faculdade ou curso de especialização: (Fora da Austrália)",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 4,
+        "ref_id": "4.2"
+      },
+      {
+        "ordem": 50,
+        "pergunta": "Você já estudou na Austrália?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 4,
+        "ref_id": "4.3"
+      },
+      {
+        "ordem": 51,
+        "pergunta": "Qual curso você pretende fazer enquanto estiver na Austrália?",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 4,
+        "ref_id": "4.4"
+      },
+      {
+        "ordem": 52,
+        "pergunta": "Nome da instituição",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 4,
+        "ref_id": "4.5"
+      },
+      {
+        "ordem": 53,
+        "pergunta": "Início do curso",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 4,
+        "ref_id": "4.6"
+      },
+      {
+        "ordem": 54,
+        "pergunta": "Termino do curso",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 4,
+        "ref_id": "4.7"
+      },
+      {
+        "ordem": 55,
+        "pergunta": "Você já recebeu o eCOE",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 4,
+        "ref_id": "4.8"
+      },
+      {
+        "ordem": 56,
         "pergunta": "Você possui algum certificado de proficiência em inglês, que tenha sido concedido nos últimos 2 anos?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.1"
       },
       {
-        "ordem": 76,
+        "ordem": 57,
         "pergunta": "Caso tenha respondido Sim, qual?",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -745,50 +625,56 @@
           "Retirado",
           "Outros"
         ],
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.2"
       },
       {
-        "ordem": 77,
+        "ordem": 58,
         "pergunta": "Qual foi a data da aplicação do teste?",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.3"
       },
       {
-        "ordem": 78,
+        "ordem": 59,
         "pergunta": "Localização da aplicação do teste:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.4"
       },
       {
-        "ordem": 79,
+        "ordem": 60,
         "pergunta": "O número de certificação do teste:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.5"
       },
       {
-        "ordem": 80,
+        "ordem": 61,
         "pergunta": "A pontuação final:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.6"
       },
       {
-        "ordem": 81,
+        "ordem": 62,
         "pergunta": "Você já estudou inglês em algum país, que não o seu de residência, nos últimos 5 anos?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.7"
       },
       {
-        "ordem": 82,
+        "ordem": 63,
         "pergunta": "Se sim, onde?",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -802,196 +688,423 @@
           "Reino Unido",
           "Estados Unidos"
         ],
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.8"
       },
       {
-        "ordem": 83,
+        "ordem": 64,
         "pergunta": "Qual curso realizado nesse país?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.9"
       },
       {
-        "ordem": 84,
+        "ordem": 65,
         "pergunta": "Possui um certificado?",
         "tipo_campo": "booleano",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 5
+        "etapa": 5,
+        "ref_id": "5.10"
       },
       {
-        "ordem": 85,
+        "ordem": 66,
+        "pergunta": "Qual foi a situação final da solicitação?",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.1"
+      },
+      {
+        "ordem": 67,
+        "pergunta": "Qual o tipo de visto solicitado?",
+        "tipo_campo": "selecao",
+        "obrigatorio": false,
+        "ativo": true,
+        "opcoes": [
+          "Visitor",
+          "Student",
+          "Work",
+          "Transit",
+          "Outros"
+        ],
+        "etapa": 6,
+        "ref_id": "6.2"
+      },
+      {
+        "ordem": 68,
+        "pergunta": "Você possui um visto australiano válido?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.3"
+      },
+      {
+        "ordem": 69,
+        "pergunta": "Você está aguardando a resposta de algum processo de visto australiano atualmente?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.4"
+      },
+      {
+        "ordem": 70,
+        "pergunta": "Caso tenha respondido Sim, especifique os dados abaixo:",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 69,
+          "valor": "sim"
+        },
+        "etapa": 6,
+        "ref_id": "6.5"
+      },
+      {
+        "ordem": 71,
+        "pergunta": "Você, ou outra pessoa incluída neste processo, já esteve na Austrália por um período maior que o concedido no visto, ou então desrespeitou alguma regra consular durante sua estadia? - Teve a entrada negada, ou o visto negado para a Austrália?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.6"
+      },
+      {
+        "ordem": 72,
+        "pergunta": "Caso tenha respondido Sim, especifique:",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 71,
+          "valor": "sim"
+        },
+        "etapa": 6,
+        "ref_id": "6.7"
+      },
+      {
+        "ordem": 73,
+        "pergunta": "Qual o tipo de visto solicitado?",
+        "tipo_campo": "selecao",
+        "obrigatorio": false,
+        "ativo": true,
+        "opcoes": [
+          "Visitor",
+          "Student",
+          "Work",
+          "Transit",
+          "Outros"
+        ],
+        "etapa": 6,
+        "ref_id": "6.8"
+      },
+      {
+        "ordem": 74,
+        "pergunta": "Você já teve algum visto aprovado para outro país?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.9"
+      },
+      {
+        "ordem": 75,
+        "pergunta": "Por favor, informe o nome do país e o tipo de visto",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.10"
+      },
+      {
+        "ordem": 76,
+        "pergunta": "Você já teve algum visto negado para qualquer país?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.11"
+      },
+      {
+        "ordem": 77,
+        "pergunta": "Por favor, informe o nome do país e o tipo de visto",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.12"
+      },
+      {
+        "ordem": 78,
+        "pergunta": "Você possui algum visto aprovado neste momento?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.13"
+      },
+      {
+        "ordem": 79,
         "pergunta": "Você está trabalhando no momento?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 7
+        "etapa": 7,
+        "ref_id": "7.1"
       },
       {
-        "ordem": 86,
+        "ordem": 80,
         "pergunta": "Qual a data de admissão no trabalho ou início dos seus estudos na escola/faculdade?",
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 7,
+        "ref_id": "7.2"
       },
       {
-        "ordem": 87,
+        "ordem": 81,
         "pergunta": "Nome do empregador ou escola?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 7,
+        "ref_id": "7.3"
       },
       {
-        "ordem": 88,
+        "ordem": 82,
         "pergunta": "Qual o ramo de atuação do seu empregador?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 7,
+        "ref_id": "7.4"
       },
       {
-        "ordem": 89,
-        "pergunta": "Endereço completo, com o CEP:",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 90,
-        "pergunta": "Telefone:",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 91,
+        "ordem": 83,
         "pergunta": "Informe o nome e sobrenome de um supervisor ou contato no seu trabalho atual",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 7,
+        "ref_id": "7.5"
       },
       {
-        "ordem": 92,
+        "ordem": 84,
         "pergunta": "Qual o valor do seu salário/remuneração?",
         "tipo_campo": "numero",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 7,
+        "ref_id": "7.6"
       },
       {
-        "ordem": 93,
+        "ordem": 85,
         "pergunta": "Possui comprovantes?",
         "tipo_campo": "booleano",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 7,
+        "ref_id": "7.7"
+      },
+      {
+        "ordem": 86,
+        "pergunta": "Você tem filhos?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 8,
+        "ref_id": "8.1"
+      },
+      {
+        "ordem": 87,
+        "pergunta": "Em caso afirmativo, por favor informe o nome completo e data de nascimento de cada um deles. E se viajarão com você.",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 8,
+        "ref_id": "8.2"
+      },
+      {
+        "ordem": 88,
+        "pergunta": "Detalhe a seguir os seus parentes que ficam no Brasil.",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 8,
+        "ref_id": "8.3"
+      },
+      {
+        "ordem": 89,
+        "pergunta": "Você ficará hospedado na casa de algum parente ou amigo durante a sua viagem?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.1"
+      },
+      {
+        "ordem": 90,
+        "pergunta": "Você tem algum parente na Austrália?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.2"
+      },
+      {
+        "ordem": 91,
+        "pergunta": "Você já aplicou para algum tipo de visto australiano?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.3"
+      },
+      {
+        "ordem": 92,
+        "pergunta": "Informe os motivos centrais de ter escolhido a Austrália como destino para a viagem (em inglês para que não seja necessária tradução e com, no máximo 2000 caracteres)",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.4"
+      },
+      {
+        "ordem": 93,
+        "pergunta": "Nome de um contato emergencial no Brasil",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.5"
       },
       {
         "ordem": 94,
+        "pergunta": "Qual o parentesco/relação com você?",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.6"
+      },
+      {
+        "ordem": 95,
         "pergunta": "Possui algum histórico trabalhista anterior?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 10
+        "etapa": 10,
+        "ref_id": "10.1"
       },
       {
-        "ordem": 95,
+        "ordem": 96,
         "pergunta": "Quem irá custear a sua viagem e o processo de visto?",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 10
+        "etapa": 10,
+        "ref_id": "10.2"
       },
       {
-        "ordem": 96,
+        "ordem": 97,
         "pergunta": "Você afirma ter renda suficiente para arcar com a viagem e o curso para a Austrália?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 10
+        "etapa": 10,
+        "ref_id": "10.3"
       },
       {
-        "ordem": 97,
+        "ordem": 98,
         "pergunta": "Qual o total de renda que você tem disponível para a viagem?",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 10
+        "etapa": 10,
+        "ref_id": "10.4"
       },
       {
-        "ordem": 98,
+        "ordem": 99,
         "pergunta": "Parte dessa renda é emprestada?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 10
+        "etapa": 10,
+        "ref_id": "10.5"
       },
       {
-        "ordem": 99,
+        "ordem": 100,
         "pergunta": "Caso tenha respondido Sim, quanto?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 98,
+          "pergunta_ordem": 99,
           "valor": "sim"
         },
-        "etapa": 10
+        "etapa": 10,
+        "ref_id": "10.6"
       },
       {
-        "ordem": 100,
+        "ordem": 101,
         "pergunta": "Parte desse dinheiro foi emprestado condicionalmente?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 10
+        "etapa": 10,
+        "ref_id": "10.7"
       },
       {
-        "ordem": 101,
+        "ordem": 102,
         "pergunta": "Caso tenha respondido Sim, quanto?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 100,
+          "pergunta_ordem": 101,
           "valor": "sim"
         },
-        "etapa": 10
+        "etapa": 10,
+        "ref_id": "10.8"
       },
       {
-        "ordem": 102,
+        "ordem": 103,
         "pergunta": "Como você pretende ter acesso a esse dinheiro, enquanto estiver na Austrália?",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 10
+        "etapa": 10,
+        "ref_id": "10.9"
       },
       {
-        "ordem": 103,
+        "ordem": 104,
         "pergunta": "A sua viagem será patrocinada por alguma companhia ou empresa?",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 10
+        "etapa": 10,
+        "ref_id": "10.10"
       },
       {
-        "ordem": 104,
+        "ordem": 105,
         "pergunta": "Você já possui uma assistência médica que cubra toda a sua estadia enquanto estiver na Austrália?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.1"
       },
       {
-        "ordem": 105,
+        "ordem": 106,
         "pergunta": "Favor selecionar a melhor opção de qual assistência médica você possui:",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -1000,437 +1113,474 @@
           "OSHC (Overseas Student Health Cover)",
           "Outros (Nesse caso, aconselhamos que o solicitante verifique se o plano cobre o que o governo australiano exige)"
         ],
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.2"
       },
       {
-        "ordem": 106,
+        "ordem": 107,
         "pergunta": "Caso tenha marcado outros, especifique aqui qual o plano:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.3"
       },
       {
-        "ordem": 107,
+        "ordem": 108,
         "pergunta": "Você tem alguma informação, ou documento, que acredita ser importante mencionar no processo?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.4"
       },
       {
-        "ordem": 108,
+        "ordem": 109,
         "pergunta": "Nos últimos 10 anos, você ou outra pessoa incluída nesse processo, já visitou ou morou em outro país?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.5"
       },
       {
-        "ordem": 109,
+        "ordem": 110,
         "pergunta": "Você, ou outra pessoa incluída neste processo, tem a intenção de utilizar um hospital ou uma unidade de saúde (incluindo casas de repouso), enquanto estiver na Austrália?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.6"
       },
       {
-        "ordem": 110,
+        "ordem": 111,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 109,
+          "pergunta_ordem": 110,
           "valor": "sim"
         },
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.7"
       },
       {
-        "ordem": 111,
+        "ordem": 112,
         "pergunta": "Você, ou outra pessoa incluída neste processo, tem a intenção de trabalhar ou estudar na área de saúde enquanto estiver na Austrália?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.8"
       },
       {
-        "ordem": 112,
+        "ordem": 113,
         "pergunta": "Você, ou outra pessoa incluída neste processo, tem a intenção de trabalhar ou estudar, enquanto estiver na Austrália?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.9"
       },
       {
-        "ordem": 113,
+        "ordem": 114,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 112,
+          "pergunta_ordem": 113,
           "valor": "sim"
         },
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.10"
       },
       {
-        "ordem": 114,
+        "ordem": 115,
         "pergunta": "Você, ou outra pessoa incluída neste processo, sofre ou já sofreu de tuberculose?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.11"
       },
       {
-        "ordem": 115,
+        "ordem": 116,
         "pergunta": "Esteve em contato direto com algum familiar, com tuberculose?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.12"
       },
       {
-        "ordem": 116,
+        "ordem": 117,
         "pergunta": "Já tirou um raio-x onde constou uma anormalidade?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.13"
       },
       {
-        "ordem": 117,
+        "ordem": 118,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 116,
+          "pergunta_ordem": 117,
           "valor": "sim"
         },
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.14"
       },
       {
-        "ordem": 118,
+        "ordem": 119,
         "pergunta": "Durante a sua visita à Austrália, você ou qualquer outra pessoa incluída neste processo, precisará de custos médicos, ou exigir tratamento ou acompanhamento médico para: Cancer",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.15"
       },
       {
-        "ordem": 119,
+        "ordem": 120,
         "pergunta": "Durante a sua visita à Austrália, você ou qualquer outra pessoa incluída neste processo, precisará de custos médicos, ou exigir tratamento ou acompanhamento médico para: Doença cardíaca",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.16"
       },
       {
-        "ordem": 120,
+        "ordem": 121,
         "pergunta": "Durante a sua visita à Austrália, você ou qualquer outra pessoa incluída neste processo, precisará de custos médicos, ou exigir tratamento ou acompanhamento médico para: Hepatite B ou C",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.17"
       },
       {
-        "ordem": 121,
+        "ordem": 122,
         "pergunta": "Durante a sua visita à Austrália, você ou qualquer outra pessoa incluída neste processo, precisará de custos médicos, ou exigir tratamento ou acompanhamento médico para: Doença hepática",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.18"
       },
       {
-        "ordem": 122,
+        "ordem": 123,
         "pergunta": "Durante a sua visita à Austrália, você ou qualquer outra pessoa incluída neste processo, precisará de custos médicos, ou exigir tratamento ou acompanhamento médico para: HIV, incluindo AIDS",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.19"
       },
       {
-        "ordem": 123,
+        "ordem": 124,
         "pergunta": "Durante a sua visita à Austrália, você ou qualquer outra pessoa incluída neste processo, precisará de custos médicos, ou exigir tratamento ou acompanhamento médico para: Doença renal, incluindo diálise",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.20"
       },
       {
-        "ordem": 124,
+        "ordem": 125,
         "pergunta": "Durante a sua visita à Austrália, você ou qualquer outra pessoa incluída neste processo, precisará de custos médicos, ou exigir tratamento ou acompanhamento médico para: Doença mental",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.21"
       },
       {
-        "ordem": 125,
+        "ordem": 126,
         "pergunta": "Durante a sua visita à Austrália, você ou qualquer outra pessoa incluída neste processo, precisará de custos médicos, ou exigir tratamento ou acompanhamento médico para: Gravidez",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.22"
       },
       {
-        "ordem": 126,
+        "ordem": 127,
         "pergunta": "Durante a sua visita à Austrália, você ou qualquer outra pessoa incluída neste processo, precisará de custos médicos, ou exigir tratamento ou acompanhamento médico para: Doença respiratória que exige internação ou terapia de oxigênio",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.23"
       },
       {
-        "ordem": 127,
+        "ordem": 128,
         "pergunta": "Durante a sua visita à Austrália, você ou qualquer outra pessoa incluída neste processo, precisará de custos médicos, ou exigir tratamento ou acompanhamento médico para: Outros",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.24"
       },
       {
-        "ordem": 128,
+        "ordem": 129,
         "pergunta": "Você, ou qualquer outra pessoa incluída neste processo, requer assistência com mobilidade ou alguma assistência especial devido a uma condição médica?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.25"
       },
       {
-        "ordem": 129,
+        "ordem": 130,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 128,
+          "pergunta_ordem": 129,
           "valor": "sim"
         },
-        "etapa": 12
+        "etapa": 12,
+        "ref_id": "12.26"
       },
       {
-        "ordem": 130,
+        "ordem": 131,
         "pergunta": "Foi condenado(a) por um crime ou delito em qualquer país (incluindo qualquer caso que agora tenha sido removido dos registros oficiais)",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.1"
       },
       {
-        "ordem": 131,
+        "ordem": 132,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 130,
+          "pergunta_ordem": 131,
           "valor": "sim"
         },
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.2"
       },
       {
-        "ordem": 132,
+        "ordem": 133,
         "pergunta": "Foi acusado(a) de qualquer crime que está aguardando uma ação legal?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.3"
       },
       {
-        "ordem": 133,
+        "ordem": 134,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 132,
+          "pergunta_ordem": 133,
           "valor": "sim"
         },
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.4"
       },
       {
-        "ordem": 134,
+        "ordem": 135,
         "pergunta": "Foi acusado(a) de qualquer delito criminal ou outro em razão de doença mental, loucura ou debilidade mental?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.5"
       },
       {
-        "ordem": 135,
+        "ordem": 136,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 134,
+          "pergunta_ordem": 135,
           "valor": "sim"
         },
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.6"
       },
       {
-        "ordem": 136,
+        "ordem": 137,
         "pergunta": "Foi expulso(a) ou deportado(a) de qualquer país?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.7"
       },
       {
-        "ordem": 137,
+        "ordem": 138,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 136,
+          "pergunta_ordem": 137,
           "valor": "sim"
         },
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.8"
       },
       {
-        "ordem": 138,
+        "ordem": 139,
         "pergunta": "Deixou algum país para evitar ser expulso(a) ou deportado(a)?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.9"
       },
       {
-        "ordem": 139,
+        "ordem": 140,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 138,
+          "pergunta_ordem": 139,
           "valor": "sim"
         },
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.10"
       },
       {
-        "ordem": 140,
+        "ordem": 141,
         "pergunta": "Foi expulso(a) ou teve um pedido para sair de qualquer país?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.11"
       },
       {
-        "ordem": 141,
+        "ordem": 142,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 140,
+          "pergunta_ordem": 141,
           "valor": "sim"
         },
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.12"
       },
       {
-        "ordem": 142,
+        "ordem": 143,
         "pergunta": "Cometeu, ou se envolveu na prática de crimes de guerra contra a humanidade ou direitos humanos?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.13"
       },
       {
-        "ordem": 143,
+        "ordem": 144,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 142,
+          "pergunta_ordem": 143,
           "valor": "sim"
         },
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.14"
       },
       {
-        "ordem": 144,
+        "ordem": 145,
         "pergunta": "Esteve envolvidos em quaisquer atividades que possam representar um risco para a segurança nacional da Austrália?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.15"
       },
       {
-        "ordem": 145,
+        "ordem": 146,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 144,
+          "pergunta_ordem": 145,
           "valor": "sim"
         },
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.16"
       },
       {
-        "ordem": 146,
+        "ordem": 147,
         "pergunta": "Tem quaisquer dívidas com o Governo australiano ou qualquer autoridade pública na Austrália?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.17"
       },
       {
-        "ordem": 147,
+        "ordem": 148,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 146,
+          "pergunta_ordem": 147,
           "valor": "sim"
         },
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.18"
       },
       {
-        "ordem": 148,
+        "ordem": 149,
         "pergunta": "Se envolveu em qualquer atividade, ou foi acusado(a) de qualquer delito, relacionado com o movimento ilegal de pessoas para qualquer país?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.19"
       },
       {
-        "ordem": 149,
+        "ordem": 150,
         "pergunta": "Caso tenha respondido Sim, especifique:",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 148,
+          "pergunta_ordem": 149,
           "valor": "sim"
         },
-        "etapa": 13
-      },
-      {
-        "ordem": 150,
-        "pergunta": "Serviu uma das forças militares patrocinados pelo estado ou milícia privada, submetido(a) a qualquer treinamento militar ou paramilitar, ou treinamento no uso de armas ou explosivos, excepto no curso de serviço militar obrigatório?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 3
+        "etapa": 13,
+        "ref_id": "13.20"
       },
       {
         "ordem": 151,
@@ -1438,7 +1588,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.1"
       },
       {
         "ordem": 152,
@@ -1446,7 +1597,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.2"
       },
       {
         "ordem": 153,
@@ -1454,7 +1606,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.3"
       },
       {
         "ordem": 154,
@@ -1462,7 +1615,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.4"
       },
       {
         "ordem": 155,
@@ -1470,7 +1624,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.5"
       },
       {
         "ordem": 156,
@@ -1478,7 +1633,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.6"
       },
       {
         "ordem": 157,
@@ -1486,7 +1642,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.7"
       },
       {
         "ordem": 158,
@@ -1494,7 +1651,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.8"
       },
       {
         "ordem": 159,
@@ -1502,7 +1660,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.9"
       },
       {
         "ordem": 160,
@@ -1510,7 +1669,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.10"
       },
       {
         "ordem": 161,
@@ -1522,7 +1682,8 @@
           "Meu cartão de crédito internacional (desejo fornecer os dados para pagamento)",
           "Meu cartão de crédito internacional (me liguem no momento do pagamento que repasso as informações para pagamento)"
         ],
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.11"
       },
       {
         "ordem": 162,
@@ -1530,7 +1691,8 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 16,
+        "ref_id": "16.12"
       }
     ]
   }

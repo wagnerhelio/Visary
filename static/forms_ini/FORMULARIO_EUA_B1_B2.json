@@ -126,19 +126,21 @@
     "perguntas": [
       {
         "ordem": 1,
-        "pergunta": "Sobrenome",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 2,
         "pergunta": "Nome",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.1"
+      },
+      {
+        "ordem": 2,
+        "pergunta": "Sobrenome",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.2"
       },
       {
         "ordem": 3,
@@ -146,10 +148,29 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.3"
       },
       {
         "ordem": 4,
+        "pergunta": "E-mail",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.4"
+      },
+      {
+        "ordem": 5,
+        "pergunta": "Você usou outros e-mails nos últimos cinco anos",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.5"
+      },
+      {
+        "ordem": 6,
         "pergunta": "Sexo",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -158,10 +179,110 @@
         "opcoes": [
           "Masculino",
           "Feminino"
-        ]
+        ],
+        "ref_id": "1.6"
       },
       {
-        "ordem": 5,
+        "ordem": 7,
+        "pergunta": "Você possui conta em alguma rede social? Se sim, informar a plataforma e nome de usuário",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.7"
+      },
+      {
+        "ordem": 8,
+        "pergunta": "Nacionalidade",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.8"
+      },
+      {
+        "ordem": 9,
+        "pergunta": "Data de Nascimento",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.9"
+      },
+      {
+        "ordem": 10,
+        "pergunta": "Cidade / Estado natal",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.10"
+      },
+      {
+        "ordem": 11,
+        "pergunta": "Cidade",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.11"
+      },
+      {
+        "ordem": 12,
+        "pergunta": "Estado",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.12"
+      },
+      {
+        "ordem": 13,
+        "pergunta": "RG/ID",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.13"
+      },
+      {
+        "ordem": 14,
+        "pergunta": "País natal",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.14"
+      },
+      {
+        "ordem": 15,
+        "pergunta": "Outras cidadanias",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.15"
+      },
+      {
+        "ordem": 16,
+        "pergunta": "CPF",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.16"
+      },
+      {
+        "ordem": 17,
+        "pergunta": "Você tem ou já teve um Social Securty Number?",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.17"
+      },
+      {
+        "ordem": 18,
         "pergunta": "Estado Civil",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -175,74 +296,420 @@
           "Desquitado(a)",
           "Viúvo(a)",
           "Divorciado"
-        ]
+        ],
+        "ref_id": "1.18"
       },
       {
-        "ordem": 6,
-        "pergunta": "Data de Nascimento",
-        "tipo_campo": "data",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 7,
-        "pergunta": "Cidade",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 8,
-        "pergunta": "Estado",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 9,
-        "pergunta": "País",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 10,
-        "pergunta": "País de Nacionalidade",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 11,
-        "pergunta": "Outras Cidadanias",
+        "ordem": 19,
+        "pergunta": "CEP",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.19"
       },
       {
-        "ordem": 12,
-        "pergunta": "CPF",
+        "ordem": 20,
+        "pergunta": "Endereço",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.20"
+      },
+      {
+        "ordem": 21,
+        "pergunta": "Bairro",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.21"
+      },
+      {
+        "ordem": 22,
+        "pergunta": "Telefone",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.22"
       },
       {
-        "ordem": 13,
-        "pergunta": "Possui Social Security Number?",
+        "ordem": 23,
+        "pergunta": "Telefone Secundário",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.23"
+      },
+      {
+        "ordem": 24,
+        "pergunta": "Telefone do Trabalho",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.24"
+      },
+      {
+        "ordem": 25,
+        "pergunta": "Você já usou outros números de telefone nos útimos cinco anos?",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 1,
+        "ref_id": "1.25"
+      },
+      {
+        "ordem": 26,
+        "pergunta": "Seu passaporte será encaminhado para o endereço residencial?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 1,
+        "ref_id": "1.26"
       },
       {
-        "ordem": 14,
+        "ordem": 27,
+        "pergunta": "Caso a resposta seja não, favor informar o endereço alterantivo completo com CEP",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 1,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 26,
+          "valor": [
+            "nao"
+          ]
+        },
+        "ref_id": "1.27"
+      },
+      {
+        "ordem": 28,
+        "pergunta": "Sobrenome",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.1"
+      },
+      {
+        "ordem": 29,
+        "pergunta": "Nome",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.2"
+      },
+      {
+        "ordem": 30,
+        "pergunta": "Data de nascimento do Cônjuge",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.3"
+      },
+      {
+        "ordem": 31,
+        "pergunta": "Cidade de nascimento do Cônjuge",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.4"
+      },
+      {
+        "ordem": 32,
+        "pergunta": "Endereço",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.5"
+      },
+      {
+        "ordem": 33,
+        "pergunta": "Bairro do Cônjuge",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.6"
+      },
+      {
+        "ordem": 34,
+        "pergunta": "Cidade de residência",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.7"
+      },
+      {
+        "ordem": 35,
+        "pergunta": "CEP",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.8"
+      },
+      {
+        "ordem": 36,
+        "pergunta": "Telefone",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.9"
+      },
+      {
+        "ordem": 37,
+        "pergunta": "Viajam juntos?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Casado(a)",
+            "União Estável",
+            "Separado(a)",
+            "Desquitado(a)",
+            "Viúvo(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.10"
+      },
+      {
+        "ordem": 38,
+        "pergunta": "Para pessoas separadas, divorciadas e desquitadas, por favor informar data de início e término da relação",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 2,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 18,
+          "valor": [
+            "Separado(a)",
+            "Divorciado"
+          ]
+        },
+        "ref_id": "2.11"
+      },
+      {
+        "ordem": 39,
+        "pergunta": "Tipo",
+        "tipo_campo": "selecao",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "opcoes": [
+          "Passaporte Comum/Regular",
+          "Passaporte Diplomático",
+          "Passaporte de Serviço",
+          "Outro"
+        ],
+        "ref_id": "3.1"
+      },
+      {
+        "ordem": 40,
+        "pergunta": "Outro qual?",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 3,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 39,
+          "valor": [
+            "Outro"
+          ]
+        },
+        "ref_id": "3.2"
+      },
+      {
+        "ordem": 41,
+        "pergunta": "Número do passaporte válido",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.3"
+      },
+      {
+        "ordem": 42,
+        "pergunta": "País que emitiu o passaporte",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.4"
+      },
+      {
+        "ordem": 43,
+        "pergunta": "Data de emissão",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.5"
+      },
+      {
+        "ordem": 44,
+        "pergunta": "Valido até",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.6"
+      },
+      {
+        "ordem": 45,
+        "pergunta": "Autoridade",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.7"
+      },
+      {
+        "ordem": 46,
+        "pergunta": "Cidade onde foi emitido",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.8"
+      },
+      {
+        "ordem": 47,
+        "pergunta": "Já teve algum passaporte roubado?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 3,
+        "ref_id": "3.9"
+      },
+      {
+        "ordem": 53,
         "pergunta": "Motivo da Viagem",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -253,299 +720,696 @@
           "Negócios",
           "Estudo Informal (carga horária máxima de 18 horas semanais por até 06 meses)",
           "Visita Familiar"
-        ]
+        ],
+        "ref_id": "4.1"
       },
       {
-        "ordem": 15,
+        "ordem": 54,
         "pergunta": "Data de chegada aos EUA",
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 4
+        "etapa": 4,
+        "ref_id": "4.2"
       },
       {
-        "ordem": 16,
-        "pergunta": "Data da saída dos EUA",
+        "ordem": 55,
+        "pergunta": "Data de saída dos EUA",
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 4
+        "etapa": 4,
+        "ref_id": "4.3"
       },
       {
-        "ordem": 17,
-        "pergunta": "Endereço completo onde ficará nos Estados Unidos",
+        "ordem": 56,
+        "pergunta": "Endereço completo onde ficará nos EUA",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 4
+        "etapa": 4,
+        "ref_id": "4.4"
       },
       {
-        "ordem": 18,
-        "pergunta": "Cidade onde ficará nos Estados Unidos",
+        "ordem": 57,
+        "pergunta": "Cidade onde ficará nos EUA",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 4
+        "etapa": 4,
+        "ref_id": "4.5"
       },
       {
-        "ordem": 19,
-        "pergunta": "Estado onde ficará nos Estados Unidos",
+        "ordem": 58,
+        "pergunta": "Estado onde ficará nos EUA",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 4
+        "etapa": 4,
+        "ref_id": "4.6"
       },
       {
-        "ordem": 20,
-        "pergunta": "CEP de onde ficará nos Estados Unidos",
+        "ordem": 59,
+        "pergunta": "CEP de onde ficará nos EUA",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 4
+        "etapa": 4,
+        "ref_id": "4.7"
       },
       {
-        "ordem": 21,
+        "ordem": 60,
         "pergunta": "Companhia de Viagem",
         "tipo_campo": "texto",
         "obrigatorio": false,
-        "ativo": true,
-        "etapa": 4
+        "ativo": false,
+        "etapa": 4,
+        "ref_id": "4.8"
       },
       {
-        "ordem": 22,
-        "pergunta": "Endereço(rua/quadra/avenida)",
+        "ordem": 61,
+        "pergunta": "Nome da escola",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 5,
+        "ref_id": "5.1"
+      },
+      {
+        "ordem": 62,
+        "pergunta": "Curso que será realizado",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 5,
+        "ref_id": "5.2"
+      },
+      {
+        "ordem": 63,
+        "pergunta": "Endereço da escola",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 5,
+        "ref_id": "5.3"
+      },
+      {
+        "ordem": 64,
+        "pergunta": "Cidade da escola",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 5,
+        "ref_id": "5.4"
+      },
+      {
+        "ordem": 65,
+        "pergunta": "Estado da escola",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 5,
+        "ref_id": "5.5"
+      },
+      {
+        "ordem": 66,
+        "pergunta": "CEP da escola",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 5,
+        "ref_id": "5.6"
+      },
+      {
+        "ordem": 67,
+        "pergunta": "Você já possui o documento I-20 ou DS-2019?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 5,
+        "ref_id": "5.7"
+      },
+      {
+        "ordem": 68,
+        "pergunta": "Número da SEVIS",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 5,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 67,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "5.8"
       },
       {
-        "ordem": 23,
-        "pergunta": "Bairro",
+        "ordem": 69,
+        "pergunta": "Nome",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 6,
+        "ref_id": "6.1"
       },
       {
-        "ordem": 24,
+        "ordem": 70,
+        "pergunta": "Sobrenome",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.2"
+      },
+      {
+        "ordem": 71,
+        "pergunta": "Endereco",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.3"
+      },
+      {
+        "ordem": 72,
         "pergunta": "Cidade",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 6
+        "etapa": 6,
+        "ref_id": "6.4"
       },
       {
-        "ordem": 25,
-        "pergunta": "Estado",
+        "ordem": 73,
+        "pergunta": "Estado/Província",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 6
+        "etapa": 6,
+        "ref_id": "6.5"
       },
       {
-        "ordem": 26,
+        "ordem": 74,
         "pergunta": "CEP",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 6,
+        "ref_id": "6.6"
       },
       {
-        "ordem": 27,
-        "pergunta": "Telefone Primário",
+        "ordem": 75,
+        "pergunta": "Telefone",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 6,
+        "ref_id": "6.7"
       },
       {
-        "ordem": 28,
-        "pergunta": "Telefone Secundário",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 29,
-        "pergunta": "Telefone do Trabalho",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 30,
-        "pergunta": "Você já usou outros números de telefone nos últimos cinco anos?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 31,
+        "ordem": 76,
         "pergunta": "E-mail",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 6,
+        "ref_id": "6.8"
       },
       {
-        "ordem": 32,
-        "pergunta": "Você usou outros endereços de e-mail nos últimos cinco anos?",
-        "tipo_campo": "booleano",
+        "ordem": 77,
+        "pergunta": "Nome",
+        "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 6,
+        "ref_id": "6.9"
       },
       {
-        "ordem": 33,
-        "pergunta": "Você possui conta em alguma rede social? Se sim, informar a plataforma e nome de usuário",
+        "ordem": 78,
+        "pergunta": "Sobrenome",
         "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 6
-      },
-      {
-        "ordem": 34,
-        "pergunta": "Tipo de Passaporte",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 35,
-        "pergunta": "Número do Passaporte Válido",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 36,
-        "pergunta": "País que emitiu o passaporte",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 37,
-        "pergunta": "Órgão Emissor",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 38,
-        "pergunta": "Cidade onde foi emitido",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 39,
-        "pergunta": "Data de Emissão",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 40,
-        "pergunta": "Válido até",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 3
-      },
-      {
-        "ordem": 41,
-        "pergunta": "Já teve algum passaporte roubado?",
-        "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 1
+        "etapa": 6,
+        "ref_id": "6.10"
       },
       {
-        "ordem": 42,
+        "ordem": 79,
+        "pergunta": "Endereco",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.11"
+      },
+      {
+        "ordem": 80,
+        "pergunta": "Cidade",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.12"
+      },
+      {
+        "ordem": 81,
+        "pergunta": "Estado/Província",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.13"
+      },
+      {
+        "ordem": 82,
+        "pergunta": "CEP",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.14"
+      },
+      {
+        "ordem": 83,
+        "pergunta": "Telefone",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.15"
+      },
+      {
+        "ordem": 84,
+        "pergunta": "E-mail",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 6,
+        "ref_id": "6.16"
+      },
+      {
+        "ordem": 85,
+        "pergunta": "Responsavel pelo custeio da viagem",
+        "tipo_campo": "selecao",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.1",
+        "opcoes": [
+          {
+            "valor": "eu",
+            "rotulo": "Eu mesmo(a)"
+          },
+          {
+            "valor": "outra_pessoa",
+            "rotulo": "Outra pessoa"
+          },
+          {
+            "valor": "empresa",
+            "rotulo": "Empresa / Organização"
+          }
+        ]
+      },
+      {
+        "ordem": 86,
+        "pergunta": "Nome",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.2",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "outra_pessoa"
+        }
+      },
+      {
+        "ordem": 87,
+        "pergunta": "sobrenome",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.3",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "outra_pessoa"
+        }
+      },
+      {
+        "ordem": 88,
+        "pergunta": "Email",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.4",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "outra_pessoa"
+        }
+      },
+      {
+        "ordem": 89,
+        "pergunta": "Telefone",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.5",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "outra_pessoa"
+        }
+      },
+      {
+        "ordem": 90,
+        "pergunta": "Relação com você",
+        "tipo_campo": "selecao",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.6",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "outra_pessoa"
+        },
+        "opcoes": [
+          {
+            "valor": "pais",
+            "rotulo": "Pai ou mãe"
+          },
+          {
+            "valor": "conjuge",
+            "rotulo": "Cônjuge"
+          },
+          {
+            "valor": "filho",
+            "rotulo": "Filho(a)"
+          },
+          {
+            "valor": "outro",
+            "rotulo": "Outro tipo de parentesco"
+          },
+          {
+            "valor": "amigo",
+            "rotulo": "Amigo"
+          }
+        ]
+      },
+      {
+        "ordem": 91,
+        "pergunta": "Endereço completo",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.7",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "outra_pessoa"
+        }
+      },
+      {
+        "ordem": 92,
+        "pergunta": "Nome da empresa/organização",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.8",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "empresa"
+        }
+      },
+      {
+        "ordem": 93,
+        "pergunta": "Telefone",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.9",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "empresa"
+        }
+      },
+      {
+        "ordem": 94,
+        "pergunta": "CEP",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.10",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "empresa"
+        }
+      },
+      {
+        "ordem": 95,
+        "pergunta": "Endereço",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.11",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "empresa"
+        }
+      },
+      {
+        "ordem": 96,
+        "pergunta": "Cidade",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.12",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "empresa"
+        }
+      },
+      {
+        "ordem": 97,
+        "pergunta": "Estado",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.13",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "empresa"
+        }
+      },
+      {
+        "ordem": 98,
+        "pergunta": "Você faz parte do quadro de colaboradores?",
+        "tipo_campo": "booleano",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 7,
+        "ref_id": "7.14",
+        "regra_exibicao": {
+          "pergunta_ordem": 85,
+          "operador": "equals",
+          "valor": "empresa"
+        }
+      },
+      {
+        "ordem": 99,
+        "pergunta": "Caso haja acompanhantes que já tenham vistos, adicionar o nome completo e relação com você",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 8,
+        "ref_id": "8.1"
+      },
+      {
+        "ordem": 101,
         "pergunta": "Nome completo da pessoa ou empresa / organização nos Estados Unidos",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "ref_id": "11.1"
       },
       {
-        "ordem": 43,
+        "ordem": 102,
         "pergunta": "Endereço completo da pessoa ou empresa / organização nos Estados Unidos",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "ref_id": "11.2"
       },
       {
-        "ordem": 44,
+        "ordem": 103,
         "pergunta": "Cidade da pessoa / empresa",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "ref_id": "11.3"
       },
       {
-        "ordem": 45,
+        "ordem": 104,
         "pergunta": "Estado da pessoa ou empresa / organização nos Estados Unidos",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "ref_id": "11.4"
       },
       {
-        "ordem": 46,
+        "ordem": 105,
         "pergunta": "CEP da pessoa ou empresa / organização nos Estados Unidos",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "ref_id": "11.5"
       },
       {
-        "ordem": 47,
+        "ordem": 106,
         "pergunta": "Telefone da pessoa ou empresa / organização nos Estados Unidos",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "ref_id": "11.6"
       },
       {
-        "ordem": 48,
+        "ordem": 107,
         "pergunta": "E-mail da pessoa ou empresa / organização nos Estados Unidos",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 11,
+        "ref_id": "11.7"
       },
       {
-        "ordem": 49,
-        "pergunta": "Sobrenome do parente nos Estados Unidos",
+        "ordem": 108,
+        "pergunta": "Nome do pai",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 12,
+        "ref_id": "12.1"
+      },
+      {
+        "ordem": 109,
+        "pergunta": "Sobrenome do pai",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 12,
+        "ref_id": "12.2"
+      },
+      {
+        "ordem": 110,
+        "pergunta": "Data de nascimento pai",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 12,
+        "ref_id": "12.3"
+      },
+      {
+        "ordem": 111,
+        "pergunta": "Seu pai está nos Estados Unidos?",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 12,
+        "ref_id": "12.4"
+      },
+      {
+        "ordem": 112,
+        "pergunta": "Nome da mãe",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 12,
+        "ref_id": "12.5"
+      },
+      {
+        "ordem": 113,
+        "pergunta": "Sobrenome da mãe",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 12,
+        "ref_id": "12.6"
+      },
+      {
+        "ordem": 114,
+        "pergunta": "Data de nascimento mãe",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 12,
+        "ref_id": "12.7"
+      },
+      {
+        "ordem": 115,
+        "pergunta": "Sua mãe está nos Estados Unidos?",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 12,
+        "ref_id": "12.8"
+      },
+      {
+        "ordem": 116,
+        "pergunta": "Você possui parentes nos Estados Unidos?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 12,
+        "ref_id": "12.9"
+      },
+      {
+        "ordem": 117,
+        "pergunta": "Nome",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.1"
       },
       {
-        "ordem": 50,
-        "pergunta": "Primeiro Nome do parente nos Estados Unidos",
+        "ordem": 118,
+        "pergunta": "Sobrenome",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 13,
+        "ref_id": "13.2"
       },
       {
-        "ordem": 51,
-        "pergunta": "Relação com o parente nos Estados Unidos",
+        "ordem": 119,
+        "pergunta": "Relação com o parente",
         "tipo_campo": "selecao",
         "obrigatorio": false,
         "ativo": true,
@@ -556,24 +1420,21 @@
           "Filho(a)",
           "Irmã(ão)",
           "Outros"
-        ]
+        ],
+        "ref_id": "13.3"
       },
       {
-        "ordem": 52,
+        "ordem": 120,
         "pergunta": "Caso tenha selecionado \"outros\", especifique aqui",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 13,
-        "regra_exibicao": {
-          "tipo": "mostrar_se",
-          "pergunta_ordem": 51,
-          "valor": "Outros"
-        }
+        "ref_id": "13.4"
       },
       {
-        "ordem": 53,
-        "pergunta": "Situação do parente nos Estados Unidos",
+        "ordem": 121,
+        "pergunta": "Situação do parente",
         "tipo_campo": "selecao",
         "obrigatorio": false,
         "ativo": true,
@@ -585,287 +1446,137 @@
           "Imigrante em situação irregular com a imigração",
           "Não sei",
           "Outros"
-        ]
+        ],
+        "ref_id": "13.5"
       },
       {
-        "ordem": 54,
+        "ordem": 122,
         "pergunta": "Caso tenha selecionado \"outros\", especifique aqui",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 13,
-        "regra_exibicao": {
-          "tipo": "mostrar_se",
-          "pergunta_ordem": 53,
-          "valor": "Outros"
-        }
+        "ref_id": "13.6"
       },
       {
-        "ordem": 55,
-        "pergunta": "Sobrenome do Cônjuge",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 56,
-        "pergunta": "Primeiro Nome do Cônjuge",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 57,
-        "pergunta": "Data de nascimento do Cônjuge",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 58,
-        "pergunta": "Cidade de nascimento do Cônjuge",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 59,
-        "pergunta": "Endereço do cônjuge",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 60,
-        "pergunta": "Bairro do Cônjuge",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 61,
-        "pergunta": "Cidade de Residência do Cônjuge",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 62,
-        "pergunta": "CEP do Cônjuge",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 63,
-        "pergunta": "Telefone do Cônjuge",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 64,
-        "pergunta": "Viaja com você?",
-        "tipo_campo": "booleano",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2
-      },
-      {
-        "ordem": 65,
-        "pergunta": "Para pessoas separadas, divorciadas e desquitadas, por favor informar data de início e término da relação",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 2,
-        "regra_exibicao": {
-          "tipo": "mostrar_se",
-          "pergunta_ordem": 5,
-          "valor": [
-            "Separado(a)",
-            "Divorciado"
-          ]
-        }
-      },
-      {
-        "ordem": 66,
-        "pergunta": "Sobrenome do Pai",
+        "ordem": 123,
+        "pergunta": "Ocupação atual do solicitante",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 14,
+        "ref_id": "14.1"
       },
       {
-        "ordem": 67,
-        "pergunta": "Primeiro Nome do Pai",
+        "ordem": 124,
+        "pergunta": "Nome da empresa ou escola",
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 14,
+        "ref_id": "14.2"
       },
       {
-        "ordem": 68,
-        "pergunta": "Data de Nascimento do Pai",
+        "ordem": 125,
+        "pergunta": "Endereço",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 14,
+        "ref_id": "14.3"
+      },
+      {
+        "ordem": 126,
+        "pergunta": "Bairro",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 14,
+        "ref_id": "14.12"
+      },
+      {
+        "ordem": 127,
+        "pergunta": "Cidade",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 14,
+        "ref_id": "14.4"
+      },
+      {
+        "ordem": 128,
+        "pergunta": "Estado",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 14,
+        "ref_id": "14.5"
+      },
+      {
+        "ordem": 129,
+        "pergunta": "CEP",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 14,
+        "ref_id": "14.6"
+      },
+      {
+        "ordem": 130,
+        "pergunta": "Telefone",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 14,
+        "ref_id": "14.7"
+      },
+      {
+        "ordem": 131,
+        "pergunta": "País",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 14,
+        "ref_id": "14.8"
+      },
+      {
+        "ordem": 132,
+        "pergunta": "Data de admissão no trabalho ou início dos estudos",
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 14,
+        "ref_id": "14.9"
       },
       {
-        "ordem": 69,
-        "pergunta": "Seu pai está nos Estados Unidos?",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 12
-      },
-      {
-        "ordem": 70,
-        "pergunta": "Sobrenome da Mãe",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 12
-      },
-      {
-        "ordem": 71,
-        "pergunta": "Primeiro Nome da Mãe",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 12
-      },
-      {
-        "ordem": 72,
-        "pergunta": "Data de Nascimento da Mãe",
-        "tipo_campo": "data",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 12
-      },
-      {
-        "ordem": 73,
-        "pergunta": "Sua mãe está nos Estados Unidos?",
-        "tipo_campo": "texto",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 12
-      },
-      {
-        "ordem": 74,
-        "pergunta": "Você possui parentes nos Estados Unidos?",
-        "tipo_campo": "booleano",
-        "obrigatorio": true,
-        "ativo": true,
-        "etapa": 12
-      },
-      {
-        "ordem": 75,
-        "pergunta": "Ocupação Atual",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 14
-      },
-      {
-        "ordem": 76,
-        "pergunta": "Nome do empregador ou escola",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 14
-      },
-      {
-        "ordem": 77,
-        "pergunta": "Endereço completo do empregador ou escola",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 78,
-        "pergunta": "Cidade do empregador ou escola",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 14
-      },
-      {
-        "ordem": 79,
-        "pergunta": "Estado do empregador ou escola",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 14
-      },
-      {
-        "ordem": 80,
-        "pergunta": "CEP do empregador ou escola",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 81,
-        "pergunta": "Telefone do empregador ou escola",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 1
-      },
-      {
-        "ordem": 82,
-        "pergunta": "País do empregador ou escola",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 14
-      },
-      {
-        "ordem": 83,
-        "pergunta": "Data de admissão no trabalho OU início dos estudos",
-        "tipo_campo": "data",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 14
-      },
-      {
-        "ordem": 84,
-        "pergunta": "Salário Mensal (em reais)",
+        "ordem": 133,
+        "pergunta": "Renda mensal (em reais)",
         "tipo_campo": "numero",
-        "obrigatorio": false,
+        "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.10"
       },
       {
-        "ordem": 85,
+        "ordem": 134,
         "pergunta": "Descreva brevemente suas funções",
         "tipo_campo": "texto",
-        "obrigatorio": false,
+        "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 14,
+        "ref_id": "14.11"
       },
       {
-        "ordem": 86,
+        "ordem": 135,
         "pergunta": "Você teve algum emprego anterior?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 15,
+        "ref_id": "15.1"
       },
       {
-        "ordem": 87,
+        "ordem": 136,
         "pergunta": "Nome do empregador anterior",
         "tipo_campo": "texto",
         "obrigatorio": false,
@@ -873,90 +1584,97 @@
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.1"
       },
       {
-        "ordem": 88,
-        "pergunta": "Endereço completo do empregador anterior",
+        "ordem": 137,
+        "pergunta": "Endereço",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.2"
       },
       {
-        "ordem": 89,
-        "pergunta": "Cidade do empregador anterior",
+        "ordem": 138,
+        "pergunta": "Cidade",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.3"
       },
       {
-        "ordem": 90,
-        "pergunta": "Estado do empregador anterior",
+        "ordem": 139,
+        "pergunta": "Estado",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.4"
       },
       {
-        "ordem": 91,
-        "pergunta": "CEP do empregador anterior",
+        "ordem": 140,
+        "pergunta": "CEP",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.5"
       },
       {
-        "ordem": 92,
-        "pergunta": "País do empregador anterior",
+        "ordem": 141,
+        "pergunta": "País",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.6"
       },
       {
-        "ordem": 93,
-        "pergunta": "Telefone do empregador anterior",
+        "ordem": 142,
+        "pergunta": "Telefone",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.7"
       },
       {
-        "ordem": 94,
+        "ordem": 143,
         "pergunta": "Cargo",
         "tipo_campo": "texto",
         "obrigatorio": false,
@@ -964,12 +1682,13 @@
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.8"
       },
       {
-        "ordem": 95,
+        "ordem": 144,
         "pergunta": "Sobrenome do(a) Supervisor(a)",
         "tipo_campo": "texto",
         "obrigatorio": false,
@@ -977,12 +1696,13 @@
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.9"
       },
       {
-        "ordem": 96,
+        "ordem": 145,
         "pergunta": "Primeiro Nome do(a) Supervisor(a)",
         "tipo_campo": "texto",
         "obrigatorio": false,
@@ -990,192 +1710,222 @@
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.10"
       },
       {
-        "ordem": 97,
+        "ordem": 146,
         "pergunta": "Data de início do trabalho",
         "tipo_campo": "data",
-        "obrigatorio": false,
+        "obrigatorio": true,
         "ativo": true,
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.11"
       },
       {
-        "ordem": 98,
+        "ordem": 147,
         "pergunta": "Data de término do trabalho",
         "tipo_campo": "data",
-        "obrigatorio": false,
+        "obrigatorio": true,
         "ativo": true,
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.12"
       },
       {
-        "ordem": 99,
-        "pergunta": "Breve descrição das atividades",
+        "ordem": 148,
+        "pergunta": "Breve descrição das atividade",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 16,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 86,
+          "pergunta_ordem": 135,
           "valor": "sim"
-        }
+        },
+        "ref_id": "16.13"
       },
       {
-        "ordem": 100,
+        "ordem": 200,
         "pergunta": "Você realizou algum curso acadêmico ou vocacional após o Ensino Médio?",
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 17
+        "etapa": 17,
+        "ref_id": "17.1"
       },
       {
-        "ordem": 101,
-        "pergunta": "Nome da Instituição",
+        "ordem": 201,
+        "pergunta": "Nome da instituição",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 17,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 200,
+          "valor": "sim"
+        },
+        "ref_id": "17.2"
+      },
+      {
+        "ordem": 202,
+        "pergunta": "Endereço",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 17,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 100,
+          "pergunta_ordem": 200,
           "valor": "sim"
-        }
+        },
+        "ref_id": "17.3"
       },
       {
-        "ordem": 102,
-        "pergunta": "Endereço completo da Instituição",
+        "ordem": 203,
+        "pergunta": "Bairro",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 17,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 100,
+          "pergunta_ordem": 200,
           "valor": "sim"
-        }
+        },
+        "ref_id": "17.11"
       },
       {
-        "ordem": 103,
-        "pergunta": "Cidade da Instituição",
+        "ordem": 204,
+        "pergunta": "Cidade",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 17,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 200,
+          "valor": "sim"
+        },
+        "ref_id": "17.4"
+      },
+      {
+        "ordem": 205,
+        "pergunta": "Estado",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 17,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 200,
+          "valor": "sim"
+        },
+        "ref_id": "17.5"
+      },
+      {
+        "ordem": 206,
+        "pergunta": "CEP",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 17,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 100,
+          "pergunta_ordem": 200,
           "valor": "sim"
-        }
+        },
+        "ref_id": "17.6"
       },
       {
-        "ordem": 104,
-        "pergunta": "Estado da Instituição",
+        "ordem": 207,
+        "pergunta": "País",
         "tipo_campo": "texto",
-        "obrigatorio": false,
+        "obrigatorio": true,
         "ativo": true,
         "etapa": 17,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 100,
+          "pergunta_ordem": 200,
           "valor": "sim"
-        }
+        },
+        "ref_id": "17.7"
       },
       {
-        "ordem": 105,
-        "pergunta": "CEP da Instituição",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 17,
-        "regra_exibicao": {
-          "tipo": "mostrar_se",
-          "pergunta_ordem": 100,
-          "valor": "sim"
-        }
-      },
-      {
-        "ordem": 106,
-        "pergunta": "País da Instituição",
-        "tipo_campo": "texto",
-        "obrigatorio": false,
-        "ativo": true,
-        "etapa": 17,
-        "regra_exibicao": {
-          "tipo": "mostrar_se",
-          "pergunta_ordem": 100,
-          "valor": "sim"
-        }
-      },
-      {
-        "ordem": 107,
+        "ordem": 208,
         "pergunta": "Curso realizado",
         "tipo_campo": "texto",
-        "obrigatorio": false,
+        "obrigatorio": true,
         "ativo": true,
         "etapa": 17,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 100,
+          "pergunta_ordem": 200,
           "valor": "sim"
-        }
+        },
+        "ref_id": "17.8"
       },
       {
-        "ordem": 108,
-        "pergunta": "Data do início do curso",
+        "ordem": 209,
+        "pergunta": "Data de início",
         "tipo_campo": "data",
-        "obrigatorio": false,
+        "obrigatorio": true,
         "ativo": true,
         "etapa": 17,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 100,
+          "pergunta_ordem": 200,
           "valor": "sim"
-        }
+        },
+        "ref_id": "17.9"
       },
       {
-        "ordem": 109,
-        "pergunta": "Data do término do curso",
+        "ordem": 210,
+        "pergunta": "Data de término",
         "tipo_campo": "data",
-        "obrigatorio": false,
+        "obrigatorio": true,
         "ativo": true,
         "etapa": 17,
         "regra_exibicao": {
           "tipo": "mostrar_se",
-          "pergunta_ordem": 100,
+          "pergunta_ordem": 200,
           "valor": "sim"
-        }
+        },
+        "ref_id": "17.10"
       },
       {
-        "ordem": 110,
+        "ordem": 159,
         "pergunta": "Quais Idiomas você fala?",
         "tipo_campo": "texto",
-        "obrigatorio": false,
+        "obrigatorio": true,
         "ativo": true,
-        "etapa": 18
+        "etapa": 18,
+        "ref_id": "18.1"
       },
       {
-        "ordem": 111,
+        "ordem": 160,
         "pergunta": "Liste os países que você visitou nos últimos cinco anos",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 18
+        "etapa": 18,
+        "ref_id": "18.2"
       },
       {
-        "ordem": 112,
+        "ordem": 161,
         "pergunta": "Você possui algo a declarar sobre o envolvimento em alguma destas situações?",
         "tipo_campo": "selecao",
         "obrigatorio": true,
@@ -1192,32 +1942,30 @@
           "Espionagem e sabotagem",
           "Atividades e organizações terroristas",
           "Genocídio, tortura e outros crimes de lesa humanidade",
-          "Nenhuma das situações"
-        ]
+          "Não"
+        ],
+        "ref_id": "19.1"
       },
       {
-        "ordem": 113,
+        "ordem": 162,
         "pergunta": "Caso tenha se envolvido em qualquer uma das questões acima, explique",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
         "etapa": 19,
-        "regra_exibicao": {
-          "tipo": "mostrar_se",
-          "pergunta_ordem": 112,
-          "valor": "Nenhuma das situações"
-        }
+        "ref_id": "19.2"
       },
       {
-        "ordem": 114,
+        "ordem": 163,
         "pergunta": "Alguma outra informação relevante que deseje comentar?",
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 20
+        "etapa": 20,
+        "ref_id": "20.1"
       },
       {
-        "ordem": 115,
+        "ordem": 164,
         "pergunta": "CASV de sua preferência",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -1231,10 +1979,11 @@
           "CASV Porto Alegre",
           "Estou isento(a) desta etapa por ter menos de 14 anos.",
           "Estou isento(a) desta etapa por ter mais de 80 anos."
-        ]
+        ],
+        "ref_id": "23.1"
       },
       {
-        "ordem": 116,
+        "ordem": 165,
         "pergunta": "Consulado de sua preferência",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -1247,10 +1996,11 @@
           "Consulado de São Paulo",
           "Consulado de Porto Alegre",
           "Estou isento(a) desta etapa por meu visto B1/B2 anterior ter sido emitido a partir de 2004"
-        ]
+        ],
+        "ref_id": "23.2"
       },
       {
-        "ordem": 117,
+        "ordem": 166,
         "pergunta": "Datas possíveis para agendamento",
         "tipo_campo": "selecao",
         "obrigatorio": false,
@@ -1262,7 +2012,270 @@
           "Agendar para próxima vaga disponível daqui a duas semanas",
           "Agendar para próxima vaga disponível daqui a três semanas",
           "Agendar para o próxima vaga disponível no próximo mês"
-        ]
+        ],
+        "ref_id": "23.3"
+      },
+      {
+        "ordem": 167,
+        "pergunta": "Você já teve um visto emitido para os Estados Unidos?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.1"
+      },
+      {
+        "ordem": 168,
+        "pergunta": "Você já esteve nos Estados Unidos?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.2"
+      },
+      {
+        "ordem": 169,
+        "pergunta": "Se sim, informe a data de chegada e a duração das últimas cinco visitas.",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 168,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "9.3"
+      },
+      {
+        "ordem": 170,
+        "pergunta": "Você já teve um visto negado para os Estados Unidos?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.4"
+      },
+      {
+        "ordem": 171,
+        "pergunta": "Se sim, informe a data e a causa provável.",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 170,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "9.5"
+      },
+      {
+        "ordem": 172,
+        "pergunta": "Você possui uma carteira de motorista americana?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.6"
+      },
+      {
+        "ordem": 173,
+        "pergunta": "Se sim, por favor informe o número da licença e estado emissor da carteira.",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 9,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 172,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "9.7"
+      },
+      {
+        "ordem": 174,
+        "pergunta": "Você já teve uma autorização de viagem (ESTA) negada ou recusada pelo Departamento de Homeland Security através do Sistema Eletrônico de Autorização de viagens (ESTA)?",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 9,
+        "ref_id": "9.8"
+      },
+      {
+        "ordem": 175,
+        "pergunta": "Data de Emissão do seu último visto",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 167,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "10.1"
+      },
+      {
+        "ordem": 176,
+        "pergunta": "Data de Validade do seu último visto",
+        "tipo_campo": "data",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 167,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "10.2"
+      },
+      {
+        "ordem": 177,
+        "pergunta": "Número do visto",
+        "tipo_campo": "texto",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 167,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "10.3"
+      },
+      {
+        "ordem": 178,
+        "pergunta": "Cidade e país onde o seu visto foi emitido",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 167,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "10.4"
+      },
+      {
+        "ordem": 179,
+        "pergunta": "Você está pedindo o mesmo tipo de visto?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 167,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "10.5"
+      },
+      {
+        "ordem": 180,
+        "pergunta": "Você está solicitando o visto do mesmo país onde solicitou pela última vez?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 167,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "10.6"
+      },
+      {
+        "ordem": 181,
+        "pergunta": "Você já tirou suas digitais no Consulado anteriormente?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 167,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "10.7"
+      },
+      {
+        "ordem": 182,
+        "pergunta": "Já teve um visto perdido ou roubado?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 167,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "10.8"
+      },
+      {
+        "ordem": 183,
+        "pergunta": "Já teve algum visto cancelado ou revogado?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 167,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "10.9"
+      },
+      {
+        "ordem": 184,
+        "pergunta": "Já teve a entrada negada nos Estados Unidos?",
+        "tipo_campo": "booleano",
+        "obrigatorio": true,
+        "ativo": true,
+        "etapa": 10,
+        "regra_exibicao": {
+          "tipo": "mostrar_se",
+          "pergunta_ordem": 167,
+          "valor": [
+            "sim"
+          ]
+        },
+        "ref_id": "10.10"
+      },
+      {
+        "ordem": 185,
+        "pergunta": "Se sim, qual motivo da proibição da entrada?",
+        "tipo_campo": "texto",
+        "obrigatorio": false,
+        "ativo": true,
+        "etapa": 10,
+        "ref_id": "10.11"
       }
     ]
   }

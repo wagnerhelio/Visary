@@ -52,3 +52,32 @@ class ClientRegisterDraftTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'data-clear-client-register-draft')
         self.assertNotIn("clear_client_register_draft", self.client.session)
+
+    def test_register_client_get_does_not_render_required_errors_before_submit(self):
+        passport_step = ClientRegistrationStep.objects.create(
+            name="Dados do Passaporte",
+            order=2,
+            is_active=True,
+            boolean_field="step_passport",
+        )
+        ClientStepField.objects.create(
+            step=passport_step,
+            field_name="numero_passaporte",
+            field_type="text",
+            order=1,
+            is_required=True,
+            is_active=True,
+        )
+
+        session = self.client.session
+        session["passport_ocr_client"] = {
+            # intentionally incomplete: should not trigger required errors on GET
+            "passport_number": "",
+        }
+        session.save()
+
+        response = self.client.get(f"{reverse('system:register_client')}?stage_id={passport_step.pk}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-can-restore-draft="true"')
+        self.assertNotContains(response, "Este campo é obrigatório.")
