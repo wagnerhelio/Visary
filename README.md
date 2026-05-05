@@ -1,494 +1,138 @@
-# Visary - Sistema de Gestão de Consultoria de Vistos
+# Kit de Governança para Agentes de Desenvolvimento
 
-Sistema web completo para gestão de consultoria de vistos, desenvolvido em Django. Permite gerenciar clientes, viagens, processos de visto, formulários dinâmicos, parceiros e controle financeiro.
-
-## 📋 Índice
-
-- [Sobre o Projeto](#sobre-o-projeto)
-- [Tecnologias](#tecnologias)
-- [Funcionalidades](#funcionalidades)
-- [Estrutura do Projeto](#estrutura-do-projeto)
-- [Instalação e Configuração](#instalação-e-configuração)
-- [Execução](#execução)
-- [Modelos e Estrutura de Dados](#modelos-e-estrutura-de-dados)
-- [Sistema de Permissões](#sistema-de-permissões)
-- [APIs Disponíveis](#apis-disponíveis)
-- [Comandos Personalizados](#comandos-personalizados)
-
-## 🎯 Sobre o Projeto
-
-O **Visary** é uma plataforma completa para empresas de consultoria de vistos gerenciarem todo o ciclo de vida dos processos de visto dos seus clientes. O sistema permite:
-
-- Cadastro e gestão de clientes com etapas configuráveis
-- Organização de viagens por país e tipo de visto
-- Acompanhamento de processos com checklist de etapas
-- Formulários dinâmicos por tipo de visto
-- Área do cliente para preenchimento de formulários
-- Gestão de parceiros indicadores
-- Controle financeiro por viagem
-- Sistema de permissões e perfis de usuário
-
-## 🛠 Tecnologias
-
-- **Django 5.2.8** - Framework web Python
-- **Python 3.x** - Linguagem de programação
-- **SQLite** - Banco de dados (desenvolvimento)
-- **HTML/CSS/JavaScript** - Frontend
-- **Bibliotecas Python:**
-  - `brazilcep` - Busca de CEP
-  - `pycep-correios` - Busca alternativa de CEP
-  - `requests` - Requisições HTTP
-  - `django-environ` - Gerenciamento de variáveis de ambiente
-
-## ✨ Funcionalidades
-
-### 1. Gestão de Clientes
-
-- **Cadastro de Clientes**: Sistema de cadastro em etapas configuráveis
-  - Dados pessoais (nome, data de nascimento, nacionalidade, contatos)
-  - Endereço completo com busca automática por CEP
-  - Gestão de dependentes (vínculo cliente principal/dependente)
-  - Dados de passaporte
-  - Observações e histórico
-
-- **Etapas Configuráveis**: Sistema flexível de etapas de cadastro
-  - Etapas personalizáveis com campos configuráveis
-  - Tipos de campo: texto, data, número, booleano, seleção
-  - Controle de campos obrigatórios
-  - Acompanhamento de progresso por etapa
-
-- **Área do Cliente**: Portal para clientes preencherem seus dados
-  - Dashboard com viagens vinculadas
-  - Formulários de visto por viagem
-  - Acompanhamento de status do processo
-
-### 2. Gestão de Viagens
-
-- **Países de Destino**: Cadastro e gestão de países
-- **Tipos de Visto**: Tipos específicos por país
-- **Viagens**: Organização de viagens
-  - Associação de país e tipo de visto
-  - Datas previstas de viagem e retorno
-  - Valor da assessoria
-  - Vínculo de múltiplos clientes
-  - Status disponíveis para processos
-
-### 3. Processos de Visto
-
-- **Processos**: Processo único por cliente/viagem
-  - Checklist de etapas configurável por viagem
-  - Status personalizáveis por tipo de visto
-  - Prazos por etapa
-  - Controle de conclusão
-  - Cálculo de progresso percentual
-
-- **Status de Processo**: Status reutilizáveis
-  - Vinculação opcional a tipo de visto
-  - Prazo padrão em dias
-  - Ordem de exibição
-  - Status ativo/inativo
-
-### 4. Formulários Dinâmicos
-
-- **Formulários de Visto**: Formulários por tipo de visto
-  - Um formulário por tipo de visto
-  - Perguntas configuráveis com ordem
-  - Tipos de campo: texto, data, número, booleano, seleção
-  - Campos obrigatórios/opcionais
-  - Opções de seleção para campos do tipo seleção
-
-- **Respostas**: Armazenamento de respostas dos clientes
-  - Respostas por cliente/viagem/pergunta
-  - Tipos de resposta conforme tipo de pergunta
-  - Edição e exclusão de respostas
-
-### 5. Gestão de Parceiros
-
-- **Parceiros**: Cadastro de parceiros indicadores
-  - Dados do responsável e empresa
-  - CPF/CNPJ
-  - Segmento (Agência de Viagem, Consultoria, Advocacia, Educação, Outros)
-  - Controle de ativação
-  - Vínculo com clientes indicados
-
-### 6. Controle Financeiro
-
-- **Registros Financeiros**: Por viagem e cliente
-  - Valores e datas de pagamento
-  - Status: Pendente, Pago, Cancelado
-  - Dar baixa em pagamentos
-  - Observações
-
-### 7. Sistema de Permissões
-
-- **Módulos**: Organização funcional do sistema
-- **Perfis**: Grupos de permissões
-  - Permissões CRUD (criar, visualizar, atualizar, excluir)
-  - Vínculo com módulos acessíveis
-- **Usuários**: Usuários da consultoria com perfil
-  - Autenticação própria (não usa Django User diretamente)
-  - Senhas com hash
-  - Controle de acesso baseado em perfil
-
-### 8. Administração
-
-- Gestão de usuários da consultoria
-- Gestão de perfis e permissões
-- Gestão de módulos
-- Superusuário Django para acesso ao admin
-
-## 📁 Estrutura do Projeto
-
-```
-Visary/                       # Raiz do repositório = projeto Django
-├── manage.py
-├── visary/                   # Pacote de configuração (settings, urls, wsgi)
-├── system/                   # App de domínio
-├── templates/
-├── static/
-├── requirements.txt
-├── .env.example              # Exemplo de variáveis de ambiente
-└── README.md
-```
-
-## 🚀 Instalação e Configuração
-
-### Pré-requisitos
-
-- Python 3.8+
-- pip
-- Virtual environment (recomendado)
-
-### Passo a Passo
-
-1. **Clone o repositório** (ou acesse o diretório do projeto)
-
-2. **Crie e ative um ambiente virtual:**
-
-```bash
-python -m venv .venv
-
-# Windows PowerShell
-.\.venv\Scripts\Activate.ps1
-
-# Linux/Mac
-source .venv/bin/activate
-```
-
-3. **Instale as dependências:**
-
-```bash
-pip install -r requirements.txt
-```
-
-4. **Configure as variáveis de ambiente:**
-
-Crie um arquivo `.env` e configure apenas dados sensíveis.
-
-Ver `.env.example` na raiz. Exemplo mínimo:
-
-```env
-DJANGO_SECRET_KEY=sua-chave-secreta-aqui
-DJANGO_DEBUG=True
-DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
-SYSTEM_SEED_USERS_PASSWORDS='{"juliana.lopes@visary.com.br":"senha"}'
-SYSTEM_SEED_PARTNER_PASSWORDS='{"bni@hotmail.com":"senha"}'
-```
-
-5. **Execute as migrações** (na raiz do projeto, onde está `manage.py`):
-
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
-
-6. **Crie o superusuário inicial:**
-
-```bash
-python manage.py create_admin_superuser
-```
-
-Este comando cria/atualiza o usuário:
-- **Username:** `admin`
-- **Email:** `admin@admin.com`
-- **Senha:** `admin`
-
-⚠️ **Importante:** Altere a senha em produção!
-
-7. **Carregue dados iniciais (opcional, sob demanda):**
-
-O sistema sobe limpo após `migrate`. Rode apenas as seeds desejadas:
-
-```bash
-python manage.py initial_seeds
-
-# ou execute por seed especifica
-python manage.py seed_modules
-python manage.py seed_profiles
-python manage.py seed_consultancy_users
-python manage.py seed_countries
-python manage.py seed_visa_types
-python manage.py seed_process_status
-python manage.py seed_visa_forms
-python manage.py seed_client_steps
-python manage.py seed_partners
-```
-
-Seeds especificas por filtro:
-
-```bash
-python manage.py seed_countries --nome "Canada"
-python manage.py seed_visa_types --nome "F1 (visto oficial de estudante)"
-python manage.py seed_process_status --nome "Processo finalizado"
-python manage.py seed_visa_forms --tipo-visto "F1 (visto oficial de estudante)"
-python manage.py seed_visa_forms --arquivo FORMULARIO_EUA_F1.json
-python manage.py seed_partners --email "bni@hotmail.com"
-python manage.py seed_client_steps --nome "Dados Pessoais"
-```
-
-## ▶️ Execução
-
-### Servidor de Desenvolvimento
-
-```bash
-# Ative o ambiente virtual (se ainda não estiver ativo)
-.\.venv\Scripts\Activate.ps1  # Windows
-# ou
-source .venv/bin/activate     # Linux/Mac
-
-# Na raiz do repositório (onde está manage.py)
-python manage.py runserver 0.0.0.0:8000
-```
-
-O sistema estará disponível em: `http://localhost:8000`
-
-### Acesso Inicial
-
-- **URL:** http://localhost:8000
-- **Admin Django:** http://localhost:8000/django-admin/ (superusuário criado com `create_admin_superuser`)
-- **Login:** `admin` / `admin`
-- Após login, você será redirecionado para a home do sistema
-
-## 📊 Modelos e Estrutura de Dados
-
-### Sistema App Único
-
-#### ClienteConsultoria
-- Informações pessoais, contato, endereço
-- Senha para área do cliente (hash)
-- Assessor responsável (UsuarioConsultoria)
-- Parceiro indicador (opcional)
-- Cliente principal (para dependentes)
-- Etapas de cadastro (booleanos)
-- Dados de passaporte
-
-#### Viagem
-- País de destino e tipo de visto
-- Datas previstas
-- Valor da assessoria
-- Múltiplos clientes (via ClienteViagem)
-- Status disponíveis para processos
-
-#### Processo
-- Vínculo único: viagem + cliente
-- Checklist de etapas (EtapaProcesso)
-- Progresso calculado automaticamente
-
-#### FormularioVisto
-- Um formulário por TipoVisto
-- Perguntas ordenadas (PerguntaFormulario)
-- Respostas por cliente/viagem (RespostaFormulario)
-
-#### Partner
-- Dados de parceiros que indicam clientes
-- Segmento e localização
-- Controle de ativação
-
-#### Financeiro
-- Registros financeiros por viagem
-- Cliente opcional
-- Status: Pendente, Pago, Cancelado
-
-#### Modulo
-- Módulos funcionais do sistema
-- Ordem de exibição
-- Controle de ativação
-
-#### Perfil
-- Grupos de permissões
-- Permissões CRUD
-- Módulos acessíveis
-
-#### UsuarioConsultoria
-- Usuários internos da consultoria
-- Autenticação própria (não Django User)
-- Vinculado a um Perfil
-
-## 🔐 Sistema de Permissões
-
-O sistema utiliza um modelo de permissões baseado em:
-
-1. **Módulos**: Funcionalidades do sistema (ex: Clientes, Viagens, Processos)
-2. **Perfis**: Grupos de permissões com permissões CRUD
-3. **Usuários**: Vinculados a um perfil
-
-### Permissões por Perfil
-
-- `pode_criar`: Criar novos registros
-- `pode_visualizar`: Visualizar registros (padrão: True)
-- `pode_atualizar`: Editar registros
-- `pode_excluir`: Excluir registros
-
-### Configuração Inicial
-
-As definições não sensíveis ficam em JSON em `static/modulos_ini/`, `static/perfis_ini/`, `static/usuarios_consultoria_ini/`, `static/paises_destino_ini/`, `static/tipos_visto_ini/`, `static/parceiros_ini/`, `static/status_processo_ini/`, `static/forms_ini/` e `static/etapas_cliente_ini/`.
-
-As únicas variáveis de seed no `.env` são as senhas:
-
-```env
-SYSTEM_SEED_USERS_PASSWORDS='{"email":"senha"}'
-SYSTEM_SEED_PARTNER_PASSWORDS='{"email":"senha"}'
-```
-
-## 🌐 APIs Disponíveis
-
-### APIs de Dados
-
-- **`/api/buscar-cep/`**: Busca endereço por CEP
-  - Método: GET
-  - Parâmetro: `cep`
-  - Retorna: JSON com logradouro, bairro, cidade, UF
-
-- **`/api/tipos-visto/`**: Lista tipos de visto por país
-  - Método: GET
-  - Parâmetro: `pais_id`
-  - Retorna: JSON com tipos de visto
-
-- **`/api/clientes-viagem/`**: Clientes de uma viagem
-  - Método: GET
-  - Parâmetro: `viagem_id`
-  - Retorna: JSON com lista de clientes
-
-- **`/api/status-processo/`**: Status de processo por tipo de visto
-  - Método: GET
-  - Parâmetro: `tipo_visto_id`
-  - Retorna: JSON com status disponíveis
-
-- **`/api/prazo-status-processo/`**: Prazo padrão de um status
-  - Método: GET
-  - Parâmetro: `status_id`
-  - Retorna: JSON com prazo em dias
-
-- **`/api/cliente-info/`**: Informações de um cliente
-  - Método: GET
-  - Parâmetro: `cliente_id`
-  - Retorna: JSON com dados do cliente
-
-### Área do Cliente
-
-- **`/cliente/dashboard/`**: Dashboard do cliente
-- **`/cliente/viagem/<id>/formulario/`**: Visualizar formulário da viagem
-- **`/cliente/viagem/<id>/salvar-resposta/`**: Salvar resposta do formulário
-
-## 🔧 Comandos Personalizados
-
-### create_admin_superuser
-
-Cria ou atualiza o superusuário padrão do Django:
-
-```bash
-python manage.py create_admin_superuser
-```
-
-**Credenciais padrão:**
-- Username: `admin`
-- Email: `admin@admin.com`
-- Senha: `admin`
-
-⚠️ **Altere a senha em produção!**
-
-## 📝 Funcionalidades Detalhadas
-
-### Busca de CEP
-
-O sistema utiliza múltiplas fontes para busca de CEP com fallback automático:
-
-1. ViaCEP (API pública)
-2. BrasilAPI (API pública)
-3. pycep-correios (biblioteca)
-4. brazilcep (biblioteca)
-
-Implementado em: `system/services/cep.py`
-
-### Formulários Dinâmicos
-
-- Criação de formulários por tipo de visto
-- Perguntas ordenadas com tipos variados
-- Validação de campos obrigatórios
-- Opções de seleção configuráveis
-- Respostas persistidas por cliente/viagem
-
-### Processos com Checklist
-
-- Etapas configuráveis por viagem
-- Status reutilizáveis por tipo de visto
-- Prazos por etapa
-- Cálculo automático de progresso
-- Controle de conclusão com data
-
-### Área do Cliente
-
-- Portal autenticado para clientes
-- Visualização de viagens vinculadas
-- Preenchimento de formulários de visto
-- Acompanhamento de processos
-
-## 🔒 Segurança
-
-- Senhas armazenadas com hash (Django hashers)
-- Proteção CSRF em formulários
-- Autenticação de usuários
-- Controle de acesso por perfil
-- Validação de permissões nas views
-
-## 📌 Observações
-
-- **Banco de dados:** SQLite (desenvolvimento). Configure PostgreSQL/MySQL para produção.
-- **Arquivos estáticos:** Em desenvolvimento, servidos automaticamente. Configure para produção.
-- **DJANGO_DEBUG:** Mantenha `False` em produção.
-- **DJANGO_SECRET_KEY:** Gere uma nova chave secreta para produção.
-
-## 🐛 Troubleshooting
-
-### Problemas comuns
-
-1. **Erro ao buscar CEP:**
-   - Verifique conexão com internet
-   - O sistema tenta múltiplas fontes automaticamente
-
-2. **Migrações não aplicadas:**
-   ```bash
-   python manage.py makemigrations
-   python manage.py migrate
-   ```
-
-3. **Erro de permissões:**
-   - Verifique se o perfil do usuário tem as permissões necessárias
-   - Verifique se os módulos estão vinculados ao perfil
-
-4. **Erro ao criar superusuário:**
-   - Verifique se o banco de dados foi criado (migrate)
-   - Verifique se não há conflito com usuário existente
-
-## 📄 Licença
-
-Este projeto é privado/proprietário.
-
-## 👥 Contato
-
-Para dúvidas ou suporte, entre em contato com a equipe de desenvolvimento.
+> Sistema de controle, auditoria e previsibilidade para agentes AI (Claude Code, Cursor, Codex, Copilot).
+> Independente de projeto. Genérico. Reutilizável.
 
 ---
 
-**Versão:** 1.0  
-**Última atualização:** Abril 2026
+## Estrutura do kit
+
+```
+projeto/
+├── AGENTS.md                   # Como o agente trabalha (universal)
+├── CLAUDE.md                   # O que o projeto é (específico)
+├── .cursor/
+│   └── rules/
+│       ├── protocol.mdc        # Governança central (alwaysApply)
+│       ├── anti-hallucination.mdc  # Anti-alucinação (alwaysApply)
+│       ├── language.mdc        # Política de idioma (alwaysApply)
+│       ├── django-architecture.mdc # MVT + services (globs: **/*.py)
+│       ├── clean-code.mdc      # Código limpo (globs: **/*.py)
+│       ├── security.mdc        # Segurança (globs: **/*.py)
+│       ├── testing.mdc         # TDD (globs: **/tests/**/*.py)
+│       ├── templates-static.mdc # Templates (globs: **/templates/**/*.html)
+│       ├── validation.mdc      # Checklist de validação (agent-requested)
+│       ├── prd.mdc             # Estrutura de PRD (agent-requested)
+│       └── environment.mdc     # Ambiente Windows/PS (agent-requested)
+└── docs/
+    └── prd/                    # PRDs do projeto
+```
+
+---
+
+## Como usar
+
+### 1. Novo projeto
+
+1. Copie `AGENTS.md` para a raiz do novo projeto (não altere — é universal)
+2. Copie `CLAUDE.md` para a raiz e preencha os placeholders `<...>`
+3. Copie a pasta `.cursor/rules/` inteira para a raiz
+4. Crie a pasta `docs/prd/`
+5. Pronto — qualquer agente que leia esses arquivos vai operar sob o protocolo
+
+### 2. Projeto existente
+
+1. Copie os 3 artefatos para a raiz
+2. Preencha `CLAUDE.md` com os dados reais do projeto
+3. Verifique se há conflito entre os comandos documentados e os que existem de fato
+4. Rode o projeto e valide que os comandos do `CLAUDE.md` funcionam
+
+### 3. Compatibilidade entre ferramentas
+
+| Ferramenta | Lê `AGENTS.md` | Lê `CLAUDE.md` | Lê `.cursor/rules/` |
+|---|---|---|---|
+| Claude Code | sim | sim (nativo) | não |
+| Cursor | sim | sim (via @) | sim (nativo) |
+| Codex (OpenAI) | sim (nativo) | não | não |
+| Copilot | via .github/ | não | não |
+| Gemini CLI | sim | não | não |
+
+Para ferramentas que não leem `CLAUDE.md`, o `AGENTS.md` contém o protocolo completo. O `CLAUDE.md` adiciona contexto específico do projeto.
+
+Para ferramentas que não leem `.cursor/rules/`, as regras já estão consolidadas no `AGENTS.md`.
+
+---
+
+## Filosofia
+
+### O que o agente deve fazer
+
+- Ler integralmente os arquivos do fluxo antes de decidir
+- Buscar contexto externo (docs oficiais, Context7, Playwright)
+- Criar PRD antes de mudança relevante
+- Seguir SDD (spec antes de código) e TDD (Red-Green-Refactor)
+- Validar com evidência observável antes de declarar sucesso
+- Limpar tudo ao final — sistema pronto para o desenvolvedor
+
+### O que o agente nunca deve fazer
+
+- Inventar comportamento, comando ou integração
+- Decidir por snippet quando existe o arquivo completo
+- Criar migrações sem autorização explícita
+- Hardcodar valores configuráveis
+- Mascarar erro para forçar funcionamento
+- Declarar sucesso sem evidência
+
+---
+
+## Economia de tokens
+
+O kit foi desenhado para minimizar impacto no context window:
+
+- `AGENTS.md` é universal — não muda entre projetos
+- `CLAUDE.md` é enxuto — apenas contexto específico, sem duplicação
+- `.cursor/rules/` são modulares — cada arquivo under 1400 bytes
+- Apenas 3 rules usam `alwaysApply: true` (protocol, anti-hallucination, language)
+- As demais ativam por `globs` (auto) ou por descrição (agent-requested)
+- Nenhuma rule contradiz outra — foram desenhadas como conjunto coerente
+
+---
+
+## Fluxo completo de uma demanda
+
+```
+1. Preflight
+   └── Validar AGENTS.md + CLAUDE.md + ambiente + ferramentas
+
+2. Classificação
+   └── Que tipo de demanda é? (feature, bug, refatoração, etc.)
+
+3. Leitura integral
+   └── Ler todos os arquivos do fluxo impactado
+
+4. PRD (se mudança relevante)
+   └── Criar docs/prd/PRD-<NNN>-<slug>.md com prompt de execução
+
+5. Implementação (SDD + TDD)
+   └── Models → Forms → Services → Views → URLs → Templates → Static → Tests
+
+6. Validação completa
+   └── Testes + check + collectstatic + showmigrations + shell checks
+   └── Playwright + console do navegador + terminal
+   └── Sem hardcode + sem mascaramento + sem prints
+
+7. Limpeza final
+   └── Remover temporários, logs, comentários provisórios
+
+8. Fechamento
+   └── Resumo + evidências + pendências + desvios + status real
+```
+
+---
+
+## Manutenção
+
+- Atualize `CLAUDE.md` quando mudar stack, arquitetura, comandos ou integrações
+- `AGENTS.md` raramente precisa mudar — é o protocolo universal
+- `.cursor/rules/` podem receber novas rules quando um erro se repetir
+- Regra de ouro: **adicione uma rule na segunda vez que ver o mesmo erro**

@@ -1,6 +1,128 @@
 [
   {
     "tipo_visto": "J1 (visto de intercâmbio)",
+    "etapas": [
+      {
+        "ordem": 1,
+        "nome": "Dados Pessoais",
+        "ativo": true
+      },
+      {
+        "ordem": 2,
+        "nome": "Dados do Cônjuge",
+        "ativo": true
+      },
+      {
+        "ordem": 3,
+        "nome": "Passaporte",
+        "ativo": true
+      },
+      {
+        "ordem": 4,
+        "nome": "Dados da Viagem",
+        "ativo": true
+      },
+      {
+        "ordem": 5,
+        "nome": "Dados da Escola",
+        "ativo": true
+      },
+      {
+        "ordem": 6,
+        "nome": "Contato Brasil",
+        "ativo": true
+      },
+      {
+        "ordem": 7,
+        "nome": "Custeio da Viagem",
+        "ativo": true
+      },
+      {
+        "ordem": 8,
+        "nome": "Dados dos Acompanhantes",
+        "ativo": true
+      },
+      {
+        "ordem": 9,
+        "nome": "Dados de Viagens Anteriores",
+        "ativo": true
+      },
+      {
+        "ordem": 10,
+        "nome": "Visto Anterior",
+        "ativo": true
+      },
+      {
+        "ordem": 11,
+        "nome": "Contato EUA",
+        "ativo": true
+      },
+      {
+        "ordem": 12,
+        "nome": "Dados dos Pais",
+        "ativo": true
+      },
+      {
+        "ordem": 13,
+        "nome": "Dados de Parentes no País",
+        "ativo": true
+      },
+      {
+        "ordem": 14,
+        "nome": "Dados de Ocupação",
+        "ativo": true
+      },
+      {
+        "ordem": 15,
+        "nome": "Perguntas Adicionais",
+        "ativo": true
+      },
+      {
+        "ordem": 16,
+        "nome": "Empregos Anteriores",
+        "ativo": true
+      },
+      {
+        "ordem": 17,
+        "nome": "Informações Educacionais",
+        "ativo": true
+      },
+      {
+        "ordem": 18,
+        "nome": "Idioma e Experiência Internacional",
+        "ativo": true
+      },
+      {
+        "ordem": 19,
+        "nome": "Pergunta de Segurança",
+        "ativo": true
+      },
+      {
+        "ordem": 20,
+        "nome": "Comentários Adicionais",
+        "ativo": true
+      },
+      {
+        "ordem": 21,
+        "nome": "Dados de Biometria",
+        "ativo": true
+      },
+      {
+        "ordem": 22,
+        "nome": "Consulado",
+        "ativo": true
+      },
+      {
+        "ordem": 23,
+        "nome": "Agendamento",
+        "ativo": true
+      },
+      {
+        "ordem": 24,
+        "nome": "Declaração",
+        "ativo": true
+      }
+    ],
     "perguntas": [
       {
         "ordem": 1,
@@ -125,7 +247,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 2
+        "etapa": 6
       },
       {
         "ordem": 15,
@@ -133,7 +255,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 2
+        "etapa": 6
       },
       {
         "ordem": 16,
@@ -149,7 +271,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 6
       },
       {
         "ordem": 18,
@@ -189,7 +311,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 3
+        "etapa": 6
       },
       {
         "ordem": 23,
@@ -197,7 +319,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 3
+        "etapa": 6
       },
       {
         "ordem": 24,
@@ -281,7 +403,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 5
+        "etapa": 1
       },
       {
         "ordem": 34,
@@ -289,7 +411,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 6,
+        "etapa": 7,
         "opcoes": [
           "Eu mesmo(a)",
           "Outra pessoa",
@@ -302,7 +424,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 36,
@@ -310,7 +432,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 37,
@@ -326,7 +448,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 39,
@@ -334,7 +456,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 40,
@@ -350,7 +472,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 42,
@@ -358,7 +480,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 43,
@@ -390,7 +512,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 9
+        "etapa": 14
       },
       {
         "ordem": 47,
@@ -398,7 +520,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 9
+        "etapa": 14
       },
       {
         "ordem": 48,
@@ -406,7 +528,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 10
+        "etapa": 20
       },
       {
         "ordem": 49,
@@ -478,7 +600,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 12
+        "etapa": 11
       },
       {
         "ordem": 58,
@@ -502,7 +624,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 12
+        "etapa": 11
       },
       {
         "ordem": 61,
@@ -510,7 +632,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 12
+        "etapa": 11
       },
       {
         "ordem": 62,
@@ -542,7 +664,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13,
+        "etapa": 23,
         "opcoes": [
           "CASV Brasília",
           "CASV Rio de Janeiro",
@@ -559,7 +681,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13,
+        "etapa": 23,
         "opcoes": [
           "Embaixada de Brasília",
           "Consulado do Rio de Janeiro",
@@ -575,7 +697,7 @@
         "tipo_campo": "selecao",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13,
+        "etapa": 23,
         "opcoes": [
           "Agendar para a próxima data disponível",
           "Agendar para a próxima vaga disponível na próxima semana",
@@ -590,7 +712,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 24
       }
     ]
   }

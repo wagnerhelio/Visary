@@ -187,3 +187,71 @@ class TripFormReplicationTests(TestCase):
             question=self.question,
         )
         self.assertEqual(dependent_answer.answer_text, "Resposta própria do dependente")
+    def test_view_client_form_redirects_home_when_trip_does_not_exist(self):
+        response = self.client.get(
+            reverse("system:view_client_form", args=[9999, self.primary_client.pk])
+        )
+
+        self.assertRedirects(response, reverse("system:home"))
+        messages = [str(message) for message in response.wsgi_request._messages]
+        self.assertIn("Formulário de viagem não encontrado.", messages)
+
+    def test_view_client_form_redirects_home_when_client_does_not_exist(self):
+        response = self.client.get(
+            reverse("system:view_client_form", args=[self.trip.pk, 9999])
+        )
+
+        self.assertRedirects(response, reverse("system:home"))
+        messages = [str(message) for message in response.wsgi_request._messages]
+        self.assertIn("Cliente não encontrado para este formulário.", messages)
+
+    def test_view_client_form_redirects_home_when_client_is_not_linked_to_trip(self):
+        unrelated_client = ConsultancyClient.objects.create(
+            assigned_advisor=self.consultant,
+            first_name="Cliente",
+            last_name="Solto",
+            cpf="100.200.300-42",
+            birth_date=date(1997, 1, 1),
+            nationality="Brasileira",
+            phone="(11) 90000-0003",
+            email="solto@test.com",
+            password="!",
+            created_by=self.user,
+        )
+
+        response = self.client.get(
+            reverse("system:view_client_form", args=[self.trip.pk, unrelated_client.pk])
+        )
+
+        self.assertRedirects(response, reverse("system:home"))
+        messages = [str(message) for message in response.wsgi_request._messages]
+        self.assertIn("Este cliente não está vinculado a esta viagem.", messages)
+
+    def test_view_client_form_warns_only_required_unanswered_questions(self):
+        FormQuestion.objects.create(
+            form=self.form,
+            stage=self.travel_stage,
+            question="Pergunta obrigatória sem resposta",
+            field_type="text",
+            is_required=True,
+            order=3,
+            is_active=True,
+        )
+        FormQuestion.objects.create(
+            form=self.form,
+            stage=self.travel_stage,
+            question="Pergunta opcional sem resposta",
+            field_type="text",
+            is_required=False,
+            order=4,
+            is_active=True,
+        )
+
+        response = self.client.get(
+            reverse("system:view_client_form", args=[self.trip.pk, self.dependent_client.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "campo-status preenchido")
+        self.assertContains(response, "Esta pergunta obrigatória ainda não foi respondida", count=1)
+        self.assertNotContains(response, "Esta pergunta ainda nao foi respondida")

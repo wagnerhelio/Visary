@@ -4,6 +4,28 @@ from system.models import FormAnswer, SelectOption
 from system.services.form_prefill_rules import get_client_prefill_field, normalize_text
 
 
+PASSPORT_TYPE_LABELS = {
+    "regular": "Passaporte Comum/Regular",
+    "diplomatic": "Passaporte Diplomático",
+    "service": "Passaporte de Serviço",
+    "other": "Outro",
+}
+
+
+def _join_non_empty(parts, separator):
+    return separator.join(str(part).strip() for part in parts if str(part or "").strip())
+
+
+def _build_street_address(client):
+    return _join_non_empty([client.street, client.street_number, client.complement], ", ")
+
+
+def _build_full_address(client):
+    street = _build_street_address(client)
+    city_state = _join_non_empty([client.city, client.state], " - ")
+    return _join_non_empty([street, client.district, city_state, client.zip_code], ", ")
+
+
 def _question_is_stage_one(question):
     return bool(question.stage_id and question.stage and question.stage.order == 1)
 
@@ -29,6 +51,32 @@ def _prefill_raw_value(question_text, client):
         return client.birth_date
     if field_name == "nationality":
         return client.nationality
+    if field_name == "full_address":
+        return _build_full_address(client)
+    if field_name == "street_address":
+        return _build_street_address(client)
+    if field_name == "district":
+        return client.district
+    if field_name == "zip_code":
+        return client.zip_code
+    if field_name == "city_state":
+        return _join_non_empty([client.city, client.state], " - ")
+    if field_name == "passport_type":
+        return PASSPORT_TYPE_LABELS.get(client.passport_type, client.passport_type)
+    if field_name == "passport_number":
+        return client.passport_number
+    if field_name == "passport_issuing_country":
+        return client.passport_issuing_country
+    if field_name == "passport_issue_date":
+        return client.passport_issue_date
+    if field_name == "passport_expiry_date":
+        return client.passport_expiry_date
+    if field_name == "passport_authority":
+        return client.passport_authority
+    if field_name == "passport_issuing_city":
+        return client.passport_issuing_city
+    if field_name == "passport_stolen":
+        return "sim" if client.passport_stolen else "nao"
     return None
 
 
@@ -97,6 +145,13 @@ def prefill_form_answers(trip, client, questions, existing_answers):
             continue
         prefill_field = get_client_prefill_field(question.question)
         if not prefill_field or prefill_field in used_fields:
+            continue
+        if prefill_field == "full_address" and {
+            "street_address",
+            "district",
+            "zip_code",
+            "city_state",
+        } & used_fields:
             continue
         raw_value = _prefill_raw_value(question.question, client)
         if raw_value in (None, ""):

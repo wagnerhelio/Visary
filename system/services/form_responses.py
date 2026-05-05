@@ -17,6 +17,16 @@ def clear_answer_fields(answer):
     answer.answer_select = None
 
 
+def answer_has_value(answer):
+    return bool(
+        answer.answer_text
+        or answer.answer_date is not None
+        or answer.answer_number is not None
+        or answer.answer_boolean is not None
+        or answer.answer_select_id is not None
+    )
+
+
 def update_answer_by_type(answer, question, value):
     clear_answer_fields(answer)
     field_type = question.field_type
@@ -52,6 +62,18 @@ def update_answer_by_type(answer, question, value):
                 ) from e
 
 
+def _answer_value_for_state(answer):
+    if answer.question.field_type == "boolean":
+        if answer.answer_boolean is True:
+            return "sim"
+        if answer.answer_boolean is False:
+            return "nao"
+        return ""
+    if answer.question.field_type == "select":
+        return answer.answer_select.text if answer.answer_select_id else ""
+    return answer.get_answer_display()
+
+
 def build_question_state(questions, post_dict, existing_answers):
     state = {}
     for q in questions:
@@ -79,9 +101,12 @@ def build_question_state(questions, post_dict, existing_answers):
                     state[q.order] = r.answer_select.text
         else:
             val = post_dict.get(f"question_{q.pk}", "")
-            if not val and q.pk in existing_answers:
-                val = existing_answers[q.pk].answer_text or ""
-            state[q.order] = val
+            if val:
+                state[q.order] = val
+            elif q.pk in existing_answers:
+                answer_value = _answer_value_for_state(existing_answers[q.pk])
+                if answer_value:
+                    state[q.order] = answer_value
     return state
 
 
@@ -100,19 +125,53 @@ def is_question_visible(question, state):
     return state.get(target_order) == expected_values
 
 
-def process_form_answers(post_dict, trip, client, questions, existing_answers=None):
+def get_visible_questions(questions, existing_answers=None, post_dict=None):
+    question_list = list(questions)
+    state = build_question_state(question_list, post_dict or {}, existing_answers or {})
+    return [question for question in question_list if is_question_visible(question, state)]
+
+
+def _delete_existing_answer(existing_answers, question):
+    answer = existing_answers.pop(question.pk, None)
+    if answer and answer.pk:
+        answer.delete()
+
+
+def _value_is_empty(value):
+    return value is None or value == ""
+
+
+def process_form_answers(
+    post_dict,
+    trip,
+    client,
+    questions,
+    existing_answers=None,
+    state_questions=None,
+):
     saved_count = 0
     errors = []
     existing_answers = existing_answers or {}
-    state = build_question_state(questions, post_dict, existing_answers)
+    questions = list(questions)
+    state_questions = list(state_questions) if state_questions is not None else questions
+    state = build_question_state(state_questions, post_dict, existing_answers)
 
     with transaction.atomic():
         for question in questions:
             field_name = f"question_{question.pk}"
             value = post_dict.get(field_name)
+            is_visible = is_question_visible(question, state)
 
-            if question.is_required and not value and is_question_visible(question, state):
+            if not is_visible:
+                _delete_existing_answer(existing_answers, question)
+                continue
+
+            if question.is_required and _value_is_empty(value):
                 errors.append(f"A pergunta '{question.question}' é obrigatória.")
+                continue
+
+            if _value_is_empty(value):
+                _delete_existing_answer(existing_answers, question)
                 continue
 
             sid = transaction.savepoint()

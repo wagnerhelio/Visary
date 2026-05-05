@@ -75,9 +75,18 @@ class FormPrefillTests(TestCase):
             zip_code="01001-000",
             street="Rua Teste",
             street_number="100",
+            complement="Apto 12",
             district="Centro",
             city="São Paulo",
             state="SP",
+            passport_type="regular",
+            passport_number="AB123456",
+            passport_issuing_country="Brasil",
+            passport_issue_date=date(2021, 1, 10),
+            passport_expiry_date=date(2031, 1, 9),
+            passport_authority="DPF",
+            passport_issuing_city="São Paulo",
+            passport_stolen=False,
             created_by=self.user,
         )
 
@@ -156,9 +165,9 @@ class FormPrefillTests(TestCase):
         self.assertFalse(FormAnswer.objects.filter(question=q_birthplace).exists())
 
     def test_prefill_rules_limit_to_direct_applicant_personal_fields(self):
-        self.assertFalse(should_prefill_from_client("País que emitiu o passaporte"))
-        self.assertFalse(should_prefill_from_client("Número do Passaporte"))
-        self.assertFalse(should_prefill_from_client("Endereço completo"))
+        self.assertTrue(should_prefill_from_client("País que emitiu o passaporte"))
+        self.assertTrue(should_prefill_from_client("Número do Passaporte"))
+        self.assertTrue(should_prefill_from_client("Endereço completo"))
         self.assertFalse(should_prefill_from_client("Endereço completo do empregador ou escola"))
         self.assertFalse(should_prefill_from_client("CEP da instituição"))
         self.assertTrue(should_prefill_from_client("Telefone Primário"))
@@ -216,3 +225,97 @@ class FormPrefillTests(TestCase):
         self.assertFalse(FormAnswer.objects.filter(question=q_contact_name).exists())
         self.assertTrue(FormAnswer.objects.filter(question=q_phone, answer_text="(11) 99999-8888").exists())
         self.assertFalse(FormAnswer.objects.filter(question=q_contact_phone).exists())
+
+    def test_prefill_fills_direct_address_and_passport_fields(self):
+        questions_data = [
+            ("Endereço completo", "text", "Rua Teste, 100, Apto 12, Centro, São Paulo - SP, 01001-000"),
+            ("Bairro", "text", "Centro"),
+            ("Cidade e estado em que reside", "text", "São Paulo - SP"),
+            ("CEP", "text", "01001-000"),
+            ("Número do Passaporte Válido", "text", "AB123456"),
+            ("País que emitiu o passaporte", "text", "Brasil"),
+            ("Data de Emissão", "date", date(2021, 1, 10)),
+            ("Válido até", "date", date(2031, 1, 9)),
+            ("Órgão Emissor", "text", "DPF"),
+            ("Cidade onde foi emitido", "text", "São Paulo"),
+        ]
+        created = []
+        for order, (question, field_type, _expected) in enumerate(questions_data, start=1):
+            created.append(
+                FormQuestion.objects.create(
+                    form=self.form,
+                    stage=self.stage_one,
+                    order=order,
+                    question=question,
+                    field_type=field_type,
+                    is_required=False,
+                    is_active=True,
+                )
+            )
+
+        questions = self.form.questions.filter(is_active=True).select_related("stage").order_by("order")
+        existing_answers = {}
+        prefill_form_answers(self.trip, self.client_obj, questions, existing_answers)
+
+        for question, (_label, field_type, expected) in zip(created, questions_data):
+            answer = FormAnswer.objects.get(question=question)
+            if field_type == "date":
+                self.assertEqual(answer.answer_date, expected)
+            else:
+                self.assertEqual(answer.answer_text, expected)
+
+    def test_prefill_still_blocks_third_party_address_and_phone(self):
+        blocked_questions = [
+            "Endereço completo do empregador ou escola",
+            "CEP da Instituição",
+            "Telefone do contato emergencial",
+            "Endereço completo do contato emergencial.",
+            "1- Endereço atual",
+            "2 - Telefone",
+        ]
+        created = [
+            FormQuestion.objects.create(
+                form=self.form,
+                stage=self.stage_one,
+                order=idx,
+                question=question,
+                field_type="text",
+                is_required=False,
+                is_active=True,
+            )
+            for idx, question in enumerate(blocked_questions, start=1)
+        ]
+
+        questions = self.form.questions.filter(is_active=True).select_related("stage").order_by("order")
+        existing_answers = {}
+        prefill_form_answers(self.trip, self.client_obj, questions, existing_answers)
+
+        for question in created:
+            self.assertFalse(FormAnswer.objects.filter(question=question).exists())
+
+    def test_prefill_does_not_fill_generic_contact_address_after_residential_address(self):
+        q_street = FormQuestion.objects.create(
+            form=self.form,
+            stage=self.stage_one,
+            order=1,
+            question="Endereço(rua/quadra/avenida)",
+            field_type="text",
+            is_required=True,
+            is_active=True,
+        )
+        q_contact_address = FormQuestion.objects.create(
+            form=self.form,
+            stage=self.stage_one,
+            order=50,
+            question="Endereco completo",
+            field_type="text",
+            is_required=False,
+            is_active=True,
+        )
+
+        questions = self.form.questions.filter(is_active=True).select_related("stage").order_by("order")
+        existing_answers = {}
+        prefill_form_answers(self.trip, self.client_obj, questions, existing_answers)
+
+        self.assertTrue(FormAnswer.objects.filter(question=q_street).exists())
+        self.assertFalse(FormAnswer.objects.filter(question=q_contact_address).exists())

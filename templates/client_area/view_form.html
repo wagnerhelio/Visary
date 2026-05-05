@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static dict_filters %}
 
 {% block title %}Visary | Formulário - {{ trip.visa_type.name }}{% endblock %}
 
@@ -84,6 +84,52 @@
 
         .form-group {
             margin-bottom: 24px;
+        }
+
+        .form-group.is-filled {
+            background: rgba(86, 244, 156, 0.05);
+            border: 1px solid rgba(86, 244, 156, 0.18);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .form-group.is-filled input[type="text"],
+        .form-group.is-filled input[type="date"],
+        .form-group.is-filled input[type="number"],
+        .form-group.is-filled textarea,
+        .form-group.is-filled select {
+            border-color: rgba(86, 244, 156, 0.42);
+            box-shadow: 0 0 0 3px rgba(86, 244, 156, 0.08);
+        }
+
+        .field-filled-indicator {
+            display: none;
+            width: max-content;
+            align-items: center;
+            gap: 6px;
+            border-radius: 8px;
+            padding: 5px 10px;
+            margin: 8px 0;
+            background: rgba(86, 244, 156, 0.12);
+            border: 1px solid rgba(86, 244, 156, 0.34);
+            color: rgba(86, 244, 156, 0.9);
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .form-group.is-filled .field-filled-indicator {
+            display: inline-flex;
+        }
+
+        .field-filled-indicator::before {
+            content: "✓";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            background: rgba(86, 244, 156, 0.24);
         }
 
         .form-group label {
@@ -279,6 +325,9 @@
 {% block app_content %}
 <div class="form-header">
     <h1>Formulário: {{ trip.visa_type.name }}</h1>
+    {% if form_client and form_client.pk != client.pk %}
+        <p>Preenchendo para {{ form_client.full_name }}</p>
+    {% endif %}
     <p>Viagem para {{ trip.destination_country.name }} - {{ trip.planned_departure_date|date:"d/m/Y" }}</p>
     {% if stage_items %}
     <div class="stage-nav">
@@ -316,16 +365,18 @@
     {% endif %}
     <form method="post" action="{% url 'system:client_save_answer' trip.pk %}" novalidate>
         {% csrf_token %}
+        <input type="hidden" name="client_id" value="{{ form_client.pk|default:client.pk }}">
         <input type="hidden" name="stage_token" value="{{ current_stage.token|default:'' }}">
 
         {% for question in questions %}
-            <div class="form-group" data-ordem="{{ question.order }}" data-rule='{{ question.display_rule|default_if_none:"" }}'>
+            <div class="form-group" data-ordem="{{ question.order }}" data-rule='{{ question.display_rule|json_attr }}'>
                 <label for="question_{{ question.pk }}">
                     {{ question.question }}
                     {% if question.is_required %}
                         <span class="obrigatorio">*</span>
                     {% endif %}
                 </label>
+                <span class="field-filled-indicator">Campo preenchido</span>
 
                 {% if question.pk in answer_ids %}
                     {% for question_id, answer in existing_answers.items %}
@@ -467,24 +518,31 @@
     </form>
 </div>
 
+{{ question_state|json_script:"visary-question-state" }}
 <script>
 (function() {
+    var initialStateEl = document.getElementById('visary-question-state');
+    var initialState = {};
+    if (initialStateEl) {
+        try { initialState = JSON.parse(initialStateEl.textContent || '{}'); } catch(e) { initialState = {}; }
+    }
+
     var ordemParaPk = {};
     document.querySelectorAll('.form-group[data-ordem]').forEach(function(el) {
         var match = el.querySelector('[id^="question_"]');
         if (match) {
             var pk = match.id.replace('question_', '');
-            ordemParaPk[parseInt(el.dataset.order)] = pk;
+            ordemParaPk[parseInt(el.dataset.ordem)] = pk;
         }
     });
 
     function atualizarVisibilidade() {
-        var estado = {};
+        var estado = Object.assign({}, initialState);
         Object.keys(ordemParaPk).forEach(function(ordem) {
             var pk = ordemParaPk[ordem];
             var radios = document.querySelectorAll('input[name="question_' + pk + '"]');
             var select = document.querySelector('select[name="question_' + pk + '"]');
-            var textInput = document.querySelector('input[type="text"][name="question_' + pk + '"]');
+            var textInput = document.querySelector('input[name="question_' + pk + '"]:not([type="radio"]), textarea[name="question_' + pk + '"]');
             if (radios.length > 0) {
                 var checked = document.querySelector('input[name="question_' + pk + '"]:checked');
                 estado[parseInt(ordem)] = checked ? checked.value : null;
@@ -515,6 +573,36 @@
     });
 
     atualizarVisibilidade();
+})();
+</script>
+
+<script>
+(function() {
+    function fieldHasValue(group) {
+        var fields = group.querySelectorAll('input, select, textarea');
+        for (var i = 0; i < fields.length; i += 1) {
+            var field = fields[i];
+            if (field.type === 'hidden') continue;
+            if (field.type === 'radio' || field.type === 'checkbox') {
+                if (field.checked) return true;
+            } else if (String(field.value || '').trim()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function updateFilledState(group) {
+        group.classList.toggle('is-filled', fieldHasValue(group));
+    }
+
+    document.querySelectorAll('.form-group').forEach(function(group) {
+        updateFilledState(group);
+        group.querySelectorAll('input, select, textarea').forEach(function(field) {
+            field.addEventListener('input', function() { updateFilledState(group); });
+            field.addEventListener('change', function() { updateFilledState(group); });
+        });
+    });
 })();
 </script>
 

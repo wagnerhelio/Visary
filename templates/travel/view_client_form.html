@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static dict_filters %}
 
 {% block title %}Visary | Visualizar Formulário - {{ client.full_name }}{% endblock %}
 
@@ -209,6 +209,34 @@
             color: rgba(86, 244, 156, 0.8);
         }
 
+        .campo-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 8px;
+            padding: 5px 10px;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .campo-status.preenchido {
+            background: rgba(86, 244, 156, 0.12);
+            border: 1px solid rgba(86, 244, 156, 0.36);
+            color: rgba(86, 244, 156, 0.9);
+        }
+
+        .campo-status.preenchido::before {
+            content: "✓";
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            background: rgba(86, 244, 156, 0.24);
+        }
+
         .sem-resposta {
             background: rgba(255, 193, 7, 0.1);
             border: 1px solid rgba(255, 193, 7, 0.4);
@@ -258,7 +286,7 @@
         </div>
 
         {% for question in grupo.list %}
-        <div class="form-group" data-ordem="{{ question.order }}" data-rule="{{ question.display_rule|default_if_none:'' }}">
+        <div class="form-group" data-ordem="{{ question.order }}" data-rule='{{ question.display_rule|json_attr }}'>
             <label>
                 {{ question.question }}
                 {% if question.is_required %}
@@ -303,14 +331,16 @@
                                 <button type="button" class="btn-copiar" onclick="copiarResposta('resposta_{{ question.pk }}', this)">Copiar</button>
                             {% endif %}
                         </div>
-                        <div class="resposta-existente">Resposta salva</div>
+                        <div class="campo-status preenchido">Campo preenchido</div>
                     {% endif %}
                 {% endfor %}
             {% else %}
                 <div class="resposta-container">
                     <div class="resposta-value empty" id="resposta_{{ question.pk }}">Nao respondido</div>
                 </div>
-                <div class="sem-resposta">Esta pergunta ainda nao foi respondida</div>
+                {% if question.is_required %}
+                    <div class="sem-resposta">Esta pergunta obrigatória ainda não foi respondida</div>
+                {% endif %}
             {% endif %}
         </div>
         {% endfor %}
@@ -318,6 +348,7 @@
     {% endwith %}
 {% endfor %}
 
+{{ question_state|json_script:"visary-question-state" }}
 <script>
     function decodificarSequenciasEscapadas(texto) {
         return texto
@@ -402,6 +433,12 @@
     }
 
     (function() {
+        var initialStateEl = document.getElementById('visary-question-state');
+        var initialState = {};
+        if (initialStateEl) {
+            try { initialState = JSON.parse(initialStateEl.textContent || '{}'); } catch(e) { initialState = {}; }
+        }
+
         function normalizarResposta(valor) {
             if (valor === 'Sim') return 'sim';
             if (valor === 'Nao') return 'nao';
@@ -409,9 +446,9 @@
         }
 
         function avaliarVisibilidade() {
-            var estado = {};
+            var estado = Object.assign({}, initialState);
             document.querySelectorAll('.form-group[data-ordem]').forEach(function(el) {
-                var ordem = parseInt(el.dataset.order);
+                var ordem = parseInt(el.dataset.ordem);
                 var respostaEl = el.querySelector('[id^="resposta_"]');
                 if (respostaEl) {
                     var dataValor = respostaEl.getAttribute('data-valor');

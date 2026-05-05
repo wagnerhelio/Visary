@@ -1,3 +1,5 @@
+import json
+
 from django import template
 
 
@@ -26,3 +28,10 @@ def get_item(value, key):
         return value.get(key)
     except AttributeError:
         return None
+
+
+@register.filter
+def json_attr(value):
+    if not value:
+        return ""
+    return json.dumps(value, ensure_ascii=False)

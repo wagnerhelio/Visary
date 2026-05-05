@@ -1,6 +1,58 @@
 [
   {
     "tipo_visto": "Visto de Visitante",
+    "etapas": [
+      {
+        "ordem": 1,
+        "nome": "Dados Pessoais",
+        "ativo": true
+      },
+      {
+        "ordem": 2,
+        "nome": "Passaporte",
+        "ativo": true
+      },
+      {
+        "ordem": 3,
+        "nome": "Informações de Contato",
+        "ativo": true
+      },
+      {
+        "ordem": 4,
+        "nome": "Dados da Viagem",
+        "ativo": true
+      },
+      {
+        "ordem": 5,
+        "nome": "Ocupação",
+        "ativo": true
+      },
+      {
+        "ordem": 6,
+        "nome": "Comprovante de Renda",
+        "ativo": true
+      },
+      {
+        "ordem": 7,
+        "nome": "Autorização de Menores",
+        "ativo": true
+      },
+      {
+        "ordem": 8,
+        "nome": "Declaração de Saúde",
+        "ativo": true
+      },
+      {
+        "ordem": 9,
+        "nome": "Declaração de Caráter Pessoal",
+        "ativo": true
+      },
+      {
+        "ordem": 10,
+        "nome": "Declaração Final",
+        "ativo": true
+      }
+    ],
     "perguntas": [
       {
         "ordem": 1,
@@ -93,7 +145,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 2
+        "etapa": 1
       },
       {
         "ordem": 11,
@@ -173,7 +225,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 4
+        "etapa": 2
       },
       {
         "ordem": 21,
@@ -186,7 +238,7 @@
           "pergunta_ordem": 20,
           "valor": "sim"
         },
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 22,
@@ -194,7 +246,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 23,
@@ -207,7 +259,7 @@
           "pergunta_ordem": 22,
           "valor": "sim"
         },
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 24,
@@ -215,7 +267,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 25,
@@ -228,7 +280,7 @@
           "pergunta_ordem": 24,
           "valor": "sim"
         },
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 26,
@@ -236,7 +288,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 27,
@@ -249,7 +301,7 @@
           "pergunta_ordem": 26,
           "valor": "sim"
         },
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 28,
@@ -257,7 +309,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 29,
@@ -270,7 +322,7 @@
           "pergunta_ordem": 28,
           "valor": "sim"
         },
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 30,
@@ -278,7 +330,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 31,
@@ -291,7 +343,7 @@
           "pergunta_ordem": 30,
           "valor": "sim"
         },
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 32,
@@ -299,7 +351,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 33,
@@ -312,7 +364,7 @@
           "pergunta_ordem": 32,
           "valor": "sim"
         },
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 34,
@@ -320,7 +372,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 35,
@@ -328,7 +380,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 36,
@@ -341,7 +393,7 @@
           "pergunta_ordem": 35,
           "valor": "sim"
         },
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 37,
@@ -349,7 +401,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 38,
@@ -362,7 +414,7 @@
           "pergunta_ordem": 37,
           "valor": "sim"
         },
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 39,
@@ -370,7 +422,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 40,
@@ -383,7 +435,7 @@
           "pergunta_ordem": 39,
           "valor": "sim"
         },
-        "etapa": 5
+        "etapa": 9
       },
       {
         "ordem": 41,
@@ -399,7 +451,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 6
+        "etapa": 2
       },
       {
         "ordem": 43,
@@ -415,7 +467,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 6
+        "etapa": 2
       },
       {
         "ordem": 45,
@@ -455,7 +507,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 6
+        "etapa": 2
       },
       {
         "ordem": 50,
@@ -463,7 +515,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 6
+        "etapa": 2
       },
       {
         "ordem": 51,
@@ -471,7 +523,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 6
+        "etapa": 2
       },
       {
         "ordem": 52,
@@ -487,7 +539,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 54,
@@ -495,7 +547,7 @@
         "tipo_campo": "data",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 55,
@@ -511,7 +563,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 57,
@@ -519,7 +571,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 58,
@@ -535,7 +587,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 7
+        "etapa": 5
       },
       {
         "ordem": 60,
@@ -551,7 +603,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 8
+        "etapa": 6
       },
       {
         "ordem": 62,
@@ -567,7 +619,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 8
+        "etapa": 6
       },
       {
         "ordem": 64,
@@ -591,7 +643,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 8
+        "etapa": 6
       },
       {
         "ordem": 67,
@@ -599,7 +651,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 9
+        "etapa": 4
       },
       {
         "ordem": 68,
@@ -616,7 +668,7 @@
           "Outros",
           "Ilegal"
         ],
-        "etapa": 9
+        "etapa": 4
       },
       {
         "ordem": 69,
@@ -624,7 +676,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 9
+        "etapa": 4
       },
       {
         "ordem": 70,
@@ -632,7 +684,7 @@
         "tipo_campo": "texto",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 9
+        "etapa": 4
       },
       {
         "ordem": 71,
@@ -645,7 +697,7 @@
           "Até 6 meses",
           "Até 12 meses"
         ],
-        "etapa": 9
+        "etapa": 4
       },
       {
         "ordem": 72,
@@ -653,7 +705,7 @@
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 9
+        "etapa": 4
       },
       {
         "ordem": 73,
@@ -661,7 +713,7 @@
         "tipo_campo": "data",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 9
+        "etapa": 4
       },
       {
         "ordem": 74,
@@ -669,7 +721,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 10
+        "etapa": 4
       },
       {
         "ordem": 75,
@@ -677,7 +729,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 10
+        "etapa": 4
       },
       {
         "ordem": 76,
@@ -685,7 +737,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 11
+        "etapa": 4
       },
       {
         "ordem": 77,
@@ -693,7 +745,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 11
+        "etapa": 4
       },
       {
         "ordem": 78,
@@ -701,7 +753,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 11
+        "etapa": 4
       },
       {
         "ordem": 79,
@@ -709,7 +761,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 4
       },
       {
         "ordem": 80,
@@ -717,7 +769,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 12
+        "etapa": 4
       },
       {
         "ordem": 81,
@@ -725,7 +777,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 12
+        "etapa": 4
       },
       {
         "ordem": 82,
@@ -733,7 +785,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 12
+        "etapa": 4
       },
       {
         "ordem": 83,
@@ -741,7 +793,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 12
+        "etapa": 4
       },
       {
         "ordem": 84,
@@ -749,7 +801,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 13
+        "etapa": 7
       },
       {
         "ordem": 85,
@@ -757,7 +809,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 13
+        "etapa": 7
       },
       {
         "ordem": 86,
@@ -765,7 +817,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 4
       },
       {
         "ordem": 87,
@@ -773,7 +825,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 14
+        "etapa": 4
       },
       {
         "ordem": 88,
@@ -781,7 +833,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 4
       },
       {
         "ordem": 89,
@@ -789,7 +841,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 14
+        "etapa": 4
       },
       {
         "ordem": 90,
@@ -797,7 +849,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 14
+        "etapa": 4
       },
       {
         "ordem": 91,
@@ -805,7 +857,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 14
+        "etapa": 4
       },
       {
         "ordem": 92,
@@ -813,7 +865,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 15
+        "etapa": 8
       },
       {
         "ordem": 93,
@@ -821,7 +873,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 15
+        "etapa": 8
       },
       {
         "ordem": 94,
@@ -829,7 +881,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 15
+        "etapa": 8
       },
       {
         "ordem": 95,
@@ -837,7 +889,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 15
+        "etapa": 8
       },
       {
         "ordem": 96,
@@ -845,7 +897,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 15
+        "etapa": 8
       },
       {
         "ordem": 97,
@@ -853,7 +905,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 98,
@@ -861,7 +913,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 99,
@@ -869,7 +921,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 100,
@@ -877,7 +929,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 101,
@@ -885,7 +937,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 102,
@@ -893,7 +945,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 103,
@@ -901,7 +953,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 104,
@@ -909,7 +961,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 105,
@@ -917,7 +969,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 106,
@@ -925,7 +977,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 107,
@@ -933,7 +985,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 16
+        "etapa": 8
       },
       {
         "ordem": 108,
@@ -946,7 +998,7 @@
           "pergunta_ordem": 107,
           "valor": "sim"
         },
-        "etapa": 17
+        "etapa": 7
       },
       {
         "ordem": 109,
@@ -954,7 +1006,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 17
+        "etapa": 7
       },
       {
         "ordem": 110,
@@ -1002,7 +1054,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 17
+        "etapa": 7
       },
       {
         "ordem": 116,
@@ -1010,7 +1062,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 17
+        "etapa": 7
       },
       {
         "ordem": 117,
@@ -1026,7 +1078,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 18
+        "etapa": 7
       },
       {
         "ordem": 119,
@@ -1034,7 +1086,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 18
+        "etapa": 7
       },
       {
         "ordem": 120,
@@ -1066,7 +1118,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 18
+        "etapa": 7
       },
       {
         "ordem": 124,
@@ -1074,7 +1126,7 @@
         "tipo_campo": "texto",
         "obrigatorio": false,
         "ativo": true,
-        "etapa": 18
+        "etapa": 7
       },
       {
         "ordem": 125,
@@ -1090,7 +1142,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 19
+        "etapa": 10
       },
       {
         "ordem": 127,
@@ -1098,7 +1150,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 19
+        "etapa": 10
       },
       {
         "ordem": 128,
@@ -1106,7 +1158,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 19
+        "etapa": 10
       },
       {
         "ordem": 129,
@@ -1114,7 +1166,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 19
+        "etapa": 10
       },
       {
         "ordem": 130,
@@ -1122,7 +1174,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 19
+        "etapa": 10
       },
       {
         "ordem": 131,
@@ -1130,7 +1182,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 19
+        "etapa": 10
       },
       {
         "ordem": 132,
@@ -1138,7 +1190,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 19
+        "etapa": 10
       },
       {
         "ordem": 133,
@@ -1150,7 +1202,7 @@
           "Meu cartão de crédito internacional (desejo fornecer os dados para pagamento)",
           "Meu cartão de crédito internacional (me liguem no momento do pagamento que repasso as informações para pagamento)"
         ],
-        "etapa": 19
+        "etapa": 10
       },
       {
         "ordem": 134,
@@ -1158,7 +1210,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 19
+        "etapa": 10
       },
       {
         "ordem": 135,
@@ -1166,7 +1218,7 @@
         "tipo_campo": "booleano",
         "obrigatorio": true,
         "ativo": true,
-        "etapa": 19
+        "etapa": 10
       }
     ]
   }

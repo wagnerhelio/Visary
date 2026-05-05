@@ -9,6 +9,7 @@ from system.models import (
     ConsultancyUser,
     DestinationCountry,
     FormQuestion,
+    FormAnswer,
     Profile,
     Trip,
     TripClient,
@@ -158,3 +159,71 @@ class ClientAreaDashboardTests(TestCase):
         self.assertContains(response, "Dados iniciais (Atual)")
         self.assertContains(response, "Documentos")
         self.assertContains(response, "1 pendente(s) de 1")
+
+    def test_dashboard_links_each_member_form_with_client_id(self):
+        response = self.client.get(reverse("system:client_dashboard"))
+
+        self.assertContains(
+            response,
+            f"{reverse('system:client_view_form', args=[self.trip.pk])}?client_id={self.primary_client.pk}",
+        )
+        self.assertContains(
+            response,
+            f"{reverse('system:client_view_form', args=[self.trip.pk])}?client_id={self.dependent_client.pk}",
+        )
+
+    def test_client_view_form_prefills_selected_dependent(self):
+        question = FormQuestion.objects.create(
+            form=self.visa_form,
+            stage=self.stage,
+            question="Nome",
+            field_type="text",
+            is_required=True,
+            order=3,
+            is_active=True,
+        )
+
+        response = self.client.get(
+            reverse("system:client_view_form", args=[self.trip.pk]),
+            {"client_id": self.dependent_client.pk},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["form_client"], self.dependent_client)
+        answer = FormAnswer.objects.get(
+            trip=self.trip,
+            client=self.dependent_client,
+            question=question,
+        )
+        self.assertEqual(answer.answer_text, "Cliente")
+
+    def test_client_save_answer_persists_for_selected_dependent(self):
+        question = FormQuestion.objects.create(
+            form=self.visa_form,
+            stage=self.stage,
+            question="Observação do dependente",
+            field_type="text",
+            is_required=False,
+            order=3,
+            is_active=True,
+        )
+
+        response = self.client.post(
+            reverse("system:client_save_answer", args=[self.trip.pk]),
+            {
+                "client_id": self.dependent_client.pk,
+                "stage_token": f"stage:{self.stage.pk}",
+                f"question_{question.pk}": "Resposta do dependente",
+                "next_action": "save",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            FormAnswer.objects.filter(
+                trip=self.trip,
+                client=self.dependent_client,
+                question=question,
+                answer_text="Resposta do dependente",
+            ).exists()
+        )

@@ -46,15 +46,7 @@ NON_APPLICANT_CONTEXT_TOKENS = RELATION_CONTEXT_TOKENS | {
     "pessoa s",
 }
 
-BLOCKED_PREFILL_TOKENS = {
-    "cep",
-    "endereco",
-    "bairro",
-    "complemento",
-    "logradouro",
-    "passaporte",
-    "rua",
-}
+BLOCKED_PREFILL_TOKENS = set()
 
 DIRECT_CLIENT_PREFILL_FIELDS = {
     "nome": "first_name",
@@ -74,6 +66,28 @@ DIRECT_CLIENT_PREFILL_FIELDS = {
     "nacionalidade": "nationality",
     "qual a sua nacionalidade": "nationality",
     "pais de nacionalidade": "nationality",
+    "endereco completo": "full_address",
+    "endereco residencial completo": "full_address",
+    "endereco rua quadra avenida": "street_address",
+    "bairro": "district",
+    "cep": "zip_code",
+    "cidade e estado em que reside": "city_state",
+    "passaporte": "passport_number",
+    "numero do passaporte": "passport_number",
+    "numero do passaporte valido": "passport_number",
+    "pais da emissao": "passport_issuing_country",
+    "pais referente ao passaporte": "passport_issuing_country",
+    "pais que emitiu o passaporte": "passport_issuing_country",
+    "data de emissao do passaporte": "passport_issue_date",
+    "data de emissao": "passport_issue_date",
+    "data de validade do passaporte": "passport_expiry_date",
+    "data de expiracao do passaporte": "passport_expiry_date",
+    "valido ate": "passport_expiry_date",
+    "orgao emissor": "passport_authority",
+    "local de emissao autoridade emissora": "passport_authority",
+    "cidade onde foi emitido": "passport_issuing_city",
+    "tipo de passaporte": "passport_type",
+    "ja teve algum passaporte roubado": "passport_stolen",
 }
 
 
@@ -157,6 +171,8 @@ def get_client_prefill_field(question_text):
     if not q:
         return None
     if q[0].isdigit():
+        return None
+    if "numero do passaporte ou rg" in q:
         return None
     if _contains_any(q, NON_APPLICANT_CONTEXT_TOKENS):
         return None

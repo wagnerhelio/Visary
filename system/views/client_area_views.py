@@ -13,7 +13,12 @@ from system.models import (
 from system.views.travel_views import _get_form_by_visa_type, _get_client_visa_type
 from system.services.form_stages import build_stage_items, filter_questions_by_stage, resolve_stage_token
 from system.services.form_prefill import prefill_form_answers
-from system.services.form_responses import build_question_state, is_question_visible, process_form_answers
+from system.services.form_responses import (
+    answer_has_value,
+    build_question_state,
+    is_question_visible,
+    process_form_answers,
+)
 
 
 def _get_client_from_session(request):
@@ -31,14 +36,22 @@ def _get_client_form(trip, client):
     return _get_form_by_visa_type(client_visa_type, active_only=False)
 
 
-def _answer_has_value(answer):
-    return bool(
-        answer.answer_text
-        or answer.answer_date
-        or answer.answer_number is not None
-        or answer.answer_boolean is not None
-        or answer.answer_select_id
-    )
+def _get_target_client_for_trip(request, trip, session_client):
+    raw_client_id = request.GET.get("client_id") or request.POST.get("client_id")
+    if not raw_client_id:
+        return session_client
+    try:
+        target_client_id = int(raw_client_id)
+    except (TypeError, ValueError):
+        return session_client
+    if target_client_id == session_client.pk:
+        return session_client
+    link = TripClient.objects.filter(
+        trip=trip,
+        client_id=target_client_id,
+        trip_primary_client=session_client,
+    ).select_related("client").first()
+    return link.client if link else session_client
 
 
 def _build_member_form_progress(trip, member_client):
@@ -81,14 +94,19 @@ def _build_member_form_progress(trip, member_client):
     total_questions = 0
     total_answered = 0
     stage_progress = []
+    question_state = build_question_state(questions, {}, answers_by_question)
 
     for stage_item in stage_items:
-        stage_questions = list(filter_questions_by_stage(questions_qs, stage_item))
+        stage_questions = [
+            question
+            for question in filter_questions_by_stage(questions_qs, stage_item)
+            if is_question_visible(question, question_state)
+        ]
 
         answered_count = 0
         for question in stage_questions:
             answer = answers_by_question.get(question.pk)
-            if answer and _answer_has_value(answer):
+            if answer and answer_has_value(answer):
                 answered_count += 1
 
         pending_count = max(len(stage_questions) - answered_count, 0)
@@ -219,15 +237,23 @@ def client_view_form(request, trip_id: int):
         Trip.objects.select_related("visa_type__form"), pk=trip_id
     )
 
-    client_in_trip = TripClient.objects.filter(trip=trip, client=client).exists()
-    dependent_in_trip = TripClient.objects.filter(
-        trip=trip, trip_primary_client=client
-    ).exists() if not client_in_trip else False
+    target_client = _get_target_client_for_trip(request, trip, client)
+
+    client_in_trip = TripClient.objects.filter(trip=trip, client=target_client).exists()
+    dependent_in_trip = (
+        TripClient.objects.filter(
+            trip=trip,
+            client=target_client,
+            trip_primary_client=client,
+        ).exists()
+        if target_client != client
+        else False
+    )
 
     if not (client_in_trip or dependent_in_trip):
         raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
 
-    visa_form = _get_client_form(trip, client)
+    visa_form = _get_client_form(trip, target_client)
 
     if not visa_form or not visa_form.is_active:
         messages.warning(
@@ -243,12 +269,12 @@ def client_view_form(request, trip_id: int):
     )
 
     answers_list = FormAnswer.objects.filter(
-        trip=trip, client=client
+        trip=trip, client=target_client
     ).select_related("answer_select")
 
     existing_answers = {r.question_id: r for r in answers_list}
 
-    prefill_form_answers(trip, client, questions, existing_answers)
+    prefill_form_answers(trip, target_client, questions, existing_answers)
 
     stage_items = build_stage_items(visa_form)
     stage_token = request.GET.get("stage")
@@ -266,16 +292,22 @@ def client_view_form(request, trip_id: int):
     next_stage = stage_items[stage_index + 1] if stage_index + 1 < len(stage_items) else None
     prev_stage = stage_items[stage_index - 1] if stage_index > 0 else None
 
-    answer_ids = list(existing_answers.keys())
+    answer_ids = [
+        question_id
+        for question_id, answer in existing_answers.items()
+        if answer_has_value(answer)
+    ]
 
     context = {
         "client": client,
+        "form_client": target_client,
         "trip": trip,
         "visa_form_obj": visa_form,
         "questions": stage_questions_list,
         "all_questions": questions,
         "existing_answers": existing_answers,
         "answer_ids": answer_ids,
+        "question_state": build_question_state(questions, {}, existing_answers),
         "stage_items": stage_items,
         "current_stage": current_stage,
         "next_stage": next_stage,
@@ -296,13 +328,25 @@ def client_save_answer(request, trip_id: int):
         Trip.objects.select_related("visa_type__form"), pk=trip_id
     )
 
-    if client not in trip.clients.all():
+    target_client = _get_target_client_for_trip(request, trip, client)
+    allowed = (
+        TripClient.objects.filter(trip=trip, client=target_client).exists()
+        and (
+            target_client == client
+            or TripClient.objects.filter(
+                trip=trip,
+                client=target_client,
+                trip_primary_client=client,
+            ).exists()
+        )
+    )
+    if not allowed:
         raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
 
     if request.method != "POST":
         return redirect("system:client_view_form", trip_id=trip_id)
 
-    visa_form = _get_client_form(trip, client)
+    visa_form = _get_client_form(trip, target_client)
     if not visa_form:
         messages.error(request, "Formulário não encontrado.")
         return redirect("system:client_dashboard")
@@ -314,17 +358,23 @@ def client_save_answer(request, trip_id: int):
 
     existing_answers = {
         r.question_id: r for r in FormAnswer.objects.filter(
-            trip=trip, client=client
+            trip=trip, client=target_client
         ).select_related("answer_select")
     }
 
     stage_items = build_stage_items(visa_form)
     stage_token = request.POST.get("stage_token")
     current_stage = resolve_stage_token(stage_items, stage_token)
+    state_questions = list(questions)
     stage_questions = list(filter_questions_by_stage(questions, current_stage))
 
     saved_count, errors = process_form_answers(
-        request.POST, trip, client, stage_questions, existing_answers
+        request.POST,
+        trip,
+        target_client,
+        stage_questions,
+        existing_answers,
+        state_questions=state_questions,
     )
 
     if errors:
@@ -344,10 +394,14 @@ def client_save_answer(request, trip_id: int):
                 next_stage = stage_items[i + 1]
                 break
         if next_stage:
-            return redirect(f"{reverse('system:client_view_form', args=[trip_id])}?stage={next_stage['token'].replace(':', '%3A')}")
-        return redirect("system:client_view_form", trip_id=trip_id)
+            stage = next_stage["token"].replace(":", "%3A")
+            return redirect(f"{reverse('system:client_view_form', args=[trip_id])}?client_id={target_client.pk}&stage={stage}")
+        return redirect(f"{reverse('system:client_view_form', args=[trip_id])}?client_id={target_client.pk}")
     elif next_action == "finish":
-        return redirect("system:client_view_form", trip_id=trip_id)
+        return redirect(f"{reverse('system:client_view_form', args=[trip_id])}?client_id={target_client.pk}")
     else:
-        stage_param = f"?stage={current_stage['token'].replace(':', '%3A')}" if current_stage else ""
-        return redirect(f"{reverse('system:client_view_form', args=[trip_id])}{stage_param}")
+        base = reverse("system:client_view_form", args=[trip_id])
+        if current_stage:
+            stage = current_stage["token"].replace(":", "%3A")
+            return redirect(f"{base}?client_id={target_client.pk}&stage={stage}")
+        return redirect(f"{base}?client_id={target_client.pk}")

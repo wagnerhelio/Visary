@@ -33,8 +33,10 @@ from system.selectors import active_partners_ordered
 from system.services.form_prefill import prefill_form_answers
 from system.services.form_prefill_rules import should_prefill_from_client
 from system.services.form_responses import (
+    answer_has_value,
     update_answer_by_type as _update_answer_by_type_svc,
     build_question_state,
+    get_visible_questions,
     is_question_visible,
     process_form_answers,
 )
@@ -1192,9 +1194,21 @@ def _prepare_trip_info(trips, can_manage_all, consultant):
     return result
 
 
-def _process_form_answers(request, trip, client, questions, existing_answers=None):
+def _process_form_answers(
+    request,
+    trip,
+    client,
+    questions,
+    existing_answers=None,
+    state_questions=None,
+):
     return process_form_answers(
-        request.POST, trip, client, questions, existing_answers
+        request.POST,
+        trip,
+        client,
+        questions,
+        existing_answers,
+        state_questions=state_questions,
     )
 
 
@@ -1222,6 +1236,54 @@ def _get_form_by_visa_type(visa_type, active_only=True):
         )
     except VisaForm.DoesNotExist:
         return None
+
+
+def _build_form_completion_info(form_obj, trip, client):
+    if not form_obj or not form_obj.is_active:
+        return {
+            "has_answer": False,
+            "total_questions": 0,
+            "total_answers": 0,
+            "complete": False,
+        }
+
+    questions = list(
+        form_obj.questions.filter(is_active=True)
+        .select_related("stage")
+        .prefetch_related("options")
+        .order_by("order", "question")
+    )
+    if not questions:
+        return {
+            "has_answer": False,
+            "total_questions": 0,
+            "total_answers": 0,
+            "complete": False,
+        }
+
+    answers = {
+        answer.question_id: answer
+        for answer in FormAnswer.objects.filter(
+            trip=trip,
+            client=client,
+            question_id__in=[question.pk for question in questions],
+        ).select_related("answer_select", "question")
+    }
+    visible_questions = get_visible_questions(questions, answers)
+    visible_question_ids = {question.pk for question in visible_questions}
+    total_answers = sum(
+        1
+        for question_id, answer in answers.items()
+        if question_id in visible_question_ids and answer_has_value(answer)
+    )
+    total_questions = len(visible_questions)
+
+    return {
+        "has_answer": total_answers > 0,
+        "total_questions": total_questions,
+        "total_answers": total_answers,
+        "complete": total_questions > 0 and total_answers == total_questions,
+    }
 
 
 def _get_form_data(trip, client, stage_token=None):
@@ -1348,29 +1410,16 @@ def view_trip(request, pk: int):
         client_visa_type = _get_client_visa_type(trip, client)
         form_obj = _get_form_by_visa_type(client_visa_type, active_only=False)
 
-        has_answer = False
-        total_questions = 0
-        total_answers = 0
-
-        if form_obj and form_obj.is_active:
-            questions = form_obj.questions.filter(is_active=True)
-            total_questions = questions.count()
-            if total_questions > 0:
-                answers = FormAnswer.objects.filter(trip=trip, client=client)
-                total_answers = answers.count()
-                has_answer = total_answers > 0
+        completion = _build_form_completion_info(form_obj, trip, client)
 
         clients_with_info.append({
             "client": client,
             "visa_type": client_visa_type,
             "visa_form_obj": form_obj,
-            "has_answer": has_answer,
-            "total_questions": total_questions,
-            "total_answers": total_answers,
-            "complete": (
-                has_answer and total_answers == total_questions
-                if total_questions > 0 else False
-            ),
+            "has_answer": completion["has_answer"],
+            "total_questions": completion["total_questions"],
+            "total_answers": completion["total_answers"],
+            "complete": completion["complete"],
             "role": tc.role,
             "trip_primary_client": tc.trip_primary_client,
         })
@@ -1550,29 +1599,16 @@ def list_trip_forms(request, trip_id: int):
         client_visa_type = _get_client_visa_type(trip, client)
         form_obj = _get_form_by_visa_type(client_visa_type, active_only=False)
 
-        has_answer = False
-        total_questions = 0
-        total_answers = 0
-
-        if form_obj and form_obj.is_active:
-            questions = form_obj.questions.filter(is_active=True)
-            total_questions = questions.count()
-            if total_questions > 0:
-                answers = FormAnswer.objects.filter(trip=trip, client=client)
-                total_answers = answers.count()
-                has_answer = total_answers > 0
+        completion = _build_form_completion_info(form_obj, trip, client)
 
         clients_with_info.append({
             "client": client,
             "visa_type": client_visa_type,
             "visa_form_obj": form_obj,
-            "has_answer": has_answer,
-            "total_questions": total_questions,
-            "total_answers": total_answers,
-            "complete": (
-                has_answer and total_answers == total_questions
-                if total_questions > 0 else False
-            ),
+            "has_answer": completion["has_answer"],
+            "total_questions": completion["total_questions"],
+            "total_answers": completion["total_answers"],
+            "complete": completion["complete"],
         })
 
     context = {
@@ -1600,10 +1636,14 @@ def edit_client_form(request, trip_id: int, client_id: int):
     ):
         raise PermissionDenied("Você não tem permissão para acessar esta viagem.")
 
-    client = get_object_or_404(ConsultancyClient, pk=client_id)
+    client = ConsultancyClient.objects.filter(pk=client_id).first()
+    if not client:
+        messages.error(request, "Cliente não encontrado para este formulário.")
+        return redirect("system:home")
 
-    if client not in trip.clients.all():
-        raise PermissionDenied("Este cliente não está vinculado a esta viagem.")
+    if not TripClient.objects.filter(trip=trip, client=client).exists():
+        messages.error(request, "Este cliente não está vinculado a esta viagem.")
+        return redirect("system:home")
 
     stage_token = request.GET.get("stage")
     (
@@ -1662,7 +1702,12 @@ def edit_client_form(request, trip_id: int, client_id: int):
             )
 
         saved_answers, errors = _process_form_answers(
-            request, trip, client, questions, existing_answers
+            request,
+            trip,
+            client,
+            questions,
+            existing_answers,
+            state_questions=all_questions,
         )
 
         if errors:
@@ -1708,7 +1753,11 @@ def edit_client_form(request, trip_id: int, client_id: int):
         "questions": questions,
         "all_questions": all_questions,
         "existing_answers": existing_answers,
-        "answer_ids": list(existing_answers.keys()),
+        "answer_ids": [
+            question_id
+            for question_id, answer in existing_answers.items()
+            if answer_has_value(answer)
+        ],
         "user_profile": consultant.profile.name if consultant else None,
         "can_manage_all": can_manage_all,
         "stage_items": stage_items,
@@ -1718,6 +1767,7 @@ def edit_client_form(request, trip_id: int, client_id: int):
         "stage_index": stage_index,
         "is_trip_dependent": is_trip_dependent,
         "trip_primary_client": trip_primary_client,
+        "question_state": build_question_state(all_questions, {}, existing_answers),
     }
 
     return render(request, "travel/edit_client_form.html", context)
@@ -1820,17 +1870,25 @@ def view_client_form(request, trip_id: int, client_id: int):
     consultant = get_user_consultant(request.user)
     can_manage_all = user_can_manage_all(request.user, consultant)
 
-    trip = get_object_or_404(
+    trip = (
         Trip.objects.select_related(
             "visa_type__form", "destination_country", "assigned_advisor"
-        ),
-        pk=trip_id,
+        )
+        .filter(pk=trip_id)
+        .first()
     )
+    if not trip:
+        messages.error(request, "Formulário de viagem não encontrado.")
+        return redirect("system:home")
 
-    client = get_object_or_404(ConsultancyClient, pk=client_id)
+    client = ConsultancyClient.objects.filter(pk=client_id).first()
+    if not client:
+        messages.error(request, "Cliente não encontrado para este formulário.")
+        return redirect("system:home")
 
-    if client not in trip.clients.all():
-        raise PermissionDenied("Este cliente não está vinculado a esta viagem.")
+    if not TripClient.objects.filter(trip=trip, client=client).exists():
+        messages.error(request, "Este cliente não está vinculado a esta viagem.")
+        return redirect("system:home")
 
     stage_token = request.GET.get("stage")
     (
@@ -1859,7 +1917,11 @@ def view_client_form(request, trip_id: int, client_id: int):
         "questions": questions,
         "all_questions": all_questions,
         "existing_answers": existing_answers,
-        "answer_ids": list(existing_answers.keys()),
+        "answer_ids": [
+            question_id
+            for question_id, answer in existing_answers.items()
+            if answer_has_value(answer)
+        ],
         "user_profile": consultant.profile.name if consultant else None,
         "can_manage_all": can_manage_all,
         "stage_items": stage_items,
@@ -1867,6 +1929,7 @@ def view_client_form(request, trip_id: int, client_id: int):
         "next_stage": next_stage,
         "prev_stage": prev_stage,
         "stage_index": stage_index,
+        "question_state": build_question_state(all_questions, {}, existing_answers),
     }
 
     return render(request, "travel/view_client_form.html", context)
